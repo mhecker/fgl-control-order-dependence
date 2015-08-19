@@ -14,11 +14,8 @@ import qualified Data.Set as Set
 
 import IRLSOD
 
-import System.Process
-
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.PatriciaTree
 import Data.Graph.Inductive.Query.Dominators
 
 controlDependence :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)

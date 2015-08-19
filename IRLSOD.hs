@@ -7,44 +7,31 @@ import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
 
 
+import Control.Monad(forM)
+
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Set.Unicode
+import Data.List (partition)
+
 
 type Var = String
 type Val = Integer
+type InputChannel = String
 
 unused :: Var
 unused = "unused"
 
-type GlobalState = Var -> Val
+defaultChannel :: InputChannel
+defaultChannel = "default"
+
+type GlobalState = Map Var Val
 
 --
 data BoolFunction = CTrue   | CFalse | Leq Var Var | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
 data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction deriving (Show, Eq, Ord)
-
--- data StateFunction t = StateFunction {
---     useF  :: Set Var,
---     eval  :: GlobalState -> t
---   }
-
--- data CFGEdge = Guard  Bool (StateFunction Bool)
---              | Assign Var  (StateFunction Val)   | Spawn
-
--- useE :: CFGEdge -> Set Var
--- useE (Guard   _ sf) = useF sf
--- useE (Assign  _ sf) = useF sf
--- useE Spawn          = Set.empty
-
--- defE :: CFGEdge -> Set Var
--- defE (Guard   _ _) = Set.empty
--- defE (Assign  x _) = Set.singleton x
--- defE Spawn         = Set.empty
-
--- use :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
--- use gr n = unions [ useE e | (n',e) <- lsuc gr n ]
 
 evalB :: GlobalState -> BoolFunction -> Bool
 evalB _ CTrue     = True
@@ -64,7 +51,7 @@ useB (Not b)     = useB b
 
 evalV :: GlobalState -> VarFunction -> Val
 evalV σ (Val  x)    = x
-evalV σ (Var  x)    = σ x
+evalV σ (Var  x)    = σ ! x
 evalV σ (Plus  x y) = evalV σ x + evalV σ y
 evalV σ (Times x y) = evalV σ x * evalV σ y
 evalV σ (Neg x)     = - evalV σ x
@@ -77,31 +64,29 @@ useV (Times x y) = useV x ∪ useV y
 useV (Neg x)     = useV x
 
 
-
 data CFGEdge = Guard  Bool BoolFunction
-             | Assign Var  VarFunction  | Spawn deriving (Show, Eq, Ord)
+             | Assign Var  VarFunction
+             | Read   Var  InputChannel
+             | Spawn
+             deriving (Show, Eq, Ord)
+
 
 useE :: CFGEdge -> Set Var
 useE (Guard   _ bf) = useB bf
 useE (Assign  _ vf) = useV vf
+useE (Read    _ _)  = Set.empty
 useE Spawn          = Set.empty
 
 defE :: CFGEdge -> Set Var
 defE (Guard   _ _) = Set.empty
 defE (Assign  x _) = Set.singleton x
+defE (Read    x _) = Set.singleton x
 defE Spawn         = Set.empty
 
 use :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
 use gr n = Set.unions [ useE e | (n',e) <- lsuc gr n ]
 
--- instance Show CFGEdge where
---   show (Guard True  _) = "Guard True"
---   show (Guard False _) = "Guard False"
---   show (Assign _ _)    = "Op"
---   show (Spawn)         = "Spawn"
-
 type CFGNode = Int
-
 
 true :: CFGEdge
 true  = Guard True  $ CTrue
@@ -112,8 +97,11 @@ false = Guard False $ CTrue
 nop :: CFGEdge
 nop = Assign unused $ Val 42
 
+nopuse :: CFGEdge
+nopuse = Assign unused $ Var unused
+
 nopread :: CFGEdge
-nopread = Assign unused $ Var unused
+nopread = Read unused $ defaultChannel
 
 
 wellformed :: Graph gr => gr CFGNode CFGEdge -> Bool
@@ -133,3 +121,29 @@ wellformed gr =
                  && length [ n'  | (n', Assign _ _) <- lsuc gr n ] == 0
                  && length [ n'  | (n', Spawn)      <- lsuc gr n ] == 0 ) | n <- nodes gr]
 
+
+type Input = Map InputChannel [Val]
+type ControlState = [Node]
+type Configuration = (ControlState,GlobalState,Input)
+
+step :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [Configuration]
+step graph config@(control,σ,i) = do
+       n <- control
+       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc graph n
+
+       -- Unter den Normalen Nachfolgern gibt es genau einen der passierbar ist
+       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> (n',σ',i')) (stepFor cfgEdge (σ,i)) ) normal
+
+       case configs' of [(n',σ', i')] -> return (n' : [spawned | (spawned, Spawn) <- spawn], σ',i') 
+                        _             -> error "Nicht genau 1 normaler nachfolger"
+
+
+stepFor :: CFGEdge -> (GlobalState,Input) -> [(GlobalState,Input)]
+stepFor (Guard b bf) (σ,i)
+  | b == evalB σ bf = [(σ,i)]
+  | otherwise       = []
+stepFor (Assign x vf) (σ,i)  = [(Map.insert x (evalV σ vf)    σ, i)]
+stepFor (Read   x ch) (σ,i)  = [(Map.insert x (head $ i ! ch) σ, Map.adjust tail ch i)]
+stepFor (Spawn      ) (σ,i)  = undefined
+
+hide (a,b,c) = (a,b)

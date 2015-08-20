@@ -48,6 +48,23 @@ graph' = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,true),(2,4,false),(3
 
 
 
+
+
+{-    1
+      2-------
+      7       3
+    8       4   5
+    9         6
+      10
+      11
+      12
+-}
+
+spawnGraph :: Gr CFGNode CFGEdge
+spawnGraph = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,spawn),(3,4,false),(3,5,true),(4,6,nop),(5,6,nop)]
+                                            ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,nopuse)]
+
+
 -- | generate list of labeled nodes
 genLNodes :: (Enum a) => a -> Int -> [LNode a]
 genLNodes q i = take i (zip [1..] [q..])

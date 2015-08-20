@@ -14,8 +14,10 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Set.Unicode
-import Data.List (partition)
+import Data.List (partition,delete)
 
+import Data.Tree (Tree)
+import qualified Data.Tree as Tree
 
 type Var = String
 type Val = Integer
@@ -103,6 +105,10 @@ nopuse = Assign unused $ Var unused
 nopread :: CFGEdge
 nopread = Read unused $ defaultChannel
 
+spawn :: CFGEdge
+spawn = Spawn
+
+
 
 wellformed :: Graph gr => gr CFGNode CFGEdge -> Bool
 wellformed gr =
@@ -131,11 +137,12 @@ step graph config@(control,σ,i) = do
        n <- control
        let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc graph n
 
-       -- Unter den Normalen Nachfolgern gibt es genau einen der passierbar ist
+       -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
        let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> (n',σ',i')) (stepFor cfgEdge (σ,i)) ) normal
 
-       case configs' of [(n',σ', i')] -> return (n' : [spawned | (spawned, Spawn) <- spawn], σ',i') 
-                        _             -> error "Nicht genau 1 normaler nachfolger"
+       case configs' of [(n',σ', i')] -> return (n' : ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control)), σ',i')
+                        []            -> return ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control), σ,i)
+                        _             -> error "nichtdeterminsitisches Programm"
 
 
 stepFor :: CFGEdge -> (GlobalState,Input) -> [(GlobalState,Input)]

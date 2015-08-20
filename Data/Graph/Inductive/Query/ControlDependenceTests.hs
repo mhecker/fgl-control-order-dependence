@@ -70,6 +70,11 @@ spawnGraph = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,spawn),(3,4,fals
                                             ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,nopuse)]
 
 
+conflictGraph :: Gr CFGNode CFGEdge
+conflictGraph = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,spawn),(3,4,Assign "x" (Val 17))]
+                                               ++  [(2,7,nop),(7,8,Assign "x" (Val 4)),(8,12,nop)]
+
+
 -- | generate list of labeled nodes
 genLNodes :: (Enum a) => a -> Int -> [LNode a]
 genLNodes q i = take i (zip [1..] [q..])
@@ -81,6 +86,15 @@ initialConfiguration = ([entry], Map.empty, Map.fromList [(defaultChannel, cycle
 initialConfigurationTree :: ConfigurationTree
 initialConfigurationTree = (Node (entry,Spawn) [], Map.empty, Map.fromList [(defaultChannel, cycle [1..5])])
 
+
+
+showAllFinalStates graph = sequence_ $ fmap (\(t,sigma) -> sequence_ [ putStrLn "-----------------",  putStrLn $ Tree.drawTree $ fmap show $t, putStrLn $ show $ sigma, putStrLn "-----------------" ])  $ allFinalStates graph
+
+allFinalStates :: Gr CFGNode CFGEdge -> [(ControlStateTree,GlobalState)]
+allFinalStates graph = iter [] [initialConfigurationTree]
+  where iter finals []    = fmap hide finals
+        iter finals confs = iter (newfinals++finals) $ concat $ fmap (treeStep graph) confs
+          where newfinals = [conf | conf <- confs, treeStep graph conf == []] 
 
 run :: Gr CFGNode CFGEdge -> Int -> (ControlState,GlobalState)
 run graph n = (ns,σ)

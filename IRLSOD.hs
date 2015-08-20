@@ -16,9 +16,6 @@ import qualified Data.Set as Set
 import Data.Set.Unicode
 import Data.List (partition,delete)
 
-import Data.Tree (Tree)
-import qualified Data.Tree as Tree
-
 type Var = String
 type Val = Integer
 type InputChannel = String
@@ -141,8 +138,8 @@ step graph config@(control,σ,i) = do
        let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> (n',σ',i')) (stepFor cfgEdge (σ,i)) ) normal
 
        case configs' of [(n',σ', i')] -> return (n' : ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control)), σ',i')
-                        []            -> return ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control), σ,i)
-                        _             -> error "nichtdeterminsitisches Programm"
+                        []            -> return (      [spawned | (spawned, Spawn) <- spawn] ++ (delete n control),  σ, i)
+                        _             -> error "nichtdeterministisches Programm"
 
 
 stepFor :: CFGEdge -> (GlobalState,Input) -> [(GlobalState,Input)]

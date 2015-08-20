@@ -7,11 +7,16 @@ import Data.Graph.Inductive.Query.Dataflow
 
 
 import IRLSOD
+import ExecutionTree
 
 import System.Process
 
 import Data.Set
 import Data.Map as Map
+
+import Data.Tree (Tree(..))
+import qualified Data.Tree as Tree
+
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Basic
@@ -73,13 +78,20 @@ genLNodes q i = take i (zip [1..] [q..])
 initialConfiguration :: Configuration
 initialConfiguration = ([entry], Map.empty, Map.fromList [(defaultChannel, cycle [1..5])])
 
+initialConfigurationTree :: ConfigurationTree
+initialConfigurationTree = (Node (entry,Spawn) [], Map.empty, Map.fromList [(defaultChannel, cycle [1..5])])
+
 
 run :: Gr CFGNode CFGEdge -> Int -> (ControlState,GlobalState)
 run graph n = (ns,σ)
-  where (ns, σ, i) = iterate (myhead. (step graph)) initialConfiguration !! n
-                     -- head $ step graph initialConfiguration
-        myhead (x:xs) = x
-        myhead _ = error "rofl"
+  where (ns, σ, i) = iterate (head. (step graph)) initialConfiguration !! n
+
+
+showRunTree graph n = putStrLn $ Tree.drawTree $ fmap show t
+  where (t,σ,i) = runTree graph n 
+
+runTree :: Gr CFGNode CFGEdge -> Int -> (ControlStateTree,GlobalState,Input)
+runTree graph n = iterate (head. (treeStep graph)) initialConfigurationTree !! n
 
 
 test graph = do
@@ -90,3 +102,4 @@ test graph = do
 
 
 
+first (a,b,c) = a

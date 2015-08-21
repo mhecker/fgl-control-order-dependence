@@ -19,16 +19,20 @@ import Data.List (partition,delete)
 type Var = String
 type Val = Integer
 type InputChannel = String
+type OutputChannel = String
 
 unused :: Var
 unused = "unused"
 
-defaultChannel :: InputChannel
-defaultChannel = "default"
+stdIn :: InputChannel
+stdIn = "stdIn"
+
+stdOut :: OutputChannel
+stdOut = "stdOut"
 
 type GlobalState = Map Var Val
 
---
+
 data BoolFunction = CTrue   | CFalse | Leq Var Var | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
 data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction deriving (Show, Eq, Ord)
 
@@ -66,6 +70,7 @@ useV (Neg x)     = useV x
 data CFGEdge = Guard  Bool BoolFunction
              | Assign Var  VarFunction
              | Read   Var  InputChannel
+             | Print  Var  OutputChannel
              | Spawn
              deriving (Show, Eq, Ord)
 
@@ -100,7 +105,10 @@ nopuse :: CFGEdge
 nopuse = Assign unused $ Var unused
 
 nopread :: CFGEdge
-nopread = Read unused $ defaultChannel
+nopread = Read unused $ stdIn
+
+nopPrint :: CFGEdge
+nopPrint = Print unused $ stdOut
 
 spawn :: CFGEdge
 spawn = Spawn
@@ -128,6 +136,44 @@ wellformed gr =
 type Input = Map InputChannel [Val]
 type ControlState = [Node]
 type Configuration = (ControlState,GlobalState,Input)
+data Event = PrintEvent Val OutputChannel
+           | ReadEvent  Val InputChannel
+           | Tau
+           deriving (Eq, Ord, Show)
+
+fromEdge :: GlobalState -> Input -> CFGEdge -> Event
+fromEdge σ i (Guard b bf)
+  | b == evalB σ bf = Tau
+  | otherwise       = undefined
+fromEdge σ i (Assign x vf) = Tau
+fromEdge σ i (Read   x ch) = ReadEvent  (head $ i ! ch)   ch
+fromEdge σ i (Print  x ch) = PrintEvent (evalV σ (Var x)) ch
+fromEdge σ i (Spawn      ) = Tau
+
+
+data SecurityLattice = Undefined | Low | High deriving (Show, Ord, Eq, Bounded, Enum)
+
+type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
+type ProgramClassification = CFGNode -> SecurityLattice
+
+type Trace = [(Configuration, (Node,Event), Configuration)]
+
+
+eventStep :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [((Node,Event),Configuration)]
+eventStep graph config@(control,σ,i) = do
+       n <- control
+       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc graph n
+
+       -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
+       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> ((n,fromEdge σ i cfgEdge),(n',σ',i'))) (stepFor cfgEdge (σ,i)) ) normal
+
+
+       case (spawn, configs') of (_ ,[((_,event),(n',σ', i'))]) -> return ((n,event),(n' : ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control)), σ',i'))
+                                 ([],[])                        -> return ((n,Tau),  (                                                delete n control  , σ, i ))
+                                 (_ ,[])                        -> error "spawn an exit-node"
+                                 (_ ,_)                         -> error "nichtdeterministisches Programm"
+
+
 
 step :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [Configuration]
 step graph config@(control,σ,i) = do
@@ -137,9 +183,10 @@ step graph config@(control,σ,i) = do
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
        let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> (n',σ',i')) (stepFor cfgEdge (σ,i)) ) normal
 
-       case configs' of [(n',σ', i')] -> return (n' : ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control)), σ',i')
-                        []            -> return (      [spawned | (spawned, Spawn) <- spawn] ++ (delete n control),  σ, i)
-                        _             -> error "nichtdeterministisches Programm"
+       case (spawn, configs') of (_,[(n',σ', i')]) -> return (n' : ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control)), σ',i')
+                                 ([],[])           -> return (                                               (delete n control),  σ, i )
+                                 (_,[])            -> error "spawn an exit-node"
+                                 (_,_)             -> error "nichtdeterministisches Programm"
 
 
 stepFor :: CFGEdge -> (GlobalState,Input) -> [(GlobalState,Input)]
@@ -148,6 +195,7 @@ stepFor (Guard b bf) (σ,i)
   | otherwise       = []
 stepFor (Assign x vf) (σ,i)  = [(Map.insert x (evalV σ vf)    σ, i)]
 stepFor (Read   x ch) (σ,i)  = [(Map.insert x (head $ i ! ch) σ, Map.adjust tail ch i)]
+stepFor (Print  x ch) (σ,i)  = [(σ,i)]
 stepFor (Spawn      ) (σ,i)  = undefined
 
 hide (a,b,c) = (a,b)

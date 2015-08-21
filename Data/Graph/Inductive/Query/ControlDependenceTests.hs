@@ -17,8 +17,6 @@ import Data.Map as Map
 import Data.Tree (Tree(..))
 import qualified Data.Tree as Tree
 
---import Data.List(reverse)
-
 import Control.Monad(forM_)
 
 import Data.Graph.Inductive.Graph
@@ -77,7 +75,7 @@ spawnGraph = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,spawn),(3,4,fals
 
 conflictGraph :: Gr CFGNode CFGEdge
 conflictGraph = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,spawn),(3,4,Assign "x" (Val 17))]
-                                               ++  [(2,7,nop),(7,8,Assign "x" (Val 4)),(8,12,nop)]
+                                               ++  [(2,7,nop),(7,8,Assign "x" (Val 4)),(8,12,Print "x" stdOut)]
 
 
 -- | generate list of labeled nodes
@@ -86,10 +84,10 @@ genLNodes q i = take i (zip [1..] [q..])
 
 
 initialConfiguration :: Configuration
-initialConfiguration = ([entry], Map.empty, Map.fromList [(defaultChannel, cycle [1..5])])
+initialConfiguration = ([entry], Map.empty, Map.fromList [(stdIn, cycle [1..5])])
 
 initialConfigurationTree :: ConfigurationTree
-initialConfigurationTree = (Node (entry,Spawn) [], Map.empty, Map.fromList [(defaultChannel, cycle [1..5])])
+initialConfigurationTree = (Node (entry,Spawn) [], Map.empty, Map.fromList [(stdIn, cycle [1..5])])
 
 
 showAllFinalStates graph = do
@@ -116,6 +114,28 @@ showAllFinishedTraces graph = do
         putStrLn $ ""
        )
     )
+
+
+showAllFinishedEventTraces graph = do
+  forM_ (allFinishedEventTraces graph) (\trace -> do
+     putStrLn "-----------------"
+     forM_ trace (\((ns,σ,i),(n,e),(ns',σ',i')) -> do
+        putStrLn $ show ns
+        putStrLn $ show σ
+        putStr   $ "---"
+        putStr   $ show (n,e)
+        putStrLn $ "-->"
+        putStrLn $ ""
+       )
+    )
+
+allFinishedEventTraces :: Gr CFGNode CFGEdge -> [Trace]
+allFinishedEventTraces graph = fmap reverse $ iter [] [[(initialConfiguration, (entry,Tau), initialConfiguration)]]
+  where iter :: [Trace] -> [Trace] -> [Trace]
+        iter finished []     = finished
+        iter finished traces = iter (newfinished++finished) $ concat $ fmap (\((c,e,c'):cs) -> fmap (appendStep (c,e,c') cs) (eventStep graph c') ) traces
+          where newfinished = [ trace | trace@((c,e,c'):cs) <- traces, eventStep graph c' == []]
+                appendStep (c,e,c') cs ((n,e'),c'')  = (c',(n,e'),c''):(c,e,c'):cs
 
 
 allFinishedTraces :: Gr CFGNode CFGEdge -> [[(ControlState,GlobalState)]]

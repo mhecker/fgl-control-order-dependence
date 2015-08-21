@@ -17,6 +17,9 @@ import Data.Map as Map
 import Data.Tree (Tree(..))
 import qualified Data.Tree as Tree
 
+--import Data.List(reverse)
+
+import Control.Monad(forM_)
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Basic
@@ -70,6 +73,8 @@ spawnGraph = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,spawn),(3,4,fals
                                             ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,nopuse)]
 
 
+
+
 conflictGraph :: Gr CFGNode CFGEdge
 conflictGraph = mkGraph (genLNodes entry exit) $   [(1,2,nop),(2,3,spawn),(3,4,Assign "x" (Val 17))]
                                                ++  [(2,7,nop),(7,8,Assign "x" (Val 4)),(8,12,nop)]
@@ -87,11 +92,49 @@ initialConfigurationTree :: ConfigurationTree
 initialConfigurationTree = (Node (entry,Spawn) [], Map.empty, Map.fromList [(defaultChannel, cycle [1..5])])
 
 
+showAllFinalStates graph = do
+  forM_ (allFinalStates graph) (\(ns,sigma) -> do
+     putStrLn "-----------------"
+     putStrLn $ show $ ns
+     putStrLn $ show $ sigma
+     putStrLn "-----------------"
+   )
 
-showAllFinalStates graph = sequence_ $ fmap (\(t,sigma) -> sequence_ [ putStrLn "-----------------",  putStrLn $ Tree.drawTree $ fmap show $t, putStrLn $ show $ sigma, putStrLn "-----------------" ])  $ allFinalStates graph
+allFinalStates :: Gr CFGNode CFGEdge -> [(ControlState,GlobalState)]
+allFinalStates graph = iter [] [initialConfiguration]
+  where iter finals []    = fmap hide finals
+        iter finals confs = iter (newfinals++finals) $ concat $ fmap (step graph) confs
+          where newfinals = [conf | conf <- confs, step graph conf == []]
 
-allFinalStates :: Gr CFGNode CFGEdge -> [(ControlStateTree,GlobalState)]
-allFinalStates graph = iter [] [initialConfigurationTree]
+
+showAllFinishedTraces graph = do
+  forM_ (allFinishedTraces graph) (\trace -> do
+     putStrLn "-----------------"
+     forM_ trace (\(ns,σ) -> do
+        putStrLn $ show ns
+        putStrLn $ show σ
+        putStrLn $ ""
+       )
+    )
+
+
+allFinishedTraces :: Gr CFGNode CFGEdge -> [[(ControlState,GlobalState)]]
+allFinishedTraces graph = fmap reverse $ iter [] [[initialConfiguration]]
+  where iter finished []     = fmap (fmap hide) finished
+        iter finished traces = iter (newfinished++finished) $ concat $ fmap (\(c:cs) -> fmap (:(c:cs)) (step graph c)) traces
+          where newfinished = [ trace | trace@(c:cs) <- traces, step graph c == []]
+
+
+showAllFinalTreeStates graph = do
+  forM_ (allFinalTreeStates graph) (\(t,sigma) -> do
+     putStrLn "-----------------"
+     putStrLn $ Tree.drawTree $ fmap show $t
+     putStrLn $ show $ sigma
+     putStrLn "-----------------"
+   )
+
+allFinalTreeStates :: Gr CFGNode CFGEdge -> [(ControlStateTree,GlobalState)]
+allFinalTreeStates graph = iter [] [initialConfigurationTree]
   where iter finals []    = fmap hide finals
         iter finals confs = iter (newfinals++finals) $ concat $ fmap (treeStep graph) confs
           where newfinals = [conf | conf <- confs, treeStep graph conf == []] 
@@ -99,6 +142,11 @@ allFinalStates graph = iter [] [initialConfigurationTree]
 run :: Gr CFGNode CFGEdge -> Int -> (ControlState,GlobalState)
 run graph n = (ns,σ)
   where (ns, σ, i) = iterate (head. (step graph)) initialConfiguration !! n
+
+
+runAll :: Gr CFGNode CFGEdge -> Int -> [(ControlState,GlobalState)]
+runAll graph n = fmap hide $ (iterate (concat . (fmap (step graph))) [initialConfiguration]) !! n
+
 
 
 showRunTree graph n = putStrLn $ Tree.drawTree $ fmap show t

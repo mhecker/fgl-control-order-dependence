@@ -129,9 +129,9 @@ showAllFinishedEventTraces graph = do
        )
     )
 
-allFinishedEventTraces :: Gr CFGNode CFGEdge -> [Trace]
+allFinishedEventTraces :: Gr CFGNode CFGEdge -> [FullTrace]
 allFinishedEventTraces graph = fmap reverse $ iter [] [[(initialConfiguration, (entry,Tau), initialConfiguration)]]
-  where iter :: [Trace] -> [Trace] -> [Trace]
+  where iter :: [FullTrace] -> [FullTrace] -> [FullTrace]
         iter finished []     = finished
         iter finished traces = iter (newfinished++finished) $ concat $ fmap (\((c,e,c'):cs) -> fmap (appendStep (c,e,c') cs) (eventStep graph c') ) traces
           where newfinished = [ trace | trace@((c,e,c'):cs) <- traces, eventStep graph c' == []]

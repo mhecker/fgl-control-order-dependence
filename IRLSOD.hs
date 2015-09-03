@@ -90,6 +90,9 @@ defE Spawn         = Set.empty
 use :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
 use gr n = Set.unions [ useE e | (n',e) <- lsuc gr n ]
 
+def :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
+def gr n = Set.unions [ defE e | (n',e) <- lsuc gr n ]
+
 type CFGNode = Int
 
 true :: CFGEdge
@@ -156,13 +159,13 @@ data SecurityLattice = Undefined | Low | High deriving (Show, Ord, Eq, Bounded, 
 type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
 type ProgramClassification = CFGNode -> SecurityLattice
 
-type Trace = [(Configuration, (Node,Event), Configuration)]
-
+type FullTrace = [(Configuration, (Node,Event), Configuration)]
+type Trace     = [(GlobalState,   (Node,Event), GlobalState)]
 
 eventStep :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [((Node,Event),Configuration)]
-eventStep graph config@(control,σ,i) = do
+eventStep icfg config@(control,σ,i) = do
        n <- control
-       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc graph n
+       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc icfg n
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
        let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> ((n,fromEdge σ i cfgEdge),(n',σ',i'))) (stepFor cfgEdge (σ,i)) ) normal
@@ -176,9 +179,9 @@ eventStep graph config@(control,σ,i) = do
 
 
 step :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [Configuration]
-step graph config@(control,σ,i) = do
+step icfg config@(control,σ,i) = do
        n <- control
-       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc graph n
+       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc icfg n
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
        let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> (n',σ',i')) (stepFor cfgEdge (σ,i)) ) normal
@@ -199,3 +202,11 @@ stepFor (Print  x ch) (σ,i)  = [(σ,i)]
 stepFor (Spawn      ) (σ,i)  = undefined
 
 hide (a,b,c) = (a,b)
+
+
+observable :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace
+observable icfg cl l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (def icfg n)) | (σ, (n,e), σ') <- trace, cl n <= l ]
+  where restrict σ vars = Map.filterWithKey (\var _ -> var ∈ vars) σ
+
+(≈) :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace -> Bool
+(≈) icfg cl l t t' = (observable icfg cl l t) == (observable icfg cl l t')

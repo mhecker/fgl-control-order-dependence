@@ -159,8 +159,8 @@ data SecurityLattice = Undefined | Low | High deriving (Show, Ord, Eq, Bounded, 
 type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
 type ProgramClassification = CFGNode -> SecurityLattice
 
-type FullTrace = [(Configuration, (Node,Event), Configuration)]
-type Trace     = [(GlobalState,   (Node,Event), GlobalState)]
+type ExecutionTrace = [(Configuration, (Node,Event), Configuration)]
+type Trace          = [(GlobalState,   (Node,Event), GlobalState)]
 
 eventStep :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [((Node,Event),Configuration)]
 eventStep icfg config@(control,σ,i) = do
@@ -202,6 +202,11 @@ stepFor (Print  x ch) (σ,i)  = [(σ,i)]
 stepFor (Spawn      ) (σ,i)  = undefined
 
 hide (a,b,c) = (a,b)
+
+toTrace :: ExecutionTrace -> Trace
+toTrace eTrace = [ (σ, o, σ') | ((_,σ,_), o, (_,σ',_)) <- eTrace ]
+
+
 
 
 observable :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace

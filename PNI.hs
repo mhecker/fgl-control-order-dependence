@@ -16,11 +16,11 @@ import Data.Graph.Inductive.Graph
 
 
 -- [(Configuration, (Node,Event), Configuration)]
-prob :: Graph gr => gr CFGNode CFGEdge -> FullTrace -> Rational
+prob :: Graph gr => gr CFGNode CFGEdge -> ExecutionTrace -> Rational
 prob gr [] = 1
-prob gr (((control,σ,i), e, (control',σ',i')) : trace)
+prob gr (((control,σ,i), o, (control',σ',i')) : trace)
     | length successors /= length control = error "nicht genau ein nachfolgezustand pro thread"
-    | otherwise                           = ( toRational (length $ filter (== (e,(control',σ'))) successors) /
+    | otherwise                           = ( toRational (length $ filter (== (o,(control',σ'))) successors) /
                                               toRational (length successors) )
                                             * prob gr trace
-  where successors = [(e,(control,σ)) | (e,(control,σ,i)) <- eventStep gr (control,σ,i)]
+  where successors = [(o,(control,σ)) | (o,(control,σ,i)) <- eventStep gr (control,σ,i)]

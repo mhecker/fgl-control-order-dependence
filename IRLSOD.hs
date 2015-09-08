@@ -210,3 +210,5 @@ observable icfg cl l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (d
 
 (≈) :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace -> Bool
 (≈) icfg cl l t t' = (observable icfg cl l t) == (observable icfg cl l t')
+
+

@@ -7,6 +7,7 @@ import Data.Graph.Inductive.Query.Dataflow
 
 
 import IRLSOD
+import PNI
 import ExecutionTree
 
 import System.Process
@@ -129,8 +130,12 @@ showAllFinishedEventTraces graph = do
        )
     )
 
+allOutcomes :: Gr CFGNode CFGEdge -> [(Rational,GlobalState)]
+allOutcomes graph = [ (prob graph trace, σ trace) | trace <- allFinishedEventTraces graph ]
+  where σ trace = last $ [ σ | (_,_,(_,σ,_)) <- trace]
+
 allFinishedEventTraces :: Gr CFGNode CFGEdge -> [FullTrace]
-allFinishedEventTraces graph = fmap reverse $ iter [] [[(initialConfiguration, (entry,Tau), initialConfiguration)]]
+allFinishedEventTraces graph = fmap reverse $ iter [] [[(initialConfiguration, e, c')] | (e,c') <- eventStep graph initialConfiguration]
   where iter :: [FullTrace] -> [FullTrace] -> [FullTrace]
         iter finished []     = finished
         iter finished traces = iter (newfinished++finished) $ concat $ fmap (\((c,e,c'):cs) -> fmap (appendStep (c,e,c') cs) (eventStep graph c') ) traces

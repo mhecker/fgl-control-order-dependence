@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Graph.Inductive.Query.ControlDependence where
 
@@ -13,10 +14,26 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 import IRLSOD
+import Program
 
 import Data.Graph.Inductive.Basic
+import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.Dominators
+import Data.Graph.Inductive.Query.Dependence
+
+
+controlDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+controlDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
+    foldr mergeTwoGraphs empty [ controlDependenceGraph (nfilter (\node -> staticThreadOf node == thread) tcfg)
+                                                        (entryOf thread)
+                                                        (false)
+                                                        (exitOf thread)
+                                 | thread <- Set.toList staticThreads ]
+
+controlDependenceGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+controlDependenceGraph graph entry label exit = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
+  where dependencies = controlDependence graph entry label exit
 
 controlDependence :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
 controlDependence graph entry label exit =

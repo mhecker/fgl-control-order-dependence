@@ -19,19 +19,19 @@ import Data.Graph.Inductive.Graph
 
 
 
-class (BoundedJoinSemiLattice l) => InitialInformation  l where
-  initial :: l -- initiale Information am Startpunkt
-class (InitialInformation l) => DataflowAnalysis l b where
+-- class (BoundedJoinSemiLattice l) => InitialInformation  l where
+--   initial :: l -- initiale Information am Startpunkt
+class (BoundedJoinSemiLattice l) => DataflowAnalysis l b where
   transfer :: LEdge b -- Kanten
            -> (l -> l) -- Transfer Funktion
 
 
 
-analysis :: forall l b a gr. (Eq l, DataflowAnalysis l b, Graph gr) => gr a b -> Node -> Map Node l
-analysis gr start = analysisWith (labEdges gr) initialInformation
+analysis :: forall l b a gr. (Eq l, DataflowAnalysis l b, Graph gr) => gr a b -> l -> Node -> Map Node l
+analysis gr initial start = analysisWith (labEdges gr) initialInformation
 
   where  -- initialInformation :: Map Node l
-         initialInformation = Map.fromList $ [(start, initial)] ++ [(n, (⊥)) | n <- nodes (gr :: gr a b)]
+         initialInformation = Map.fromList $ [(n, (⊥)) | n <- nodes (gr :: gr a b)] ++ [(start, initial)]
 
          analysisWith :: [LEdge b] -> Map Node l -> Map Node l
          analysisWith []                  information = information

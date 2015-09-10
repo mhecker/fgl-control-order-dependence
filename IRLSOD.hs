@@ -3,11 +3,7 @@ module IRLSOD where
 
 import Unicode
 
-import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
-
-
-import Control.Monad(forM)
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -80,12 +76,15 @@ useE (Guard   _ bf) = useB bf
 useE (Assign  _ vf) = useV vf
 useE (Read    _ _)  = Set.empty
 useE Spawn          = Set.empty
+useE (Print x _)    = Set.singleton x
+
 
 defE :: CFGEdge -> Set Var
 defE (Guard   _ _) = Set.empty
 defE (Assign  x _) = Set.singleton x
 defE (Read    x _) = Set.singleton x
 defE Spawn         = Set.empty
+defE (Print   _ _) = Set.empty
 
 use :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
 use gr n = Set.unions [ useE e | (n',e) <- lsuc gr n ]
@@ -215,5 +214,6 @@ observable icfg cl l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (d
 
 (≈) :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace -> Bool
 (≈) icfg cl l t t' = (observable icfg cl l t) == (observable icfg cl l t')
+
 
 

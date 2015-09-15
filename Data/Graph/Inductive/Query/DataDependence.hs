@@ -33,7 +33,14 @@ import Data.Graph.Inductive.Query.Dependence
    instance BoundedJoinSemiLattice (Map Var (Set Node))
 -}
 
-instance DataflowAnalysis (Map Var (Set (LEdge CFGEdge))) CFGEdge where
+dependenceAnalysis :: Set Var -> DataflowAnalysis (Map Var (Set (LEdge CFGEdge))) CFGEdge
+dependenceAnalysis vars = DataflowAnalysis {
+    transfer = transfer,
+    initial = initial
+  }
+ where
+  initial = Map.fromList [ (var, Set.empty) | var <- Set.toList vars ]
+
   transfer e@(_,_,Guard _ _)  reachingDefs = reachingDefs
   transfer e@(_,_,Assign x _) reachingDefs = Map.insert x (Set.singleton e) reachingDefs
   transfer e@(_,_,Read   x _) reachingDefs = Map.insert x (Set.singleton e) reachingDefs
@@ -56,10 +63,7 @@ dataDependence graph vars entry = Map.fromList [
      | n <- nodes graph
     ]
   where reaching :: Map Node (Map Var (Set (LEdge CFGEdge)))
-        reaching = analysis graph initial entry
-        initial :: Map Var (Set (LEdge CFGEdge))
-        initial = Map.fromList [ (var, Set.empty) | var <- Set.toList vars ]
-
+        reaching = analysis (dependenceAnalysis vars) graph entry
 
 dataDependenceGraph :: DynGraph gr => gr CFGNode CFGEdge -> Set Var -> Node -> gr CFGNode Dependence
 dataDependenceGraph graph vars entry = mkGraph (labNodes graph) [ (n,n',DataDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]

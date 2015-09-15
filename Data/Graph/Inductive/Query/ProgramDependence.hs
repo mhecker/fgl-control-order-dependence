@@ -26,9 +26,10 @@ programDependenceGraph graph vars entry label exit = mergeTwoGraphs cdeps ddeps
 
 programDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 programDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
-    foldr mergeTwoGraphs empty [ programDependenceGraph (nfilter (\node -> staticThreadOf node == thread) tcfg)
-                                                        (vars p)
-                                                        (entryOf thread)
-                                                        (false)
-                                                        (exitOf thread)
-                                 | thread <- Set.toList staticThreads ]
+    insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $ 
+    foldr mergeTwoGraphs empty $ [ programDependenceGraph (cfg p thread)
+                                                          (vars p)
+                                                          (entryOf thread)
+                                                          (false)
+                                                          (exitOf thread)
+                                   | thread <- Set.toList staticThreads ]

@@ -2,6 +2,7 @@
 module Program where
 
 import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.Util
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -29,7 +30,8 @@ genLNodes q i = take i (zip [1..] [q..])
 vars :: Graph gr => Program gr -> Set Var
 vars (Program { tcfg }) = Set.unions [ def tcfg n ∪ use tcfg n | n <- nodes tcfg]
 
-
+cfg :: Graph gr => Program gr -> StaticThread -> gr CFGNode CFGEdge
+cfg (Program { tcfg, staticThreadOf }) thread = nfilter (\node -> staticThreadOf node == thread) tcfg
 
 
 

@@ -39,6 +39,7 @@ controlDependence :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set
 controlDependence graph entry label exit =
     Map.fromList
     [ (n, Set.fromList $
+          (if (n==entry) then [ exit ] else [] ) ++
           [ controlledByN | controlledByN <- nodes graph,
                             n `Set.member` (postDomFronts ! controlledByN),
                             n /= controlledByN])

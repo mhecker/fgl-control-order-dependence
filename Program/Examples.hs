@@ -17,11 +17,11 @@ import Data.Set.Unicode
 
 
 {-    1
-      2-------
-      7       3
-    8       4   5
-    9         6
-      10
+      2----spawn-
+      7<--       3
+    8    |     4   5
+    9    |       6
+      10-|
       11
       12
 -}
@@ -52,10 +52,13 @@ example1 = Program {
     3   4
       5
       6
-    7
-    8
-      9
-      10
+   <--7<-
+   |  8  |
+   |  9---
+   |
+   ->10
+     11
+     12
 -}
 example2 :: Program Gr
 example2 = Program {
@@ -81,10 +84,12 @@ example2 = Program {
     3   4
       5
       6
-    7
-    8
-      9
-      10
+      7<--
+      8  |
+      9  |
+      10--
+      11
+      12
 -}
 example2' :: Program Gr
 example2' = Program {
@@ -130,16 +135,78 @@ example3 = Program {
         exitOf 1 = 7
         exitOf 2 = 4
 
+{-
+1 void main ( ) :
+2   fork thread_1 ( ) ;
+3   fork thread_2 ( ) ;
+7
 
--- entry :: CFGNode
--- entry = 1
+4 void thread_1 ( ) :
+5   fork thread_2 ( ) ;
+8
 
--- exit :: CFGNode
--- exit = 12
+6 void thread_2 ( ) :
+9
+-}
+threadSpawn1 :: Program Gr
+threadSpawn1 = Program {
+    tcfg = mkGraph (genLNodes 1 9)  $
+                       [(1,2,nop),(2,4,spawn),(2,3,nop),(3,6,spawn),(3,7,nop)]
+                   ++  [(4,5,nop),(5,6,spawn),(5,8,nop)]
+                   ++  [(6,9,nop)],
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1,4,6],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf
+   }
+  where staticThreadOf n
+         | n `elem` [1,2,3,7] = 1
+         | n `elem` [4,5,8]   = 4
+         | n `elem` [6,9]     = 6
+         | otherwise = error "unknown node"
+        entryOf 1 = 1
+        entryOf 4 = 4
+        entryOf 6 = 6
+        exitOf 1 = 7
+        exitOf 4 = 7
+        exitOf 6 = 9
 
--- graph :: Gr CFGNode CFGEdge
--- graph = 
 
 
--- graph' :: Gr CFGNode CFGEdge
--- graph' = mkGraph (genLNodes entry exit) $  
+{-
+1 void main ( ) :
+2   while ( . . . ) :
+3     fork thread_1 ( ) ;
+4
+
+5 void thread_1 ( ) :
+6   fork thread_2 ( ) ;
+7
+
+8 void thread_2 ( ) :
+9
+-}
+threadSpawn2 :: Program Gr
+threadSpawn2 = Program {
+    tcfg = mkGraph (genLNodes 1 9)  $
+                       [(1,2,nop),(2,4,true),(2,3,false),(3,5,spawn),(3,2,nop)]
+                   ++  [(5,6,nop),(6,8,spawn),(6,7,nop)]
+                   ++  [(8,9,nop)],
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1,5,8],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf
+   }
+  where staticThreadOf n
+         | n `elem` [1,2,3,4] = 1
+         | n `elem` [5,6,7]   = 5
+         | n `elem` [8,9]     = 8
+         | otherwise = error "unknown node"
+        entryOf 1 = 1
+        entryOf 5 = 5
+        entryOf 8 = 8
+        exitOf 1 = 4
+        exitOf 5 = 7
+        exitOf 8 = 9

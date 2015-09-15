@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -21,14 +22,16 @@ import Data.Graph.Inductive.Graph
 
 -- class (BoundedJoinSemiLattice l) => InitialInformation  l where
 --   initial :: l -- initiale Information am Startpunkt
-class (BoundedJoinSemiLattice l) => DataflowAnalysis l b where
-  transfer :: LEdge b -- Kanten
-           -> (l -> l) -- Transfer Funktion
+data DataflowAnalysis l b = DataflowAnalysis {
+    initial  :: l,
+    transfer :: LEdge b -- Kanten
+             -> (l -> l) -- Transfer Funktion
+ }
 
 
 
-analysis :: forall l b a gr. (Eq l, DataflowAnalysis l b, Graph gr) => gr a b -> l -> Node -> Map Node l
-analysis gr initial start = analysisWith (labEdges gr) initialInformation
+analysis :: forall l b a gr. (Eq l, BoundedJoinSemiLattice l, Graph gr) => DataflowAnalysis l b -> gr a b -> Node -> Map Node l
+analysis (DataflowAnalysis { initial, transfer }) gr start = analysisWith (labEdges gr) initialInformation
 
   where  -- initialInformation :: Map Node l
          initialInformation = Map.fromList $ [(n, (⊥)) | n <- nodes (gr :: gr a b)] ++ [(start, initial)]

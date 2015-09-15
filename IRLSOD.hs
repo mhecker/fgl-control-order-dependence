@@ -2,8 +2,10 @@ module IRLSOD where
 
 
 import Unicode
+import Algebra.Lattice
 
 import Data.Graph.Inductive.Graph
+
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -155,8 +157,24 @@ fromEdge σ i (Spawn      ) = Tau
 
 data SecurityLattice = Undefined | Low | High deriving (Show, Ord, Eq, Bounded, Enum)
 
-type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
-type ProgramClassification = CFGNode -> SecurityLattice
+instance JoinSemiLattice SecurityLattice where
+  Undefined `join` x = x
+  Low       `join` Undefined = Low
+  Low       `join` x         = x
+  High      `join` x         = High
+
+instance MeetSemiLattice SecurityLattice where
+  Undefined `meet` x = Undefined
+  Low `meet` Undefined = Undefined
+  Low `meet` x = Low
+  High `meet` x = x
+
+instance BoundedJoinSemiLattice SecurityLattice where
+  bottom = Low
+
+
+-- type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
+type ProgramClassification = Node -> SecurityLattice
 
 type ExecutionTrace = [(Configuration, (Node,Event), Configuration)]
 type Trace          = [(GlobalState,   (Node,Event), GlobalState)]

@@ -48,7 +48,6 @@ mhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp n1 n2
 
         isInMulti = isInMultiThread p
         mhpDiff   = mhpDifferent p
---      lca = lowestCommonAncestor n1 n2
 
 
 mhpDifferent p@(Program { tcfg }) =

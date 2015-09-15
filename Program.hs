@@ -20,7 +20,8 @@ data Program gr = Program {
     staticThreads  :: Set StaticThread,
     mainThread :: StaticThread,
     entryOf :: StaticThread -> Node,
-    exitOf  :: StaticThread -> Node
+    exitOf  :: StaticThread -> Node,
+    clInit :: Node -> SecurityLattice
 }
 
 -- | generate list of labeled nodes

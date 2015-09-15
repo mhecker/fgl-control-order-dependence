@@ -19,11 +19,11 @@ infixl 7 ⊓
 (⊤) = top
 
 
-(∐) :: (BoundedMeetSemiLattice a) => [a] -> a
-(∐) = meets
+(∐) :: (BoundedJoinSemiLattice a) => [a] -> a
+(∐) = joins
 
-(∏) :: (BoundedJoinSemiLattice a) => [a] -> a
-(∏) = joins
+(∏) :: (BoundedMeetSemiLattice a) => [a] -> a
+(∏) = meets
 
 
 𝝁 :: (Eq a, BoundedJoinSemiLattice a) => (a -> a) -> a

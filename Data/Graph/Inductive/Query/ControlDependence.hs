@@ -2,8 +2,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Graph.Inductive.Query.ControlDependence where
 
-
-
 import Data.Maybe(fromJust)
 
 import Data.List(foldl')

@@ -221,6 +221,50 @@ example5 = Program {
                    ++  [(2,8,Spawn),(7,10,Print unused stdOut),(8,9,Print unused stdOut)]
 
 
+
+
+
+
+{-       1
+         2 Read h
+    ---  3----true --> 4
+  f|     ^              5 if h
+  a|     |            6   7
+  l|     |              8  ----spawn--->  9 print l
+  s|     | -------------                 10
+  e|
+   |---->11  print l
+         12
+-}
+example6 :: Program Gr
+example6 = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1,2],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    clInit = defaultClassification tcfg
+   }
+  where staticThreadOf n
+         | n `elem` ([1..8]   ++ [11,12]) = 1
+         | n `elem` ([9..10])             = 2
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        entryOf 2 = 9
+        exitOf 1 = 12
+        exitOf 2 = 10
+        tcfg = mkGraph (genLNodes 1 12)  $
+                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,true),(3,11,false),(11,12,Print unused stdOut),
+                        (4,5,nop), (5,6,Guard True (Leq "h" "h")),(5,7,Guard False (Leq "h" "h")),
+                                   (6,8,nop),                     (7,8,nop),
+                        (8,3,nop),
+                        (8,9,Spawn),(9,10,Print unused stdOut)]
+
+
+
+
+
 {-
 1 void main ( ) :
 2   fork thread_1 ( ) ;

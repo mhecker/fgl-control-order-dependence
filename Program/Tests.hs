@@ -18,6 +18,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence
 import Data.Graph.Inductive.Query.DataDependence
+import Data.Graph.Inductive.Query.TransClos
 
 import Data.Graph.Inductive.Query.Dominators
 

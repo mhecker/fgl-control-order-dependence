@@ -29,6 +29,10 @@ import Data.Graph.Inductive.Query.Dominators
 import Data.Graph.Inductive.Query.TransClos
 
 import Data.Graph.Inductive.Query.ProgramDependence
+import Data.Graph.Inductive.Query.DataConflict
+import Data.Graph.Inductive.Query.TimingDependence
+
+import IRLSOD
 
 
 
@@ -52,3 +56,22 @@ minimalClassification p@(Program { tcfg, clInit }) =
        chop s t =   (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
+timingClassificationSimple p@(Program { tcfg, clInit }) =
+  (㎲⊒) (Map.fromList [ (n, clInit n)  | n <- nodes tcfg ],
+         Map.fromList [ (n, Undefined) | n <- nodes tcfg ])
+    (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre pdg n])
+                                       | n <- nodes tcfg])
+                       ⊔ (Map.fromList [ (n,(∐) [ (cl ! m) ⊔ (clt ! m) ⊔ (clt ! n) | m <- pre dataConflictGraph n])
+                                       | n <- nodes tcfg]),
+                   clt ⊔ (Map.fromList [ (n,(∐) [ (cl ! m) | m <- pre timing n])
+                                       | n <- nodes tcfg])
+                  )
+    )
+
+ where pdg = programDependenceGraphP p
+       idom = idomChef p
+       trnsclos = trc tcfg
+       dataConflictGraph = dataConflictGraphP p
+       timing = timingDependenceGraphP p
+
+-- secureTimingClassificationSimple p = 

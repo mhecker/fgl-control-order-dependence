@@ -17,7 +17,9 @@ import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence
+import Data.Graph.Inductive.Query.TimingDependence
 import Data.Graph.Inductive.Query.DataDependence
+import Data.Graph.Inductive.Query.DataConflict
 import Data.Graph.Inductive.Query.TransClos
 
 import Data.Graph.Inductive.Query.Dominators
@@ -33,14 +35,14 @@ import qualified Data.Set as Set
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 
-showPDG p = do
-  let pdg = programDependenceGraphP p
-  let dot = showDot (fglToDot pdg)
+
+showGraph g = do
+  let dot = showDot (fglToDot g)
   writeFile "file.dot" dot
   system "xdot file.dot"
 
+showPDG p = showGraph $ programDependenceGraphP p
+showCFG p = showGraph $ tcfg p
+showTDG p = showGraph $ timingDependenceGraphP p
+showConflicts p = showGraph $ dataConflictGraphP p
 
-showCFG p = do
-  let dot = showDot (fglToDot $ tcfg p)
-  writeFile "file.dot" dot
-  system "xdot file.dot"

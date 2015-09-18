@@ -59,19 +59,6 @@ minimalClassification p@(Program { tcfg, clInit }) =
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
 
-criticalNodesFor p@(Program { tcfg, clInit }) n m =
-   [ c' |   c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n)))
-                             ∪ ((chop c m) ∩ (Set.fromList (pre timing m))) ]
-
- where c = idom ! (n,m)
-       timing = timingDependenceGraphP p
-       idom = idomChef p
-       trnsclos = trc tcfg
-       chop :: Node -> Node -> Set Node
-       chop s t =   (Set.fromList $ suc trnsclos s)
-                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
-
-
 timingClassification p@(Program { tcfg, clInit }) =
   (㎲⊒) (Map.fromList [ (n, clInit n)      | n <- nodes tcfg ],
          Map.fromList [ ((n,m), Undefined) | ((n,m), True) <- Map.assocs mhp ])

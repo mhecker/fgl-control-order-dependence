@@ -136,3 +136,59 @@ isSecureTimingClassificationFor cl clt p@(Program{ tcfg, clInit }) =
             (\(n,m) -> (clt ! m == Low) ∧ (clt ! m == Low)) -- TODO: via ⊑ formulieren
        )
   where mhp = mhpFor p
+
+isSecureTimingCombinedTimingClassification p@(Program{ tcfg, clInit }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, clInit n == Low])
+            (\n -> clInit n == cl ! n) -- TODO: via ⊑ formulieren
+       )
+    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
+                                   m <- nodes tcfg, clInit m == Low,
+                                   mhp ! (n,m)
+                           ]
+            )
+            (\(n,m) ->   (  (clt ! n == Low ) ∧ (clt ! m == Low ))
+                      ∨  (  (clt ! n == Low ) ∧ (clt ! m == High) ∧ False) -- Jürgen sagt: in diesem fall würde ein check nix bringen, siehe "jürgenConjecture
+                      ∨  (  (clt ! n == High) ∧ (clt ! m == Low ) ∧ False) -- Jürgen sagt: in diesem fall würde ein check nix bringen, siehe "jürgenConjecture"
+                      ∨  (  (clt ! m == High) ∧ (clt ! m == High) ∧
+                            (∐) [ cl ! c' | let c = idom ! (n,m),
+                                        c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n)))
+                                                         ∪ ((chop c m) ∩ (Set.fromList (pre timing m)))
+                                ] == Low
+                         )
+            )
+       )
+  where (cl,clt) = timingClassificationSimple p
+        idom = idomChef p
+        mhp = mhpFor p
+        trnsclos = trc tcfg
+        dataConflictGraph = dataConflictGraphP p
+        timing = timingDependenceGraphP p
+        chop :: Node -> Node -> Set Node
+        chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+jürgenConjecture p@(Program{ tcfg, clInit }) =
+        (∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
+                                   m <- nodes tcfg, clInit m == Low,
+                                   mhp ! (n,m)
+                           ]
+            )
+            (\(n,m) -> (((clt ! n == Low) ∧ (clt ! m == High))
+                        →
+                        ((∐) [ cl ! c' | let c = idom ! (n,m), c' <- Set.toList $ ((chop c m) ∩ (Set.fromList (pre timing m))) ] == High)
+                       )
+                    && (((clt ! n == High) ∧ (clt ! m == Low))
+                        →
+                        ((∐) [ cl ! c' | let c = idom ! (n,m), c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n))) ] == High)
+                       )
+            )
+  where (cl,clt) = timingClassificationSimple p
+        idom = idomChef p
+        mhp = mhpFor p
+        trnsclos = trc tcfg
+        dataConflictGraph = dataConflictGraphP p
+        timing = timingDependenceGraphP p
+        chop :: Node -> Node -> Set Node
+        chop s t =  (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance

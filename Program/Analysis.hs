@@ -19,7 +19,9 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+
 import Data.Set.Unicode
+import Data.Bool.Unicode
 
 -- import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
@@ -56,6 +58,47 @@ minimalClassification p@(Program { tcfg, clInit }) =
        chop s t =   (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
+
+criticalNodesFor p@(Program { tcfg, clInit }) n m =
+   [ c' |   c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n)))
+                             ∪ ((chop c m) ∩ (Set.fromList (pre timing m))) ]
+
+ where c = idom ! (n,m)
+       timing = timingDependenceGraphP p
+       idom = idomChef p
+       trnsclos = trc tcfg
+       chop :: Node -> Node -> Set Node
+       chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+timingClassification p@(Program { tcfg, clInit }) =
+  (㎲⊒) (Map.fromList [ (n, clInit n)      | n <- nodes tcfg ],
+         Map.fromList [ ((n,m), Undefined) | ((n,m), True) <- Map.assocs mhp ])
+    (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre pdg n])
+                                       | n <- nodes tcfg])
+                       ⊔ (Map.fromList [ (n,(∐) [ (cl ! m) ⊔ (clt ! (m,n)) | m <- pre dataConflictGraph n])
+                                       | n <- nodes tcfg]),
+                   clt ⊔ (Map.fromList [ ((n,m), (∐) [ cl ! c' | let c = idom ! (n,m),
+                                                                  c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n)))
+                                                                                   ∪ ((chop c m) ∩ (Set.fromList (pre timing m)))
+                                                     ])
+                                       |  ((n,m),True) <- Map.assocs mhp])
+                  )
+    )
+ where pdg = programDependenceGraphP p
+       idom = idomChef p
+       mhp = mhpFor p
+       trnsclos = trc tcfg
+       dataConflictGraph = dataConflictGraphP p
+       timing = timingDependenceGraphP p
+       chop :: Node -> Node -> Set Node
+       chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+
+
 timingClassificationSimple p@(Program { tcfg, clInit }) =
   (㎲⊒) (Map.fromList [ (n, clInit n)  | n <- nodes tcfg ],
          Map.fromList [ (n, Undefined) | n <- nodes tcfg ])
@@ -74,4 +117,35 @@ timingClassificationSimple p@(Program { tcfg, clInit }) =
        dataConflictGraph = dataConflictGraphP p
        timing = timingDependenceGraphP p
 
--- secureTimingClassificationSimple p = 
+
+
+
+isSecureTimingClassification  p@(Program{ tcfg, clInit }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, clInit n == Low])
+            (\n -> clInit n == cl ! n)
+       )
+    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
+                                   m <- nodes tcfg, clInit m == Low,
+                                   mhp ! (n,m)
+                          ]
+            )
+            (\(n,m) -> (clt ! (n,m) == Low)) -- TODO: via ⊑ formulieren
+       )
+  where (cl,clt) = timingClassification p
+        mhp = mhpFor p
+
+isSecureTimingClassificationSimple p = isSecureTimingClassificationFor cl clt
+  where (cl,clt) = timingClassificationSimple p
+
+isSecureTimingClassificationFor cl clt p@(Program{ tcfg, clInit }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, clInit n == Low])
+            (\n -> clInit n == cl ! n) -- TODO: via ⊑ formulieren
+       )
+    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
+                                   m <- nodes tcfg, clInit m == Low,
+                                   mhp ! (n,m)
+                           ]
+            )
+            (\(n,m) -> (clt ! m == Low) ∧ (clt ! m == Low)) -- TODO: via ⊑ formulieren
+       )
+  where mhp = mhpFor p

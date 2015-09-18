@@ -297,6 +297,8 @@ example7 = Program {
 
 {-
           1
+          |
+         23
           |  Read h
          20
           |  zero = 0
@@ -352,7 +354,7 @@ example8 = Program {
     clInit = defaultClassification tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..17] ++ [20..22]) = 1
+         | n `elem` ([1..17] ++ [20..23]) = 1
          | n `elem` ([201..202]) = 2
          | n `elem` ([301..302]) = 3
          | otherwise = error "uknown node"
@@ -362,8 +364,9 @@ example8 = Program {
         exitOf 1 = 17
         exitOf 2 = 202
         exitOf 3 = 302
-        tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..22] ++ [201..202] ++ [301..302]]  $
-                       [( 1,20,Read "h" stdIn),
+        tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..23] ++ [201..202] ++ [301..302]]  $
+                       [( 1,23,nop),
+                        (23,20,Read "h" stdIn),
                         (20,21, Assign "zero" (Val 0)),
                         (21,22, Assign "one" (Val 1)),
                         (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq "h" "h")),
@@ -387,6 +390,105 @@ example8 = Program {
                         (16,17, Print "one" stdOut),
 
                         (201,202, Assign "tmp2" (Val 100)),
+
+                        (301,302, Print "zero" stdOut)]
+
+
+{-
+          1
+          | 
+         23 
+          |  Read h
+         20
+          |  zero = 0
+         21
+          |  one = 1
+         22
+          |  tmp = 1
+          2
+    ¬ h /   \ h
+       3     4
+        \   /tmp = 100
+          5
+          |
+          6 -----spawn ------------------>   201
+          |                                   |   nop
+--------> 7 -------                          202
+|         |       |
+|  tmp > 0|       |
+|         8       |
+|  tmp--  |       |
+|         |       |  ¬ (tmp > 0)
+----------9       |
+                  |
+         10 <------
+          |
+         11
+          | tmp2 = 1
+         12 -----spawn ----------------->   301
+          |                                  |   print 0
+-------->13 -------                         302
+|         |       |
+| tmp2 > 0|       |
+|        14       |
+| tmp2--  |       |
+|         |       |  ¬ (tmp2 > 0)
+---------15       |
+                  |
+         16 <------
+          |
+          | print 1
+         17
+-}
+
+
+example8' :: Program Gr
+example8' = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1,2,3],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    clInit = defaultClassification tcfg
+   }
+  where staticThreadOf n
+         | n `elem` ([1..17] ++ [20..23]) = 1
+         | n `elem` ([201..202]) = 2
+         | n `elem` ([301..302]) = 3
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        entryOf 2 = 201
+        entryOf 3 = 301
+        exitOf 1 = 17
+        exitOf 2 = 202
+        exitOf 3 = 302
+        tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..23] ++ [201..202] ++ [301..302]]  $
+                       [( 1,23,nop),
+                        (23,20,Read "h" stdIn),
+                        (20,21, Assign "zero" (Val 0)),
+                        (21,22, Assign "one" (Val 1)),
+                        (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq "h" "h")),
+                                                     (2,4, Guard True  (Leq "h" "h")),
+                        (4,5,Assign "tmp" (Val 100)),
+                        (3,5,nop),
+                        (5,6,nop),
+                        (6,7,nop),(6,201,Spawn),
+                        (7,10, Guard False (Not $ Leq "tmp" "zero")),
+                        (7, 8, Guard True  (Not $ Leq "tmp" "zero")),
+                        (8, 9, Assign "tmp" (Plus (Var "tmp") (Val (-1)))),
+                        (9, 7, nop),
+                        (10,11,nop),
+                        (11,12,Assign "tmp2" (Val 1)),
+                        (12,301,Spawn),
+                        (12,13,nop),
+                        (13,16, Guard False (Not $ Leq "tmp2" "zero")),
+                        (13,14, Guard True  (Not $ Leq "tmp2" "zero")),
+                        (14,15, Assign "tmp2" (Plus (Var "tmp2") (Val (-1)))),
+                        (15,13, nop),
+                        (16,17, Print "one" stdOut),
+
+                        (201,202, nop),
 
                         (301,302, Print "zero" stdOut)]
 

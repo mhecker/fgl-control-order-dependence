@@ -9,6 +9,12 @@ import Control.Monad
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
+
+
+import Data.List (find)
+import Data.Maybe (fromJust)
 
 
 import Data.Graph.Inductive.Graph
@@ -139,3 +145,27 @@ compileAll threads = do
      return $ (t, (entryNode,graph,exitNode,nodes))
    )
   return $ Map.fromList graphs
+
+
+
+compileAllToProgram :: DynGraph gr => Map StaticThread For -> Program gr
+compileAllToProgram code = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList $ staticThreads,
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    clInit = error "clInit noch nicht definiert"
+   }
+  where staticThreadOf n = fromJust $
+          find (\t -> let (_,_,_,nodes) = compiledCode ! t in n `elem` nodes)
+               staticThreads
+        staticThreads = Map.keys code
+        entryOf = (!) (fmap (\(entryNode,_  ,_       ,_) -> entryNode) compiledCode)
+        exitOf  = (!) (fmap (\(_        ,_  ,exitNode,_) -> exitNode ) compiledCode)
+        tcfg    = foldr1
+                   mergeTwoGraphs
+                   [ cfg | (_,(_        ,cfg,_       ,_)) <- Map.toList $ compiledCode ]
+
+        compiledCode = runGenFrom 1 $ compileAll code

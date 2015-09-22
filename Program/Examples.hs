@@ -14,9 +14,6 @@ import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 
-import Data.List (find)
-import Data.Maybe (fromJust)
-
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -612,27 +609,9 @@ threadSpawn2 = Program {
   }
 -}
 joachim2 :: Program Gr
-joachim2 = Program {
-    tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
-    staticThreads  = Set.fromList $ staticThreads,
-    mainThread = 1,
-    entryOf = entryOf,
-    exitOf = exitOf,
-    clInit = defaultClassification tcfg
-   }
-  where staticThreadOf n = fromJust $
-          find (\t -> let (_,_,_,nodes) = compiledProgram ! t in n `elem` nodes)
-               staticThreads
-        staticThreads = Map.keys program
-        entryOf = (!) (fmap (\(entryNode,_  ,_       ,_) -> entryNode) compiledProgram)
-        exitOf  = (!) (fmap (\(_        ,_  ,exitNode,_) -> exitNode ) compiledProgram)
-        tcfg    = foldr1
-                   mergeTwoGraphs
-                   [ cfg | (_,(_        ,cfg,_       ,_)) <- Map.toList $ compiledProgram ]
-
-        compiledProgram = runGenFrom 1 $ compileAll program
-        program = Map.fromList $ [
+joachim2 = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
           (1,
            ReadFromChannel stdIn "h" `Seq`
            If (Leq (Var "h") (Val 0))

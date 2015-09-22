@@ -4,6 +4,11 @@ import IRLSOD
 import Program
 
 import Control.Monad.Gen
+import Control.Monad
+
+
+import Data.Map ( Map, (!) )
+import qualified Data.Map as Map
 
 
 import Data.Graph.Inductive.Graph
@@ -18,15 +23,15 @@ data For = If   BoolFunction For For
          | Skip
          | ReadFromChannel Var InputChannel
          | PrintToChannel Var OutputChannel
-         | SpawnThread Node
+         | SpawnThread StaticThread
 
 
-compile :: DynGraph gr => Node -> For -> Gen Node (gr CFGNode CFGEdge, Node)
-compile nStart (If b sTrue sFalse) = do
+compile :: DynGraph gr => Map StaticThread Node -> Node -> For -> Gen Node (gr CFGNode CFGEdge, Node)
+compile entryOf nStart (If b sTrue sFalse) = do
   nTrue <- gen
   nFalse <- gen
-  (gTrue,nTrue')  <- compile nTrue sTrue
-  (gFalse,nFalse') <- compile nFalse sFalse
+  (gTrue, nTrue')  <- compile entryOf nTrue sTrue
+  (gFalse,nFalse') <- compile entryOf nFalse sFalse
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nTrue, nFalse, nTrue', nFalse', nJoin]]
                    [(nStart, nTrue,  Guard True  b),
@@ -39,17 +44,17 @@ compile nStart (If b sTrue sFalse) = do
             nJoin
            )
 
-compile nStart (Ass var f) = do
+compile entryOf nStart (Ass var f) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, Assign var f)],
             nEnd
            )
 
-compile nStart (ForC val s) = do
+compile entryOf nStart (ForC val s) = do
   nInit <- gen
   nLoop <- gen
-  (gLoop,nLoop')  <- compile nLoop s
+  (gLoop,nLoop')  <- compile entryOf nLoop s
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nInit,nLoop,nLoop',nJoin]]
                     [(nStart, nInit, Assign loopvar (Val val)),
@@ -62,9 +67,9 @@ compile nStart (ForC val s) = do
            )
     where loopvar = "_loopVar" ++ (show nStart)
 
-compile nStart (ForV var s) = do
+compile entryOf nStart (ForV var s) = do
   nLoop <- gen
-  (gLoop,nLoop')  <- compile nLoop s
+  (gLoop,nLoop')  <- compile entryOf nLoop s
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nJoin, nLoop, nLoop']]
                     [(nStart,  nLoop, Guard True  (Leq (Val 0) (Var var))),
@@ -75,36 +80,53 @@ compile nStart (ForV var s) = do
             nJoin
            )
 
-compile nStart (Seq s1 s2) = do
-  (g1,nMid) <- compile nStart s1
-  (g2,nEnd) <- compile nMid   s2
+compile entryOf nStart (Seq s1 s2) = do
+  (g1,nMid) <- compile entryOf nStart s1
+  (g2,nEnd) <- compile entryOf nMid   s2
   return $ (g1 `mergeTwoGraphs` g2, nEnd)
 
-compile nStart Skip = do
+compile entryOf nStart Skip = do
   nNext <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nNext]]
                     [(nStart, nNext, nop)],
             nNext
            )
 
-compile nStart (ReadFromChannel var ch) = do
+compile entryOf nStart (ReadFromChannel var ch) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, Read var ch)],
             nEnd
            )
 
-compile nStart (PrintToChannel var ch) = do
+compile entryOf nStart (PrintToChannel var ch) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, Print var ch)],
             nEnd
            )
 
-compile nStart (SpawnThread nThread) = do
+compile entryOf nStart (SpawnThread threadId) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd, nThread]]
                     [(nStart, nEnd, nop),
                      (nStart, nThread, Spawn)],
             nEnd
            )
+    where nThread = entryOf ! threadId
+
+
+compileAll :: DynGraph gr => Map StaticThread For -> Gen Node (Map StaticThread (Node,gr CFGNode CFGEdge,Node))
+compileAll threads = do
+  nodes <- forM (Map.toList threads) $ (\(t,program) -> do
+     entryNode <- gen
+     return (t,entryNode,program)
+   )
+  let entryOf = (Map.fromList $ fmap (\(t,entryNode,program) -> (t,entryNode)) nodes)
+  graphs <- forM nodes $ (\(t,entryNode,program) -> do
+     (graph,exitNode) <- compile entryOf
+                         entryNode
+                         program
+     return $ (t, (entryNode,graph,exitNode))
+   )
+  return $ Map.fromList graphs

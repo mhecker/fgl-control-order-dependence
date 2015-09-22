@@ -3,6 +3,8 @@ module Program.Tests where
 import System.Process
 import Data.Graph.Inductive.Dot
 
+import Control.Monad.Gen
+
 
 import Program
 import Program.Examples

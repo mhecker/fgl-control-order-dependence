@@ -595,4 +595,62 @@ simpleFromFor = Program {
         (tcfg, nExit) = runGenFrom 2 $ compile 1 forProgram
         forProgram = If CTrue Skip Skip
 
+{-
+  if (H==0) {
+    spawn {
+      while (true) {skip;}
+    }
+  }
+  skip     // c
+  spawn {
+    L=0    // n
+  }
+  spawn {
+    L=1    // n'
+  }
+-}
+joachim2 :: Program Gr
+joachim2 = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList $ fmap toInteger [l0Start, l1Start, skipStart, mainStart],
+    mainThread = toInteger $ mainStart,
+    entryOf = entryOf . fromInteger,
+    exitOf = exitOf . fromInteger,
+    clInit = defaultClassification tcfg
+   }
+  where staticThreadOf n
+         | n `elem` (nodes tcfg) = 1
+         | otherwise = error "unknown node"
+        entryOf :: Node -> Node
+        entryOf n
+          | n `elem` [l0Start, l1Start, mainStart] = n
+        exitOf n
+          | n == l0Start   = l0Exit
+          | n == l1Start   = l1Exit
+          | n == mainStart = mainExit
+        tcfg = l0cfg `mergeTwoGraphs` l1cfg `mergeTwoGraphs` skipcfg `mergeTwoGraphs` maincfg
 
+        (l0cfg,l0Exit)      = runGenFrom (l0Start   + 1) $ compile l0Start   l0ThreadProgram
+        (l1cfg,l1Exit)      = runGenFrom (l1Start   + 1) $ compile l1Start   l1ThreadProgram
+        (skipcfg,skipExit)  = runGenFrom (skipStart + 1) $ compile skipStart skipThreadProgram
+        (maincfg, mainExit) = runGenFrom (mainStart + 1) $ compile mainStart mainThreadProgram
+
+        l0Start   = 1
+        l1Start   = l0Exit + 1
+        skipStart = l1Exit + 1
+        mainStart = skipExit + 1
+
+        l0ThreadProgram = Ass "l" (Val 0)
+        l1ThreadProgram = Ass "l" (Val 1)
+        skipThreadProgram =
+          ForC 10 $ Skip
+        mainThreadProgram =
+           ReadFromChannel stdIn "h" `Seq`
+           If (Leq (Var "h") (Val 0))
+              (SpawnThread skipStart)
+              (Skip)
+           `Seq`
+           Skip `Seq`
+           SpawnThread l0Start `Seq`
+           SpawnThread l1Start

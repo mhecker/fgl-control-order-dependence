@@ -16,6 +16,8 @@ data For = If   BoolFunction For For
          | ForV Var For
          | Seq For For
          | Skip
+         | ReadFromChannel Var InputChannel
+         | PrintToChannel Var OutputChannel
          | SpawnThread Node
 
 
@@ -47,8 +49,8 @@ compile nStart (Ass var f) = do
 compile nStart (ForC val s) = do
   nInit <- gen
   nLoop <- gen
-  nJoin <- gen
   (gLoop,nLoop')  <- compile nLoop s
+  nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nInit,nLoop,nLoop',nJoin]]
                     [(nStart, nInit, Assign loopvar (Val val)),
                      (nInit,  nLoop, Guard True  (Leq (Val 0) (Var loopvar) )),
@@ -62,8 +64,8 @@ compile nStart (ForC val s) = do
 
 compile nStart (ForV var s) = do
   nLoop <- gen
-  nJoin <- gen
   (gLoop,nLoop')  <- compile nLoop s
+  nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nJoin, nLoop, nLoop']]
                     [(nStart,  nLoop, Guard True  (Leq (Val 0) (Var var))),
                      (nStart,  nJoin, Guard False (Leq (Val 0) (Var var))),
@@ -83,6 +85,20 @@ compile nStart Skip = do
   return $ (mkGraph [(n,n) | n <- [nStart, nNext]]
                     [(nStart, nNext, nop)],
             nNext
+           )
+
+compile nStart (ReadFromChannel var ch) = do
+  nEnd <- gen
+  return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
+                    [(nStart, nEnd, Read var ch)],
+            nEnd
+           )
+
+compile nStart (PrintToChannel var ch) = do
+  nEnd <- gen
+  return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
+                    [(nStart, nEnd, Print var ch)],
+            nEnd
            )
 
 compile nStart (SpawnThread nThread) = do

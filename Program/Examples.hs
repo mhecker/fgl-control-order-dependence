@@ -24,7 +24,7 @@ import Data.Set.Unicode
 defaultChannelClassification channel
  | channel == stdIn  = High
  | channel == stdOut = Low
- | otherwise = error "unknown channel"
+ | otherwise = error $ "unknown channel: " ++ channel
 
 defaultClassification :: Graph gr => gr CFGNode CFGEdge -> Node -> SecurityLattice
 defaultClassification gr n = (∐) (fmap cl (lsuc gr n))
@@ -575,25 +575,6 @@ threadSpawn2 = Program {
                    ++  [(8,9,nop)]
 
 
-
--- simpleFromFor :: Program Gr
--- simpleFromFor = Program {
---     tcfg = tcfg,
---     staticThreadOf = staticThreadOf,
---     staticThreads  = Set.fromList [1],
---     mainThread = 1,
---     entryOf = entryOf,
---     exitOf = exitOf,
---     clInit = defaultClassification tcfg
---    }
---   where staticThreadOf n
---          | n `elem` (nodes tcfg) = 1
---          | otherwise = error "unknown node"
---         entryOf 1 = 1
---         exitOf  1 = nExit
---         (tcfg, nExit) = runGenFrom 2 $ compile 1 forProgram
---         forProgram = If CTrue Skip Skip
-
 {-
   if (H==0) {
     spawn {
@@ -613,7 +594,7 @@ joachim2 = p { clInit = defaultClassification (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
-           ReadFromChannel stdIn "h" `Seq`
+           ReadFromChannel "h" stdIn `Seq`
            If (Leq (Var "h") (Val 0))
               (SpawnThread 4)
               (Skip)
@@ -624,5 +605,34 @@ joachim2 = p { clInit = defaultClassification (tcfg p) }
           ),
           (2, Ass "l" (Val 0)),
           (3, Ass "l" (Val 1)),
-          (4, ForC 10 $ Skip)
+          (4, ForC 10 Skip)
+         ]
+
+{-
+  if(H=0) {              || skip;  || skip;
+    while (true) {skip}  || skip;  || skip;
+  }                      || L=0;   || L=1;
+-}
+joachim3 :: Program Gr
+joachim3 = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           SpawnThread 2                `Seq`
+           SpawnThread 3                `Seq`
+           ReadFromChannel "h" stdIn    `Seq`
+           If (Leq (Var "h") (Val 0))
+              (ForC 10 Skip)
+              (Skip)
+          ),
+          (2,
+           Skip                         `Seq`
+           Skip                         `Seq`
+           Ass "l" (Val 0)
+          ),
+          (3,
+           Skip                         `Seq`
+           Skip                         `Seq`
+           Ass "l" (Val 1)
+          )
          ]

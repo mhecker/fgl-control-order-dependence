@@ -26,14 +26,14 @@ data For = If   BoolFunction For For
          | SpawnThread StaticThread
 
 
-compile :: DynGraph gr => Map StaticThread Node -> Node -> For -> Gen Node (gr CFGNode CFGEdge, Node)
+compile :: DynGraph gr => Map StaticThread Node -> Node -> For -> Gen Node (gr CFGNode CFGEdge, Node, [Node])
 compile entryOf nStart (If b sTrue sFalse) = do
   nTrue <- gen
   nFalse <- gen
-  (gTrue, nTrue')  <- compile entryOf nTrue sTrue
-  (gFalse,nFalse') <- compile entryOf nFalse sFalse
+  (gTrue, nTrue', nodesInTrue)  <- compile entryOf nTrue sTrue
+  (gFalse,nFalse',nodesInFalse) <- compile entryOf nFalse sFalse
   nJoin <- gen
-  return $ (mkGraph [(n,n) | n <- [nStart, nTrue, nFalse, nTrue', nFalse', nJoin]]
+  return $ (mkGraph [(n,n) | n <- [nStart, nTrue, nFalse, nTrue', nFalse', nJoin] ]
                    [(nStart, nTrue,  Guard True  b),
                     (nStart, nFalse, Guard False b),
                     (nTrue', nJoin, nop),
@@ -41,20 +41,23 @@ compile entryOf nStart (If b sTrue sFalse) = do
                    ]
             `mergeTwoGraphs` gTrue
             `mergeTwoGraphs` gFalse,
-            nJoin
+            nJoin,
+            [nStart, nJoin] ++ nodesInTrue ++ nodesInFalse
            )
 
 compile entryOf nStart (Ass var f) = do
   nEnd <- gen
-  return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
+  let nodesInThread = [nStart, nEnd]
+  return $ (mkGraph [(n,n) | n <- nodesInThread ]
                     [(nStart, nEnd, Assign var f)],
-            nEnd
+            nEnd,
+            nodesInThread
            )
 
 compile entryOf nStart (ForC val s) = do
   nInit <- gen
   nLoop <- gen
-  (gLoop,nLoop')  <- compile entryOf nLoop s
+  (gLoop,nLoop',nodesInLoop)  <- compile entryOf nLoop s
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nInit,nLoop,nLoop',nJoin]]
                     [(nStart, nInit, Assign loopvar (Val val)),
@@ -63,47 +66,52 @@ compile entryOf nStart (ForC val s) = do
                      (nLoop', nInit, Assign loopvar ((Var loopvar) `Plus` (Val (-1))))
                    ]
             `mergeTwoGraphs` gLoop,
-            nJoin
+            nJoin,
+            [nStart, nJoin, nInit] ++ nodesInLoop
            )
     where loopvar = "_loopVar" ++ (show nStart)
 
 compile entryOf nStart (ForV var s) = do
   nLoop <- gen
-  (gLoop,nLoop')  <- compile entryOf nLoop s
+  (gLoop,nLoop', nodesInLoop)  <- compile entryOf nLoop s
   nJoin <- gen
-  return $ (mkGraph [(n,n) | n <- [nStart, nJoin, nLoop, nLoop']]
+  return $ (mkGraph [(n,n) | n <- [nStart, nJoin, nLoop, nLoop'] ]
                     [(nStart,  nLoop, Guard True  (Leq (Val 0) (Var var))),
                      (nStart,  nJoin, Guard False (Leq (Val 0) (Var var))),
                      (nLoop',  nStart, Assign var ((Var var) `Plus` (Val (-1))))
                    ]
             `mergeTwoGraphs` gLoop,
-            nJoin
+            nJoin,
+            [nStart, nJoin] ++ nodesInLoop
            )
 
 compile entryOf nStart (Seq s1 s2) = do
-  (g1,nMid) <- compile entryOf nStart s1
-  (g2,nEnd) <- compile entryOf nMid   s2
-  return $ (g1 `mergeTwoGraphs` g2, nEnd)
+  (g1,nMid, nodesInS1) <- compile entryOf nStart s1
+  (g2,nEnd, nodesInS2) <- compile entryOf nMid   s2
+  return $ (g1 `mergeTwoGraphs` g2, nEnd, [nStart] ++ nodesInS1 ++ nodesInS2 )
 
 compile entryOf nStart Skip = do
-  nNext <- gen
-  return $ (mkGraph [(n,n) | n <- [nStart, nNext]]
-                    [(nStart, nNext, nop)],
-            nNext
+  nEnd <- gen
+  return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
+                    [(nStart, nEnd, nop)],
+            nEnd,
+            [nStart, nEnd]
            )
 
 compile entryOf nStart (ReadFromChannel var ch) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, Read var ch)],
-            nEnd
+            nEnd,
+            [nStart, nEnd]
            )
 
 compile entryOf nStart (PrintToChannel var ch) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, Print var ch)],
-            nEnd
+            nEnd,
+            [nStart, nEnd]
            )
 
 compile entryOf nStart (SpawnThread threadId) = do
@@ -111,12 +119,13 @@ compile entryOf nStart (SpawnThread threadId) = do
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd, nThread]]
                     [(nStart, nEnd, nop),
                      (nStart, nThread, Spawn)],
-            nEnd
+            nEnd,
+            [nStart, nEnd]
            )
     where nThread = entryOf ! threadId
 
 
-compileAll :: DynGraph gr => Map StaticThread For -> Gen Node (Map StaticThread (Node,gr CFGNode CFGEdge,Node))
+compileAll :: DynGraph gr => Map StaticThread For -> Gen Node (Map StaticThread (Node,gr CFGNode CFGEdge,Node,[Node]))
 compileAll threads = do
   nodes <- forM (Map.toList threads) $ (\(t,program) -> do
      entryNode <- gen
@@ -124,9 +133,9 @@ compileAll threads = do
    )
   let entryOf = (Map.fromList $ fmap (\(t,entryNode,program) -> (t,entryNode)) nodes)
   graphs <- forM nodes $ (\(t,entryNode,program) -> do
-     (graph,exitNode) <- compile entryOf
-                         entryNode
-                         program
-     return $ (t, (entryNode,graph,exitNode))
+     (graph,exitNode,nodes) <- compile entryOf
+                                       entryNode
+                                       program
+     return $ (t, (entryNode,graph,exitNode,nodes))
    )
   return $ Map.fromList graphs

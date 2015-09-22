@@ -622,14 +622,14 @@ joachim2 = Program {
     clInit = defaultClassification tcfg
    }
   where staticThreadOf n = fromJust $
-          find (\t -> let (_,cfg,_) = compiledProgram ! t in n `elem` (nodes cfg) )
+          find (\t -> let (_,_,_,nodes) = compiledProgram ! t in n `elem` nodes)
                staticThreads
         staticThreads = Map.keys program
-        entryOf = (!) (fmap (\(entryNode,_  ,_       ) -> entryNode) compiledProgram)
-        exitOf  = (!) (fmap (\(_        ,_  ,exitNode) -> exitNode ) compiledProgram)
+        entryOf = (!) (fmap (\(entryNode,_  ,_       ,_) -> entryNode) compiledProgram)
+        exitOf  = (!) (fmap (\(_        ,_  ,exitNode,_) -> exitNode ) compiledProgram)
         tcfg    = foldr1
                    mergeTwoGraphs
-                   [ cfg | (_,(_        ,cfg,_       )) <- Map.toList $ compiledProgram ]
+                   [ cfg | (_,(_        ,cfg,_       ,_)) <- Map.toList $ compiledProgram ]
 
         compiledProgram = runGenFrom 1 $ compileAll program
         program = Map.fromList $ [

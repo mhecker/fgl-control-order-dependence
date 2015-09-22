@@ -32,7 +32,6 @@ import qualified Data.Set as Set
 -- import Data.Set.Unicode
 
 
-
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 
 

@@ -2,6 +2,10 @@ module Program.Examples where
 
 
 import Program
+
+import Program.For
+import Control.Monad.Gen
+
 import IRLSOD
 
 import Unicode
@@ -91,7 +95,7 @@ example2 = Program {
         entryOf 1 = 1
         exitOf 1 = 12
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq "h" "h")),(3,5,Guard False (Leq "h" "h")),(4,6,nop),(5,6,nop),(6,7,nop)]
+                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
                    ++  [(7,8,true),(8,9,nop),(9,7,nop),(7,10,false),(10,11,nopuse),(11,12,nop)]
 
 
@@ -186,7 +190,7 @@ example4 = Program {
         exitOf 1 = 10
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 10)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq "h" "h")),(3,5,Guard False (Leq "h" "h")),(4,6,nop),(5,6,nop),(6,7,nop)]
+                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
                    ++  [(7,8,Spawn),(7,10,Print unused stdOut),(8,9,Print unused stdOut)]
 
 
@@ -217,7 +221,7 @@ example5 = Program {
         exitOf 1 = 10
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 10)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq "h" "h")),(3,5,Guard False (Leq "h" "h")),(4,6,nop),(5,6,nop),(6,7,nop)]
+                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
                    ++  [(2,8,Spawn),(7,10,Print unused stdOut),(8,9,Print unused stdOut)]
 
 
@@ -256,7 +260,7 @@ example6 = Program {
         exitOf 2 = 10
         tcfg = mkGraph (genLNodes 1 12)  $
                        [(1,2,nop), (2,3,Read "h" stdIn),(3,4,true),(3,11,false),(11,12,Print unused stdOut),
-                        (4,5,nop), (5,6,Guard True (Leq "h" "h")),(5,7,Guard False (Leq "h" "h")),
+                        (4,5,nop), (5,6,Guard True (Leq (Var "h") (Var "h"))),(5,7,Guard False (Leq (Var "h") (Var "h"))),
                                    (6,8,nop),                     (7,8,nop),
                         (8,3,nop),
                         (8,9,Spawn),(9,10,Print unused stdOut)]
@@ -369,22 +373,22 @@ example8 = Program {
                         (23,20,Read "h" stdIn),
                         (20,21, Assign "zero" (Val 0)),
                         (21,22, Assign "one" (Val 1)),
-                        (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq "h" "h")),
-                                                     (2,4, Guard True  (Leq "h" "h")),
+                        (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq (Var "h") (Var "h"))),
+                                                     (2,4, Guard True  (Leq (Var "h") (Var "h"))),
                         (4,5,Assign "tmp" (Val 100)),
                         (3,5,nop),
                         (5,6,nop),
                         (6,7,nop),(6,201,Spawn),
-                        (7,10, Guard False (Not $ Leq "tmp" "zero")),
-                        (7, 8, Guard True  (Not $ Leq "tmp" "zero")),
+                        (7,10, Guard False (Not $ Leq (Var "tmp") (Var "zero"))),
+                        (7, 8, Guard True  (Not $ Leq (Var "tmp") (Var "zero"))),
                         (8, 9, Assign "tmp" (Plus (Var "tmp") (Val (-1)))),
                         (9, 7, nop),
                         (10,11,nop),
                         (11,12,Assign "tmp2" (Val 1)),
                         (12,301,Spawn),
                         (12,13,nop),
-                        (13,16, Guard False (Not $ Leq "tmp2" "zero")),
-                        (13,14, Guard True  (Not $ Leq "tmp2" "zero")),
+                        (13,16, Guard False (Not $ Leq (Var "tmp2") (Var "zero"))),
+                        (13,14, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
                         (14,15, Assign "tmp2" (Plus (Var "tmp2") (Val (-1)))),
                         (15,13, nop),
                         (16,17, Print "one" stdOut),
@@ -468,22 +472,22 @@ example8' = Program {
                         (23,20,Read "h" stdIn),
                         (20,21, Assign "zero" (Val 0)),
                         (21,22, Assign "one" (Val 1)),
-                        (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq "h" "h")),
-                                                     (2,4, Guard True  (Leq "h" "h")),
+                        (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq (Var "h") (Var "h"))),
+                                                     (2,4, Guard True  (Leq (Var "h") (Var "h"))),
                         (4,5,Assign "tmp" (Val 100)),
                         (3,5,nop),
                         (5,6,nop),
                         (6,7,nop),(6,201,Spawn),
-                        (7,10, Guard False (Not $ Leq "tmp" "zero")),
-                        (7, 8, Guard True  (Not $ Leq "tmp" "zero")),
+                        (7,10, Guard False (Not $ Leq (Var "tmp2") (Var "zero"))),
+                        (7, 8, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
                         (8, 9, Assign "tmp" (Plus (Var "tmp") (Val (-1)))),
                         (9, 7, nop),
                         (10,11,nop),
                         (11,12,Assign "tmp2" (Val 1)),
                         (12,301,Spawn),
                         (12,13,nop),
-                        (13,16, Guard False (Not $ Leq "tmp2" "zero")),
-                        (13,14, Guard True  (Not $ Leq "tmp2" "zero")),
+                        (13,16, Guard False (Not $ Leq (Var "tmp2") (Var "zero"))),
+                        (13,14, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
                         (14,15, Assign "tmp2" (Plus (Var "tmp2") (Val (-1)))),
                         (15,13, nop),
                         (16,17, Print "one" stdOut),
@@ -570,3 +574,25 @@ threadSpawn2 = Program {
                        [(1,2,nop),(2,4,true),(2,3,false),(3,5,spawn),(3,2,nop)]
                    ++  [(5,6,nop),(6,8,spawn),(6,7,nop)]
                    ++  [(8,9,nop)]
+
+
+
+simpleFromFor :: Program Gr
+simpleFromFor = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    clInit = defaultClassification tcfg
+   }
+  where staticThreadOf n
+         | n `elem` (nodes tcfg) = 1
+         | otherwise = error "unknown node"
+        entryOf 1 = 1
+        exitOf  1 = nExit
+        (tcfg, nExit) = runGenFrom 2 $ compile 1 forProgram
+        forProgram = If CTrue Skip Skip
+
+

@@ -31,13 +31,13 @@ stdOut = "stdOut"
 type GlobalState = Map Var Val
 
 
-data BoolFunction = CTrue   | CFalse | Leq Var Var | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
+data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
 data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction deriving (Show, Eq, Ord)
 
 evalB :: GlobalState -> BoolFunction -> Bool
 evalB _ CTrue     = True
 evalB _ CFalse    = False
-evalB σ (Leq x y) = evalV σ (Var x)  <= evalV σ (Var y)
+evalB σ (Leq x y) = evalV σ x <= evalV σ y
 evalB σ (And b1 b2) = evalB σ b1 && evalB σ b2
 evalB σ (Or  b1 b2) = evalB σ b1 || evalB σ b2
 evalB σ (Not b)     = not $ evalB σ b
@@ -45,7 +45,7 @@ evalB σ (Not b)     = not $ evalB σ b
 
 useB CTrue       = Set.empty
 useB CFalse      = Set.empty
-useB (Leq x y)   = Set.fromList [x,y]
+useB (Leq x y)   = useV x ∪ useV y
 useB (And b1 b2) = useB b1 ∪ useB b2
 useB (Or  b1 b2) = useB b1 ∪ useB b2
 useB (Not b)     = useB b

@@ -594,13 +594,13 @@ joachim2 = p { clInit = defaultClassification (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
-           ReadFromChannel "h" stdIn `Seq`
+           Skip                         `Seq` -- Notwendig, da sonst die Controlabhängigkeit vom Start-Knoten zu viel tainted.
+           ReadFromChannel "h" stdIn    `Seq`
            If (Leq (Var "h") (Val 0))
               (SpawnThread 4)
-              (Skip)
-           `Seq`
-           Skip `Seq`
-           SpawnThread 2 `Seq`
+              (Skip)                    `Seq`
+           Skip                         `Seq`
+           SpawnThread 2                `Seq`
            SpawnThread 3
           ),
           (2, Ass "l" (Val 0)),

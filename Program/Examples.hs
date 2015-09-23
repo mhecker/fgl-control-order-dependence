@@ -642,3 +642,119 @@ joachim3 = p { clInit = defaultClassification (tcfg p) }
            Ass "l" (Val 1)
           )
          ]
+
+
+noFlow :: Program Gr
+noFlow = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                          `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           Ass             "x" (Val 42)  `Seq`
+           PrintToChannel  "x" stdOut
+          )
+         ]
+
+directFlow :: Program Gr
+directFlow = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                          `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           PrintToChannel  "h" stdOut
+          )
+         ]
+
+directFlowThread :: Program Gr
+directFlowThread = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                          `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           Ass "x" (Var "h")             `Seq`
+           SpawnThread 2
+          ),
+          (2,
+           PrintToChannel "x" stdOut
+          )
+         ]
+
+
+noDirectFlowThread :: Program Gr
+noDirectFlowThread = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Ass "h" (Val 0)               `Seq`
+           Ass "x" (Var "h")             `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           SpawnThread 2
+          ),
+          (2,
+           PrintToChannel "x" stdOut
+          )
+         ]
+
+
+indirectFlow :: Program Gr
+indirectFlow = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                          `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           Ass "x" (Val 42)              `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Ass "x" (Val 17))
+              (Skip)                     `Seq`
+           PrintToChannel  "x" stdOut
+          )
+         ]
+
+
+orderConflict :: Program Gr
+orderConflict = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Ass "x" (Val 42)              `Seq`
+           Ass "y" (Val 17)              `Seq`
+           SpawnThread 2                 `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Skip `Seq` Skip)
+              (Skip)                     `Seq`
+           PrintToChannel "x" stdOut
+          ),
+          (2,
+           PrintToChannel "y" stdOut
+          )
+         ]
+
+
+-- Intuitiv sollte dieses Programm eigentlich sicher sein,
+-- da man wohl nicht annehmen sollte, dass bei einer Output-Anweisung sichtbar ist, welche variable ausgelesen wird.
+-- In unserm modell ist das aber so!
+dubiousOrderConflict :: Program Gr
+dubiousOrderConflict = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Ass "x" (Val 42)              `Seq`
+           Ass "y" (Val 42)              `Seq`
+           SpawnThread 2                 `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Skip `Seq` Skip)
+              (Skip)                     `Seq`
+           PrintToChannel "x" stdOut
+          ),
+          (2,
+           PrintToChannel "y" stdOut
+          )
+         ]
+
+

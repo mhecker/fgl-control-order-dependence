@@ -21,6 +21,9 @@ import qualified Data.Set as Set
 import Data.Set.Unicode
 
 
+defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]) ]
+defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]) ]
+
 defaultChannelClassification channel
  | channel == stdIn  = High
  | channel == stdOut = Low
@@ -605,7 +608,10 @@ joachim2 = p { clInit = defaultClassification (tcfg p) }
           ),
           (2, Ass "l" (Val 0)),
           (3, Ass "l" (Val 1)),
-          (4, ForC 10 Skip)
+          (4, Skip                      `Seq`
+              Skip                      `Seq`
+              Skip
+          )
          ]
 
 {-
@@ -622,7 +628,7 @@ joachim3 = p { clInit = defaultClassification (tcfg p) }
            SpawnThread 3                `Seq`
            ReadFromChannel "h" stdIn    `Seq`
            If (Leq (Var "h") (Val 0))
-              (ForC 10 Skip)
+              (Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)
           ),
           (2,

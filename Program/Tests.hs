@@ -3,6 +3,8 @@ module Program.Tests where
 import System.Process
 import Data.Graph.Inductive.Dot
 
+import Data.List
+
 import Control.Monad.Gen
 
 
@@ -14,6 +16,8 @@ import Program.CDom
 import Program.Analysis
 
 import IRLSOD
+import Execution
+import PNI
 
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph

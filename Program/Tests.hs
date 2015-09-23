@@ -18,6 +18,9 @@ import Program.Analysis
 import IRLSOD
 import Execution
 import PNI
+import Unicode
+
+import Algebra.Lattice
 
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph

@@ -170,7 +170,7 @@ instance MeetSemiLattice SecurityLattice where
   High `meet` x = x
 
 instance BoundedJoinSemiLattice SecurityLattice where
-  bottom = Low
+  bottom = Undefined
 
 
 -- type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
@@ -227,7 +227,7 @@ toTrace eTrace = [ (σ, o, σ') | ((_,σ,_), o, (_,σ',_)) <- eTrace ]
 
 
 observable :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace
-observable icfg cl l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (def icfg n)) | (σ, (n,e), σ') <- trace, cl n <= l ]
+observable icfg cl l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (def icfg n)) | (σ, (n,e), σ') <- trace, cl n == l ] -- TODO: je nach interpretation, was "cl n" bedeutet, muss man hier  cl n <= l statt == verwenden
   where restrict σ vars = Map.filterWithKey (\var _ -> var ∈ vars) σ
 
 (≈) :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace -> Bool

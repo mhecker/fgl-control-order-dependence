@@ -3,7 +3,7 @@ module PNI where
 
 
 import IRLSOD
-import Unicode
+import ListUnicode
 
 import Program
 import Execution
@@ -29,27 +29,57 @@ import Data.Set.Unicode
 prob :: Graph gr => gr CFGNode CFGEdge -> ExecutionTrace -> Rational
 prob gr [] = 1
 prob gr (((control,σ,i), o, (control',σ',i')) : trace)
-    | length successors /= length control = error "nicht genau ein nachfolgezustand pro thread"
-    | otherwise                           = ( toRational (length $ filter (== (o,(control',σ'))) successors) /
+    | length successors /= length control = error "nicht genau ein nachfolgezustand pro thread" -- TODO: genauer reingucken, obs wirklich für jeden Thread genau einen gibt
+    | otherwise                           = ( (if ((o,(control',σ')) `elem` successors) then 1 else 0) /
                                               toRational (length successors) )
                                             * prob gr trace
   where successors = [(o,(control,σ)) | (o,(control,σ,i)) <- eventStep gr (control,σ,i)]
 
 
-probability :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> Set ExecutionTrace -> ExecutionTrace -> Rational
-probability graph cl executions e = sum $ [ prob graph e' | e' <- Set.toList executions, let (t,t') = (toTrace e, toTrace e'),
+probability :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> ExecutionTrace -> Rational
+probability graph cl executions e = sum $ [ prob graph e' | e' <- executions, let (t,t') = (toTrace e, toTrace e'),
                                                             t ∼ t' ]
   where (∼) = (≈) graph cl Low
 
-secureWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> Set ExecutionTrace -> Set ExecutionTrace -> Bool
+secureWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> [ExecutionTrace] -> Bool
 secureWithRegardTo graph cl θ θ' =
-      (∀) (θ ∪ θ') (\e -> p e == p' e)
+      (∀) (θ ++ θ') (\e -> p e == p' e)
   where p  = probability graph cl θ
         p' = probability graph cl θ'
 
 
---pniFor :: Graph gr => Program gr -> Input -> Input -> Bool
---pniFor p@(Program { tcfg, clInit }) i1 i2 = 
+pniFor :: Graph gr => Program gr -> Input -> Input -> Bool
+pniFor program@(Program { tcfg, clInit }) i i' = secureWithRegardTo tcfg clInit θ θ'
+  where θ  = allFinishedExecutionTraces program i
+        θ' = allFinishedExecutionTraces program i'
+
+
+
+showCounterExamplesPniFor program i i' = do
+  forM_ (counterExamplesPniFor program i i') (\execution -> do
+     putStrLn "-----------------"
+     forM_ execution (\((ns,σ,i),(n,e),(ns',σ',i')) -> do
+        putStrLn $ show ns
+        putStrLn $ show σ
+        putStr   $ "---"
+        putStr   $ show (n,e)
+        putStrLn $ "-->"
+        putStrLn $ ""
+       )
+    )
+
+counterExamplesWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> [ExecutionTrace] -> [ExecutionTrace]
+counterExamplesWithRegardTo graph cl θ θ' =
+      [ e | e <- (θ ++ θ'), p e /= p' e]
+  where p  = probability graph cl θ
+        p' = probability graph cl θ'
+
+
+counterExamplesPniFor :: Graph gr => Program gr -> Input -> Input -> [ExecutionTrace]
+counterExamplesPniFor program@(Program { tcfg, clInit }) i i' = counterExamplesWithRegardTo tcfg clInit θ θ'
+  where θ  = allFinishedExecutionTraces program i
+        θ' = allFinishedExecutionTraces program i'
+
 
 
 allOutcomes :: Graph gr => Program gr -> Input -> [(Rational,GlobalState)]
@@ -63,7 +93,7 @@ allOutcomesGrouped program input =
        snd $ head $ outcome)
     | outcome <- groupBy (\(p,σ) (p',σ') -> σ == σ') $ sortBy (comparing snd) outcomes
     ]
- where outcomes = allOutcomes program input 
+ where outcomes = allOutcomes program input
 
 
 

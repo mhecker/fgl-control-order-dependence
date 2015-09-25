@@ -758,3 +758,22 @@ dubiousOrderConflict = p { clInit = defaultClassification (tcfg p) }
          ]
 
 
+cdomIsBroken :: Program Gr
+cdomIsBroken = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                          `Seq`
+           ReadFromChannel "h" stdIn     `Seq`
+           Ass "x" (Val 42)              `Seq`
+           SpawnThread 2                 `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
+              (Skip)                     `Seq`
+           Ass "x" (Val 17)              `Seq`
+           SpawnThread 2
+          ),
+          (2,
+           PrintToChannel "x" stdOut
+          )
+         ]

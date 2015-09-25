@@ -16,7 +16,7 @@ import Control.Monad(forM_)
 
 -- import Data.Map ( Map, (!) )
 -- import qualified Data.Map as Map
-import Data.List (groupBy,sortBy)
+import Data.List (groupBy,sortBy,nub)
 import Data.Ord (comparing)
 
 import Data.Set (Set)
@@ -56,26 +56,30 @@ pniFor program@(Program { tcfg, clInit }) i i' = secureWithRegardTo tcfg clInit 
 
 
 showCounterExamplesPniFor program i i' = do
-  forM_ (counterExamplesPniFor program i i') (\execution -> do
+  putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ "    "  ++
+             "i' = " ++ (show $ fmap (take 5) i')
+  forM_ (counterExamplesPniFor program i i') (\(p,p',trace) -> do
      putStrLn "-----------------"
-     forM_ execution (\((ns,σ,i),(n,e),(ns',σ',i')) -> do
-        putStrLn $ show ns
+     putStrLn $ "p  = " ++ (show p ) ++ "    "  ++
+                "p' = " ++ (show p')
+--     forM_ execution (\((σ,i),(n,e),(ns',σ',i')) -> do
+     forM_ trace (\(σ, o, σ') -> do
         putStrLn $ show σ
         putStr   $ "---"
-        putStr   $ show (n,e)
+        putStr   $ show o
         putStrLn $ "-->"
-        putStrLn $ ""
-       )
+        putStrLn $ show σ'
+      )
     )
 
-counterExamplesWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> [ExecutionTrace] -> [ExecutionTrace]
+counterExamplesWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> [ExecutionTrace] -> [(Rational,Rational,Trace)]
 counterExamplesWithRegardTo graph cl θ θ' =
-      [ e | e <- (θ ++ θ'), p e /= p' e]
+      nub $ [ (p e,p' e, observable graph cl Low (toTrace e)) | e <- (θ ++ θ'), p e /= p' e]
   where p  = probability graph cl θ
         p' = probability graph cl θ'
 
 
-counterExamplesPniFor :: Graph gr => Program gr -> Input -> Input -> [ExecutionTrace]
+counterExamplesPniFor :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
 counterExamplesPniFor program@(Program { tcfg, clInit }) i i' = counterExamplesWithRegardTo tcfg clInit θ θ'
   where θ  = allFinishedExecutionTraces program i
         θ' = allFinishedExecutionTraces program i'

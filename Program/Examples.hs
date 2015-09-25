@@ -763,17 +763,42 @@ cdomIsBroken = p { clInit = defaultClassification (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
-           Skip                          `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
-           Ass "x" (Val 42)              `Seq`
-           SpawnThread 2                 `Seq`
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           Ass "x" (Val 42)                                                 `Seq`
+           SpawnThread 2                                                    `Seq`
            If (Leq (Var "h") (Val 0))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
-              (Skip)                     `Seq`
-           Ass "x" (Val 17)              `Seq`
+              (Skip)                                                        `Seq`
+           Ass "x" (Val 17)                                                 `Seq`
            SpawnThread 2
           ),
           (2,
+           Skip                                                             `Seq`
            PrintToChannel "x" stdOut
+          )
+         ]
+
+
+cdomIsBroken2 :: Program Gr
+cdomIsBroken2 = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass "x" (Val 42)                                                 `Seq`
+           Ass "y" (Val 17)                                                 `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           ForC 2 (
+              If (Leq (Var "h") (Val 0))
+                (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
+                (Skip)                                                      `Seq`
+              PrintToChannel "x" stdOut                                     `Seq`
+              SpawnThread 2
+           )
+          ),
+          (2,
+           Skip                                                             `Seq`
+           PrintToChannel "y" stdOut
           )
          ]

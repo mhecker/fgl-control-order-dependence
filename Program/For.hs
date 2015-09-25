@@ -67,8 +67,8 @@ compile entryOf nStart (ForC val s) = do
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nInit,nLoop,nLoop',nJoin]]
                     [(nStart, nInit, Assign loopvar (Val val)),
-                     (nInit,  nLoop, Guard True  (Leq (Val 0) (Var loopvar) )),
-                     (nInit,  nJoin, Guard False (Leq (Val 0) (Var loopvar) )),
+                     (nInit,  nLoop, Guard True  (Leq (Val 1) (Var loopvar) )),
+                     (nInit,  nJoin, Guard False (Leq (Val 1) (Var loopvar) )),
                      (nLoop', nInit, Assign loopvar ((Var loopvar) `Plus` (Val (-1))))
                    ]
             `mergeTwoGraphs` gLoop,
@@ -82,8 +82,8 @@ compile entryOf nStart (ForV var s) = do
   (gLoop,nLoop', nodesInLoop)  <- compile entryOf nLoop s
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nJoin, nLoop, nLoop'] ]
-                    [(nStart,  nLoop, Guard True  (Leq (Val 0) (Var var))),
-                     (nStart,  nJoin, Guard False (Leq (Val 0) (Var var))),
+                    [(nStart,  nLoop, Guard True  (Leq (Val 1) (Var var))),
+                     (nStart,  nJoin, Guard False (Leq (Val 1) (Var var))),
                      (nLoop',  nStart, Assign var ((Var var) `Plus` (Val (-1))))
                    ]
             `mergeTwoGraphs` gLoop,

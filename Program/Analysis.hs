@@ -41,13 +41,13 @@ import IRLSOD
 
 minimalClassification p@(Program { tcfg, clInit }) =
   (㎲⊒) (Map.fromList [ (n, clInit n) | n <- nodes tcfg ])
-    (\cl -> cl ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre pdg n])
+    (\cl -> cl ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
                                | n <- nodes tcfg])
                ⊔ (Map.fromList [ (n,(∐) [ cl ! c' | m <- Set.toList $ mhp ! n, let c = idom ! (n,m),  c' <- Set.toList $ chop c n])
                                | n <- nodes tcfg])
     )
 
- where pdg = programDependenceGraphP p
+ where cpdg = concurrentProgramDependenceGraphP p
        idom = idomChef p
        trnsclos = trc tcfg
        mhp :: Map Node (Set Node)
@@ -62,9 +62,9 @@ minimalClassification p@(Program { tcfg, clInit }) =
 timingClassification p@(Program { tcfg, clInit }) =
   (㎲⊒) (Map.fromList [ (n, clInit n)      | n <- nodes tcfg ],
          Map.fromList [ ((n,m), Undefined) | ((n,m), True) <- Map.assocs mhp ])
-    (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre pdg n])
+    (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
                                        | n <- nodes tcfg])
-                       ⊔ (Map.fromList [ (n,(∐) [ (cl ! m) ⊔ (clt ! (m,n)) | m <- pre dataConflictGraph n])
+                       ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,n)) | m <- pre dataConflictGraph n])
                                        | n <- nodes tcfg]),
                    clt ⊔ (Map.fromList [ ((n,m), (∐) [ cl ! c' | let c = idom ! (n,m),
                                                                   c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n)))
@@ -73,7 +73,7 @@ timingClassification p@(Program { tcfg, clInit }) =
                                        |  ((n,m),True) <- Map.assocs mhp])
                   )
     )
- where pdg = programDependenceGraphP p
+ where cpdg = concurrentProgramDependenceGraphP p
        idom = idomChef p
        mhp = mhpFor p
        trnsclos = trc tcfg
@@ -89,16 +89,16 @@ timingClassification p@(Program { tcfg, clInit }) =
 timingClassificationSimple p@(Program { tcfg, clInit }) =
   (㎲⊒) (Map.fromList [ (n, clInit n)  | n <- nodes tcfg ],
          Map.fromList [ (n, Undefined) | n <- nodes tcfg ])
-    (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre pdg n])
+    (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
                                        | n <- nodes tcfg])
-                       ⊔ (Map.fromList [ (n,(∐) [ (cl ! m) ⊔ (clt ! m) ⊔ (clt ! n) | m <- pre dataConflictGraph n])
+                       ⊔ (Map.fromList [ (n,(∐) [ (clt ! m) ⊔ (clt ! n) | m <- pre dataConflictGraph n])
                                        | n <- nodes tcfg]),
                    clt ⊔ (Map.fromList [ (n,(∐) [ (cl ! m) | m <- pre timing n])
                                        | n <- nodes tcfg])
                   )
     )
 
- where pdg = programDependenceGraphP p
+ where cpdg = concurrentProgramDependenceGraphP p
        idom = idomChef p
        trnsclos = trc tcfg
        dataConflictGraph = dataConflictGraphP p

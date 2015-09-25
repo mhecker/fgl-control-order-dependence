@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 
-module Data.Graph.Inductive.Query.DataConflict where
+module Data.Graph.Inductive.Query.InterThreadDependence where
 
 import Unicode
 
@@ -33,18 +33,18 @@ import IRLSOD
 
 
 
-dataConflicts :: DynGraph gr => Program gr -> Map Node (Set Node)
-dataConflicts p@(Program {tcfg}) = Map.fromList $
-    [ (n, Set.fromList [ m | x <- Set.toList $ def tcfg n,  -- TODO: performance
+interThreadDependence :: DynGraph gr => Program gr -> Map Node (Set Node)
+interThreadDependence p@(Program {tcfg}) = Map.fromList $
+    [ (n, Set.fromList [ m | x <- Set.toList $ def tcfg n,
                              m <- nodes tcfg,
                              mhp ! (n,m),
-                             x ∈ (use tcfg m) ∪ (def tcfg m)
+                             x ∈ (use tcfg m)
                         ]
        )
      | n <- nodes tcfg ]
   where mhp = mhpFor p
 
-dataConflictGraphP :: DynGraph gr => Program gr -> gr CFGNode ()
-dataConflictGraphP p@(Program { tcfg }) = mkGraph (labNodes tcfg) [ (n,n',()) | (n,n's) <- Map.toList conflicts, n' <- Set.toList n's]
-  where conflicts = dataConflicts p
+interThreadDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+interThreadDependenceGraphP p@(Program { tcfg }) = mkGraph (labNodes tcfg) [ (n,n',InterThreadDependence) | (n,n's) <- Map.toList interdeps, n' <- Set.toList n's]
+  where interdeps = interThreadDependence p
 

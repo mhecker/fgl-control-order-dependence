@@ -234,4 +234,6 @@ observable icfg cl l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (d
 (≈) icfg cl l t t' = (observable icfg cl l t) == (observable icfg cl l t')
 
 
+-- lsod :: Graph gr => 
 
+-- irlsod :: Graph gr => Program gr -> 

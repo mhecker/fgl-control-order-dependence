@@ -10,6 +10,7 @@ import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Query.ControlDependence
 import Data.Graph.Inductive.Query.DataDependence
 import Data.Graph.Inductive.Query.Dependence
+import Data.Graph.Inductive.Query.InterThreadDependence
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -33,3 +34,14 @@ programDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryO
                                                           (false)
                                                           (exitOf thread)
                                    | thread <- Set.toList staticThreads ]
+
+concurrentProgramDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+concurrentProgramDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
+    insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
+    foldr mergeTwoGraphs tdeps $ [ programDependenceGraph (cfg p thread)
+                                                          (vars p)
+                                                          (entryOf thread)
+                                                          (false)
+                                                          (exitOf thread)
+                                   | thread <- Set.toList staticThreads ]
+  where tdeps = interThreadDependenceGraphP p

@@ -56,11 +56,11 @@ pniFor program@(Program { tcfg, clInit }) i i' = secureWithRegardTo tcfg clInit 
 
 
 showCounterExamplesPniFor program i i' = do
-  putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ "    "  ++
-             "i' = " ++ (show $ fmap (take 5) i')
+  putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
+             "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
   forM_ (counterExamplesPniFor program i i') (\(p,p',trace) -> do
      putStrLn "-----------------"
-     putStrLn $ "p  = " ++ (show p ) ++ "    "  ++
+     putStrLn $ "p  = " ++ (show p ) ++ "                                  "  ++
                 "p' = " ++ (show p')
 --     forM_ execution (\((σ,i),(n,e),(ns',σ',i')) -> do
      forM_ trace (\(σ, o, σ') -> do

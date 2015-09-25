@@ -27,8 +27,8 @@ data For = If   BoolFunction For For
          | ForV Var For
          | Seq For For
          | Skip
-         | ReadFromChannel Var InputChannel
-         | PrintToChannel Var OutputChannel
+         | ReadFromChannel Var         InputChannel
+         | PrintToChannel  VarFunction OutputChannel
          | SpawnThread StaticThread
 
 

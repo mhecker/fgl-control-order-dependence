@@ -4,6 +4,7 @@ module Program.CDom where
 import Algebra.Lattice
 
 import Unicode
+import Data.Bool.Unicode
 
 import Program
 import Program.MultiThread
@@ -49,4 +50,25 @@ idomChef p@(Program {tcfg, entryOf, mainThread} ) = Map.fromList
 
 
 
+idomMohrEtAl :: DynGraph gr => Program gr ->  Map (Node,Node) Node
+idomMohrEtAl p@(Program {tcfg, entryOf, mainThread} ) = Map.fromList
+    [ ((n,n'), leastValidFrom $ lca n n')   | n <- nodes tcfg, n' <- nodes tcfg ]
+  where dom :: Map Node Node
+        dom = Map.fromList $ iDom tcfg (entryOf mainThread)
 
+        inMulti = isInMultiThread p
+        inCycle = isInCycle tcfg -- TODO: ggf auf zyklen innerhalb von threads einschränken?!?!?
+
+        leastValidFrom :: Node -> Node
+        leastValidFrom c
+          | (inMulti ! c) ∨ (inCycle c) = leastValidFrom (dom ! c)
+          | otherwise                   = c
+
+
+        lca :: Node -> Node -> Node
+        lca n n' = c
+          where (c,_) = last $ takeWhile (\(a,b) -> a==b) $ zip (pathToRoot n)
+                                                                (pathToRoot n')
+                pathToRoot node
+                  | node `Map.member` dom = pathToRoot (dom ! node) ++ [node]
+                  | otherwise             = [node]

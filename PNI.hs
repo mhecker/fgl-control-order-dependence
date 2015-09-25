@@ -23,6 +23,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Set.Unicode
 
+import Text.Printf (printf)
 
 
 -- [(Configuration, (Node,Event), Configuration)]
@@ -60,8 +61,8 @@ showCounterExamplesPniFor program i i' = do
              "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
   forM_ (counterExamplesPniFor program i i') (\(p,p',trace) -> do
      putStrLn "-----------------"
-     putStrLn $ "p  = " ++ (show p ) ++ "                                  "  ++
-                "p' = " ++ (show p')
+     putStrLn $ "p  = " ++ (show p ) ++ " ≃ " ++ (printf "%.5f" $ (fromRational p  :: Double)) ++ "                                  "  ++
+                "p' = " ++ (show p') ++ " ≃ " ++ (printf "%.5f" $ (fromRational p' :: Double))
 --     forM_ execution (\((σ,i),(n,e),(ns',σ',i')) -> do
      forM_ trace (\(σ, o, σ') -> do
         putStrLn $ show σ

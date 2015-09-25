@@ -64,7 +64,7 @@ example1 = Program {
         exitOf 1 = 12
         exitOf 2 = 6
         tcfg = mkGraph (genLNodes 1 12) $ 
-                        [(1,2,nop),(2,3,spawn),(3,4,false),(3,5,true),(4,6,Print unused stdOut),(5,6,nop)]
+                        [(1,2,nop),(2,3,spawn),(3,4,false),(3,5,true),(4,6,Print (Var unused) stdOut),(5,6,nop)]
                     ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,nopuse)]
 
 
@@ -160,7 +160,7 @@ example3 = Program {
         exitOf 2 = 4
         tcfg = mkGraph (genLNodes 1 7)  $
                        [(1,2,nop),(2,3,spawn),(3,4,Assign "x" (Val 17))]
-                   ++  [(2,5,nop),(5,6,Assign "x" (Val 4)),(6,7,Print "x" stdOut)]
+                   ++  [(2,5,nop),(5,6,Assign "x" (Val 4)),(6,7,Print (Var "x") stdOut)]
 
 
 
@@ -193,7 +193,7 @@ example4 = Program {
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 10)  $
                        [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(7,8,Spawn),(7,10,Print unused stdOut),(8,9,Print unused stdOut)]
+                   ++  [(7,8,Spawn),(7,10,Print (Var unused) stdOut),(8,9,Print (Var unused) stdOut)]
 
 
 {-          1
@@ -224,7 +224,7 @@ example5 = Program {
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 10)  $
                        [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(2,8,Spawn),(7,10,Print unused stdOut),(8,9,Print unused stdOut)]
+                   ++  [(2,8,Spawn),(7,10,Print (Var unused) stdOut),(8,9,Print (Var unused) stdOut)]
 
 
 
@@ -261,11 +261,11 @@ example6 = Program {
         exitOf 1 = 12
         exitOf 2 = 10
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,true),(3,11,false),(11,12,Print unused stdOut),
+                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,true),(3,11,false),(11,12,Print (Var unused) stdOut),
                         (4,5,nop), (5,6,Guard True (Leq (Var "h") (Var "h"))),(5,7,Guard False (Leq (Var "h") (Var "h"))),
                                    (6,8,nop),                     (7,8,nop),
                         (8,3,nop),
-                        (8,9,Spawn),(9,10,Print unused stdOut)]
+                        (8,9,Spawn),(9,10,Print (Var unused) stdOut)]
 
 
 
@@ -297,8 +297,8 @@ example7 = Program {
         exitOf 1 = 5
         exitOf 2 = 7
         tcfg = mkGraph (genLNodes 1 7)  $
-                       [(1,2,nop), (2,3,nop), (3,4,Read "h" stdIn),(4,5,Print unused stdOut)]
-                   ++  [(2,6,Spawn),(6,7,Print unused stdOut)]
+                       [(1,2,nop), (2,3,nop), (3,4,Read "h" stdIn),(4,5,Print (Var unused) stdOut)]
+                   ++  [(2,6,Spawn),(6,7,Print (Var unused) stdOut)]
 
 
 {-
@@ -393,11 +393,11 @@ example8 = Program {
                         (13,14, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
                         (14,15, Assign "tmp2" (Plus (Var "tmp2") (Val (-1)))),
                         (15,13, nop),
-                        (16,17, Print "one" stdOut),
+                        (16,17, Print (Val 1) stdOut),
 
                         (201,202, Assign "tmp2" (Val 100)),
 
-                        (301,302, Print "zero" stdOut)]
+                        (301,302, Print (Val 0) stdOut)]
 
 
 {-
@@ -472,8 +472,8 @@ example8' = Program {
         tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..23] ++ [201..202] ++ [301..302]]  $
                        [( 1,23,nop),
                         (23,20,Read "h" stdIn),
-                        (20,21, Assign "zero" (Val 0)),
-                        (21,22, Assign "one" (Val 1)),
+                        (20,21, Assign "zero" (Val 0)), -- TODO: entfernen
+                        (21,22, Assign "one" (Val 1)),  -- TODO: entfernen
                         (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq (Var "h") (Var "h"))),
                                                      (2,4, Guard True  (Leq (Var "h") (Var "h"))),
                         (4,5,Assign "tmp" (Val 100)),
@@ -492,11 +492,11 @@ example8' = Program {
                         (13,14, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
                         (14,15, Assign "tmp2" (Plus (Var "tmp2") (Val (-1)))),
                         (15,13, nop),
-                        (16,17, Print "one" stdOut),
+                        (16,17, Print (Val 1) stdOut),
 
                         (201,202, nop),
 
-                        (301,302, Print "zero" stdOut)]
+                        (301,302, Print (Val 0) stdOut)]
 
 {-
 1 void main ( ) :
@@ -652,7 +652,7 @@ noFlow = p { clInit = defaultClassification (tcfg p) }
            Skip                          `Seq`
            ReadFromChannel "h" stdIn     `Seq`
            Ass             "x" (Val 42)  `Seq`
-           PrintToChannel  "x" stdOut
+           PrintToChannel  (Var "x") stdOut
           )
          ]
 
@@ -663,7 +663,7 @@ directFlow = p { clInit = defaultClassification (tcfg p) }
           (1,
            Skip                          `Seq`
            ReadFromChannel "h" stdIn     `Seq`
-           PrintToChannel  "h" stdOut
+           PrintToChannel  (Var "h")  stdOut
           )
          ]
 
@@ -678,7 +678,7 @@ directFlowThread = p { clInit = defaultClassification (tcfg p) }
            SpawnThread 2
           ),
           (2,
-           PrintToChannel "x" stdOut
+           PrintToChannel (Var "x") stdOut
           )
          ]
 
@@ -694,7 +694,7 @@ noDirectFlowThread = p { clInit = defaultClassification (tcfg p) }
            SpawnThread 2
           ),
           (2,
-           PrintToChannel "x" stdOut
+           PrintToChannel (Var "x") stdOut
           )
          ]
 
@@ -710,7 +710,7 @@ indirectFlow = p { clInit = defaultClassification (tcfg p) }
            If (Leq (Var "h") (Val 0))
               (Ass "x" (Val 17))
               (Skip)                     `Seq`
-           PrintToChannel  "x" stdOut
+           PrintToChannel (Var "x") stdOut
           )
          ]
 
@@ -720,17 +720,16 @@ orderConflict = p { clInit = defaultClassification (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
-           Ass "x" (Val 42)              `Seq`
-           Ass "y" (Val 17)              `Seq`
+           Skip                          `Seq`
            SpawnThread 2                 `Seq`
            ReadFromChannel "h" stdIn     `Seq`
            If (Leq (Var "h") (Val 0))
               (Skip `Seq` Skip)
               (Skip)                     `Seq`
-           PrintToChannel "x" stdOut
+           PrintToChannel (Val 17) stdOut
           ),
           (2,
-           PrintToChannel "y" stdOut
+           PrintToChannel (Val 42) stdOut
           )
          ]
 
@@ -750,10 +749,10 @@ dubiousOrderConflict = p { clInit = defaultClassification (tcfg p) }
            If (Leq (Var "h") (Val 0))
               (Skip `Seq` Skip)
               (Skip)                     `Seq`
-           PrintToChannel "x" stdOut
+           PrintToChannel (Var "x") stdOut
           ),
           (2,
-           PrintToChannel "y" stdOut
+           PrintToChannel (Var "y") stdOut
           )
          ]
 
@@ -775,9 +774,67 @@ cdomIsBroken = p { clInit = defaultClassification (tcfg p) }
           ),
           (2,
            Skip                                                             `Seq`
-           PrintToChannel "x" stdOut
+           PrintToChannel (Var "x") stdOut
           )
          ]
+
+
+{-
+cdomIsBroken' ist PNI-unsicher (s.u).
+cdomIsBroken' ist ein Beispiel für unsounde, bei der "timingClassification"-Analyse berechnete clt-Informationen,
+wenn man cdomChef (statt: cdomMohrEtAl) verwendet.
+
+> showCounterExamplesPniFor cdomIsBroken' defaultInput defaultInput'
+i  = fromList [("stdIn",[1,2,1,2,1])] ...     i' = fromList [("stdIn",[-1,-2,-1,-2,-1])] ... 
+-----------------
+p  = 57 % 64 ≃ 0.890625                                  p' = 2015 % 2048 ≃ 0.98388671875
+fromList []
+---(17,PrintEvent 1 "stdOut")-->
+fromList []
+fromList []
+---(18,PrintEvent 2 "stdOut")-->
+fromList []
+fromList []
+---(17,PrintEvent 1 "stdOut")-->
+fromList []
+fromList []
+---(18,PrintEvent 2 "stdOut")-->
+fromList []
+-----------------
+p  = 7 % 64 ≃ 0.109375                                  p' = 33 % 2048 ≃ 0.01611328125
+fromList []
+---(17,PrintEvent 1 "stdOut")-->
+fromList []
+fromList []
+---(17,PrintEvent 1 "stdOut")-->
+fromList []
+fromList []
+---(18,PrintEvent 2 "stdOut")-->
+fromList []
+fromList []
+---(18,PrintEvent 2 "stdOut")-->
+fromList []
+-}
+cdomIsBroken' :: Program Gr
+cdomIsBroken' = p { clInit = defaultClassification (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           SpawnThread 2                                                    `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
+              (Skip)                                                        `Seq`
+           SpawnThread 2
+          ),
+          (2,
+           Skip                                                             `Seq`
+           PrintToChannel (Val 1) stdOut                                    `Seq`
+           PrintToChannel (Val 2) stdOut
+          )
+         ]
+
 
 
 cdomIsBroken2 :: Program Gr
@@ -786,19 +843,17 @@ cdomIsBroken2 = p { clInit = defaultClassification (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "x" (Val 42)                                                 `Seq`
-           Ass "y" (Val 17)                                                 `Seq`
            ReadFromChannel "h" stdIn                                        `Seq`
            ForC 2 (
               If (Leq (Var "h") (Val 0))
                 (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
                 (Skip)                                                      `Seq`
-              PrintToChannel "x" stdOut                                     `Seq`
+              PrintToChannel (Val 42) stdOut                                `Seq`
               SpawnThread 2
            )
           ),
           (2,
            Skip                                                             `Seq`
-           PrintToChannel "y" stdOut
+           PrintToChannel (Val 17) stdOut
           )
          ]

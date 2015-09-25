@@ -67,8 +67,8 @@ useV (Neg x)     = useV x
 
 data CFGEdge = Guard  Bool BoolFunction
              | Assign Var  VarFunction
-             | Read   Var  InputChannel
-             | Print  Var  OutputChannel
+             | Read   Var          InputChannel
+             | Print  VarFunction  OutputChannel
              | Spawn
              deriving (Show, Eq, Ord)
 
@@ -78,7 +78,7 @@ useE (Guard   _ bf) = useB bf
 useE (Assign  _ vf) = useV vf
 useE (Read    _ _)  = Set.empty
 useE Spawn          = Set.empty
-useE (Print x _)    = Set.singleton x
+useE (Print vf _)   = useV vf
 
 
 defE :: CFGEdge -> Set Var
@@ -112,7 +112,7 @@ nopread :: CFGEdge
 nopread = Read unused $ stdIn
 
 nopPrint :: CFGEdge
-nopPrint = Print unused $ stdOut
+nopPrint = Print (Var unused) $ stdOut
 
 spawn :: CFGEdge
 spawn = Spawn
@@ -149,9 +149,9 @@ fromEdge :: GlobalState -> Input -> CFGEdge -> Event
 fromEdge σ i (Guard b bf)
   | b == evalB σ bf = Tau
   | otherwise       = undefined
-fromEdge σ i (Assign x vf) = Tau
-fromEdge σ i (Read   x ch) = ReadEvent  (head $ i ! ch)   ch
-fromEdge σ i (Print  x ch) = PrintEvent (evalV σ (Var x)) ch
+fromEdge σ i (Assign x  vf) = Tau
+fromEdge σ i (Read   x  ch) = ReadEvent  (head $ i ! ch)   ch
+fromEdge σ i (Print  vf ch) = PrintEvent (evalV σ vf) ch
 fromEdge σ i (Spawn      ) = Tau
 
 

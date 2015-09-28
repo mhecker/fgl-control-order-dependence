@@ -125,7 +125,7 @@ isSecureTimingClassification  p@(Program{ tcfg, observability }) =
   where (cl,clt) = timingClassification p
         mhp = mhpFor p
 
-isSecureTimingClassificationSimple p = isSecureTimingClassificationFor cl clt
+isSecureTimingClassificationSimple p = isSecureTimingClassificationFor cl clt p
   where (cl,clt) = timingClassificationSimple p
 
 -- TODO: via ⊑ formulieren

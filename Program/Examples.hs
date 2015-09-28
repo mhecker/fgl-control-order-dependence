@@ -786,7 +786,7 @@ cdomIsBroken = p { observability = defaultObservability (tcfg p) }
 
 {-
 cdomIsBroken' ist PNI-unsicher (s.u).
-cdomIsBroken' ist ein Beispiel für ein Programm, dass bei der "timingClassification"-Analyse fälschlicheweise als berechnete clt-Informationen,
+cdomIsBroken' ist ein Beispiel für ein Programm, dass bei der "timingClassification"-Analyse fälschlicheweise als sicher akzeptiert wird,
 wenn man cdomChef (statt: cdomMohrEtAl) verwendet.
 
 > showCounterExamplesPniFor cdomIsBroken' defaultInput defaultInput'

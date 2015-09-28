@@ -45,7 +45,7 @@ dependenceAnalysis vars = DataflowAnalysis {
   transfer e@(_,_,Assign x _) reachingDefs = Map.insert x (Set.singleton e) reachingDefs
   transfer e@(_,_,Read   x _) reachingDefs = Map.insert x (Set.singleton e) reachingDefs
   transfer e@(_,_,Print  _ _) reachingDefs = reachingDefs
-  transfer e@(_,_,Spawn)       _           = Map.empty
+  transfer e@(_,_,Spawn)      reachingDefs = reachingDefs
   transfer e@(_,_,NoOp)       reachingDefs = reachingDefs
 
 
@@ -72,8 +72,5 @@ dataDependenceGraph graph vars entry = mkGraph (labNodes graph) [ (n,n',DataDepe
 
 
 dataDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-dataDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
-    foldr mergeTwoGraphs empty [ dataDependenceGraph (nfilter (\node -> staticThreadOf node == thread) tcfg)
-                                                     (vars p)
-                                                     (entryOf thread)
-                                 | thread <- Set.toList staticThreads ]
+dataDependenceGraphP p@(Program { tcfg, staticThreadOf, mainThread, entryOf}) =
+    dataDependenceGraph tcfg (vars p) (entryOf mainThread)

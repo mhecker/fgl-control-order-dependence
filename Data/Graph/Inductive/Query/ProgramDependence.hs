@@ -19,29 +19,26 @@ import qualified Data.Set as Set
 import IRLSOD
 import Program
 
-programDependenceGraph :: DynGraph gr => gr CFGNode CFGEdge -> Set Var -> Node -> CFGEdge -> Node -> gr CFGNode Dependence
-programDependenceGraph graph vars entry label exit = mergeTwoGraphs cdeps ddeps
-  where cdeps = controlDependenceGraph graph entry label exit
-        ddeps = dataDependenceGraph    graph vars entry
-
 
 programDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 programDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
-    insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $ 
-    foldr mergeTwoGraphs empty $ [ programDependenceGraph (cfg p thread)
-                                                          (vars p)
+    insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
+    foldr mergeTwoGraphs empty $ [ ddeps ] ++ 
+                                 [ controlDependenceGraph (cfg p thread)
                                                           (entryOf thread)
                                                           (false)
                                                           (exitOf thread)
-                                   | thread <- Set.toList staticThreads ]
+                                 | thread <- Set.toList staticThreads ]
+  where ddeps = dataDependenceGraphP p
 
 concurrentProgramDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 concurrentProgramDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
     insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
-    foldr mergeTwoGraphs tdeps $ [ programDependenceGraph (cfg p thread)
-                                                          (vars p)
+    foldr mergeTwoGraphs empty $ [ tdeps, ddeps] ++
+                                 [ controlDependenceGraph (cfg p thread)
                                                           (entryOf thread)
                                                           (false)
                                                           (exitOf thread)
-                                   | thread <- Set.toList staticThreads ]
+                                 | thread <- Set.toList staticThreads ]
   where tdeps = interThreadDependenceGraphP p
+        ddeps = dataDependenceGraphP p

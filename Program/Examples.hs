@@ -24,16 +24,19 @@ import Data.Set.Unicode
 defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]) ]
 defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]) ]
 
-defaultChannelClassification channel
+defaultChannelObservability channel
  | channel == stdIn  = High
  | channel == stdOut = Low
  | otherwise = error $ "unknown channel: " ++ channel
 
-defaultClassification :: Graph gr => gr CFGNode CFGEdge -> Node -> SecurityLattice
-defaultClassification gr n = (∐) (fmap cl (lsuc gr n))
-  where cl (n',Print _ channel) = defaultChannelClassification channel
-        cl (n',Read  _ channel) = defaultChannelClassification channel
-        cl _                    =  Undefined
+defaultObservability :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification
+defaultObservability gr n
+   | levels == [] = Nothing
+   | otherwise    = Just $ (∐) levels
+  where levels = [ level | (n',e) <- lsuc gr n, Just level <- [obs (n',e)]]
+        obs (n',Print _ channel) = Just $ defaultChannelObservability channel
+        obs (n',Read  _ channel) = Just $ defaultChannelObservability channel
+        obs _                    = Nothing
 
 
 {-    1
@@ -53,7 +56,7 @@ example1 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n 
          | n `elem` [1,2,7,8,9,10,11,12] = 1 
@@ -89,7 +92,7 @@ example2 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n 
          | n `elem` [1..12] = 1 
@@ -122,7 +125,7 @@ example2' = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n 
          | n `elem` [1..12] = 1 
@@ -148,7 +151,7 @@ example3 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` [1,2,5,6,7] = 1
@@ -181,7 +184,7 @@ example4 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..7] ++ [10]) = 1
@@ -212,7 +215,7 @@ example5 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..7] ++ [10]) = 1
@@ -250,7 +253,7 @@ example6 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..8]   ++ [11,12]) = 1
@@ -286,7 +289,7 @@ example7 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..5]) = 1
@@ -357,7 +360,7 @@ example8 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..17] ++ [20..23]) = 1
@@ -456,7 +459,7 @@ example8' = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..17] ++ [20..23]) = 1
@@ -519,7 +522,7 @@ threadSpawn1 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` [1,2,3,7] = 1
@@ -559,7 +562,7 @@ threadSpawn2 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = defaultClassification tcfg
+    observability = defaultObservability tcfg
    }
   where staticThreadOf n
          | n `elem` [1,2,3,4] = 1
@@ -593,7 +596,7 @@ threadSpawn2 = Program {
   }
 -}
 joachim2 :: Program Gr
-joachim2 = p { clInit = defaultClassification (tcfg p) }
+joachim2 = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -620,7 +623,7 @@ joachim2 = p { clInit = defaultClassification (tcfg p) }
   }                      || L=0;   || L=1;
 -}
 joachim3 :: Program Gr
-joachim3 = p { clInit = defaultClassification (tcfg p) }
+joachim3 = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -645,7 +648,7 @@ joachim3 = p { clInit = defaultClassification (tcfg p) }
 
 
 noFlow :: Program Gr
-noFlow = p { clInit = defaultClassification (tcfg p) }
+noFlow = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -657,7 +660,7 @@ noFlow = p { clInit = defaultClassification (tcfg p) }
          ]
 
 directFlow :: Program Gr
-directFlow = p { clInit = defaultClassification (tcfg p) }
+directFlow = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -668,7 +671,7 @@ directFlow = p { clInit = defaultClassification (tcfg p) }
          ]
 
 directFlowThread :: Program Gr
-directFlowThread = p { clInit = defaultClassification (tcfg p) }
+directFlowThread = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -684,7 +687,7 @@ directFlowThread = p { clInit = defaultClassification (tcfg p) }
 
 
 noDirectFlowThread :: Program Gr
-noDirectFlowThread = p { clInit = defaultClassification (tcfg p) }
+noDirectFlowThread = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -700,7 +703,7 @@ noDirectFlowThread = p { clInit = defaultClassification (tcfg p) }
 
 
 indirectFlow :: Program Gr
-indirectFlow = p { clInit = defaultClassification (tcfg p) }
+indirectFlow = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -716,7 +719,7 @@ indirectFlow = p { clInit = defaultClassification (tcfg p) }
 
 
 orderConflict :: Program Gr
-orderConflict = p { clInit = defaultClassification (tcfg p) }
+orderConflict = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -738,7 +741,7 @@ orderConflict = p { clInit = defaultClassification (tcfg p) }
 -- da man wohl nicht annehmen sollte, dass bei einer Output-Anweisung sichtbar ist, welche variable ausgelesen wird.
 -- In unserm modell ist das aber so!
 dubiousOrderConflict :: Program Gr
-dubiousOrderConflict = p { clInit = defaultClassification (tcfg p) }
+dubiousOrderConflict = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -758,7 +761,7 @@ dubiousOrderConflict = p { clInit = defaultClassification (tcfg p) }
 
 
 cdomIsBroken :: Program Gr
-cdomIsBroken = p { clInit = defaultClassification (tcfg p) }
+cdomIsBroken = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -781,13 +784,13 @@ cdomIsBroken = p { clInit = defaultClassification (tcfg p) }
 
 {-
 cdomIsBroken' ist PNI-unsicher (s.u).
-cdomIsBroken' ist ein Beispiel für unsounde, bei der "timingClassification"-Analyse berechnete clt-Informationen,
+cdomIsBroken' ist ein Beispiel für ein Programm, dass bei der "timingClassification"-Analyse fälschlicheweise als berechnete clt-Informationen,
 wenn man cdomChef (statt: cdomMohrEtAl) verwendet.
 
 > showCounterExamplesPniFor cdomIsBroken' defaultInput defaultInput'
 i  = fromList [("stdIn",[1,2,1,2,1])] ...     i' = fromList [("stdIn",[-1,-2,-1,-2,-1])] ... 
 -----------------
-p  = 57 % 64 ≃ 0.890625                                  p' = 2015 % 2048 ≃ 0.98388671875
+p  = 57 % 64 ≃ 0.89062                                  p' = 2015 % 2048 ≃ 0.98389
 fromList []
 ---(17,PrintEvent 1 "stdOut")-->
 fromList []
@@ -801,7 +804,7 @@ fromList []
 ---(18,PrintEvent 2 "stdOut")-->
 fromList []
 -----------------
-p  = 7 % 64 ≃ 0.109375                                  p' = 33 % 2048 ≃ 0.01611328125
+p  = 7 % 64 ≃ 0.10938                                  p' = 33 % 2048 ≃ 0.01611
 fromList []
 ---(17,PrintEvent 1 "stdOut")-->
 fromList []
@@ -816,7 +819,7 @@ fromList []
 fromList []
 -}
 cdomIsBroken' :: Program Gr
-cdomIsBroken' = p { clInit = defaultClassification (tcfg p) }
+cdomIsBroken' = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -838,7 +841,7 @@ cdomIsBroken' = p { clInit = defaultClassification (tcfg p) }
 
 
 cdomIsBroken2 :: Program Gr
-cdomIsBroken2 = p { clInit = defaultClassification (tcfg p) }
+cdomIsBroken2 = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,

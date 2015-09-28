@@ -149,26 +149,22 @@ fromEdge σ i (Spawn      ) = Tau
 fromEdge σ i (NoOp       ) = Tau
 
 
-data SecurityLattice = Undefined | Low | High deriving (Show, Ord, Eq, Bounded, Enum)
+data SecurityLattice = Low | High deriving (Show, Ord, Eq, Bounded, Enum)
 
 instance JoinSemiLattice SecurityLattice where
-  Undefined `join` x = x
-  Low       `join` Undefined = Low
   Low       `join` x         = x
   High      `join` x         = High
 
 instance MeetSemiLattice SecurityLattice where
-  Undefined `meet` x = Undefined
-  Low `meet` Undefined = Undefined
   Low `meet` x = Low
   High `meet` x = x
 
 instance BoundedJoinSemiLattice SecurityLattice where
-  bottom = Undefined
+  bottom = Low
 
 
 -- type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
-type ProgramClassification = Node -> SecurityLattice
+type ObservationalSpecification = Node -> Maybe SecurityLattice
 
 type ExecutionTrace = [(Configuration, (Node,Event), Configuration)]
 type Trace          = [(GlobalState,   (Node,Event), GlobalState)]
@@ -221,12 +217,12 @@ toTrace eTrace = [ (σ, o, σ') | ((_,σ,_), o, (_,σ',_)) <- eTrace ]
 
 
 
-observable :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace
-observable icfg cl l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (def icfg n)) | (σ, (n,e), σ') <- trace, cl n == l ] -- TODO: je nach interpretation, was "cl n" bedeutet, muss man hier  cl n <= l statt == verwenden
+observable :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> SecurityLattice -> Trace -> Trace
+observable icfg obs l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (def icfg n)) | (σ, (n,e), σ') <- trace, Just l' <- [obs n], l' ⊑ l ]
   where restrict σ vars = Map.filterWithKey (\var _ -> var ∈ vars) σ
 
-(≈) :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> SecurityLattice -> Trace -> Trace -> Bool
-(≈) icfg cl l t t' = (observable icfg cl l t) == (observable icfg cl l t')
+(≈) :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> SecurityLattice -> Trace -> Trace -> Bool
+(≈) icfg obs l t t' = (observable icfg obs l t) == (observable icfg obs l t')
 
 
 -- lsod :: Graph gr => 

@@ -37,20 +37,20 @@ prob gr (((control,σ,i), o, (control',σ',i')) : trace)
   where successors = [(o,(control,σ)) | (o,(control,σ,i)) <- eventStep gr (control,σ,i)]
 
 
-probability :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> ExecutionTrace -> Rational
-probability graph cl executions e = sum $ [ prob graph e' | e' <- executions, let (t,t') = (toTrace e, toTrace e'),
-                                                            t ∼ t' ]
-  where (∼) = (≈) graph cl Low
+probability :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> ExecutionTrace -> Rational
+probability graph obs executions e = sum $ [ prob graph e' | e' <- executions, let (t,t') = (toTrace e, toTrace e'),
+                                                             t ∼ t' ]
+  where (∼) = (≈) graph obs Low
 
-secureWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> [ExecutionTrace] -> Bool
-secureWithRegardTo graph cl θ θ' =
+secureWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> [ExecutionTrace] -> Bool
+secureWithRegardTo graph obs θ θ' =
       (∀) (θ ++ θ') (\e -> p e == p' e)
-  where p  = probability graph cl θ
-        p' = probability graph cl θ'
+  where p  = probability graph obs θ
+        p' = probability graph obs θ'
 
 
 pniFor :: Graph gr => Program gr -> Input -> Input -> Bool
-pniFor program@(Program { tcfg, clInit }) i i' = secureWithRegardTo tcfg clInit θ θ'
+pniFor program@(Program { tcfg, observability }) i i' = secureWithRegardTo tcfg observability θ θ'
   where θ  = allFinishedExecutionTraces program i
         θ' = allFinishedExecutionTraces program i'
 
@@ -73,15 +73,15 @@ showCounterExamplesPniFor program i i' = do
       )
     )
 
-counterExamplesWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ProgramClassification -> [ExecutionTrace] -> [ExecutionTrace] -> [(Rational,Rational,Trace)]
-counterExamplesWithRegardTo graph cl θ θ' =
-      nub $ [ (p e,p' e, observable graph cl Low (toTrace e)) | e <- (θ ++ θ'), p e /= p' e]
-  where p  = probability graph cl θ
-        p' = probability graph cl θ'
+counterExamplesWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> [ExecutionTrace] -> [(Rational,Rational,Trace)]
+counterExamplesWithRegardTo graph obs θ θ' =
+      nub $ [ (p e,p' e, observable graph obs Low (toTrace e)) | e <- (θ ++ θ'), p e /= p' e]
+  where p  = probability graph obs θ
+        p' = probability graph obs θ'
 
 
 counterExamplesPniFor :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
-counterExamplesPniFor program@(Program { tcfg, clInit }) i i' = counterExamplesWithRegardTo tcfg clInit θ θ'
+counterExamplesPniFor program@(Program { tcfg, observability }) i i' = counterExamplesWithRegardTo tcfg observability θ θ'
   where θ  = allFinishedExecutionTraces program i
         θ' = allFinishedExecutionTraces program i'
 

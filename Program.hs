@@ -21,7 +21,7 @@ data Program gr = Program {
     mainThread :: StaticThread,
     entryOf :: StaticThread -> Node,
     exitOf  :: StaticThread -> Node,
-    clInit :: Node -> SecurityLattice
+    observability :: ObservationalSpecification
 }
 
 -- | generate list of labeled nodes

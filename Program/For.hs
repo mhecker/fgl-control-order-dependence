@@ -156,7 +156,7 @@ compileAllToProgram code = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    clInit = error "clInit noch nicht definiert"
+    observability = error "observability noch nicht definiert"
    }
   where staticThreadOf n = fromJust $
           find (\t -> let (_,_,_,nodes) = compiledCode ! t in n `elem` nodes)

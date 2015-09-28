@@ -35,12 +35,16 @@ import Data.Graph.Inductive.Query.DataConflict
 import Data.Graph.Inductive.Query.TimingDependence
 
 import IRLSOD
+-- import Unicode
 
 
+clInitFrom :: (Node -> Maybe SecurityLattice) -> (Node -> SecurityLattice)
+clInitFrom observability n
+  | Nothing <- observability n = (⊥)
+  | Just l  <- observability n = l
 
-
-minimalClassification p@(Program { tcfg, clInit }) =
-  (㎲⊒) (Map.fromList [ (n, clInit n) | n <- nodes tcfg ])
+minimalClassification p@(Program { tcfg, observability }) =
+  (㎲⊒) (Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ])
     (\cl -> cl ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
                                | n <- nodes tcfg])
                ⊔ (Map.fromList [ (n,(∐) [ cl ! c' | m <- Set.toList $ mhp ! n, let c = idom ! (n,m),  c' <- Set.toList $ chop c n])
@@ -59,9 +63,9 @@ minimalClassification p@(Program { tcfg, clInit }) =
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
 
-timingClassification p@(Program { tcfg, clInit }) =
-  (㎲⊒) (Map.fromList [ (n, clInit n)      | n <- nodes tcfg ],
-         Map.fromList [ ((n,m), Undefined) | ((n,m), True) <- Map.assocs mhp ])
+timingClassification p@(Program { tcfg, observability }) =
+  (㎲⊒) (Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ],
+         Map.fromList [ ((n,m), (⊥))  | ((n,m), True) <- Map.assocs mhp ])
     (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
                                        | n <- nodes tcfg])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,n)) | m <- pre dataConflictGraph n])
@@ -86,9 +90,9 @@ timingClassification p@(Program { tcfg, clInit }) =
 
 
 
-timingClassificationSimple p@(Program { tcfg, clInit }) =
-  (㎲⊒) (Map.fromList [ (n, clInit n)  | n <- nodes tcfg ],
-         Map.fromList [ (n, Undefined) | n <- nodes tcfg ])
+timingClassificationSimple p@(Program { tcfg, observability }) =
+  (㎲⊒) (Map.fromList [ (n, clInitFrom observability n)  | n <- nodes tcfg ],
+         Map.fromList [ (n, (⊥))       | n <- nodes tcfg ])
     (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
                                        | n <- nodes tcfg])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! m) ⊔ (clt ! n) | m <- pre dataConflictGraph n])
@@ -106,17 +110,17 @@ timingClassificationSimple p@(Program { tcfg, clInit }) =
 
 
 
-
-isSecureTimingClassification  p@(Program{ tcfg, clInit }) =
-       ((∀) (Set.fromList [ n    | n <- nodes tcfg, clInit n == Low])
-            (\n -> clInit n == cl ! n)
+-- TODO: via ⊑ formulieren
+isSecureTimingClassification  p@(Program{ tcfg, observability }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> cl ! n == Low)
        )
-    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
-                                   m <- nodes tcfg, clInit m == Low,
+    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
+                                   m <- nodes tcfg, observability m == Just Low,
                                    mhp ! (n,m)
                           ]
             )
-            (\(n,m) -> (clt ! (n,m) == Low)) -- TODO: via ⊑ formulieren
+            (\(n,m) -> (clt ! (n,m) == Low)) 
        )
   where (cl,clt) = timingClassification p
         mhp = mhpFor p
@@ -124,27 +128,29 @@ isSecureTimingClassification  p@(Program{ tcfg, clInit }) =
 isSecureTimingClassificationSimple p = isSecureTimingClassificationFor cl clt
   where (cl,clt) = timingClassificationSimple p
 
-isSecureTimingClassificationFor cl clt p@(Program{ tcfg, clInit }) =
-       ((∀) (Set.fromList [ n    | n <- nodes tcfg, clInit n == Low])
-            (\n -> clInit n == cl ! n) -- TODO: via ⊑ formulieren
+-- TODO: via ⊑ formulieren
+isSecureTimingClassificationFor cl clt p@(Program{ tcfg, observability }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> cl ! n == Low)
        )
-    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
-                                   m <- nodes tcfg, clInit m == Low,
+    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
+                                   m <- nodes tcfg, observability m == Just Low,
                                    mhp ! (n,m)
-                           ]
+                          ]
             )
-            (\(n,m) -> (clt ! m == Low) ∧ (clt ! m == Low)) -- TODO: via ⊑ formulieren
+            (\(n,m) -> (clt ! m == Low) ∧ (clt ! m == Low))
        )
   where mhp = mhpFor p
 
-isSecureTimingCombinedTimingClassification p@(Program{ tcfg, clInit }) =
-       ((∀) (Set.fromList [ n    | n <- nodes tcfg, clInit n == Low])
-            (\n -> clInit n == cl ! n) -- TODO: via ⊑ formulieren
+ -- TODO: via ⊑ formulieren
+isSecureTimingCombinedTimingClassification p@(Program{ tcfg, observability }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> cl ! n == Low)
        )
-    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
-                                   m <- nodes tcfg, clInit m == Low,
+    && ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
+                                   m <- nodes tcfg, observability m == Just Low,
                                    mhp ! (n,m)
-                           ]
+                          ]
             )
             (\(n,m) ->   (  (clt ! n == Low ) ∧ (clt ! m == Low ))
                       ∨  (  (clt ! n == Low ) ∧ (clt ! m == High) ∧ False) -- Jürgen sagt: in diesem fall würde ein check nix bringen, siehe "jürgenConjecture
@@ -164,15 +170,15 @@ isSecureTimingCombinedTimingClassification p@(Program{ tcfg, clInit }) =
         dataConflictGraph = dataConflictGraphP p
         timing = timingDependenceGraphP p
         chop :: Node -> Node -> Set Node
-        chop s t =   (Set.fromList $ suc trnsclos s)
+        chop s t =  (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
 
-jürgenConjecture p@(Program{ tcfg, clInit }) =
-        (∀) (Set.fromList [(n,m) | n <- nodes tcfg, clInit n == Low,
-                                   m <- nodes tcfg, clInit m == Low,
+jürgenConjecture p@(Program{ tcfg, observability }) =
+        (∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
+                                   m <- nodes tcfg, observability m == Just Low,
                                    mhp ! (n,m)
-                           ]
+                          ]
             )
             (\(n,m) -> (((clt ! n == Low) ∧ (clt ! m == High))
                         →

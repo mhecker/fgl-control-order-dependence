@@ -46,6 +46,7 @@ dependenceAnalysis vars = DataflowAnalysis {
   transfer e@(_,_,Read   x _) reachingDefs = Map.insert x (Set.singleton e) reachingDefs
   transfer e@(_,_,Print  _ _) reachingDefs = reachingDefs
   transfer e@(_,_,Spawn)       _           = Map.empty
+  transfer e@(_,_,NoOp)       reachingDefs = reachingDefs
 
 
 

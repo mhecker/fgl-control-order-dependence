@@ -19,9 +19,6 @@ type Val = Integer
 type InputChannel = String
 type OutputChannel = String
 
-unused :: Var
-unused = "unused"
-
 stdIn :: InputChannel
 stdIn = "stdIn"
 
@@ -69,6 +66,7 @@ data CFGEdge = Guard  Bool BoolFunction
              | Assign Var  VarFunction
              | Read   Var          InputChannel
              | Print  VarFunction  OutputChannel
+             | NoOp
              | Spawn
              deriving (Show, Eq, Ord)
 
@@ -79,7 +77,7 @@ useE (Assign  _ vf) = useV vf
 useE (Read    _ _)  = Set.empty
 useE Spawn          = Set.empty
 useE (Print vf _)   = useV vf
-
+useE NoOp           = Set.empty
 
 defE :: CFGEdge -> Set Var
 defE (Guard   _ _) = Set.empty
@@ -87,6 +85,7 @@ defE (Assign  x _) = Set.singleton x
 defE (Read    x _) = Set.singleton x
 defE Spawn         = Set.empty
 defE (Print   _ _) = Set.empty
+defE NoOp          = Set.empty
 
 use :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
 use gr n = Set.unions [ useE e | (n',e) <- lsuc gr n ]
@@ -103,16 +102,10 @@ false :: CFGEdge
 false = Guard False $ CTrue
 
 nop :: CFGEdge
-nop = Assign unused $ Val 42
-
-nopuse :: CFGEdge
-nopuse = Assign unused $ Var unused
-
-nopread :: CFGEdge
-nopread = Read unused $ stdIn
+nop = NoOp
 
 nopPrint :: CFGEdge
-nopPrint = Print (Var unused) $ stdOut
+nopPrint = Print (Val 42) $ stdOut
 
 spawn :: CFGEdge
 spawn = Spawn
@@ -153,6 +146,7 @@ fromEdge σ i (Assign x  vf) = Tau
 fromEdge σ i (Read   x  ch) = ReadEvent  (head $ i ! ch)   ch
 fromEdge σ i (Print  vf ch) = PrintEvent (evalV σ vf) ch
 fromEdge σ i (Spawn      ) = Tau
+fromEdge σ i (NoOp       ) = Tau
 
 
 data SecurityLattice = Undefined | Low | High deriving (Show, Ord, Eq, Bounded, Enum)
@@ -217,6 +211,7 @@ stepFor (Assign x vf) (σ,i)  = [(Map.insert x (evalV σ vf)    σ, i)]
 stepFor (Read   x ch) (σ,i)  = [(Map.insert x (head $ i ! ch) σ, Map.adjust tail ch i)]
 stepFor (Print  x ch) (σ,i)  = [(σ,i)]
 stepFor (Spawn      ) (σ,i)  = undefined
+stepFor (NoOp       ) (σ,i)  = [(σ,i)]
 
 hide (a,b,c) = (a,b)
 

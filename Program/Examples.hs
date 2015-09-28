@@ -63,9 +63,9 @@ example1 = Program {
         entryOf 2 = 3
         exitOf 1 = 12
         exitOf 2 = 6
-        tcfg = mkGraph (genLNodes 1 12) $ 
-                        [(1,2,nop),(2,3,spawn),(3,4,false),(3,5,true),(4,6,Print (Var unused) stdOut),(5,6,nop)]
-                    ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,nopuse)]
+        tcfg = mkGraph (genLNodes 1 12) $
+                        [(1,2,Assign "x" (Val 42)),(2,3,spawn),(3,4,false),(3,5,true),(4,6,Print (Var "x") stdOut),(5,6,nop)]
+                    ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,Assign "x" (Var "x"))]
 
 
 {-    1
@@ -97,8 +97,8 @@ example2 = Program {
         entryOf 1 = 1
         exitOf 1 = 12
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(7,8,true),(8,9,nop),(9,7,nop),(7,10,false),(10,11,nopuse),(11,12,nop)]
+                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
+                   ++  [(7,8,true),(8,9,nop),(9,7,nop),(7,10,false),(10,11,Assign "x" (Var "x")),(11,12,nop)]
 
 
 
@@ -130,8 +130,8 @@ example2' = Program {
         entryOf 1 = 1
         exitOf 1 = 12
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,nop),(2,3,true),(2,4,false),(3,5,nop),(4,5,nop),(5,6,nopuse),(6,7,nop)]
-                   ++  [(7,8,nop),(8,9,nop),(9,10,nop),(10,7,false),(10,11,true),(11,12,nopuse)]
+                       [(1,2,Assign "x" (Val 42)),(2,3,true),(2,4,false),(3,5,nop),(4,5,nop),(5,6,Assign "x" (Var "x")),(6,7,nop)]
+                   ++  [(7,8,nop),(8,9,nop),(9,10,nop),(10,7,false),(10,11,true),(11,12,Assign "x" (Var "x"))]
 
 {-
      1
@@ -192,8 +192,8 @@ example4 = Program {
         exitOf 1 = 10
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 10)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(7,8,Spawn),(7,10,Print (Var unused) stdOut),(8,9,Print (Var unused) stdOut)]
+                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
+                   ++  [(7,8,Spawn),(7,10,Print (Var "x") stdOut),(8,9,Print (Var "x") stdOut)]
 
 
 {-          1
@@ -223,8 +223,8 @@ example5 = Program {
         exitOf 1 = 10
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 10)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(2,8,Spawn),(7,10,Print (Var unused) stdOut),(8,9,Print (Var unused) stdOut)]
+                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
+                   ++  [(2,8,Spawn),(7,10,Print (Var "x") stdOut),(8,9,Print (Var "x") stdOut)]
 
 
 
@@ -261,11 +261,11 @@ example6 = Program {
         exitOf 1 = 12
         exitOf 2 = 10
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,nop), (2,3,Read "h" stdIn),(3,4,true),(3,11,false),(11,12,Print (Var unused) stdOut),
+                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,true),(3,11,false),(11,12,Print (Var "x") stdOut),
                         (4,5,nop), (5,6,Guard True (Leq (Var "h") (Var "h"))),(5,7,Guard False (Leq (Var "h") (Var "h"))),
                                    (6,8,nop),                     (7,8,nop),
                         (8,3,nop),
-                        (8,9,Spawn),(9,10,Print (Var unused) stdOut)]
+                        (8,9,Spawn),(9,10,Print (Var "x") stdOut)]
 
 
 
@@ -297,8 +297,8 @@ example7 = Program {
         exitOf 1 = 5
         exitOf 2 = 7
         tcfg = mkGraph (genLNodes 1 7)  $
-                       [(1,2,nop), (2,3,nop), (3,4,Read "h" stdIn),(4,5,Print (Var unused) stdOut)]
-                   ++  [(2,6,Spawn),(6,7,Print (Var unused) stdOut)]
+                       [(1,2,Assign "x" (Val 42)), (2,3,nop), (3,4,Read "h" stdIn),(4,5,Print (Var "x") stdOut)]
+                   ++  [(2,6,Spawn),(6,7,Print (Var "x") stdOut)]
 
 
 {-

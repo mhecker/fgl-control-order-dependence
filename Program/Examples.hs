@@ -21,11 +21,13 @@ import qualified Data.Set as Set
 import Data.Set.Unicode
 
 
-defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]) ]
-defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]) ]
+defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]), (lowIn1, [1..]), (lowIn2, [1..]) ]
+defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]), (lowIn1, [1..]), (lowIn2, [1..]) ]
 
 defaultChannelObservability channel
- | channel == stdIn  = High
+ | channel == stdIn     = High
+ | channel == lowIn1 = Low
+ | channel == lowIn2 = Low
  | channel == stdOut = Low
  | otherwise = error $ "unknown channel: " ++ channel
 
@@ -860,3 +862,40 @@ cdomIsBroken2 = p { observability = defaultObservability (tcfg p) }
            PrintToChannel (Val 17) stdOut
           )
          ]
+
+-- from: Noninterfering Schedulers, Andrei Popescu, Johannes Hölzl, and Tobias Nipkow
+-- http://dx.doi.org/10.1007/978-3-642-40206-7_18
+noninterferingSchedulers :: Program Gr
+noninterferingSchedulers = p { observability = defaultObservability (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           ForC 2 (
+              ReadFromChannel "l1" lowIn1                                   `Seq`
+              ReadFromChannel "l2" lowIn2                                   `Seq`
+              SpawnThread 42                                                `Seq`
+              SpawnThread 11                                                `Seq`
+              SpawnThread 12
+           )
+          ),
+          (42,
+           Skip                                                             `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
+              (Skip)                                                        `Seq`
+           Ass "h" (Var "h" `Plus` Var "l1" )
+          ),
+          (11,
+           Skip                                                             `Seq`
+           Ass "l" (Var "l1")                                               `Seq`
+           PrintToChannel (Var "l") stdOut
+          ),
+          (12,
+           Skip                                                             `Seq`
+           Ass "l" (Var "l2")                                               `Seq`
+           PrintToChannel (Var "l") stdOut
+          )
+         ]
+

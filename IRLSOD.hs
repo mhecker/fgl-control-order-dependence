@@ -25,6 +25,9 @@ stdIn = "stdIn"
 stdOut :: OutputChannel
 stdOut = "stdOut"
 
+lowIn1 = "lowIn1"
+lowIn2 = "lowIn2"
+
 type GlobalState = Map Var Val
 
 

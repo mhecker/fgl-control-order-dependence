@@ -899,3 +899,23 @@ noninterferingSchedulers = p { observability = defaultObservability (tcfg p) }
           )
          ]
 
+
+
+roundrobinIsBad :: Program Gr
+roundrobinIsBad = p { observability = defaultObservability (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
+              (Skip)                                                        `Seq`
+           SpawnThread 2                                                    `Seq`
+           PrintToChannel (Val 42) stdOut
+          ),
+          (2,
+           Skip                                                             `Seq`
+           PrintToChannel (Val 17) stdOut
+          )
+         ]

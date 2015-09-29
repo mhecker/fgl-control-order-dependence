@@ -30,23 +30,22 @@ import Text.Printf (printf)
 prob :: Graph gr => gr CFGNode CFGEdge -> ExecutionTrace -> Rational
 prob gr [] = 1
 prob gr (((control,σ,i), o, (control',σ',i')) : trace)
-    | length successors /= length control = error "nicht genau ein nachfolgezustand pro thread" -- TODO: genauer reingucken, obs wirklich für jeden Thread genau einen gibt
-    | otherwise                           = ( (if ((o,(control',σ')) `elem` successors) then 1 else 0) /
-                                              toRational (length successors) )
-                                            * prob gr trace
+    | length successors /= length control   = error "nicht genau ein nachfolgezustand pro thread" -- TODO: genauer reingucken, obs wirklich für jeden Thread genau einen gibt
+    | ((o,(control',σ')) `elem` successors) = (1 / toRational (length successors) ) * prob gr trace
+    | otherwise                             = 0
   where successors = [(o,(control,σ)) | (o,(control,σ,i)) <- eventStep gr (control,σ,i)]
 
 
-probability :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> ExecutionTrace -> Rational
-probability graph obs executions e = sum $ [ prob graph e' | e' <- executions, let (t,t') = (toTrace e, toTrace e'),
-                                                             t ∼ t' ]
+probability :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [(Rational,ExecutionTrace)] -> ExecutionTrace -> Rational
+probability graph obs executions e = sum $ [ p' | (p',e') <- executions, let (t,t') = (toTrace e, toTrace e'),
+                                                  t ∼ t' ]
   where (∼) = (≈) graph obs Low
 
 secureWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> [ExecutionTrace] -> Bool
 secureWithRegardTo graph obs θ θ' =
       (∀) (θ ++ θ') (\e -> p e == p' e)
-  where p  = probability graph obs θ
-        p' = probability graph obs θ'
+  where p  = probability graph obs [(prob graph e,e) | e <- θ ]
+        p' = probability graph obs [(prob graph e,e) | e <- θ']
 
 
 pniFor :: Graph gr => Program gr -> Input -> Input -> Bool
@@ -76,8 +75,8 @@ showCounterExamplesPniFor program i i' = do
 counterExamplesWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> [ExecutionTrace] -> [(Rational,Rational,Trace)]
 counterExamplesWithRegardTo graph obs θ θ' =
       nub $ [ (p e,p' e, observable graph obs Low (toTrace e)) | e <- (θ ++ θ'), p e /= p' e]
-  where p  = probability graph obs θ
-        p' = probability graph obs θ'
+  where p  = probability graph obs [(prob graph e,e) | e <- θ ]
+        p' = probability graph obs [(prob graph e,e) | e <- θ']
 
 
 counterExamplesPniFor :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]

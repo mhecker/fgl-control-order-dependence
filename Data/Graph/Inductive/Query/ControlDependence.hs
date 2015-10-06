@@ -14,9 +14,9 @@ import qualified Data.Set as Set
 import IRLSOD
 import Program
 
-import Data.Graph.Inductive.Basic
+import Data.Graph.Inductive.Basic 
 import Data.Graph.Inductive.Util
-import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dominators
 import Data.Graph.Inductive.Query.Dependence
 

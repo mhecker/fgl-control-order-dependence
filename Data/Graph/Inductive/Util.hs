@@ -3,7 +3,7 @@ module Data.Graph.Inductive.Util where
 import Util
 
 import Data.Maybe (fromJust)
-import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Query.DFS (scc)
 

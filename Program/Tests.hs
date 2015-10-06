@@ -55,3 +55,9 @@ showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
 
 
+-- main = showCounterExamplesPniFor' noninterferingSchedulers defaultInput defaultInput'
+main = do
+  let p = cdomIsBroken'
+  putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
+  putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput'
+  showCounterExamplesPniForEquiv p defaultInput defaultInput'

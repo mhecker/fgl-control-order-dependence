@@ -611,8 +611,8 @@ joachim2 = p { observability = defaultObservability (tcfg p) }
            SpawnThread 2                `Seq`
            SpawnThread 3
           ),
-          (2, Ass "l" (Val 0)),
-          (3, Ass "l" (Val 1)),
+          (2, PrintToChannel (Val 0) stdOut),
+          (3, PrintToChannel (Val 1) stdOut),
           (4, Skip                      `Seq`
               Skip                      `Seq`
               Skip
@@ -901,8 +901,8 @@ noninterferingSchedulers = p { observability = defaultObservability (tcfg p) }
 
 
 
-roundrobinIsBad :: Program Gr
-roundrobinIsBad = p { observability = defaultObservability (tcfg p) }
+figure5left :: Program Gr
+figure5left = p { observability = defaultObservability (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -917,5 +917,146 @@ roundrobinIsBad = p { observability = defaultObservability (tcfg p) }
           (2,
            Skip                                                             `Seq`
            PrintToChannel (Val 17) stdOut
+          )
+         ]
+
+figure5right :: Program Gr
+figure5right = p { observability = defaultObservability (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           Ass "tmp" (Val 0)                                                `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Ass "tmp" (Val 8))
+              (Skip)                                                        `Seq`
+           SpawnThread 2                                                    `Seq`
+           ForV "tmp" (
+             Skip
+           )                                                                `Seq`
+           Ass "tmp2" (Val 0)                                               `Seq`
+           SpawnThread 3                                                    `Seq`
+           ForV "tmp2" (
+             Skip
+           )                                                                `Seq`
+           PrintToChannel (Val 42) stdOut
+          ),
+          (2,
+           Skip                                                             `Seq`
+           Ass "tmp2" (Val 3)
+          ),
+          (3,
+           PrintToChannel (Val 17) stdOut
+          )
+         ]
+
+{-
+192575
+1171150
+i  = fromList [("lowIn1",[1,2,3,4,5]),("lowIn2",[1,2,3,4,5]),("stdIn",[1,2,1,2,1])] ...     i' = fromList [("lowIn1",[1,2,3,4,5]),("lowIn2",[1,2,3,4,5]),("stdIn",[-1,-2,-1,-2,-1])] ... 
+-----------------
+p  = 88570212217 % 1253826625536 ≃ 0.07064                                  p' = 3246863447557 % 164341563462254592 ≃ 0.00002
+fromList []
+---(21,PrintEvent 42 "stdOut")-->
+fromList []
+fromList []
+---(4,PrintEvent 17 "stdOut")-->
+fromList []
+-----------------
+p  = 1165256413319 % 1253826625536 ≃ 0.92936                                  p' = 164338316598807035 % 164341563462254592 ≃ 0.99998
+fromList []
+---(4,PrintEvent 17 "stdOut")-->
+fromList []
+fromList []
+---(21,PrintEvent 42 "stdOut")-->
+fromList []
+
+real    5m31.213s
+user    5m28.054s
+sys     0m2.974s
+-}
+figure5right' :: Program Gr
+figure5right' = p { observability = defaultObservability (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           Ass "tmp" (Val 0)                                                `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Ass "tmp" (Val 5))
+              (Skip)                                                        `Seq`
+           SpawnThread 2                                                    `Seq`
+           ForV "tmp" (
+             Skip
+           )                                                                `Seq`
+           Ass "tmp2" (Val 5)                                               `Seq`
+           SpawnThread 3                                                    `Seq`
+           ForV "tmp2" (
+             Skip
+           )                                                                `Seq`
+           PrintToChannel (Val 42) stdOut
+          ),
+          (2,
+           Skip                                                             `Seq`
+           Ass "tmp2" (Val 0)
+          ),
+          (3,
+           PrintToChannel (Val 17) stdOut
+          )
+         ]
+
+
+figure5right'' :: Program Gr
+figure5right'' = p { observability = defaultObservability (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           Ass "tmp" (Val 0)                                                `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Ass "tmp" (Val 10))
+              (Skip)                                                        `Seq`
+           SpawnThread 2                                                    `Seq`
+           ForV "tmp" (
+             Skip
+           )                                                                `Seq`
+           Ass "tmp2" (Val 0)                                               `Seq`
+           SpawnThread 3                                                    `Seq`
+           Ass  "loop2" (Var "tmp2")                                        `Seq`
+           ForV "loop2" (
+             Skip
+           )                                                                `Seq`
+           PrintToChannel (Val 42) stdOut
+          ),
+          (2,
+           Skip                                                             `Seq`
+           Ass "tmp2" (Val 3)
+          ),
+          (3,
+           PrintToChannel (Val 17) stdOut
+          )
+         ]
+
+
+ijisLSODistkaputt :: Program Gr
+ijisLSODistkaputt = p { observability = defaultObservability (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           SpawnThread 2                                                    `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
+              (Skip)                                                        `Seq`
+           Ass "x" (Val 17)
+          ),
+          (2,
+           Skip                                                             `Seq`
+           Ass "x" (Val 42)                                                 `Seq`
+           PrintToChannel (Var "x") stdOut
           )
          ]

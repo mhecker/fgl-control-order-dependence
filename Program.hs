@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Program where
 
-import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Util
 
 import Data.Map ( Map, (!) )

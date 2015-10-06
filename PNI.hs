@@ -115,8 +115,8 @@ counterExamplesPniFor program@(Program { tcfg, observability }) i i' = counterEx
 
 
 {- Counterexamples to PNI, using pre-computed probabilities for occuring equivalence classes -}
-counterExamplesWithRegardTo' :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> [ExecutionTrace] -> [(Rational,Rational,Trace)]
-counterExamplesWithRegardTo' graph obs θ θ' =
+counterExamplesWithRegardToEquiv :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> [ExecutionTrace] -> [(Rational,Rational,Trace)]
+counterExamplesWithRegardToEquiv graph obs θ θ' =
       nub $ [ (p e,p' e, tLow e) | e <- (θ ++ θ'), p e /= p' e]
   where tLow e  = observable graph obs Low (toTrace e)
         p  e = Map.findWithDefault 0 (tLow e) equiv
@@ -125,16 +125,16 @@ counterExamplesWithRegardTo' graph obs θ θ' =
         equiv' = equivClasses graph obs θ'
 
 
-counterExamplesPniFor' :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
-counterExamplesPniFor' program@(Program { tcfg, observability }) i i' = counterExamplesWithRegardTo' tcfg observability θ θ'
+counterExamplesPniForEquiv :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
+counterExamplesPniForEquiv program@(Program { tcfg, observability }) i i' = counterExamplesWithRegardToEquiv tcfg observability θ θ'
   where θ  = allFinishedExecutionTraces program i
         θ' = allFinishedExecutionTraces program i'
 
 
-showCounterExamplesPniFor' program i i' = do
+showCounterExamplesPniForEquiv program i i' = do
   putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
              "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
-  forM_ (counterExamplesPniFor' program i i') (\(p,p',trace) -> do
+  forM_ (counterExamplesPniForEquiv program i i') (\(p,p',trace) -> do
      putStrLn "-----------------"
      putStrLn $ "p  = " ++ (show p ) ++ " ≃ " ++ (printf "%.5f" $ (fromRational p  :: Double)) ++ "                                  "  ++
                 "p' = " ++ (show p') ++ " ≃ " ++ (printf "%.5f" $ (fromRational p' :: Double))

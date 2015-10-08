@@ -70,3 +70,24 @@ allFinishedTraces program@(Program { tcfg }) input = fmap reverse $ iter [] [[in
   where iter finished []     = fmap (fmap hide) finished
         iter finished traces = iter (newfinished++finished) $ concat $ fmap (\(c:cs) -> fmap (:(c:cs)) (step tcfg c)) traces
           where newfinished = [ trace | trace@(c:cs) <- traces, step tcfg c == []]
+
+
+
+type AnnotatedExecutionTrace = (ExecutionTrace, Rational)
+
+allFinishedAnnotatedExecutionTraces :: Graph gr => Program gr -> Input -> [AnnotatedExecutionTrace]
+allFinishedAnnotatedExecutionTraces program@(Program { tcfg }) input = iter [] [ ([(initialConfiguration program input, e, c')],p) | (e,c') <- initialSteps ]
+  where initialSteps = eventStep tcfg $ initialConfiguration program input
+        p :: Rational
+        p = 1 / (toRational $ length initialSteps)
+
+        iter :: [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace]
+        iter finished []     = finished
+        iter finished traces = iter (newfinished++finished) $ concat $ fmap appendAll traces
+          where appendAll :: AnnotatedExecutionTrace -> [AnnotatedExecutionTrace]
+                appendAll (t0@((c,e,c'):cs), p0) = fmap (\s -> (appendStep s, p0 * p)) successors
+                   where p          = 1 / (toRational $ length successors)
+                         successors = eventStep tcfg c'
+                         appendStep ((n,e'),c'')  = (c',(n,e'),c''):t0
+                newfinished = [ annTrace | annTrace@((c,e,c'):cs,p) <- traces, eventStep tcfg c' == []]
+

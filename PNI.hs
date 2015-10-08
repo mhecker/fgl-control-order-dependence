@@ -83,6 +83,32 @@ equivClasses graph obs θ = foldr newEquivClassMember Map.empty θ
 
 
 
+{- Probabilistic noninteference, somewhat more efficient implementation that precomputes probabilities for all occuring equivalence classes,
+   and shared probability computation -}
+pniForEquivAnnotated :: Graph gr => Program gr -> Input -> Input -> Bool
+pniForEquivAnnotated program@(Program { tcfg, observability }) i i' = secureWithRegardToEquivAnnotated tcfg observability θ θ'
+  where θ  = allFinishedAnnotatedExecutionTraces program i
+        θ' = allFinishedAnnotatedExecutionTraces program i'
+
+
+secureWithRegardToEquivAnnotated :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> Bool
+secureWithRegardToEquivAnnotated graph obs θ θ' =
+      (∀) (θ ++ θ') (\(e,_) -> p e == p' e)
+  where tLow e = observable graph obs Low (toTrace e)
+        p  e = Map.findWithDefault 0 (tLow e) equiv
+        p' e = Map.findWithDefault 0 (tLow e) equiv'
+
+        equiv  = equivClassesAnnotated graph obs θ
+        equiv' = equivClassesAnnotated graph obs θ'
+
+
+equivClassesAnnotated :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification ->  [AnnotatedExecutionTrace] -> Map Trace Rational
+equivClassesAnnotated graph obs θ = foldr newEquivClassMember Map.empty θ
+  where newEquivClassMember (e,p) classes = Map.insertWith (+) t p classes
+           where t = observable graph obs Low (toTrace e)
+
+
+
 
 {- Counterexamples to PNI -}
 showCounterExamplesPniFor program i i' = do
@@ -131,6 +157,24 @@ counterExamplesPniForEquiv program@(Program { tcfg, observability }) i i' = coun
         θ' = allFinishedExecutionTraces program i'
 
 
+
+{- Counterexamples to PNI, using pre-computed probabilities for occuring equivalence classes, and shared probability computation -}
+counterExamplesWithRegardToEquivAnnotated :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> [(Rational,Rational,Trace)]
+counterExamplesWithRegardToEquivAnnotated graph obs θ θ' =
+      nub $ [ (p e,p' e, tLow e) | (e,_) <- (θ ++ θ'), p e /= p' e]
+  where tLow e  = observable graph obs Low (toTrace e)
+        p  e = Map.findWithDefault 0 (tLow e) equiv
+        p' e = Map.findWithDefault 0 (tLow e) equiv'
+        equiv  = equivClassesAnnotated graph obs θ
+        equiv' = equivClassesAnnotated graph obs θ'
+
+
+counterExamplesPniForEquivAnnotated :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
+counterExamplesPniForEquivAnnotated program@(Program { tcfg, observability }) i i' = counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
+  where θ  = allFinishedAnnotatedExecutionTraces program i
+        θ' = allFinishedAnnotatedExecutionTraces program i'
+
+
 showCounterExamplesPniForEquiv program i i' = do
   putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
              "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
@@ -139,6 +183,23 @@ showCounterExamplesPniForEquiv program i i' = do
      putStrLn $ "p  = " ++ (show p ) ++ " ≃ " ++ (printf "%.5f" $ (fromRational p  :: Double)) ++ "                                  "  ++
                 "p' = " ++ (show p') ++ " ≃ " ++ (printf "%.5f" $ (fromRational p' :: Double))
      forM_ trace (\(σ, o, σ') -> do
+        putStrLn $ show σ
+        putStr   $ "---"
+        putStr   $ show o
+        putStrLn $ "-->"
+        putStrLn $ show σ'
+      )
+    )
+
+
+showCounterExamplesPniForEquivAnnotated program i i' = do
+  putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
+             "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
+  forM_ (counterExamplesPniForEquivAnnotated program i i') (\(p,p',trace) -> do
+     putStrLn "-----------------"
+     putStrLn $ "p  = " ++ (show p ) ++ " ≃ " ++ (printf "%.5f" $ (fromRational p  :: Double)) ++ "                                  "  ++
+                "p' = " ++ (show p') ++ " ≃ " ++ (printf "%.5f" $ (fromRational p' :: Double))
+     forM_ (reverse trace) (\(σ, o, σ') -> do
         putStrLn $ show σ
         putStr   $ "---"
         putStr   $ show o

@@ -20,8 +20,8 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import Data.Set.Unicode
 import Data.Bool.Unicode
+import Data.Eq.Unicode
 
 -- import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
@@ -109,6 +109,13 @@ timingClassificationSimple p@(Program { tcfg, observability }) =
        timing = timingDependenceGraphP p
 
 
+
+
+isSecureMinimalClassification  p@(Program{ tcfg, observability }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> cl ! n == Low)
+       )
+  where cl = minimalClassification p
 
 -- TODO: via ⊑ formulieren
 isSecureTimingClassification  p@(Program{ tcfg, observability }) =
@@ -198,3 +205,35 @@ jürgenConjecture p@(Program{ tcfg, observability }) =
         chop :: Node -> Node -> Set Node
         chop s t =  (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+
+giffhornLSOD p@(Program{ tcfg, observability }) =
+    ((∀) [ (n,n')     | n   <- nodes tcfg, observability n  == Just Low,
+                        n'  <- nodes tcfg, observability n' == Just High ] (\(n,n') ->
+         (¬) (n' ∈ pre bs n)
+    ))
+    ∧
+    ((∀) [ (n,n',n'') | n   <- nodes tcfg,
+                        n'  <- nodes tcfg,
+                        mhp ! (n,n'),
+                        n'' <- nodes tcfg, observability n == Just Low   ] (\(n,n',n'') ->
+         ((∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')))
+         →
+         (((¬) (n' ∈ pre bs n'')) ∧
+          ((¬) (n  ∈ pre bs n''))
+         )
+    ))
+    ∧
+    ((∀) [ (n,n')     | n   <- nodes tcfg,
+                        n'  <- nodes tcfg,
+                        mhp ! (n,n')                                     ] (\(n,n') ->
+         (¬) (observability n  == Just Low) ∨
+         (¬) (observability n' == Just Low)
+    ))
+  where
+       def_ = def tcfg
+       use_ = use tcfg
+       cpdg = concurrentProgramDependenceGraphP p
+       bs = trc cpdg -- TODO: name :)
+       mhp = mhpFor p

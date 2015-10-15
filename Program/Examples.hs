@@ -1062,3 +1062,22 @@ ijisLSODistkaputt = p { observability = defaultObservabilityMap (tcfg p) }
            PrintToChannel (Var "x") stdOut
           )
          ]
+
+minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD ::  Program Gr
+minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass "h" (Val 0)                                                  `Seq`
+           SpawnThread 2                                                    `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           Ass "h" ((Var "h") `Plus` (Val 1))
+          ),
+          (2,
+           Skip                                                             `Seq`
+           Ass "h2" (Var "h")                                               `Seq`
+           Ass "x" (Val 42)                                                 `Seq`
+           PrintToChannel (Var "x") stdOut
+          )
+         ]

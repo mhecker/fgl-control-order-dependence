@@ -1,8 +1,13 @@
-module Unicode where
+module Unicode (
+  module Set,
+  module Unicode
+) where
 
+import Prelude hiding (elem)
 import Algebra.Lattice
 import Data.Foldable
 import Data.List (filter)
+import Data.Set.Unicode as Set hiding ((∈))
 
 infixl 6 ⊔
 (⊔) :: (JoinSemiLattice a) => a -> a -> a
@@ -41,6 +46,9 @@ infixl 7 ⊓
 (∃) :: (Eq a, Foldable t) => t a -> (a -> Bool) -> Bool
 (∃) a pred = (not.null) $ filter pred $ toList a
 
+infix 4 ∈
+(∈) :: (Eq a, Foldable t) => a -> t a -> Bool
+(∈) = elem
 
 (→) :: Bool -> Bool -> Bool
 (→) = implies

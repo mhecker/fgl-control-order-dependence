@@ -1,8 +1,8 @@
 module Unicode where
 
 import Algebra.Lattice
-import Data.Set as S
-
+import Data.Foldable
+import Data.List (filter)
 
 infixl 6 ⊔
 (⊔) :: (JoinSemiLattice a) => a -> a -> a
@@ -35,8 +35,11 @@ infixl 7 ⊓
 (㎲⊒) :: (Eq a, BoundedJoinSemiLattice a) => a -> (a -> a) -> a
 (㎲⊒) = lfpFrom
 
-(∀) :: (Eq a, Ord a) => Set a -> (a -> Bool) -> Bool
-(∀) a pred = S.null $ S.filter (not.pred) a
+(∀) :: (Eq a, Foldable t) => t a -> (a -> Bool) -> Bool
+(∀) a pred = null $ filter (not.pred) $ toList a
+
+(∃) :: (Eq a, Foldable t) => t a -> (a -> Bool) -> Bool
+(∃) a pred = (not.null) $ filter pred $ toList a
 
 
 (→) :: Bool -> Bool -> Bool

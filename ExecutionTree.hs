@@ -9,6 +9,7 @@ import qualified Data.Tree as Tree
 
 import Data.List (partition)
 
+import Data.Util
 
 import Control.Monad(forM_)
 
@@ -48,7 +49,7 @@ initialConfigurationTree (Program { mainThread, entryOf }) input = (Node (entryO
 showAllFinalTreeStates program input = do
   forM_ (allFinalTreeStates program input) (\(t,sigma) -> do
      putStrLn "-----------------"
-     putStrLn $ Tree.drawTree $ fmap show $t
+     putStrLn $ Tree.drawTree $ fmap show $ t
      putStrLn $ show $ sigma
      putStrLn "-----------------"
    )

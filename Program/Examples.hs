@@ -20,7 +20,6 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Set.Unicode
 
-
 defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]), (lowIn1, [1..]), (lowIn2, [1..]) ]
 defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]), (lowIn1, [1..]), (lowIn2, [1..]) ]
 
@@ -31,8 +30,11 @@ defaultChannelObservability channel
  | channel == stdOut = Low
  | otherwise = error $ "unknown channel: " ++ channel
 
-defaultObservability :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification
-defaultObservability gr n
+
+defaultObservabilityMap :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification
+defaultObservabilityMap gr = \n -> obsmap ! n where
+ obsmap = Map.fromList $ [ (n, defaultObservability gr n) | n <- nodes gr ]
+ defaultObservability gr n
    | levels == [] = Nothing
    | otherwise    = Just $ (∐) levels
   where levels = [ level | (n',e) <- lsuc gr n, Just level <- [obs (n',e)]]
@@ -58,7 +60,7 @@ example1 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
          | n `elem` [1,2,7,8,9,10,11,12] = 1 
@@ -94,7 +96,7 @@ example2 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
          | n `elem` [1..12] = 1 
@@ -127,7 +129,7 @@ example2' = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
          | n `elem` [1..12] = 1 
@@ -153,7 +155,7 @@ example3 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` [1,2,5,6,7] = 1
@@ -186,7 +188,7 @@ example4 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..7] ++ [10]) = 1
@@ -217,7 +219,7 @@ example5 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..7] ++ [10]) = 1
@@ -255,7 +257,7 @@ example6 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..8]   ++ [11,12]) = 1
@@ -291,7 +293,7 @@ example7 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..5]) = 1
@@ -362,7 +364,7 @@ example8 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..17] ++ [20..23]) = 1
@@ -461,7 +463,7 @@ example8' = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` ([1..17] ++ [20..23]) = 1
@@ -524,7 +526,7 @@ threadSpawn1 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` [1,2,3,7] = 1
@@ -564,7 +566,7 @@ threadSpawn2 = Program {
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
-    observability = defaultObservability tcfg
+    observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
          | n `elem` [1,2,3,4] = 1
@@ -598,7 +600,7 @@ threadSpawn2 = Program {
   }
 -}
 joachim2 :: Program Gr
-joachim2 = p { observability = defaultObservability (tcfg p) }
+joachim2 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -625,7 +627,7 @@ joachim2 = p { observability = defaultObservability (tcfg p) }
   }                      || L=0;   || L=1;
 -}
 joachim3 :: Program Gr
-joachim3 = p { observability = defaultObservability (tcfg p) }
+joachim3 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -650,7 +652,7 @@ joachim3 = p { observability = defaultObservability (tcfg p) }
 
 
 noFlow :: Program Gr
-noFlow = p { observability = defaultObservability (tcfg p) }
+noFlow = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -662,7 +664,7 @@ noFlow = p { observability = defaultObservability (tcfg p) }
          ]
 
 directFlow :: Program Gr
-directFlow = p { observability = defaultObservability (tcfg p) }
+directFlow = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -673,7 +675,7 @@ directFlow = p { observability = defaultObservability (tcfg p) }
          ]
 
 directFlowThread :: Program Gr
-directFlowThread = p { observability = defaultObservability (tcfg p) }
+directFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -689,7 +691,7 @@ directFlowThread = p { observability = defaultObservability (tcfg p) }
 
 
 noDirectFlowThread :: Program Gr
-noDirectFlowThread = p { observability = defaultObservability (tcfg p) }
+noDirectFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -705,7 +707,7 @@ noDirectFlowThread = p { observability = defaultObservability (tcfg p) }
 
 
 indirectFlow :: Program Gr
-indirectFlow = p { observability = defaultObservability (tcfg p) }
+indirectFlow = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -721,7 +723,7 @@ indirectFlow = p { observability = defaultObservability (tcfg p) }
 
 
 orderConflict :: Program Gr
-orderConflict = p { observability = defaultObservability (tcfg p) }
+orderConflict = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -743,7 +745,7 @@ orderConflict = p { observability = defaultObservability (tcfg p) }
 -- da man wohl nicht annehmen sollte, dass bei einer Output-Anweisung sichtbar ist, welche variable ausgelesen wird.
 -- In unserm modell ist das aber so!
 dubiousOrderConflict :: Program Gr
-dubiousOrderConflict = p { observability = defaultObservability (tcfg p) }
+dubiousOrderConflict = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -763,7 +765,7 @@ dubiousOrderConflict = p { observability = defaultObservability (tcfg p) }
 
 
 cdomIsBroken :: Program Gr
-cdomIsBroken = p { observability = defaultObservability (tcfg p) }
+cdomIsBroken = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -821,7 +823,7 @@ fromList []
 fromList []
 -}
 cdomIsBroken' :: Program Gr
-cdomIsBroken' = p { observability = defaultObservability (tcfg p) }
+cdomIsBroken' = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -843,7 +845,7 @@ cdomIsBroken' = p { observability = defaultObservability (tcfg p) }
 
 
 cdomIsBroken2 :: Program Gr
-cdomIsBroken2 = p { observability = defaultObservability (tcfg p) }
+cdomIsBroken2 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -866,7 +868,7 @@ cdomIsBroken2 = p { observability = defaultObservability (tcfg p) }
 -- from: Noninterfering Schedulers, Andrei Popescu, Johannes Hölzl, and Tobias Nipkow
 -- http://dx.doi.org/10.1007/978-3-642-40206-7_18
 noninterferingSchedulers :: Program Gr
-noninterferingSchedulers = p { observability = defaultObservability (tcfg p) }
+noninterferingSchedulers = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -902,7 +904,7 @@ noninterferingSchedulers = p { observability = defaultObservability (tcfg p) }
 
 
 figure5left :: Program Gr
-figure5left = p { observability = defaultObservability (tcfg p) }
+figure5left = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -921,7 +923,7 @@ figure5left = p { observability = defaultObservability (tcfg p) }
          ]
 
 figure5right :: Program Gr
-figure5right = p { observability = defaultObservability (tcfg p) }
+figure5right = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -977,7 +979,7 @@ user    5m28.054s
 sys     0m2.974s
 -}
 figure5right' :: Program Gr
-figure5right' = p { observability = defaultObservability (tcfg p) }
+figure5right' = p { observability = defaultObservabilityMap (tcfg p)  }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -1009,7 +1011,7 @@ figure5right' = p { observability = defaultObservability (tcfg p) }
 
 
 figure5right'' :: Program Gr
-figure5right'' = p { observability = defaultObservability (tcfg p) }
+figure5right'' = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
@@ -1042,7 +1044,7 @@ figure5right'' = p { observability = defaultObservability (tcfg p) }
 
 
 ijisLSODistkaputt :: Program Gr
-ijisLSODistkaputt = p { observability = defaultObservability (tcfg p) }
+ijisLSODistkaputt = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,

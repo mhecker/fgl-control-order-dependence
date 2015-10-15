@@ -17,6 +17,7 @@ import Program.Analysis
 
 import IRLSOD
 import Execution
+import ExecutionTree
 import PNI
 import Unicode
 
@@ -55,7 +56,9 @@ showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
 
 
-p = cdomIsBroken'
+-- p = cdomIsBroken'
+p = figure5right'
+
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput'

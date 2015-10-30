@@ -1,5 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+
 module Execution where
 
 
@@ -108,3 +110,33 @@ sampleFinishedAnnotatedExecutionTraces pLimit traces = takeSome [] 0 traces
               if q < 0.2 then takeSome (aTrace:sampled) (pSampled + pTrace) traces
                          else takeSome         sampled  (pSampled         ) traces
 
+
+
+sample :: MonadRandom m => [t] -> m t
+sample xs = do
+  i <- getRandomR (1, length xs)
+  return $ xs !! (i-1)
+
+-- Although we return AnnotatedExecutionTraces just as in allFinishedAnnotatedExecutionTraces,
+-- the meainig of the probability annotation is different: here, if a given execution is more likely than others,
+-- it will also be sampled more often, and hence appear multiple times in the result, say: k times
+-- The empirical probability such a trace is then k/n, and hence we annotate each occurence with p = 1/n,
+-- which is more appropriate for functions like counterExamplesWithRegardToEquivAnnotated
+someFinishedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
+someFinishedAnnotatedExecutionTraces n program@(Program { tcfg }) input = sampleSome [] 0
+  where initialTraces  =  [ [(initialConfiguration program input, e, c')] | (e,c') <- initialSteps ]
+        initialSteps   = eventStep tcfg $ initialConfiguration program input
+        p              = 1 / (toRational n)
+        sampleSome sampled i
+          | i >= n            = return $ fmap (,p) sampled
+          | otherwise         = do
+              t0 <- sample initialTraces
+              newTrace <- sampleTrace t0
+              sampleSome (newTrace:sampled) (i+1)
+        sampleTrace t0@((c,e,c'):cs)
+          | finished  = return t0
+          | otherwise = do
+               ((n,e'),c'') <- sample successors
+               sampleTrace ((c',(n,e'),c''):t0)
+         where finished   = eventStep tcfg c' == []
+               successors = eventStep tcfg c'

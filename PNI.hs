@@ -207,6 +207,14 @@ showCounterExamplesPniForEquivAnnotatedSampled program@(Program { tcfg, observab
   let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
   showCounterExamples counterExamples
 
+showCounterExamplesPniForEquivAnnotatedSome program@(Program { tcfg, observability }) i i' = do
+  showInputs i i'
+  θ  <- evalRandIO $ someFinishedAnnotatedExecutionTraces 10000 program i
+  θ' <- evalRandIO $ someFinishedAnnotatedExecutionTraces 10000 program i'
+  let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
+  showCounterExamples counterExamples
+
+
 
 allOutcomes :: Graph gr => Program gr -> Input -> [(Rational,GlobalState)]
 allOutcomes program@(Program { tcfg }) input = [ (prob tcfg trace, σ trace) | trace <- allFinishedExecutionTraces program input ]

@@ -112,20 +112,8 @@ equivClassesAnnotated graph obs θ = foldr newEquivClassMember Map.empty θ
 
 {- Counterexamples to PNI -}
 showCounterExamplesPniFor program i i' = do
-  putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
-             "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
-  forM_ (counterExamplesPniFor program i i') (\(p,p',trace) -> do
-     putStrLn "-----------------"
-     putStrLn $ "p  = " ++ (show p ) ++ " ≃ " ++ (printf "%.5f" $ (fromRational p  :: Double)) ++ "                                  "  ++
-                "p' = " ++ (show p') ++ " ≃ " ++ (printf "%.5f" $ (fromRational p' :: Double))
-     forM_ trace (\(σ, o, σ') -> do
-        putStrLn $ show σ
-        putStr   $ "---"
-        putStr   $ show o
-        putStrLn $ "-->"
-        putStrLn $ show σ'
-      )
-    )
+  showInputs i i'
+  showCounterExamples $ counterExamplesPniFor program i i'
 
 counterExamplesWithRegardTo :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [ExecutionTrace] -> [ExecutionTrace] -> [(Rational,Rational,Trace)]
 counterExamplesWithRegardTo graph obs θ θ' =
@@ -170,15 +158,18 @@ counterExamplesWithRegardToEquivAnnotated graph obs θ θ' =
 
 
 counterExamplesPniForEquivAnnotated :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
-counterExamplesPniForEquivAnnotated program@(Program { tcfg, observability }) i i' = counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
+counterExamplesPniForEquivAnnotated program@(Program { tcfg, observability }) i i' =
+        fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
   where θ  = allFinishedAnnotatedExecutionTraces program i
         θ' = allFinishedAnnotatedExecutionTraces program i'
 
-
-showCounterExamplesPniForEquiv program i i' = do
+showInputs i i' = do
   putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
              "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
-  forM_ (counterExamplesPniForEquiv program i i') (\(p,p',trace) -> do
+
+showCounterExamples :: [(Rational,Rational,Trace)] -> IO ()
+showCounterExamples counterExamples  =
+  forM_ counterExamples (\(p,p',trace) -> do
      putStrLn "-----------------"
      putStrLn $ "p  = " ++ (show p ) ++ " ≃ " ++ (printf "%.5f" $ (fromRational p  :: Double)) ++ "                                  "  ++
                 "p' = " ++ (show p') ++ " ≃ " ++ (printf "%.5f" $ (fromRational p' :: Double))
@@ -192,21 +183,14 @@ showCounterExamplesPniForEquiv program i i' = do
     )
 
 
+showCounterExamplesPniForEquiv program i i' = do
+  showInputs i i'
+  showCounterExamples $ counterExamplesPniForEquiv program i i'
+
+
 showCounterExamplesPniForEquivAnnotated program i i' = do
-  putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
-             "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
-  forM_ (counterExamplesPniForEquivAnnotated program i i') (\(p,p',trace) -> do
-     putStrLn "-----------------"
-     putStrLn $ "p  = " ++ (show p ) ++ " ≃ " ++ (printf "%.5f" $ (fromRational p  :: Double)) ++ "                                  "  ++
-                "p' = " ++ (show p') ++ " ≃ " ++ (printf "%.5f" $ (fromRational p' :: Double))
-     forM_ (reverse trace) (\(σ, o, σ') -> do
-        putStrLn $ show σ
-        putStr   $ "---"
-        putStr   $ show o
-        putStrLn $ "-->"
-        putStrLn $ show σ'
-      )
-    )
+  showInputs i i'
+  showCounterExamples $ counterExamplesPniForEquivAnnotated program i i'
 
 
 

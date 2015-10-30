@@ -12,6 +12,7 @@ import Execution
 import Data.Graph.Inductive.Graph
 
 import Control.Monad(forM_)
+import Control.Monad.Random
 
 
 import Data.Map ( Map, (!) )
@@ -163,6 +164,13 @@ counterExamplesPniForEquivAnnotated program@(Program { tcfg, observability }) i 
   where θ  = allFinishedAnnotatedExecutionTraces program i
         θ' = allFinishedAnnotatedExecutionTraces program i'
 
+counterExamplesPniForEquivAnnotatedSampled :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
+counterExamplesPniForEquivAnnotatedSampled program@(Program { tcfg, observability }) i i' =
+        fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
+  where θ  = allFinishedAnnotatedExecutionTraces program i
+        θ' = allFinishedAnnotatedExecutionTraces program i'
+
+
 showInputs i i' = do
   putStrLn $ "i  = " ++ (show $ fmap (take 5) i ) ++ " ...     "  ++
              "i' = " ++ (show $ fmap (take 5) i') ++ " ... "
@@ -192,6 +200,12 @@ showCounterExamplesPniForEquivAnnotated program i i' = do
   showInputs i i'
   showCounterExamples $ counterExamplesPniForEquivAnnotated program i i'
 
+showCounterExamplesPniForEquivAnnotatedSampled program@(Program { tcfg, observability }) i i' = do
+  showInputs i i'
+  θ  <- evalRandIO $ sampleFinishedAnnotatedExecutionTraces 0.1 $ allFinishedAnnotatedExecutionTraces program i
+  θ' <- evalRandIO $ sampleFinishedAnnotatedExecutionTraces 0.1 $ allFinishedAnnotatedExecutionTraces program i'
+  let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
+  showCounterExamples counterExamples
 
 
 allOutcomes :: Graph gr => Program gr -> Input -> [(Rational,GlobalState)]

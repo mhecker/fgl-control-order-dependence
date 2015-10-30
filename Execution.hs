@@ -1,10 +1,13 @@
 {-# LANGUAGE NamedFieldPuns #-}
-
+{-# LANGUAGE ScopedTypeVariables #-}
 module Execution where
 
 
 import IRLSOD
 import Program
+
+import System.Random
+import Control.Monad.Random
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -90,4 +93,18 @@ allFinishedAnnotatedExecutionTraces program@(Program { tcfg }) input = iter [] [
                          successors = eventStep tcfg c'
                          appendStep ((n,e'),c'')  = (c',(n,e'),c''):t0
                 newfinished = [ annTrace | annTrace@((c,e,c'):cs,p) <- traces, eventStep tcfg c' == []]
+
+-- TODO: this is somewhat "left-biased", fix this
+sampleFinishedAnnotatedExecutionTraces :: MonadRandom m => Rational -> [AnnotatedExecutionTrace] -> m [AnnotatedExecutionTrace]
+sampleFinishedAnnotatedExecutionTraces pLimit traces = takeSome [] 0 traces
+  where takeSome :: MonadRandom m =>  [AnnotatedExecutionTrace] -> Rational -> [AnnotatedExecutionTrace] -> m [AnnotatedExecutionTrace]
+        takeSome sampled pSampled []
+          | pSampled > pLimit = return sampled
+          | otherwise         = takeSome sampled pSampled traces
+        takeSome sampled pSampled ((aTrace@(t,pTrace)):traces)
+          | pSampled > pLimit = return sampled
+          | otherwise         = do
+              q :: Double <- getRandomR (0,1)
+              if q < 0.2 then takeSome (aTrace:sampled) (pSampled + pTrace) traces
+                         else takeSome         sampled  (pSampled         ) traces
 

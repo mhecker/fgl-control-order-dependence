@@ -67,6 +67,34 @@ cdomIsCdomViolations p@(Program {tcfg}) θ cd =
     ]
   where cdom = cd p
 
+cdomIsCdomViolations' :: DynGraph gr => Program gr -> [ExecutionTrace] -> (Program gr ->  Map (Node,Node) Node) -> [(Node,Node,Trace)]
+cdomIsCdomViolations' p@(Program {tcfg}) θ cd =
+    [ (n,m, toTrace e) |
+          n <- nodes tcfg,
+          m <- nodes tcfg,
+          let  c = cdom ! (n,m),
+          e <- θ,
+          not $
+          (∀) (occurencesOf e n) (\(i,n) ->
+          (∀) (occurencesOf e m) (\(j,m) ->
+              (¬) ((∃) (occurencesOf e c) (\(k,c) -> i < k && k < j))
+          ))
+    ]
+  where cdom = cd p
+
+
+cdomIsCdomViolations'For :: DynGraph gr => Program gr -> [ExecutionTrace] -> (Program gr ->  Map (Node,Node) Node) -> Node -> Node -> [(Node,Node,Trace)]
+cdomIsCdomViolations'For p@(Program {tcfg}) θ cd n m =
+    [ (n,m, toTrace e) |
+          let  c = cdom ! (n,m),
+          e <- θ,
+          not $
+          (∀) (occurencesOf e n) (\(i,n) ->
+          (∀) (occurencesOf e m) (\(j,m) ->
+              (¬) ((∃) (occurencesOf e c) (\(k,c) -> i < k && k < j))
+          ))
+    ]
+  where cdom = cd p
 
 
 cdomIsBeforeViolations :: DynGraph gr => Program gr -> [ExecutionTrace] -> (Program gr ->  Map (Node,Node) Node) -> [(Node,Node,Trace)]

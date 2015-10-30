@@ -24,8 +24,9 @@ trees = fmap fst $
         allFinalTreeStates         p defaultInput
 
 main = do
---  putStrLn $ show $ length $ cdomIsDomViolations     p θ     cdom
-  putStrLn $ show $ length $ cdomIsCdomViolations    p θ     cdom
-  putStrLn $ show $ length $ cdomIsBeforeViolations  p θ     cdom
-  putStrLn $ show $ length $ cdomIsTreeDomViolations p trees cdom
+  -- putStrLn $ show $ length $ cdomIsDomViolations     p θ     cdom
+  -- putStrLn $ show $ length $ cdomIsCdomViolations    p θ     cdom
+  putStrLn $ show $ length $ cdomIsCdomViolations'   p θ     cdom
+  -- putStrLn $ show $ length $ cdomIsBeforeViolations  p θ     cdom
+  -- putStrLn $ show $ length $ cdomIsTreeDomViolations p trees cdom
 

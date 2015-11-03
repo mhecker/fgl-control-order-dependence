@@ -30,7 +30,7 @@ data For = If   BoolFunction For For
          | ReadFromChannel Var         InputChannel
          | PrintToChannel  VarFunction OutputChannel
          | SpawnThread StaticThread
-
+  deriving Show
 
 compile :: DynGraph gr => Map StaticThread Node -> Node -> For -> Gen Node (gr CFGNode CFGEdge, Node, [Node])
 compile entryOf nStart (If b sTrue sFalse) = do

@@ -2,12 +2,15 @@
 module Program.Generator where
 
 import IRLSOD
-import Program (StaticThread)
+import Program (StaticThread, Program(..))
 import Program.For
+import Program.Examples (defaultObservabilityMap)
 import Unicode
 
 import Test.QuickCheck
 import Control.Monad(forM_)
+
+import Data.Graph.Inductive.Graph
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -80,6 +83,18 @@ instance Arbitrary GeneratedProgram where
       varsAvailable    = Set.fromList []
 
 
+
+toProgram :: DynGraph gr => GeneratedProgram -> Program gr 
+toProgram generated = p { observability = defaultObservabilityMap (tcfg p) }
+  where code = toCode generated
+        p    = compileAllToProgram code
+
+
+
+instance DynGraph gr => Arbitrary (Program gr) where
+  arbitrary = do
+    generated <- arbitrary
+    return $ toProgram generated
 
 
 expGenerator :: Set Var -> Gen VarFunction

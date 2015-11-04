@@ -1,5 +1,6 @@
 module Unicode (
   module Set,
+  module Bool,
   module Unicode
 ) where
 
@@ -8,6 +9,7 @@ import Algebra.Lattice
 import Data.Foldable
 import Data.List (filter)
 import Data.Set.Unicode as Set hiding ((∈))
+import Data.Bool.Unicode as Bool
 
 infixl 6 ⊔
 (⊔) :: (JoinSemiLattice a) => a -> a -> a

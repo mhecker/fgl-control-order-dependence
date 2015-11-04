@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Program.Tests where
 
 import System.Process
@@ -5,8 +6,8 @@ import Data.Graph.Inductive.Dot
 
 import Data.List
 
-import Control.Monad.Gen
-
+import Control.Monad(forM_, when)
+import Test.QuickCheck
 
 import Program
 import Program.Examples
@@ -14,6 +15,8 @@ import Program.MultiThread
 import Program.MHP
 import Program.CDom
 import Program.Analysis
+import Program.Generator (GeneratedProgram(..), toCode, toProgram)
+
 
 import IRLSOD
 import Execution
@@ -25,6 +28,7 @@ import Algebra.Lattice
 
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.PatriciaTree
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence
 import Data.Graph.Inductive.Query.TimingDependence
@@ -57,7 +61,7 @@ showConflicts p = showGraph $ dataConflictGraphP p
 
 
 -- p = cdomIsBroken'
--- p = figure5right'
+p = figure5right'
 -- p = someGeneratedProgram
 
 mainEquiv = do
@@ -77,3 +81,27 @@ mainEquivAnnotatedSampled = do
 
 mainEquivAnnotatedSome = do
   showCounterExamplesPniForEquivAnnotatedSome p defaultInput defaultInput'
+
+
+
+showMorePrecise :: IO ()
+showMorePrecise = do
+    generated <- sample' (arbitrary :: Gen GeneratedProgram)
+    forM_ generated (\gen -> do
+       let p :: Program Gr = toProgram gen
+       let sec1 = isSecureTimingClassification  p
+       let sec2 = isSecureMinimalClassification p
+       putStr "isSecureTimingClassification: "
+       putStrLn $ show $ sec1
+
+       putStr "isSecureMinimalClassification: "
+       putStrLn $ show $ sec2
+
+       when (sec1 ∧ ((¬) sec2)) $ do
+         putStrLn $ show $ toCode gen
+         showCFG p
+         return ()
+
+       putStrLn ""
+     )
+

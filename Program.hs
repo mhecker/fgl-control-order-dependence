@@ -24,6 +24,7 @@ data Program gr = Program {
     observability :: ObservationalSpecification
 }
 
+
 -- | generate list of labeled nodes
 genLNodes :: (Enum a) => a -> Int -> [LNode a]
 genLNodes q i = take i (zip [1..] [q..])

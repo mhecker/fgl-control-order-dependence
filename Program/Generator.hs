@@ -18,15 +18,58 @@ import Data.List ((\\))
 
 
 data Generated = Generated For (Set Var) (Map StaticThread (Set Var)) deriving Show
+data GeneratedProgram = GeneratedProgram (Map StaticThread Generated) deriving Show
 
-instance Arbitrary Generated where
-  arbitrary = sized $ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable
-    where inChannels       = Set.fromList [stdIn]
-          outChannels      = Set.fromList [stdOut]
-          vars             = Set.fromList ["x", "y", "z", "a", "b", "c"]
-          varsAvailable    = Set.fromList []
-          varsForbidden    = Set.fromList []
-          threadsAvailable = Set.fromList [1,2,3]
+programGenerator :: Int -> (Set StaticThread) -> (Map StaticThread Generated) -> Gen (Map StaticThread Generated)
+programGenerator n threadsAvailable generated
+  | not $ Set.null $ threadsAvailable ∩ threadsGenerated = error "invariance violated"
+  | Set.null $ toGenerate = return generated
+  | otherwise              = do
+      let thread = head $ Set.toList toGenerate
+      f@(Generated p _ spawned) <- forGenerator inChannels
+                                                outChannels
+                                                vars
+                                                (varsAvailable ! thread)
+                                                varsForbidden
+                                                threadsAvailable
+                                                n
+      programGenerator n
+                       (threadsAvailable ∖ (Map.keysSet spawned))
+                       (Map.insert thread f generated)
+  where spawned          = Map.keysSet $ Map.unions [ spawned | (_,Generated _ _ spawned) <- Map.assocs generated ]
+        varsAvailable    = Map.unionsWith (∩)       [ spawned | (_,Generated _ _ spawned) <- Map.assocs generated ]
+        threadsGenerated = Map.keysSet generated
+        toGenerate       = spawned ∖ threadsGenerated
+
+        inChannels       = Set.fromList [stdIn]
+        outChannels      = Set.fromList [stdOut]
+        vars             = Set.fromList ["x", "y", "z", "a", "b", "c"]
+        varsForbidden    = Set.fromList []
+
+
+instance Arbitrary GeneratedProgram where
+  arbitrary = sized $ \n -> do
+      f@(Generated p _ spawned) <- forGenerator inChannels
+                                                outChannels
+                                                vars
+                                                varsAvailable
+                                                varsForbidden
+                                                threadsAvailable
+                                                n
+      generated <- programGenerator n
+                                    (threadsAvailable ∖ (Map.keysSet spawned))
+                                    (Map.fromList [(1, f)])
+      return $ GeneratedProgram generated
+    where
+      threadsAvailable = Set.fromList [2,3]
+      inChannels       = Set.fromList [stdIn]
+      outChannels      = Set.fromList [stdOut]
+      vars             = Set.fromList ["x", "y", "z", "a", "b", "c"]
+      varsForbidden    = Set.fromList []
+      varsAvailable    = Set.fromList []
+
+
+
 
 expGenerator :: Set Var -> Gen VarFunction
 expGenerator varsAvailable

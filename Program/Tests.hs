@@ -57,7 +57,8 @@ showConflicts p = showGraph $ dataConflictGraphP p
 
 
 -- p = cdomIsBroken'
-p = figure5right'
+-- p = figure5right'
+-- p = someGeneratedProgram
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput

@@ -84,24 +84,25 @@ mainEquivAnnotatedSome = do
 
 
 
-showMorePrecise :: IO ()
-showMorePrecise = do
+
+showMorePrecise :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> IO ()
+showMorePrecise a1 a2 = do
     generated <- sample' (arbitrary :: Gen GeneratedProgram)
     forM_ generated (\gen -> do
        let p :: Program Gr = toProgram gen
-       let sec1 = isSecureTimingClassification  p
-       let sec2 = isSecureMinimalClassification p
-       putStr "isSecureTimingClassification: "
+       let sec1 = a1  p
+       let sec2 = a2 p
+       putStr "a1: "
        putStrLn $ show $ sec1
 
-       putStr "isSecureMinimalClassification: "
+       putStr "a2: "
        putStrLn $ show $ sec2
 
-       when (sec1 ∧ ((¬) sec2)) $ do
+--       when (sec1 ∧ ((¬) sec2)) $ do
+       when (sec1 /= sec2) $ do
          putStrLn $ show $ toCode gen
          showCFG p
          return ()
 
        putStrLn ""
      )
-

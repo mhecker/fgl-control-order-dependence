@@ -1082,6 +1082,31 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = p { observability =
          ]
 
 
+
+timingSecureButNotCombinedTimingSecure ::  Program Gr
+timingSecureButNotCombinedTimingSecure = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           Ass "tmp" (Val 0)                                                `Seq`
+           If (Leq (Var "h") (Val 0))
+              (Ass "tmp" (Val 8))
+              (Skip)                                                        `Seq`
+           ForV "tmp" (
+             Skip
+           )                                                                `Seq`
+           SpawnThread 2                                                    `Seq`
+           Ass "tmp2" (Val 0)                                               `Seq`
+           PrintToChannel (Var "tmp2") stdOut
+          ),
+          (2,
+           Skip                                                             `Seq`
+           Ass "tmp2" (Val 3)
+          )
+         ]
+
 someGeneratedProgram :: Program Gr
 someGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code

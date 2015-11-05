@@ -3,10 +3,11 @@ module PNI where
 
 
 import IRLSOD
-import ListUnicode
 
 import Program
 import Execution
+
+import Unicode
 
 -- import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
@@ -22,7 +23,6 @@ import Data.Ord (comparing)
 
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Set.Unicode
 
 import Text.Printf (printf)
 
@@ -148,14 +148,17 @@ counterExamplesPniForEquiv program@(Program { tcfg, observability }) i i' = coun
 
 
 {- Counterexamples to PNI, using pre-computed probabilities for occuring equivalence classes, and shared probability computation -}
-counterExamplesWithRegardToEquivAnnotated :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> [(Rational,Rational,Trace)]
-counterExamplesWithRegardToEquivAnnotated graph obs θ θ' =
-      nub $ [ (p e,p' e, tLow e) | (e,_) <- (θ ++ θ'), p e /= p' e]
+counterExamplesWithRegardToEquivAnnotatedIf :: Graph gr => (Rational -> Rational -> Bool) -> gr CFGNode CFGEdge -> ObservationalSpecification -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> [(Rational,Rational,Trace)]
+counterExamplesWithRegardToEquivAnnotatedIf pred graph obs θ θ' =
+      nub $ [ (p e,p' e, tLow e) | (e,_) <- (θ ++ θ'), pred (p e) (p' e)]
   where tLow e  = observable graph obs Low (toTrace e)
         p  e = Map.findWithDefault 0 (tLow e) equiv
         p' e = Map.findWithDefault 0 (tLow e) equiv'
         equiv  = equivClassesAnnotated graph obs θ
         equiv' = equivClassesAnnotated graph obs θ'
+
+counterExamplesWithRegardToEquivAnnotated :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> [(Rational,Rational,Trace)]
+counterExamplesWithRegardToEquivAnnotated = counterExamplesWithRegardToEquivAnnotatedIf (/=)
 
 
 counterExamplesPniForEquivAnnotated :: Graph gr => Program gr -> Input -> Input -> [(Rational,Rational,Trace)]
@@ -207,12 +210,14 @@ showCounterExamplesPniForEquivAnnotatedSampled program@(Program { tcfg, observab
   let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
   showCounterExamples counterExamples
 
-showCounterExamplesPniForEquivAnnotatedSome program@(Program { tcfg, observability }) i i' = do
+showCounterExamplesPniForEquivAnnotatedSome n program@(Program { tcfg, observability }) i i' = do
   showInputs i i'
-  θ  <- evalRandIO $ someFinishedAnnotatedExecutionTraces 10000 program i
-  θ' <- evalRandIO $ someFinishedAnnotatedExecutionTraces 10000 program i'
-  let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotated tcfg observability θ θ'
+  θ  <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program i
+  θ' <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program i'
+  let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotatedIf areDifferent tcfg observability θ θ'
   showCounterExamples counterExamples
+ where n' = fromInteger n
+       areDifferent p p' =   abs(p-p') > 1/100
 
 
 

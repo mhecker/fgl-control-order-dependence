@@ -63,7 +63,7 @@ showConflicts p = showGraph $ dataConflictGraphP p
 -- p = cdomIsBroken'
 p = figure5right'
 -- p = someGeneratedProgram
-
+-- p = timingSecureButNotCombinedTimingSecure
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput'
@@ -80,7 +80,7 @@ mainEquivAnnotatedSampled = do
   showCounterExamplesPniForEquivAnnotatedSampled p defaultInput defaultInput'
 
 mainEquivAnnotatedSome = do
-  showCounterExamplesPniForEquivAnnotatedSome p defaultInput defaultInput'
+  showCounterExamplesPniForEquivAnnotatedSome 10000 p defaultInput defaultInput'
 
 
 

@@ -14,6 +14,7 @@ import Program.MHP
 -- import Data.Graph.Inductive.Util
 -- import Data.Graph.Inductive.Graph
 
+import Data.Util
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -88,6 +89,44 @@ timingClassification p@(Program { tcfg, observability }) =
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
 
+
+
+timingClassificationDomPaths p@(Program { tcfg, observability, entryOf, mainThread }) =
+  (㎲⊒) (Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ],
+         Map.fromList [ ((a,b), (⊥))  | n <- nodes tcfg,
+                                        (a,b) <- if (n `Map.member` dom) then [ (n,n), (dom ! n, n) ]
+                                                                         else [ (n,n) ]
+                      ])
+    (\(cl,cle) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
+                                       | n <- nodes tcfg])
+                       ⊔ (Map.fromList [ (n,(∐) [ cltFromCle dom idom cle n m  | m <- pre dataConflictGraph n ])
+                                       | n <- nodes tcfg]),
+                   cle ⊔ (Map.fromList [ ((a,b), (∐) [ cl ! c' | c' <- Set.toList $ chop a b ∩ (Set.fromList (pre timing b)) ] )
+                                       |  n <- nodes tcfg,
+                                          (a,b) <- if (n `Map.member` dom) then [ (n,n), (dom ! n, n) ]
+                                                                           else [ (n,n) ]
+                                       ])
+                  )
+    )
+ where dom :: Map Node Node
+       dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+
+       cpdg = concurrentProgramDependenceGraphP p
+       idom = idomChef p
+       mhp = mhpFor p
+       trnsclos = trc tcfg
+       dataConflictGraph = dataConflictGraphP p
+       timing = timingDependenceGraphP p
+       chop :: Node -> Node -> Set Node
+       chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+cltFromCle dom idom cle n m = (∐) [ cle ! (a,b)
+                                  | (a,b) <-   (consecutive $ [ y |  x <- domPathBetween dom n c , y <- [x,x] ])
+                                           ++  (consecutive $ [ y |  x <- domPathBetween dom m c , y <- [x,x] ])
+                                  ]
+  where c = idom ! (n,m)
 
 
 timingClassificationSimple p@(Program { tcfg, observability }) =
@@ -237,3 +276,13 @@ giffhornLSOD p@(Program{ tcfg, observability }) =
        cpdg = concurrentProgramDependenceGraphP p
        bs = trc cpdg -- TODO: name :)
        mhp = mhpFor p
+
+observableNodes p@(Program{ tcfg, observability }) =
+    [ n  | n   <- nodes tcfg, observability n  == Just Low ]
+
+conflictinObservableNodes p@(Program{ tcfg, observability }) =
+    [(n,m) | n <- nodes tcfg, observability n == Just Low,
+             m <- nodes tcfg, observability m == Just Low,
+             mhp ! (n,m)
+    ]
+  where  mhp = mhpFor p

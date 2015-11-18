@@ -20,3 +20,10 @@ withId tree = evalState (withIds tree) 0
              put (n+1)
              trees' <- forM trees withIds
              return $ Node (n,x) trees'
+
+consecutive :: [a] -> [(a,a)]
+consecutive [] = []
+consecutive l= tail $ zip (undefined:l) l
+
+stutter2 :: [a] -> [a]
+stutter2 list = [ y |  x <- list, y <- [x,x] ]

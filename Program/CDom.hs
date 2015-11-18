@@ -72,3 +72,9 @@ idomMohrEtAl p@(Program {tcfg, entryOf, mainThread} ) = Map.fromList
                 pathToRoot node
                   | node `Map.member` dom = pathToRoot (dom ! node) ++ [node]
                   | otherwise             = [node]
+
+
+domPathBetween dom dominated dominator
+    | dominated  == dominator = [dominated]
+    | otherwise               = domPathBetween dom dominated' dominator ++ [dominated]
+  where Just dominated' = Map.lookup dominated dom

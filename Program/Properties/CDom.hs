@@ -7,8 +7,9 @@ import Unicode
 import Data.Bool.Unicode
 
 import Program
+import Program.MHP
 -- import Program.MultiThread
--- import Program.CDom
+import Program.CDom
 import Execution
 import ExecutionTree
 
@@ -32,7 +33,9 @@ import Data.Util
 -- import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
 -- import Data.Graph.Inductive.Util
--- import Data.Graph.Inductive.Query.Dominators
+import Data.Graph.Inductive.Query.Dominators
+import Data.Graph.Inductive.Query.TransClos
+import Data.Graph.Inductive.Query.TimingDependence
 
 
 
@@ -142,3 +145,66 @@ cdomIsTreeDomViolations p@(Program {tcfg}) θ cd =
               (c == n ∧ length [ n' | n' <- ns, n == n'] == 1)
             ∨ (not $ (c ∈ dropWhile (/=n) ns))
           where ns = [ n' | (n',e) <- path ] 
+
+
+
+chopPathsAreDomPaths :: DynGraph gr => (Program gr ->  Map (Node,Node) Node) -> Program gr -> Bool
+chopPathsAreDomPaths cd p@(Program { tcfg, observability, entryOf, mainThread }) =
+    (∀) [ (n,m) | ((n,m),True) <- Map.assocs mhp]
+        (\(n,m) -> let c = idom ! (n,m) in
+                                                                                                          (chop c n) ∩ (Set.fromList (pre timing n)) ==
+                   (Set.unions [ chop a b |  (a,b) <- consecutive $ [ y |  x <- domPathBetween n c , y <- [x,x] ] ]) ∩ (Set.fromList (pre timing n))
+        )
+ where dom :: Map Node Node
+       dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+
+       domPathBetween dominated dominator
+                 | dominated  == dominator = [dominated]
+                 | otherwise               = domPathBetween dominated' dominator ++ [dominated]
+          where Just dominated' = Map.lookup dominated dom
+
+       idom = cd p
+       mhp = mhpFor p
+       trnsclos = trc tcfg
+       timing = timingDependenceGraphP p
+       chop :: Node -> Node -> Set Node
+       chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+chopPathsAreDomPaths2 :: DynGraph gr => (Program gr ->  Map (Node,Node) Node) -> Program gr -> Bool
+chopPathsAreDomPaths2 cd p@(Program { tcfg, observability, entryOf, mainThread }) =
+    (∀) [ (n,m) | ((n,m),True) <- Map.assocs mhp]
+        (\(n,m) -> let c = idom ! (n,m) in
+                                                                                                          (chop c n) ∩ (Set.fromList (pre timing n)) ==
+                   (Set.unions [ chop a b ∩ (Set.fromList (pre timing b)) |  (a,b) <- consecutive $ [ y |  x <- domPathBetween dom n c , y <- [x,x] ] ])
+        )
+ where dom :: Map Node Node
+       dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+       idom = cd p
+       mhp = mhpFor p
+       trnsclos = trc tcfg
+       timing = timingDependenceGraphP p
+       chop :: Node -> Node -> Set Node
+       chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+-- chopPathsAreDomPathsViolations :: DynGraph gr => Program gr -> (Program gr ->  Map (Node,Node) Node) -> [(Node,Node)]
+chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, mainThread }) =
+    [ (n,m,c,chop1, chop2, path) | ((n,m),True) <- Map.assocs mhp,
+              let c = idom ! (n,m),
+              let chop1 = (chop c n) ∩ (Set.fromList (pre timing n)),
+              let path = domPathBetween dom n c,
+              let chop2 = (Set.unions [ chop a b |  (a,b) <- consecutive $ [ y |  x <- domPathBetween dom n c , y <- [x,x] ] ]) ∩ (Set.fromList (pre timing n)),
+              chop1 /= chop2
+    ]
+ where dom :: Map Node Node
+       dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+
+       idom = cd p
+       mhp = mhpFor p
+       trnsclos = trc tcfg
+       timing = timingDependenceGraphP p
+       chop :: Node -> Node -> Set Node
+       chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance

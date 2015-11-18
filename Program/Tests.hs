@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Program.Tests where
 
@@ -6,7 +7,9 @@ import Data.Graph.Inductive.Dot
 
 import Data.List
 
-import Control.Monad(forM_, when)
+import System.IO.Unsafe(unsafePerformIO)
+import Control.Monad.Random
+import Control.Monad(forM_, when, forever)
 import Test.QuickCheck
 
 import Program
@@ -43,7 +46,6 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
--- import Data.Set.Unicode
 
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
@@ -61,9 +63,12 @@ showConflicts p = showGraph $ dataConflictGraphP p
 
 
 -- p = cdomIsBroken'
-p = figure5right'
+-- p = figure5right'
 -- p = someGeneratedProgram
 -- p = timingSecureButNotCombinedTimingSecure
+-- p = aSecureGeneratedProgram
+p = anotherGeneratedProgram
+
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput'
@@ -83,7 +88,8 @@ mainEquivAnnotatedSome = do
   showCounterExamplesPniForEquivAnnotatedSome 10000 p defaultInput defaultInput'
 
 
-
+mainFindMorePrecise = forever $ showMorePrecise isSecureTimingClassification isSecureTimingCombinedTimingClassification
+mainFindUnsound     = forever $ showMorePrecise isSecureTimingClassification isSecureEmpirically
 
 showMorePrecise :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> IO ()
 showMorePrecise a1 a2 = do
@@ -92,17 +98,30 @@ showMorePrecise a1 a2 = do
        let p :: Program Gr = toProgram gen
        let sec1 = a1  p
        let sec2 = a2 p
+
+       putStrLn $ show $ toCode gen
+
        putStr "a1: "
        putStrLn $ show $ sec1
 
        putStr "a2: "
        putStrLn $ show $ sec2
 
---       when (sec1 ∧ ((¬) sec2)) $ do
-       when (sec1 /= sec2) $ do
-         putStrLn $ show $ toCode gen
+       when (sec1 ∧ ((¬) sec2)) $ do
+--       when (sec1 /= sec2) $ do
          showCFG p
          return ()
 
        putStrLn ""
      )
+
+
+
+isSecureEmpirically program@(Program { tcfg, observability }) = unsafePerformIO $ do
+  θ  <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program defaultInput
+  θ' <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program defaultInput'
+  let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotatedIf areDifferent tcfg observability θ θ'
+  return $ length counterExamples == 0
+ where areDifferent p p' =   abs(p-p') > 1/100
+       n = 10000
+

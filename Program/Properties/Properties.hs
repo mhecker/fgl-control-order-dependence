@@ -28,6 +28,9 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 
 
+instance Show (Program gr) where
+  show p = "rofl"
+
 -- p     = orderConflict
 -- p     = cdomIsBroken'
 p     = cdomIsBroken2

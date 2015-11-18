@@ -19,8 +19,9 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Set.Unicode
 
-defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]), (lowIn1, [1..]), (lowIn2, [1..]) ]
-defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]), (lowIn1, [1..]), (lowIn2, [1..]) ]
+defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
+defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
+
 
 defaultChannelObservability channel
  | channel == stdIn     = High
@@ -1107,7 +1108,58 @@ timingSecureButNotCombinedTimingSecure = p { observability = defaultObservabilit
           )
          ]
 
+timingSecureButNotCombinedTimingSecureGenerated :: Program Gr
+timingSecureButNotCombinedTimingSecureGenerated = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList [(1,Seq (If CTrue (If CFalse (Seq Skip Skip) (Seq (ReadFromChannel "x" "lowIn1") (Ass "y" (Plus (Var "x") (Var "x"))))) (Seq (Seq Skip (ReadFromChannel "x" "stdIn")) (If (Leq (Val 0) (Plus (Var "x") (Var "x"))) Skip (Ass "a" (Plus (Var "x") (Var "x")))))) (Seq (If CTrue (If CFalse (PrintToChannel (Val 42) "stdOut") (ReadFromChannel "c" "stdIn")) (ForC 1 (Ass "z" (Val 1)))) (If CFalse (Seq (PrintToChannel (Val 17) "stdOut") Skip) (Seq (Ass "z" (Val 0)) (SpawnThread 2))))),(2,ForV "z" (Seq (ForC 2 (Seq Skip (PrintToChannel (Plus (Var "z") (Var "z")) "stdOut"))) (Seq (Seq (Ass "c" (Plus (Var "z") (Var "z"))) (ReadFromChannel "y" "lowIn1")) (Seq Skip (PrintToChannel (Plus (Var "z") (Var "y")) "stdOut")))))]
+
 someGeneratedProgram :: Program Gr
 someGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList [(1,Seq (ForC 3 (If CTrue (Seq Skip Skip) (Seq (ReadFromChannel "x" "stdIn") (ReadFromChannel "y" "lowIn1")))) (Seq (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel "c" "lowIn1"))) (ForV "c" (If (Leq (Val 0) (Plus (Var "c") (Var "c"))) (SpawnThread 3) (ReadFromChannel "y" "stdIn"))))),(3,ForV "c" (If (Leq (Val 0) (Plus (Var "c") (Var "c"))) (Seq (ForC 3 (ReadFromChannel "b" "stdIn")) (If (Leq (Val 0) (Plus (Var "c") (Var "c"))) (ReadFromChannel "x" "stdIn") (PrintToChannel (Plus (Var "c") (Var "b")) "stdOut"))) (Seq (Seq (PrintToChannel (Plus (Var "c") (Var "c")) "stdOut") (PrintToChannel (Plus (Var "c") (Var "c")) "stdOut")) (Seq (Ass "a" (Plus (Var "c") (Var "c"))) (Ass "x" (Plus (Var "a") (Var "a")))))))]
+
+-- this one generates *very* long (inifinitely so?!?!) executions with defaultInput'
+anotherGeneratedProgram :: Program Gr
+anotherGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        -- code = Map.fromList [(1,Seq (Seq (ForC 2 (ForC 2 (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "a" "lowIn1")) (Seq (PrintToChannel (Times (Var "a") (Var "a")) "stdOut") (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")))) (ForC 1 (Seq (Seq (ReadFromChannel "x" "stdIn") (SpawnThread 3)) (ForV "a" (ReadFromChannel "c" "lowIn1"))))),(2,Seq (Seq (If (Leq (Val 0) (Times (Var "a") (Var "x"))) (ForV "x" (ReadFromChannel "z" "lowIn1")) (ForC 2 (ReadFromChannel "a" "stdIn"))) (Seq (Seq (ReadFromChannel "a" "lowIn1") Skip) (ForV "x" (Ass "a" (Times (Var "a") (Var "a")))))) (Seq (Seq (ForV "a" Skip) (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (PrintToChannel (Times (Var "x") (Var "a")) "stdOut"))) (ForC 2 (If (Leq (Val 0) (Times (Var "x") (Var "x"))) (Ass "x" (Times (Var "a") (Var "x"))) (ReadFromChannel "z" "lowIn1"))))),(3,ForV "a" (ForC 1 (Seq (ForV "x" (Ass "z" (Times (Var "a") (Var "x")))) (If (Leq (Val 0) (Times (Var "x") (Var "a"))) (SpawnThread 2) (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")))))]
+        code = Map.fromList [
+          (1,Seq (Seq (ForC 2
+                            (ForC 2
+                                  (PrintToChannel (Val 1) "stdOut")))
+            (Seq (Seq (ReadFromChannel "a" "stdIn")
+                      (ReadFromChannel "a" "lowIn1"))
+                 (Seq (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")
+                      (PrintToChannel (Times (Var "a") (Var "a")) "stdOut"))))
+                      (ForC 1
+                  (Seq (Seq (ReadFromChannel "x" "stdIn")
+                            (SpawnThread 3))
+                            (ForV "a"
+                                  (ReadFromChannel "c" "lowIn1"))))),
+          (2,Seq (Seq (If (Leq (Val 0) (Times (Var "a") (Var "x")))
+                          (ForV "x" (ReadFromChannel "z" "lowIn1"))
+                          (ForC 2 (ReadFromChannel "a" "stdIn")))
+            (Seq (Seq (ReadFromChannel "a" "lowIn1")
+                       Skip)
+                      (ForV "x"
+                            (Ass "a" (Times (Var "a") (Var "a"))))))
+            (Seq (Seq (ForV "a" Skip)
+                 (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
+                      (PrintToChannel (Times (Var "x") (Var "a")) "stdOut")))
+                      (ForC 2 (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                                  (Ass "x" (Times (Var "a") (Var "x")))
+                                  (ReadFromChannel "z" "lowIn1"))))),
+          (3,         ForV "a"
+                           (ForC 1
+                            (Seq (ForV "x"
+                                       (Ass "z" (Times (Var "a") (Var "x"))))
+                                 (If (Leq (Val 0) (Times (Var "x") (Var "a")))
+                                     (SpawnThread 2)
+                                     (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")))))]
+
+
+-- this one appears to be secure, but cannot be proven so
+aSecureGeneratedProgram :: Program Gr
+aSecureGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass "z" (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel "a" "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV "a" (ReadFromChannel "y" "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "b" "stdIn")) (If (Leq (Val 0) (Times (Var "b") (Var "b"))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel "c" "stdIn") (Ass "y" (Val 0))) (If CFalse (Ass "a" (Val (-1))) (ReadFromChannel "y" "lowIn1"))))]

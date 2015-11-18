@@ -103,7 +103,7 @@ expGenerator varsAvailable
   | otherwise              = frequency [
     (1, do x <- elements $ Set.toList varsAvailable
            y <- elements $ Set.toList varsAvailable
-           return $ (Var x) `Plus` (Var y)
+           return $ (Var x) `Times` (Var y)
     )
   ]
 
@@ -148,13 +148,13 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
    (1, do m <- elements $  [1..2]
           Generated p'  varsAvailable' spawned'  <- forGenerator inChannels outChannels vars varsAvailable varsForbidden                        threadsAvailable     (n-1)
           return $ Generated (ForC m p')
-                             (varsAvailable')
+                             (if (m>0) then varsAvailable' else varsAvailable)
                              (spawned')),
    (if (Set.null (varsAvailable ∖ varsForbidden)) then 0 else 1,
        do var <- elements $ Set.toList (varsAvailable ∖ varsForbidden)
-          Generated p'  varsAvailable' spawned'  <- forGenerator inChannels outChannels vars varsAvailable (varsForbidden ∪ Set.fromList [var]) threadsAvailable     (n-1)
+          Generated p'               _ spawned'  <- forGenerator inChannels outChannels vars varsAvailable (varsForbidden ∪ Set.fromList [var]) threadsAvailable     (n-1)
           return $ Generated (ForV var p')
-                             (varsAvailable')
+                             (varsAvailable)
                              (spawned')),
    (1, do bexp <- bexpGenerator varsAvailable
           Generated p'  varsAvailable'  spawned'  <- forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable                           (n-1)

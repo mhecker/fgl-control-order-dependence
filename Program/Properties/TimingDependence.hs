@@ -48,7 +48,4 @@ delays p@(Program {tcfg}) θ cd =
     ]
   where cdom = cd p
 
-consecutive :: [a] -> [(a,a)]
-consecutive [] = []
-consecutive l= tail $ zip (undefined:l) l
 

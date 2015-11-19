@@ -61,16 +61,10 @@ isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
 
 timingDDomPathsIsTiming :: Program Gr => Bool
 timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =
-       ((∀) (Set.fromList [ n    | n <- nodes tcfg])
-            (\n ->    cl ! n == cl' ! n )
-       )
-    ∧  ((∀) (Set.fromList [(n,m) | n <- nodes tcfg,
-                                   m <- nodes tcfg,
-                                   mhp ! (n,m)
-                          ]
-            )
-            (\(n,m) -> clt ! (n,m) == clt' (n,m))
-       )
+            (cl   == cl')
+          ∧ (clt  == Map.fromList [((n,m), clt' (n,m)) | n <- nodes tcfg,
+                                                         m <- nodes tcfg,
+                                                         mhp ! (n,m) ])
   where (cl , clt) = timingClassification p
         (cl', cle) = timingClassificationDomPaths p
         clt' = cltFromCle dom idom cle

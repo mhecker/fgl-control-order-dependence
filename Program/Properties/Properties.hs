@@ -6,7 +6,7 @@ import Algebra.Lattice
 import Unicode
 
 import Program
-
+import Program.MHP
 import Program.Analysis
 
 import Program.Examples
@@ -20,12 +20,16 @@ import ExecutionTree
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
+import Data.Graph.Inductive.Query.Dominators
 
 
 import Test.QuickCheck
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
+
 
 
 instance Show (Program gr) where
@@ -53,3 +57,26 @@ main = do
 isAtLeastAsPreciseAs :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> GeneratedProgram -> Bool
 isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
   where p = toProgram generated
+
+
+timingDDomPathsIsTiming :: Program Gr => Bool
+timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg])
+            (\n ->    cl ! n == cl' ! n )
+       )
+    ∧  ((∀) (Set.fromList [(n,m) | n <- nodes tcfg,
+                                   m <- nodes tcfg,
+                                   mhp ! (n,m)
+                          ]
+            )
+            (\(n,m) -> clt ! (n,m) == clt' (n,m))
+       )
+  where (cl , clt) = timingClassification p
+        (cl', cle) = timingClassificationDomPaths p
+        clt' = cltFromCle dom idom cle
+
+        dom :: Map Node Node
+        dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+
+        idom = idomChef p
+        mhp = mhpFor p

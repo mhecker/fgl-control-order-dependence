@@ -537,7 +537,7 @@ threadSpawn1 = Program {
         entryOf 4 = 4
         entryOf 6 = 6
         exitOf 1 = 7
-        exitOf 4 = 7
+        exitOf 4 = 8
         exitOf 6 = 9
         tcfg = mkGraph (genLNodes 1 9)  $
                        [(1,2,nop),(2,4,spawn),(2,3,nop),(3,6,spawn),(3,7,nop)]
@@ -1163,3 +1163,38 @@ aSecureGeneratedProgram :: Program Gr
 aSecureGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass "z" (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel "a" "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV "a" (ReadFromChannel "y" "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "b" "stdIn")) (If (Leq (Val 0) (Times (Var "b") (Var "b"))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel "c" "stdIn") (Ass "y" (Val 0))) (If CFalse (Ass "a" (Val (-1))) (ReadFromChannel "y" "lowIn1"))))]
+
+testsuite = [ example1,
+              example2,
+              example2',
+              example3,
+              example4,
+              example5,
+              example6,
+              example7,
+              example8,
+              threadSpawn1,
+              joachim2,
+              joachim3,
+              noFlow,
+              directFlow,
+              directFlowThread,
+              noDirectFlowThread,
+              indirectFlow,
+              orderConflict,
+              dubiousOrderConflict,
+              cdomIsBroken,
+              cdomIsBroken',
+              cdomIsBroken2,
+              noninterferingSchedulers,
+              figure5left,
+              figure5right,
+              figure5right',
+              figure5right'',
+              ijisLSODistkaputt,
+              minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD,
+              timingSecureButNotCombinedTimingSecure, timingSecureButNotCombinedTimingSecureGenerated,
+              someGeneratedProgram,
+              anotherGeneratedProgram,
+              aSecureGeneratedProgram
+            ]

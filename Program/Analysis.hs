@@ -99,7 +99,7 @@ timingClassificationDomPaths p@(Program { tcfg, observability, entryOf, mainThre
                       ])
     (\(cl,cle) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
                                        | n <- nodes tcfg])
-                       ⊔ (Map.fromList [ (n,(∐) [ cltFromCle dom idom cle n m  | m <- pre dataConflictGraph n ])
+                       ⊔ (Map.fromList [ (n,(∐) [ cltFromCle dom idom cle (n,m)  | m <- pre dataConflictGraph n ])
                                        | n <- nodes tcfg]),
                    cle ⊔ (Map.fromList [ ((a,b), (∐) [ cl ! c' | c' <- Set.toList $ chop a b ∩ (Set.fromList (pre timing b)) ] )
                                        |  n <- nodes tcfg,
@@ -122,7 +122,7 @@ timingClassificationDomPaths p@(Program { tcfg, observability, entryOf, mainThre
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
 
-cltFromCle dom idom cle n m = (∐) [ cle ! (a,b)
+cltFromCle dom idom cle (n,m) = (∐) [ cle ! (a,b)
                                   | (a,b) <-   (consecutive $ [ y |  x <- domPathBetween dom n c , y <- [x,x] ])
                                            ++  (consecutive $ [ y |  x <- domPathBetween dom m c , y <- [x,x] ])
                                   ]

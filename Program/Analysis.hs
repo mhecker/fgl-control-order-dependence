@@ -250,7 +250,7 @@ giffhornLSOD p@(Program{ tcfg, observability }) =
     ((∀) [ (n,n',n'') | n   <- nodes tcfg,
                         n'  <- nodes tcfg,
                         mhp ! (n,n'),
-                        n'' <- nodes tcfg, observability n == Just Low   ] (\(n,n',n'') ->
+                        n'' <- nodes tcfg, observability n'' == Just Low   ] (\(n,n',n'') ->
          ((∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')))
          →
          (((¬) (n' ∈ pre bs n'')) ∧

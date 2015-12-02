@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Program.Examples where
 
 
@@ -12,6 +13,7 @@ import Unicode
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
+import Data.Util
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -1164,37 +1166,38 @@ aSecureGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass "z" (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel "a" "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV "a" (ReadFromChannel "y" "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "b" "stdIn")) (If (Leq (Val 0) (Times (Var "b") (Var "b"))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel "c" "stdIn") (Ass "y" (Val 0))) (If CFalse (Ass "a" (Val (-1))) (ReadFromChannel "y" "lowIn1"))))]
 
-testsuite = [ example1,
-              example2,
-              example2',
-              example3,
-              example4,
-              example5,
-              example6,
-              example7,
-              example8,
-              threadSpawn1,
-              joachim2,
-              joachim3,
-              noFlow,
-              directFlow,
-              directFlowThread,
-              noDirectFlowThread,
-              indirectFlow,
-              orderConflict,
-              dubiousOrderConflict,
-              cdomIsBroken,
-              cdomIsBroken',
-              cdomIsBroken2,
-              noninterferingSchedulers,
-              figure5left,
-              figure5right,
-              figure5right',
-              figure5right'',
-              ijisLSODistkaputt,
-              minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD,
-              timingSecureButNotCombinedTimingSecure, timingSecureButNotCombinedTimingSecureGenerated,
-              someGeneratedProgram,
-              anotherGeneratedProgram,
-              aSecureGeneratedProgram
+testsuite = [ $(withName 'example1),
+              $(withName 'example2),
+              $(withName 'example2'),
+              $(withName 'example3),
+              $(withName 'example4),
+              $(withName 'example5),
+              $(withName 'example6),
+              $(withName 'example7),
+              $(withName 'example8),
+              $(withName 'threadSpawn1),
+              $(withName 'joachim2),
+              $(withName 'joachim3),
+              $(withName 'noFlow),
+              $(withName 'directFlow),
+              $(withName 'directFlowThread),
+              $(withName 'noDirectFlowThread),
+              $(withName 'indirectFlow),
+              $(withName 'orderConflict),
+              $(withName 'dubiousOrderConflict),
+              $(withName 'cdomIsBroken),
+              $(withName 'cdomIsBroken'),
+              $(withName 'cdomIsBroken2),
+              $(withName 'noninterferingSchedulers),
+              $(withName 'figure5left),
+              $(withName 'figure5right),
+              $(withName 'figure5right'),
+              $(withName 'figure5right''),
+              $(withName 'ijisLSODistkaputt),
+              $(withName 'minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD),
+              $(withName 'timingSecureButNotCombinedTimingSecure),
+              $(withName 'timingSecureButNotCombinedTimingSecureGenerated),
+              $(withName 'someGeneratedProgram),
+              $(withName 'anotherGeneratedProgram),
+              $(withName 'aSecureGeneratedProgram)
             ]

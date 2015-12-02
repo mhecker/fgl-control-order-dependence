@@ -1,4 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE Rank2Types #-}
+
 module Program.Analysis where
 
 
@@ -38,6 +40,7 @@ import Data.Graph.Inductive.Query.TimingDependence
 import IRLSOD
 -- import Unicode
 
+type SecurityAnalysis gr =  DynGraph gr => Program gr -> Bool
 
 clInitFrom :: (Node -> Maybe SecurityLattice) -> (Node -> SecurityLattice)
 clInitFrom observability n
@@ -149,7 +152,7 @@ timingClassificationSimple p@(Program { tcfg, observability }) =
 
 
 
-
+isSecureMinimalClassification :: SecurityAnalysis gr
 isSecureMinimalClassification  p@(Program{ tcfg, observability }) =
        ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl ! n == Low)
@@ -157,7 +160,25 @@ isSecureMinimalClassification  p@(Program{ tcfg, observability }) =
   where cl = minimalClassification p
 
 -- TODO: via ⊑ formulieren
-isSecureTimingClassification  p@(Program{ tcfg, observability }) =
+
+isSecureTimingClassification :: SecurityAnalysis gr
+isSecureTimingClassification p         = isSecureTimingClassificationFor cl clt p
+  where (cl,clt) = timingClassification p
+
+isSecureTimingClassificationDomPaths :: SecurityAnalysis gr
+isSecureTimingClassificationDomPaths p = isSecureTimingClassificationFor cl clt p
+  where (cl,cle) = timingClassificationDomPaths p
+        clt      = Map.fromList [((n,m), cltFromCle dom idom cle (n,m)) | n <- nodes $ tcfg p,
+                                                                          m <- nodes $ tcfg p,
+                                                                          mhp ! (n,m) ]
+          where dom :: Map Node Node
+                dom = Map.fromList $ iDom (tcfg p) (entryOf p $ mainThread p)
+
+                idom = idomChef p
+                mhp = mhpFor p
+
+isSecureTimingClassificationFor ::  Map Node SecurityLattice -> Map (Node, Node) SecurityLattice  -> SecurityAnalysis gr
+isSecureTimingClassificationFor cl clt  p@(Program{ tcfg, observability }) =
        ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl ! n == Low)
        )
@@ -168,14 +189,12 @@ isSecureTimingClassification  p@(Program{ tcfg, observability }) =
             )
             (\(n,m) -> (clt ! (n,m) == Low)) 
        )
-  where (cl,clt) = timingClassification p
-        mhp = mhpFor p
+  where mhp = mhpFor p
 
-isSecureTimingClassificationSimple p = isSecureTimingClassificationFor cl clt p
-  where (cl,clt) = timingClassificationSimple p
 
 -- TODO: via ⊑ formulieren
-isSecureTimingClassificationFor cl clt p@(Program{ tcfg, observability }) =
+isSecureTimingClassificationSimple :: SecurityAnalysis gr
+isSecureTimingClassificationSimple p@(Program{ tcfg, observability }) =
        ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl ! n == Low)
        )
@@ -187,8 +206,10 @@ isSecureTimingClassificationFor cl clt p@(Program{ tcfg, observability }) =
             (\(n,m) -> (clt ! m == Low) ∧ (clt ! m == Low))
        )
   where mhp = mhpFor p
+        (cl,clt) = timingClassificationSimple p
 
  -- TODO: via ⊑ formulieren
+isSecureTimingCombinedTimingClassification :: SecurityAnalysis gr
 isSecureTimingCombinedTimingClassification p@(Program{ tcfg, observability }) =
        ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl ! n == Low)
@@ -219,34 +240,7 @@ isSecureTimingCombinedTimingClassification p@(Program{ tcfg, observability }) =
         chop s t =  (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
-
-jürgenConjecture p@(Program{ tcfg, observability }) =
-        (∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
-                                   m <- nodes tcfg, observability m == Just Low,
-                                   mhp ! (n,m)
-                          ]
-            )
-            (\(n,m) -> (((clt ! n == Low) ∧ (clt ! m == High))
-                        →
-                        ((∐) [ cl ! c' | let c = idom ! (n,m), c' <- Set.toList $ ((chop c m) ∩ (Set.fromList (pre timing m))) ] == High)
-                       )
-                    && (((clt ! n == High) ∧ (clt ! m == Low))
-                        →
-                        ((∐) [ cl ! c' | let c = idom ! (n,m), c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n))) ] == High)
-                       )
-            )
-  where (cl,clt) = timingClassificationSimple p
-        idom = idomChef p
-        mhp = mhpFor p
-        trnsclos = trc tcfg
-        dataConflictGraph = dataConflictGraphP p
-        timing = timingDependenceGraphP p
-        chop :: Node -> Node -> Set Node
-        chop s t =  (Set.fromList $ suc trnsclos s)
-                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
-
-
-
+giffhornLSOD :: SecurityAnalysis gr
 giffhornLSOD p@(Program{ tcfg, observability }) =
     ((∀) [ (n,n')     | n   <- nodes tcfg, observability n  == Just Low,
                         n'  <- nodes tcfg, observability n' == Just High ] (\(n,n') ->

@@ -58,3 +58,6 @@ infix 4 ∈
 
 (⊑) :: (Eq a, JoinSemiLattice a) => a -> a -> Bool
 (⊑) = joinLeq
+
+(⊒) :: (Eq a, JoinSemiLattice a) => a -> a -> Bool
+(⊒) = flip (⊑)

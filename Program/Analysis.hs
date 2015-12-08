@@ -240,6 +240,50 @@ isSecureTimingCombinedTimingClassification p@(Program{ tcfg, observability }) =
         chop s t =  (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
+
+giffhornClassification p@(Program { tcfg, observability }) = (cl, inf)
+  where cl  = (㎲⊒)  (Map.fromList [ (n, clInitFrom observability n)  | n <- nodes tcfg ])
+                        (\cl -> cl      ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
+                                                                            | n <- nodes tcfg])
+                        )
+        inf = (㎲⊒) ((Map.fromList [ (n, False) | n  <- nodes tcfg ]) ⊔
+                     (Map.fromList [ (m, True)  | n  <- nodes tcfg,
+                                                  n' <- nodes tcfg,
+                                                  mhp ! (n,n'),
+                                                  (∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')),
+                                                  m <- [n,n'] ] )
+                    )
+                    (\clData -> clData  ⊔ (Map.fromList [ (n,(∐) [ clData ! m  | m <- pre cpdg n])
+                                                                               | n <- nodes tcfg])
+                    )
+        def_ = def tcfg
+        use_ = use tcfg
+        cpdg = concurrentProgramDependenceGraphP p
+        mhp = mhpFor p
+
+
+isSecureGiffhornClassification :: SecurityAnalysis gr
+isSecureGiffhornClassification p@(Program{ tcfg, observability }) =
+    ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> cl  ! n == Low)
+    )
+    ∧
+    ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> inf ! n == False)
+    )
+    ∧
+    ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
+                                m <- nodes tcfg, observability m == Just Low,
+                                mhp ! (n,m)
+                          ]
+         )
+         (\(n,m) -> False)
+    )
+  where (cl, inf) = giffhornClassification p
+        mhp = mhpFor p
+
+
+
 giffhornLSOD :: SecurityAnalysis gr
 giffhornLSOD p@(Program{ tcfg, observability }) =
     ((∀) [ (n,n')     | n   <- nodes tcfg, observability n  == Just Low,

@@ -84,7 +84,7 @@ instance Arbitrary GeneratedProgram where
 
 
 
-toProgram :: DynGraph gr => GeneratedProgram -> Program gr 
+toProgram :: DynGraph gr => GeneratedProgram -> Program gr
 toProgram generated = p { observability = defaultObservabilityMap (tcfg p) }
   where code = toCode generated
         p    = compileAllToProgram code

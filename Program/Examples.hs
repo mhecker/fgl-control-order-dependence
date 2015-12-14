@@ -1166,6 +1166,82 @@ aSecureGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass "z" (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel "a" "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV "a" (ReadFromChannel "y" "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "b" "stdIn")) (If (Leq (Val 0) (Times (Var "b") (Var "b"))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel "c" "stdIn") (Ass "y" (Val 0))) (If CFalse (Ass "a" (Val (-1))) (ReadFromChannel "y" "lowIn1"))))]
 
+
+clientServerKeyExampleSimple ::  Program Gr
+clientServerKeyExampleSimple = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (setup,
+           Skip                                                             `Seq`
+           Ass "privKey" (Val 42)                                           `Seq`
+           SpawnThread server                                               `Seq`
+           ForC 3 (
+             ReadFromChannel "msg" "stdIn"                                  `Seq`
+             SpawnThread client
+           )
+          ),
+          (server,
+           Skip
+          ),
+          (client,
+           Skip                                                             `Seq`
+           Ass "msg_enc" (Val 0)                                            `Seq`  -- not (Var "msg") `Plus` (Var "privKey")), since we do not declassify or anything here
+           PrintToChannel (Var "msg_enc") "stdOut"
+          )
+         ]
+        setup  = 1
+        server = 2
+        client = 3
+
+
+clientServerKeyExample ::  Program Gr
+clientServerKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (setup,
+           Skip                                                             `Seq`
+           Ass    "privKey" (Val 7)                                         `Seq`
+           ReadFromChannel "privKeyRndSeed" "stdIn"                         `Seq`
+           ForV "privKeyRndSeed" (
+             Ass "privKey" ((Var "privKey") `Plus` (Val 3))
+           )                                                                `Seq`  -- "initialization of the private key ... and [its] runtime may depend on HIGH information."
+           SpawnThread server                                               `Seq`
+           ForC 3 (
+             ReadFromChannel "msg" "stdIn"                                  `Seq`
+             SpawnThread client
+           )
+          ),
+          (server,
+           Skip
+          ),
+          (client,
+           Skip                                                             `Seq`
+           ForV "privKey" (
+             Skip
+           )                                                                `Seq`  -- "encryption .. happen before the send operation and [its] runtime may depend on HIGH information."
+           Ass "msg_enc" (Val 0)                                            `Seq`  -- "due to ideal encryption no explicit and implicit information flow occurs between the secret message and its encryption.
+           PrintToChannel (Var "msg_enc") "stdOut"
+          )
+         ]
+        setup  = 1
+        server = 2
+        client = 3
+
+singleThreadedDelay :: Program Gr
+singleThreadedDelay = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           PrintToChannel (Val 42) "stdOut"                                 `Seq`
+           ReadFromChannel "h" "stdIn"                                      `Seq`
+           ForV "h" (
+             Skip
+           )                                                                `Seq`
+           PrintToChannel (Val 17) "stdOut"
+          )
+         ]
+
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
               $(withName 'example2'),
@@ -1199,5 +1275,8 @@ testsuite = [ $(withName 'example1),
               $(withName 'timingSecureButNotCombinedTimingSecureGenerated),
               $(withName 'someGeneratedProgram),
               $(withName 'anotherGeneratedProgram),
-              $(withName 'aSecureGeneratedProgram)
+              $(withName 'aSecureGeneratedProgram),
+              $(withName 'clientServerKeyExample),
+              $(withName 'clientServerKeyExampleSimple),
+              $(withName 'singleThreadedDelay)
             ]

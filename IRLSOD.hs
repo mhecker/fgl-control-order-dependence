@@ -27,6 +27,9 @@ stdOut = "stdOut"
 lowIn1 = "lowIn1"
 lowIn2 = "lowIn2"
 
+highOut1 = "highOut1"
+highOut2 = "highOut2"
+
 type GlobalState = Map Var Val
 
 

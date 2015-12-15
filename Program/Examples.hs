@@ -30,6 +30,8 @@ defaultChannelObservability channel
  | channel == lowIn1 = Low
  | channel == lowIn2 = Low
  | channel == stdOut = Low
+ | channel == highOut1 = High
+ | channel == highOut2 = High
  | otherwise = error $ "unknown channel: " ++ channel
 
 
@@ -1241,6 +1243,37 @@ singleThreadedDelay = p { observability = defaultObservabilityMap (tcfg p) }
            PrintToChannel (Val 17) "stdOut"
           )
          ]
+
+
+-- similiar to http://dx.doi.org/10.1109/csf.2012.15
+environmentTotalAssumption1 :: Program Gr
+environmentTotalAssumption1 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ForC 100 (
+              ReadFromChannel "h" stdIn                                     `Seq`
+              PrintToChannel (Val 42) stdOut
+           )
+          )
+         ]
+environmentTotalAssumption2 :: Program Gr
+environmentTotalAssumption2 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           Ass "bit" (Val 1)                                                `Seq`
+           ForC 16 (
+              If (Leq ((Var "h") `Times` (Var "bit")) (Val 0))
+                (PrintToChannel (Val 1) highOut1)
+                (PrintToChannel (Val 1) highOut2)
+           )
+          )
+         ]
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),

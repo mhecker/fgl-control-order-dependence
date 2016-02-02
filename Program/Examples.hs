@@ -143,7 +143,7 @@ example2' = Program {
         tcfg = mkGraph (genLNodes 1 12)  $
                        [(1,2,Assign "x" (Val 42)),(2,3,true),(2,4,false),(3,5,nop),(4,5,nop),(5,6,Assign "x" (Var "x")),(6,7,nop)]
                    ++  [(7,8,nop),(8,9,nop),(9,10,nop),(10,7,false),(10,11,true),(11,12,Assign "x" (Var "x"))]
-
+ 
 {-
      1
      2 ----   3
@@ -1210,6 +1210,45 @@ clientServerKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
            SpawnThread server                                               `Seq`
            ForC 3 (
              ReadFromChannel "msg" "stdIn"                                  `Seq`
+             SpawnThread client
+           )
+          ),
+          (server,
+           Skip
+          ),
+          (client,
+           Skip                                                             `Seq`
+           ForV "privKey" (
+             Skip
+           )                                                                `Seq`  -- "encryption .. happen before the send operation and [its] runtime may depend on HIGH information."
+           Ass "msg_enc" (Val 0)                                            `Seq`  -- "due to ideal encryption no explicit and implicit information flow occurs between the secret message and its encryption.
+           PrintToChannel (Var "msg_enc") "stdOut"
+          )
+         ]
+        setup  = 1
+        server = 2
+        client = 3
+
+
+clientSetupKeyExample ::  Program Gr
+clientSetupKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (setup,
+           Skip                                                             `Seq`
+           ReadFromChannel "secretBit" "stdIn"                              `Seq`
+           Ass    "privKey" (Val 0)                                         `Seq`
+           ReadFromChannel "privKeyRndSeed" "stdIn"                         `Seq`  --
+           ForV "privKeyRndSeed" (
+             Ass "privKey" ((Var "privKey") `Plus` (Val 3))
+           )                                                                `Seq`  -- "initialization of the private key ... and [its] runtime may depend on HIGH information."
+           SpawnThread server                                               `Seq`
+           ForC 3 (
+             ReadFromChannel "msg1" "lowIn1"                                 `Seq`
+             ReadFromChannel "msg2" "lowIn2"                                 `Seq`
+             If ((Var "secretBit") `Leq` (Val 0))
+                 (Ass "msg" (Var "msg1"))
+                 (Ass "msg" (Var "msg2"))
              SpawnThread client
            )
           ),

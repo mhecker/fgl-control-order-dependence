@@ -18,7 +18,9 @@ import Program.MultiThread
 import Program.MHP
 import Program.CDom
 import Program.Analysis
-import Program.Generator (GeneratedProgram(..), toCode, toProgram)
+import Program.Generator (GeneratedProgram(..), toCode, toProgram,
+                          SimpleProgram(..), toCodeSimple, toProgramSimple)
+import Program.TransitionSystem
 
 
 import IRLSOD
@@ -125,3 +127,11 @@ isSecureEmpirically program@(Program { tcfg, observability }) = unsafePerformIO 
  where areDifferent p p' =   abs(p-p') > 1/100
        n = 10000
 
+
+
+genAndShowSimpleTransitionSystem = do
+    generatedSimples <- sample' (arbitrary :: Gen SimpleProgram)
+    let simple = generatedSimples !! (length generatedSimples `div` 4)
+    let p :: Program Gr = toProgramSimple $ simple
+    showCFG   $ p
+    showGraph $ fromSimpleProgram p

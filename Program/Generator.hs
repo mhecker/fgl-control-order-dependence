@@ -25,6 +25,8 @@ data Generated = Generated For (Set Var) (Map StaticThread (Set Var)) deriving S
 data GeneratedProgram = GeneratedProgram (Map StaticThread Generated) deriving Show
 data SimpleProgram    = SimpleProgram    (Map StaticThread Generated) deriving Show
 
+toCodeSimple :: SimpleProgram -> Map StaticThread For
+toCodeSimple (SimpleProgram fors) = toCode (GeneratedProgram fors)
 
 toCode :: GeneratedProgram -> Map StaticThread For
 toCode (GeneratedProgram fors) = fmap (\(Generated for _ _) -> for) fors
@@ -106,6 +108,9 @@ instance Arbitrary SimpleProgram where
       varsForbidden    = Set.fromList []
       varsAvailable    = vars
 
+
+toProgramSimple :: DynGraph gr => SimpleProgram -> Program gr
+toProgramSimple (SimpleProgram fors) = toProgram (GeneratedProgram fors)
 
 toProgram :: DynGraph gr => GeneratedProgram -> Program gr
 toProgram generated = p { observability = defaultObservabilityMap (tcfg p) }

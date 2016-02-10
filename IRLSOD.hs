@@ -98,6 +98,9 @@ use gr n = Set.unions [ useE e | (n',e) <- lsuc gr n ]
 def :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
 def gr n = Set.unions [ defE e | (n',e) <- lsuc gr n ]
 
+-- vars :: Graph gr => gr CFGNode CFGEdge -> Set Var
+-- vars gr  = Set.unions [ useE e ∪ defE e | (_,_,e) <- labEdges gr ]
+
 type CFGNode = Int
 
 true :: CFGEdge

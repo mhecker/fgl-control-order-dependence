@@ -1313,6 +1313,19 @@ environmentTotalAssumption2 = p { observability = defaultObservabilityMap (tcfg 
           )
          ]
 
+simple :: Program Gr
+simple = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass "x" (Var "y")                                                `Seq`
+           If (Leq (Var "x") (Val 0))
+              (Ass "z" (Val 1))
+              (Ass "z" (Val 0))
+          )
+         ]
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),

@@ -1248,7 +1248,7 @@ clientSetupKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
              ReadFromChannel "msg2" "lowIn2"                                 `Seq`
              If ((Var "secretBit") `Leq` (Val 0))
                  (Ass "msg" (Var "msg1"))
-                 (Ass "msg" (Var "msg2"))
+                 (Ass "msg" (Var "msg2"))                                   `Seq`
              SpawnThread client
            )
           ),

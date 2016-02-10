@@ -23,6 +23,7 @@ import Data.List ((\\))
 
 data Generated = Generated For (Set Var) (Map StaticThread (Set Var)) deriving Show
 data GeneratedProgram = GeneratedProgram (Map StaticThread Generated) deriving Show
+data SimpleProgram    = SimpleProgram    (Map StaticThread Generated) deriving Show
 
 
 toCode :: GeneratedProgram -> Map StaticThread For
@@ -84,6 +85,28 @@ instance Arbitrary GeneratedProgram where
 
 
 
+instance Arbitrary SimpleProgram where
+  arbitrary = sized $ \n -> do
+      f@(Generated p _ spawned) <- forGenerator inChannels
+                                                outChannels
+                                                vars
+                                                varsAvailable
+                                                varsForbidden
+                                                threadsAvailable
+                                                n
+      generated <- programGenerator n
+                                    ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
+                                    (Map.fromList [(1, f)])
+      return $ SimpleProgram generated
+    where
+      threadsAvailable = Set.fromList []
+      inChannels       = Set.fromList []
+      outChannels      = Set.fromList []
+      vars             = Set.fromList ["x", "y", "z", "a", "b", "c"]
+      varsForbidden    = Set.fromList []
+      varsAvailable    = vars
+
+
 toProgram :: DynGraph gr => GeneratedProgram -> Program gr
 toProgram generated = p { observability = defaultObservabilityMap (tcfg p) }
   where code = toCode generated
@@ -128,17 +151,19 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
           return $ Generated (Ass var exp)
                              (varsAvailable ∪ Set.fromList [var])
                              (Map.empty)),
-   (2, do channel <- elements $ Set.toList inChannels
+   (if (Set.null inChannels) then 0 else 2,
+       do channel <- elements $ Set.toList inChannels
           var     <- elements $ Set.toList (vars ∖ varsForbidden)
           return $ Generated (ReadFromChannel var channel)
                              (varsAvailable ∪ Set.fromList [var])
                              (Map.empty)),
-   (2, do channel <- elements $ Set.toList outChannels
+   (if (Set.null outChannels) then 0 else 2,
+       do channel <- elements $ Set.toList outChannels
           exp     <- expGenerator varsAvailable
           return $ Generated (PrintToChannel  exp channel)
                              (varsAvailable)
                              (Map.empty)),
-    (if (Set.null (threadsAvailable)) then 0 else 1,
+   (if (Set.null threadsAvailable) then 0 else 1,
        do thread <- elements $ Set.toList threadsAvailable
           return $ Generated (SpawnThread thread)
                              (varsAvailable)

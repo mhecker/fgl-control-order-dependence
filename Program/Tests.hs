@@ -12,6 +12,7 @@ import Control.Monad.Random
 import Control.Monad(forM_, when, forever)
 import Test.QuickCheck
 
+import Program.For
 import Program
 import Program.Examples
 import Program.MultiThread
@@ -19,7 +20,8 @@ import Program.MHP
 import Program.CDom
 import Program.Analysis
 import Program.Generator (GeneratedProgram(..), toCode, toProgram,
-                          SimpleProgram(..), toCodeSimple, toProgramSimple)
+                          SimpleProgram(..), toCodeSimple, toProgramSimple,
+                          Generated(..))
 import Program.TransitionSystem
 
 
@@ -132,7 +134,9 @@ isSecureEmpirically program@(Program { tcfg, observability }) = unsafePerformIO 
 genAndShowSimpleTransitionSystem = do
     generatedSimples <- sample' (arbitrary :: Gen SimpleProgram)
     let simple = generatedSimples !! (length generatedSimples `div` 4)
-    let p :: Program Gr = toProgramSimple $ simple
+--  let p :: Program Gr = toProgramSimple $ simple
+    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+
     showCFG   $ p
     showGraph $ fromSimpleProgram p
 
@@ -145,7 +149,7 @@ genAndShowSimpleTwoValuTransitionSystem = do
     let obs = observablePartOfTwoValueDefUseSimple (vars p)
                                                    (entryOf p $ mainThread p)
                                                    (exitOf  p $ mainThread p)
-                                                   (Set.fromList ["a","b","c"])
+                                                   (Set.fromList ["x", "y", "z"] ∩ vars p)
                                                    system
     showCFG   $ p
     showGraph $ system
@@ -153,12 +157,14 @@ genAndShowSimpleTwoValuTransitionSystem = do
 
 
 showSimpleTwoValueTransitionSystem = do
-    let p = simple
+    -- let p = simple2
+    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
     let system = twoValueFromSimpleProgram p
     let obs = observablePartOfTwoValueDefUseSimple (vars p)
                                                    (entryOf p $ mainThread p)
                                                    (exitOf  p $ mainThread p)
-                                                   (Set.fromList ["z"])
+                                                   -- (Set.fromList ["z"])
+                                                   (Set.fromList ["x", "y", "z"] ∩ vars p)
                                                    system
     showCFG   $ p
     showGraph $ system

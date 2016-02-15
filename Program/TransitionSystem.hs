@@ -106,8 +106,8 @@ varsIn :: Dependent -> Set Var
 varsIn (InitialVar v)                       = Set.fromList [v]
 varsIn (Edge _ deps)  = Set.unions $ Set.toList $ Set.map varsIn deps
 
-secureSymbolicDefUseSystem :: Graph gr => Node -> Set Var -> Set Var -> SymbolicDefUseSystem gr -> Bool
-secureSymbolicDefUseSystem exit low high system = (∀) exitstates (\(varDeps, _,_) ->
+secureSymbolicDefUseSystem :: Graph gr => Node -> Set Var -> SymbolicDefUseSystem gr -> Bool
+secureSymbolicDefUseSystem exit low system = (∀) exitstates (\(varDeps, _,_) ->
                                 (∀) low (\l -> (Set.unions $ Set.toList $ Set.map varsIn (varDeps ! l)) ⊆ low)
                               )
   where exitstates = [ nl | (i,nl@(_,nCfg,_)) <- labNodes system,
@@ -115,14 +115,10 @@ secureSymbolicDefUseSystem exit low high system = (∀) exitstates (\(varDeps, _
                      ]
 
 
-secureSimple :: DynGraph gr => Set Var -> Set Var -> Program gr -> Bool
-secureSimple low high p@(Program { mainThread, exitOf }) = secureSymbolicDefUseSystem exit low high system
+secureSymbolic :: DynGraph gr => Set Var ->  Program gr -> Bool
+secureSymbolic low p@(Program { mainThread, exitOf }) = secureSymbolicDefUseSystem exit low system
   where system  = fromSimpleProgram p
         exit    = exitOf  mainThread
-
-rofl :: Ord a => a -> a
-rofl = id
-
 
 
 type TwoValue = Bool
@@ -190,19 +186,21 @@ twoValueUnrollFrom cfg system
 
 at cfgNode (σ, cfgNode') = cfgNode == cfgNode'
 
-secureTwoValueDefUseSystem :: Graph gr => Node -> Node -> Set Var -> Set Var -> TwoValueDefUseSystem gr -> Bool
-secureTwoValueDefUseSystem entry exit low high system = undefined
-  where 
-        exitstates = [ n | (i,n) <- labNodes system,
-                            at exit n
-                     ]
+secureTwoValueDefUseSystem :: DynGraph gr => Set Var -> Node -> Node -> Set Var -> TwoValueDefUseSystem gr -> Bool
+secureTwoValueDefUseSystem vars entry exit low system = (∀) entrystates (\(i,n) -> (length $ suc observable i) == 1)
+  where entrystates = [ (i,n) | (i,n) <- labNodes observable,
+                            at entry n
+                      ]
+        observable  = observablePartOfTwoValueDefUseSimple vars entry exit low system
 
 
-secureTwoValueDefUseSimple :: DynGraph gr => Set Var -> Set Var -> Program gr -> Bool
-secureTwoValueDefUseSimple low high p@(Program { mainThread, exitOf, entryOf }) = secureTwoValueDefUseSystem entry exit low high system
-  where system  = twoValueFromSimpleProgram p
-        entry   = entryOf mainThread
-        exit    = exitOf  mainThread
+
+secureTwoValueDefUse :: DynGraph gr => Set Var -> Program gr -> Bool
+secureTwoValueDefUse low p@(Program { mainThread, exitOf, entryOf }) = secureTwoValueDefUseSystem variables entry exit low system
+  where system    = twoValueFromSimpleProgram p
+        entry     = entryOf mainThread
+        exit      = exitOf  mainThread
+        variables = vars p
 
 
 observablePartOfTwoValueDefUseSimple  vars entry exit low system = nmap lowOnly $ eqGraph (obsInitial ++ obsFinal) closure

@@ -52,6 +52,11 @@ infix 4 ∈
 (∈) :: (Eq a, Foldable t) => a -> t a -> Bool
 (∈) = elem
 
+
+infix 4 ↔
+(↔) :: Bool -> Bool -> Bool
+(↔) = (==)
+
 (→) :: Bool -> Bool -> Bool
 (→) = implies
   where implies a b = (not a) || b

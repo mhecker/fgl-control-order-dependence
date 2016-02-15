@@ -1,6 +1,6 @@
 module IRLSOD where
 
-
+import Util
 import Unicode
 import Algebra.Lattice
 
@@ -227,7 +227,6 @@ toTrace eTrace = [ (σ, o, σ') | ((_,σ,_), o, (_,σ',_)) <- eTrace ]
 
 observable :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> SecurityLattice -> Trace -> Trace
 observable icfg obs l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (def icfg n)) | (σ, (n,e), σ') <- trace, Just l' <- [obs n], l' ⊑ l ]
-  where restrict σ vars = Map.filterWithKey (\var _ -> var ∈ vars) σ
 
 (≈) :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> SecurityLattice -> Trace -> Trace -> Bool
 (≈) icfg obs l t t' = (observable icfg obs l t) == (observable icfg obs l t')

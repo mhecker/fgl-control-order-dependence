@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Program.TransitionSystem where
 
@@ -9,13 +10,14 @@ module Program.TransitionSystem where
 import Unicode
 
 import Program
+import Util
 -- import Program.CDom
 -- import Program.MHP
 import IRLSOD
 
--- -- import Data.Graph.Inductive.Util
+import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
-
+import Data.Graph.Inductive.Query.TransClos
 -- import Data.Util
 
 import Data.Maybe (fromJust)
@@ -120,3 +122,121 @@ secureSimple low high p@(Program { mainThread, exitOf }) = secureSymbolicDefUseS
 
 rofl :: Ord a => a -> a
 rofl = id
+
+
+
+type TwoValue = Bool
+
+data Reason = VarValue Var TwoValue
+            | CfgEdge Edge  -- For total generality, one might have to use "Edge (LEdge CFGEdge) (Set Dependent)" Instead
+            deriving (Show, Eq, Ord)
+
+type TwoValueDefUseNode   = (Map Var (Set Reason), Node)
+type TwoValueDefUseSystem gr = gr TwoValueDefUseNode ()
+
+
+initialTwoValueStates :: Set Var -> [Map Var (Set Reason)]
+initialTwoValueStates vars = [ fmap (Set.singleton) $ Map.fromList σ | σ <- 
+  chooseOneEach [ (var, [VarValue var val  | val <- [False, True]])
+                                           | var <- Set.toList $ vars
+                ]
+ ]
+
+
+twoValueFromSimpleProgram :: DynGraph gr => Program gr -> TwoValueDefUseSystem gr
+twoValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, exitOf })
+    | Set.size staticThreads /= 1 = error "not simple: more than one thread"
+    | otherwise                   =
+        twoValueUnrollFrom tcfg (mkGraph [ (i,(σ,entry))
+                                         | (i,σ) <- zip [1..]
+                                                        (initialTwoValueStates $ vars p)
+                                         ]
+                                         []
+                                )
+  where entry   = entryOf mainThread
+
+
+twoValueUnrollFrom :: DynGraph gr => gr CFGNode CFGEdge -> TwoValueDefUseSystem gr -> TwoValueDefUseSystem gr
+twoValueUnrollFrom cfg system
+    | noNodes newSystem == noNodes system &&
+      noEdges newSystem == noEdges system     = system
+    | otherwise                               = twoValueUnrollFrom cfg newSystem
+  where noEdges g = length $ edges g
+        newSystem = mkGraph allNodes [ (fromJust $ lookup nl  allNodes',
+                                            fromJust $ lookup nl' allNodes',
+                                            ()
+                                           ) | (nl,nl',()) <- allEdges
+                                     ]
+        allEdges = [ (nl,nl',()) | (i,nl@(σ, nCfg)) <- labNodes system,
+                                   (nCfg',eCfg) <- lsuc cfg nCfg,
+                                   let nl' = case eCfg of
+                                               Guard  b _ -> (σ, nCfg')
+                                               Assign _ _ -> ((Map.fromList [ (vDef, Set.fromList [CfgEdge (nCfg,nCfg')] ∪  Set.unions[ σ ! vUse | vUse <- Set.toList $ useE eCfg]
+                                                                              )
+                                                                            | vDef <- Set.toList $ defE eCfg ]
+                                                              ) `Map.union` σ,
+                                                              nCfg'
+                                                             )
+                                               NoOp       -> (σ, nCfg')
+                                               _          -> error "not simple"
+
+                   ]
+        allNodes = zip [1..]
+                       (Set.toList $ (Set.fromList [ nl  | (nl,_  ,_) <- allEdges ])
+                                   ∪ (Set.fromList [ nl' | (_ ,nl',_) <- allEdges ]))
+        allNodes' = fmap (\(a,b) -> (b,a)) allNodes
+
+
+
+at cfgNode (σ, cfgNode') = cfgNode == cfgNode'
+
+secureTwoValueDefUseSystem :: Graph gr => Node -> Node -> Set Var -> Set Var -> TwoValueDefUseSystem gr -> Bool
+secureTwoValueDefUseSystem entry exit low high system = undefined
+  where 
+        exitstates = [ n | (i,n) <- labNodes system,
+                            at exit n
+                     ]
+
+
+secureTwoValueDefUseSimple :: DynGraph gr => Set Var -> Set Var -> Program gr -> Bool
+secureTwoValueDefUseSimple low high p@(Program { mainThread, exitOf, entryOf }) = secureTwoValueDefUseSystem entry exit low high system
+  where system  = twoValueFromSimpleProgram p
+        entry   = entryOf mainThread
+        exit    = exitOf  mainThread
+
+
+observablePartOfTwoValueDefUseSimple  vars entry exit low system = nmap lowOnly $ eqGraph (obsInitial ++ obsFinal) closure
+  where closure = trc system
+
+        initial  = [ (i,n) | (i,n@(σ,_)) <- labNodes system,
+                             σ `elem` (initialTwoValueStates vars)
+                   ]
+        final    = [ (i,n) | (i,n) <- labNodes system,
+                             at exit n
+                   ]
+        obsInitial = [  [ i | (i,(σ,_)) <- initial, (restrict σ low) == σLow]
+                     | σLow <- [ fmap (Set.singleton) $ Map.fromList σLow | σLow <-
+                                    chooseOneEach [ (var, [VarValue var val | val <- [False, True]])
+                                                                            | var <- Set.toList $ low
+                                                  ]
+                               ]
+                     ]
+        -- obsFinal   = [  [ i | (i,(σ,_)) <- final, (restrict σ low) == σLow]
+        --              | σLow <- [ fmap (Set.singleton) $ Map.fromList σLow | σLow <-
+        --                             chooseOneEach [ (var, [(var,val) | val <- [False, True]])
+        --                                                              | var <- Set.toList $ low
+        --                                           ]
+        --                        ]
+        --              ]
+        obsFinal = Map.elems $ collectEqClasses final
+        collectEqClasses lnodes = foldr (\(i,(σ,nCfg)) eqClasses -> Map.insertWith (\i is -> i ++ is) (restrict σ low) [i] eqClasses) Map.empty lnodes
+        lowOnly (i:_) = (restrict σ low, nCfg)
+          where (σ,nCfg) = fromJust $ lab system i
+        lowOnly []    = (Map.empty, -1)
+
+
+
+
+
+
+

@@ -3,6 +3,9 @@ module Data.Graph.Inductive.Util where
 import Util
 
 import Data.Maybe (fromJust)
+import qualified Data.Map as Map
+import Control.Monad(liftM2)
+
 import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Query.DFS (scc)
@@ -31,3 +34,18 @@ labnfilter p gr = delNodes (map fst . filter (not . p) $ labNodes gr) gr
 isInCycle :: Graph gr => gr a b -> Node -> Bool
 isInCycle graph node = length component > 1
   where component = the (node `elem`) $ scc graph
+
+
+-- | The condensation of the given graph by equivalence classes
+-- adapted from Data.Graph.Inductive.Query.DFS.condensation
+eqGraph :: Graph gr => [[Node]] -> gr a b -> gr [Node] ()
+eqGraph classes gr = mkGraph vs es
+  where
+    vs = zip [1..] classes
+    vMap = Map.fromList $ map swap vs
+
+    swap = uncurry $ flip (,)
+
+    getN = (vMap Map.!)
+    es = [ (getN c1, getN c2, ()) | c1 <- classes, c2 <- classes
+                                  , (c1 /= c2) && any (hasEdge gr) (liftM2 (,) c1 c2) ]

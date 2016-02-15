@@ -135,3 +135,31 @@ genAndShowSimpleTransitionSystem = do
     let p :: Program Gr = toProgramSimple $ simple
     showCFG   $ p
     showGraph $ fromSimpleProgram p
+
+
+genAndShowSimpleTwoValuTransitionSystem = do
+    generatedSimples <- sample' (arbitrary :: Gen SimpleProgram)
+    let simple = generatedSimples !! (length generatedSimples `div` 4)
+    let p :: Program Gr = toProgramSimple $ simple
+    let system = twoValueFromSimpleProgram p
+    let obs = observablePartOfTwoValueDefUseSimple (vars p)
+                                                   (entryOf p $ mainThread p)
+                                                   (exitOf  p $ mainThread p)
+                                                   (Set.fromList ["a","b","c"])
+                                                   system
+    showCFG   $ p
+    showGraph $ system
+    showGraph $ obs
+
+
+showSimpleTwoValueTransitionSystem = do
+    let p = simple
+    let system = twoValueFromSimpleProgram p
+    let obs = observablePartOfTwoValueDefUseSimple (vars p)
+                                                   (entryOf p $ mainThread p)
+                                                   (exitOf  p $ mainThread p)
+                                                   (Set.fromList ["z"])
+                                                   system
+    showCFG   $ p
+    showGraph $ system
+    showGraph $ obs

@@ -215,19 +215,7 @@ observablePartOfTwoValueDefUseSimple  vars entry exit low system = nmap lowOnly 
                              at exit n
                    ]
         obsInitial = [  [ i | (i,(σ,_)) <- initial, (restrict σ low) == σLow]
-                     | σLow <- [ fmap (Set.singleton) $ Map.fromList σLow | σLow <-
-                                    chooseOneEach [ (var, [VarValue var val | val <- [False, True]])
-                                                                            | var <- Set.toList $ low
-                                                  ]
-                               ]
-                     ]
-        -- obsFinal   = [  [ i | (i,(σ,_)) <- final, (restrict σ low) == σLow]
-        --              | σLow <- [ fmap (Set.singleton) $ Map.fromList σLow | σLow <-
-        --                             chooseOneEach [ (var, [(var,val) | val <- [False, True]])
-        --                                                              | var <- Set.toList $ low
-        --                                           ]
-        --                        ]
-        --              ]
+                     | σLow <- (initialTwoValueStates $ low) ]
         obsFinal = Map.elems $ collectEqClasses final
         collectEqClasses lnodes = foldr (\(i,(σ,nCfg)) eqClasses -> Map.insertWith (\i is -> i ++ is) (restrict σ low) [i] eqClasses) Map.empty lnodes
         lowOnly (i:_) = (restrict σ low, nCfg)

@@ -26,11 +26,15 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Program.Analysis
+import Program.For
+import Program.Generator (toProgram, toProgramSimple, SimpleProgram(..), GeneratedProgram(..), Generated(..))
+
 -- import Data.Bool.Unicode
 -- import Data.Eq.Unicode
 
 -- -- import Data.Graph.Inductive.Basic
--- import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.PatriciaTree (Gr)
 -- -- import Data.Graph.Inductive.Util
 -- -- import Data.Graph.Inductive.Query.Dataflow
 -- import Data.Graph.Inductive.Query.Dominators
@@ -45,7 +49,7 @@ import qualified Data.Set as Set
 
 
 data Dependent               = InitialVar Var
-                             | Edge (LEdge Bool) (Set Dependent) -- For total generality, one might have to use "Edge (LEdge CFGEdge) (Set Dependent)" Instead
+--                             | Edge (LEdge Bool) (Set Dependent) -- For total generality, one might have to use "Edge (LEdge CFGEdge) (Set Dependent)" Instead
 
                                deriving (Eq,Ord,Show)
 type SymbolicDefUseNode      = (Map Var (Set Dependent), Node, Set Dependent)
@@ -79,10 +83,9 @@ unrollFrom cfg system
                                                Guard  b _ -> (varDeps,
                                                               nCfg',
                                                               controlDeps ∪
-                                                              Set.fromList [ Edge (nCfg,nCfg',b)
-                                                                                  (Set.fromList [ d | v <- Set.toList $ useE eCfg,
-                                                                                                      d <- Set.toList $ varDeps ! v ])
-                                                                           ]
+                                                              (Set.fromList [ d | v <- Set.toList $ useE eCfg,
+                                                                                  d <- Set.toList $ varDeps ! v ]
+                                                              )
                                                              )
                                                Assign _ _ -> ((Map.fromList [ (d, (Set.map InitialVar $ useE eCfg)
                                                                                   ∪
@@ -104,19 +107,19 @@ unrollFrom cfg system
 
 varsIn :: Dependent -> Set Var
 varsIn (InitialVar v)                       = Set.fromList [v]
-varsIn (Edge _ deps)  = Set.unions $ Set.toList $ Set.map varsIn deps
+--varsIn (Edge _ deps)  = Set.unions $ Set.toList $ Set.map varsIn deps
 
-secureSymbolicDefUseSystem :: Graph gr => Node -> Set Var -> SymbolicDefUseSystem gr -> Bool
-secureSymbolicDefUseSystem exit low system = (∀) exitstates (\(varDeps, _,_) ->
-                                (∀) low (\l -> (Set.unions $ Set.toList $ Set.map varsIn (varDeps ! l)) ⊆ low)
+secureSymbolicDefUseSystem :: Graph gr => Node -> Set Var -> Set Var -> SymbolicDefUseSystem gr -> Bool
+secureSymbolicDefUseSystem exit low high system = (∀) exitstates (\(varDeps, _,_) ->
+                                (∀) low (\l -> (Set.unions $ Set.toList $ Set.map varsIn (varDeps ! l)) ∩ high  == Set.empty)
                               )
   where exitstates = [ nl | (i,nl@(_,nCfg,_)) <- labNodes system,
                             nCfg == exit
                      ]
 
 
-secureSymbolic :: DynGraph gr => Set Var ->  Program gr -> Bool
-secureSymbolic low p@(Program { mainThread, exitOf }) = secureSymbolicDefUseSystem exit low system
+secureSymbolic :: DynGraph gr => Set Var -> Set Var -> Program gr -> Bool
+secureSymbolic low high p@(Program { mainThread, exitOf }) = secureSymbolicDefUseSystem exit low high system
   where system  = fromSimpleProgram p
         exit    = exitOf  mainThread
 
@@ -335,3 +338,13 @@ observablePartOfOneValueDefUseSimple  vars entry exit low system = nmap lowOnly 
 
 
 
+securePDG :: Set Var -> Set Var -> Set Var -> SimpleProgram -> Bool
+securePDG vars low high simple =  isSecureTimingClassificationDomPaths p'
+  where p'       = toProgram       simple' :: Program Gr
+        simple' = let (SimpleProgram threads) = simple
+                      (Generated for _ _)     = (Map.!) threads 1
+                      prefix  = foldl Seq Skip $ [ReadFromChannel var       lowIn1 | var <- Set.toList $ (vars ∖ high) ] ++
+                                                 [ReadFromChannel var       stdIn  | var <- Set.toList $ high]
+                      postfix = foldr Seq Skip   [PrintToChannel  (Var var) stdOut | var <- Set.toList $ low ]
+                      for'    = prefix `Seq` for `Seq` postfix
+                  in  (GeneratedProgram (Map.fromList [(1, Generated for' undefined undefined)]))

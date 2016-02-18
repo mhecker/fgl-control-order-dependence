@@ -133,12 +133,28 @@ isSecureEmpirically program@(Program { tcfg, observability }) = unsafePerformIO 
 
 genAndShowSimpleTransitionSystem = do
     generatedSimples <- sample' (arbitrary :: Gen SimpleProgram)
-    let simple = generatedSimples !! (length generatedSimples `div` 4)
---  let p :: Program Gr = toProgramSimple $ simple
-    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+--    let simple = generatedSimples !! (length generatedSimples `div` 4)
+    -- let simple = SimpleProgram (Map.fromList [(1,Generated (Seq Skip (ForC 2 (Seq (Seq (Seq (Ass "h" (Times (Var "x") (Var "h"))) (Ass "x" (Times (Var "x") (Var "z")))) (Seq Skip (Ass "z" (Times (Var "x") (Var "z"))))) (Seq (If (Leq (Val 0) (Times (Var "y") (Var "z"))) Skip Skip) (Seq Skip (Ass "h" (Times (Var "x") (Var "h")))))))) (Set.fromList ["h","x","y","z"]) (Map.fromList []))])
+    -- let simple = SimpleProgram (Map.fromList [(1,Generated (Seq Skip (Seq (ForC 1 (Seq (ForC 2 (Ass "z" (Times (Var "x") (Var "x")))) (ForV "z" (Ass "h" (Times (Var "x") (Var "y")))))) (Seq (Seq (Seq (Ass "z" (Times (Var "y") (Var "h"))) (Ass "z" (Times (Var "x") (Var "z")))) (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Ass "h" (Times (Var "z") (Var "z"))) Skip)) (If (Leq (Val 0) (Times (Var "x") (Var "y"))) (Seq Skip Skip) (ForV "y" (Ass "h" (Times (Var "y") (Var "x")))))))) (Set.fromList ["h","x","y","z"]) (Map.fromList []))])
+    let simple = SimpleProgram (Map.fromList [(1,Generated (Seq Skip (ForC 1 (Seq (Seq (ForC 2 (Ass "h" (Times (Var "h") (Var "h")))) (If (Leq (Val 0) (Times (Var "y") (Var "y"))) (Ass "x" (Times (Var "y") (Var "h"))) (Ass "y" (Times (Var "z") (Var "y"))))) (Seq (If (Leq (Val 0) (Times (Var "h") (Var "z"))) (Ass "h" (Times (Var "x") (Var "y"))) (Ass "x" (Times (Var "z") (Var "h")))) (ForC 2 Skip))))) (Set.fromList ["h","x","y","z"]) (Map.fromList []))])
 
+    let p :: Program Gr = toProgramSimple $ simple
+    let low  = Set.fromList ["x", "y", "z"] ∩ vars p
+    let high = Set.fromList ["a", "b", "c"] ∩ vars p
     showCFG   $ p
     showGraph $ fromSimpleProgram p
+    putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic low high p)
+    putStrLn  $ "securePDG:      " ++ (show $ securePDG (vars p) low high simple)
+
+
+
+showSimpleTransitionSystem = do
+    let p :: Program Gr = simple2
+    let low  = Set.fromList ["x", "y", "z"] ∩ vars p
+    let high = Set.fromList ["a", "b", "c"] ∩ vars p
+    showCFG   $ p
+    showGraph $ fromSimpleProgram p
+    putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic low high p)
 
 
 genAndShowSimpleTwoValuTransitionSystem = do

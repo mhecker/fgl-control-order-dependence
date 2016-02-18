@@ -1319,7 +1319,7 @@ simple = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "x" (Var "y")                                                `Seq`
+           Ass "x" (Var "a")                                                `Seq`
            If (Leq (Var "x") (Val 0))
               (Ass "z" (Val 1))
               (Ass "z" (Val 0))
@@ -1331,7 +1331,7 @@ simple2 = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "x" (Var "y")                                                `Seq`
+           Ass "x" (Var "a")                                                `Seq`
            If (Leq (Var "x") (Val 0))
               (Skip)
               (Skip)                                                        `Seq`

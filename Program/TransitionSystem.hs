@@ -225,4 +225,113 @@ observablePartOfTwoValueDefUseSimple  vars entry exit low system = nmap lowOnly 
 
 
 
+type OneValue = ()
+data OneReason = OneVarValue Var OneValue
+            | OneCfgEdge Edge  -- For total generality, one might have to use "Edge (LEdge CFGEdge) (Set Dependent)" Instead
+            deriving (Show, Eq, Ord)
+
+type OneValueDefUseNode   = (Map Var (Set OneReason), Node)
+type OneValueDefUseSystem gr = gr OneValueDefUseNode ()
+
+
+initialOneValueStates :: Set Var -> [Map Var (Set OneReason)]
+initialOneValueStates vars = [ fmap (Set.singleton) $ Map.fromList σ | σ <- 
+  chooseOneEach [ (var, [OneVarValue var val  | val <- [()]])
+                                           | var <- Set.toList $ vars
+                ]
+ ]
+
+
+oneValueFromSimpleProgram :: DynGraph gr => Program gr -> OneValueDefUseSystem gr
+oneValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, exitOf })
+    | Set.size staticThreads /= 1 = error "not simple: more than one thread"
+    | otherwise                   =
+        oneValueUnrollFrom tcfg (mkGraph [ (i,(σ,entry))
+                                         | (i,σ) <- zip [1..]
+                                                        (initialOneValueStates $ vars p)
+                                         ]
+                                         []
+                                )
+  where entry   = entryOf mainThread
+
+
+oneValueUnrollFrom :: DynGraph gr => gr CFGNode CFGEdge -> OneValueDefUseSystem gr -> OneValueDefUseSystem gr
+oneValueUnrollFrom cfg system
+    | noNodes newSystem == noNodes system &&
+      noEdges newSystem == noEdges system     = system
+    | otherwise                               = oneValueUnrollFrom cfg newSystem
+  where noEdges g = length $ edges g
+        newSystem = mkGraph allNodes [ (fromJust $ lookup nl  allNodes',
+                                            fromJust $ lookup nl' allNodes',
+                                            ()
+                                           ) | (nl,nl',()) <- allEdges
+                                     ]
+        allEdges = [ (nl,nl',()) | (i,nl@(σ, nCfg)) <- labNodes system,
+                                   (nCfg',eCfg) <- lsuc cfg nCfg,
+                                   let nl' = case eCfg of
+                                               Guard  b _ -> (σ, nCfg')
+                                               Assign _ _ -> ((Map.fromList [ (vDef, Set.fromList [OneCfgEdge (nCfg,nCfg')] ∪  Set.unions[ σ ! vUse | vUse <- Set.toList $ useE eCfg]
+                                                                              )
+                                                                            | vDef <- Set.toList $ defE eCfg ]
+                                                              ) `Map.union` σ,
+                                                              nCfg'
+                                                             )
+                                               NoOp       -> (σ, nCfg')
+                                               _          -> error "not simple"
+
+                   ]
+        allNodes = zip [1..]
+                       (Set.toList $ (Set.fromList [ nl  | (nl,_  ,_) <- allEdges ])
+                                   ∪ (Set.fromList [ nl' | (_ ,nl',_) <- allEdges ]))
+        allNodes' = fmap (\(a,b) -> (b,a)) allNodes
+
+
+secureOneValueDefUseSystem :: DynGraph gr => Set Var -> Node -> Node -> Set Var -> OneValueDefUseSystem gr -> Bool
+secureOneValueDefUseSystem vars entry exit low system = (∀) exitstates (\(i,(σ,nCfg)) ->
+                                                                         (∀) low (\var ->
+                                                                                 (∀) [ var' | OneVarValue var' () <- Set.toList $ σ ! var] (\var' -> var' ∈ low)
+                                                                         )
+                                                        )
+                                                        ∧
+                                                        (∀) entrystates (\(i,n) -> (length $ suc observable i) == 1)
+  where entrystates = [ (i,n) | (i,n) <- labNodes observable,
+                            at entry n
+                      ]
+        exitstates  = [ (i,n) | (i,n) <- labNodes observable,
+                            at exit n
+                      ]
+        observable  = observablePartOfOneValueDefUseSimple vars entry exit low system
+
+
+
+secureOneValueDefUse :: DynGraph gr => Set Var -> Program gr -> Bool
+secureOneValueDefUse low p@(Program { mainThread, exitOf, entryOf }) = secureOneValueDefUseSystem variables entry exit low system
+  where system    = oneValueFromSimpleProgram p
+        entry     = entryOf mainThread
+        exit      = exitOf  mainThread
+        variables = vars p
+
+
+observablePartOfOneValueDefUseSimple  vars entry exit low system = nmap lowOnly $ eqGraph (obsInitial ++ obsFinal) closure
+  where closure = trc system
+
+        initial  = [ (i,n) | (i,n@(σ,_)) <- labNodes system,
+                             σ `elem` (initialOneValueStates vars)
+                   ]
+        final    = [ (i,n) | (i,n) <- labNodes system,
+                             at exit n
+                   ]
+        obsInitial = [  [ i | (i,(σ,_)) <- initial, (restrict σ low) == σLow]
+                     | σLow <- (initialOneValueStates $ low) ]
+        obsFinal = Map.elems $ collectEqClasses final
+        collectEqClasses lnodes = foldr (\(i,(σ,nCfg)) eqClasses -> Map.insertWith (\i is -> i ++ is) (restrict σ low) [i] eqClasses) Map.empty lnodes
+        lowOnly (i:_) = (restrict σ low, nCfg)
+          where (σ,nCfg) = fromJust $ lab system i
+        lowOnly []    = (Map.empty, -1)
+
+
+
+
+
+
 

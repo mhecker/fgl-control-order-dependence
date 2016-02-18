@@ -158,14 +158,39 @@ genAndShowSimpleTwoValuTransitionSystem = do
 
 showSimpleTwoValueTransitionSystem = do
     -- let p = simple2
-    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Ass "z" (Times (Var "b") (Var "z"))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    -- let p = (toProgramSimple $  SimpleProgram (Map.fromList [(1,Generated (Seq (ForV "b" (Seq (If (Leq (Val 0) (Times (Var "z") (Var "b"))) (Ass "c" (Times (Var "x") (Var "x"))) (Ass "x" (Times (Var "y") (Var "a")))) (ForC 1 Skip))) (Seq (If (Leq (Val 0) (Times (Var "a") (Var "z"))) (Seq (Ass "y" (Times (Var "z") (Var "c"))) (Ass "x" (Times (Var "a") (Var "x")))) (ForV "b" (Ass "a" (Times (Var "a") (Var "x"))))) (Seq (ForV "c" (Ass "y" (Times (Var "x") (Var "a")))) (Seq Skip (Ass "z" (Times (Var "x") (Var "z"))))))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Seq Skip (If (Leq (Val 0) (Times (Var "y") (Var "x"))) (Ass "z" (Times (Var "z") (Var "x"))) (Ass "h" (Times (Var "h") (Var "x"))))) (Set.fromList ["h","x","y","z"]) (Map.fromList []))])) :: Program Gr
+
     let system = twoValueFromSimpleProgram p
+    -- let low = (Set.fromList ["z"])
+    let low = Set.fromList ["x", "y", "z"] ∩ vars p
     let obs = observablePartOfTwoValueDefUseSimple (vars p)
                                                    (entryOf p $ mainThread p)
                                                    (exitOf  p $ mainThread p)
-                                                   -- (Set.fromList ["z"])
-                                                   (Set.fromList ["x", "y", "z"] ∩ vars p)
+                                                   low
                                                    system
     showCFG   $ p
     showGraph $ system
     showGraph $ obs
+    putStrLn  $ "secure: " ++ (show $ secureTwoValueDefUse low p)
+
+showSimpleOneValueTransitionSystem = do
+    -- let p = simple2
+    -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Ass "z" (Times (Var "b") (Var "z"))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    --let p = (toProgramSimple $  SimpleProgram (Map.fromList [(1,Generated (Seq (ForV "b" (Seq (If (Leq (Val 0) (Times (Var "z") (Var "b"))) (Ass "c" (Times (Var "x") (Var "x"))) (Ass "x" (Times (Var "y") (Var "a")))) (ForC 1 Skip))) (Seq (If (Leq (Val 0) (Times (Var "a") (Var "z"))) (Seq (Ass "y" (Times (Var "z") (Var "c"))) (Ass "x" (Times (Var "a") (Var "x")))) (ForV "b" (Ass "a" (Times (Var "a") (Var "x"))))) (Seq (ForV "c" (Ass "y" (Times (Var "x") (Var "a")))) (Seq Skip (Ass "z" (Times (Var "x") (Var "z"))))))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Seq Skip (If (Leq (Val 0) (Times (Var "y") (Var "x"))) (Ass "z" (Times (Var "z") (Var "x"))) (Ass "h" (Times (Var "h") (Var "x"))))) (Set.fromList ["h","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    let system = oneValueFromSimpleProgram p
+    -- let low = (Set.fromList ["z"])
+    let low = Set.fromList ["x", "y", "z"] ∩ vars p
+    let obs = observablePartOfOneValueDefUseSimple (vars p)
+                                                   (entryOf p $ mainThread p)
+                                                   (exitOf  p $ mainThread p)
+                                                   low
+                                                   system
+    showCFG   $ p
+    showGraph $ system
+    showGraph $ obs
+    putStrLn  $ "secure: " ++ (show $ secureOneValueDefUse low p)

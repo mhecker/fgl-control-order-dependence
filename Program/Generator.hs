@@ -89,22 +89,19 @@ instance Arbitrary GeneratedProgram where
 
 instance Arbitrary SimpleProgram where
   arbitrary = sized $ \n -> do
-      f@(Generated p _ spawned) <- forGenerator inChannels
+      f@(Generated p vars spawned) <- forGenerator inChannels
                                                 outChannels
                                                 vars
                                                 varsAvailable
                                                 varsForbidden
                                                 threadsAvailable
                                                 n
-      generated <- programGenerator n
-                                    ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
-                                    (Map.fromList [(1, f)])
-      return $ SimpleProgram generated
+      return $ SimpleProgram (Map.fromList [(1,Generated (Skip `Seq` p) vars spawned)])
     where
       threadsAvailable = Set.fromList []
       inChannels       = Set.fromList []
       outChannels      = Set.fromList []
-      vars             = Set.fromList ["x", "y", "z", "a", "b", "c"]
+      vars             = Set.fromList ["x", "y", "z", "h"]
       varsForbidden    = Set.fromList []
       varsAvailable    = vars
 

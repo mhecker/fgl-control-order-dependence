@@ -1076,7 +1076,7 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = p { observability =
            Ass "h" (Val 0)                                                  `Seq`
            SpawnThread 2                                                    `Seq`
            ReadFromChannel "h" stdIn                                        `Seq`
-           Ass "h" ((Var "h") `Plus` (Val 1))
+           Skip
           ),
           (2,
            Skip                                                             `Seq`

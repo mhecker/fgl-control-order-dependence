@@ -1340,6 +1340,22 @@ simple2 = p { observability = defaultObservabilityMap (tcfg p) }
 
          ]
 
+simple3 :: Program Gr
+simple3 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass "tmp" ((Var "z") `Plus` (Val 1))                             `Seq`
+           Ass "x" (Var "a")                                                `Seq`
+           If (Leq (Var "x") (Val 0))
+              (Skip)
+              (Skip)                                                        `Seq`
+           Ass "z" (Var "tmp")
+          )
+
+         ]
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),

@@ -26,6 +26,8 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Data.List ((\\))
+
 import Program.Analysis
 import Program.For
 import Program.Generator (toProgram, toProgramSimple, SimpleProgram(..), GeneratedProgram(..), Generated(..))
@@ -348,3 +350,116 @@ securePDG vars low high simple =  isSecureTimingClassificationDomPaths p'
                       postfix = foldr Seq Skip   [PrintToChannel  (Var var) stdOut | var <- Set.toList $ low ]
                       for'    = prefix `Seq` for `Seq` postfix
                   in  (GeneratedProgram (Map.fromList [(1, Generated for' undefined undefined)]))
+
+
+
+
+
+
+
+
+
+
+type Concrete = Val
+concreteDomain = [0,1]
+
+
+type ConcreteNode   = (Map Var Concrete, Node)
+type ConcreteSystem gr = gr ConcreteNode ()
+
+
+initialConcreteStates :: Set Var -> [Map Var Concrete]
+initialConcreteStates vars = [ Map.fromList σ | σ <-
+  chooseOneEach [ (var, [val  | val <- concreteDomain])
+                              | var <- Set.toList $ vars
+                ]
+ ]
+
+
+concreteFromSimpleProgram :: DynGraph gr => Program gr -> ConcreteSystem gr
+concreteFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, exitOf })
+    | Set.size staticThreads /= 1 = error "not simple: more than one thread"
+    | otherwise                   =
+        concreteUnrollFrom tcfg (mkGraph [ (i,(σ,entry))
+                                         | (i,σ) <- zip [1..]
+                                                        (initialConcreteStates $ vars p)
+                                         ]
+                                         []
+                                )
+  where entry   = entryOf mainThread
+
+
+concreteUnrollFrom :: DynGraph gr => gr CFGNode CFGEdge -> ConcreteSystem gr -> ConcreteSystem gr
+concreteUnrollFrom cfg system
+    | noNodes newSystem == noNodes system &&
+      noEdges newSystem == noEdges system     = system
+    | otherwise                               = concreteUnrollFrom cfg newSystem
+  where noEdges g = length $ edges g
+        newSystem = mkGraph allNodes [ (fromJust $ lookup nl  allNodes',
+                                            fromJust $ lookup nl' allNodes',
+                                            ()
+                                           ) | (nl,nl',()) <- allEdges
+                                     ]
+        allEdges = [ (nl,nl',()) | (i,nl@(σ, nCfg)) <- labNodes system,
+                                   (nCfg',eCfg) <- lsuc cfg nCfg,
+                                   case eCfg of Guard True  b ->       evalB σ b
+                                                Guard False b -> not $ evalB σ b
+                                                _             -> True,
+                                   let nl' = case eCfg of
+                                               Guard  _ _ -> (σ, nCfg')
+                                               Assign v f -> ((Map.fromList [ (v, abs $ evalV σ f `mod` 2) ]) `Map.union` σ,
+                                                              nCfg'
+                                                             )
+                                               NoOp       -> (σ, nCfg')
+                                               _          -> error "not simple"
+
+                   ]
+        allNodes = zip [1..]
+                       (Set.toList $ (Set.fromList [ nl  | (nl,_  ,_) <- allEdges ])
+                                   ∪ (Set.fromList [ nl' | (_ ,nl',_) <- allEdges ]))
+        allNodes' = fmap (\(a,b) -> (b,a)) allNodes
+
+
+
+
+
+-- secureTwoValueDefUseSystem :: DynGraph gr => Set Var -> Node -> Node -> Set Var -> TwoValueDefUseSystem gr -> Bool
+-- secureTwoValueDefUseSystem vars entry exit low system = (∀) entrystates (\(i,n) -> (length $ suc observable i) == 1)
+--   where entrystates = [ (i,n) | (i,n) <- labNodes observable,
+--                             at entry n
+--                       ]
+--         observable  = observablePartOfTwoValueDefUseSimple vars entry exit low system
+
+
+
+-- secureTwoValueDefUse :: DynGraph gr => Set Var -> Program gr -> Bool
+-- secureTwoValueDefUse low p@(Program { mainThread, exitOf, entryOf }) = secureTwoValueDefUseSystem variables entry exit low system
+--   where system    = twoValueFromSimpleProgram p
+--         entry     = entryOf mainThread
+--         exit      = exitOf  mainThread
+--         variables = vars p
+
+
+
+observablePartOfConcrete vars entry exit low system = nmap lowOnly $ eqGraph (obsInitial ++ obsFinal ++ (fmap (\(i,n) -> [i]) other)) closure
+  where closure = system
+
+        initial  = [ (i,n) | (i,n@(σ,_)) <- labNodes system,
+                             σ `elem` (initialConcreteStates vars),
+                             at entry n
+                   ]
+        final    = [ (i,n) | (i,n) <- labNodes system,
+                             at exit n
+                   ]
+        other = (labNodes system \\ initial) \\ final
+        obsInitial = [  [ i | (i,(σ,_)) <- initial, (restrict σ low) == σLow]
+                     | σLow <- (initialConcreteStates $ low) ]
+        obsFinal = Map.elems $ collectEqClasses final
+
+        collectEqClasses lnodes = foldr (\(i,(σ,nCfg)) eqClasses -> Map.insertWith (\i is -> i ++ is) (restrict σ low) [i] eqClasses) Map.empty lnodes
+        lowOnly (i:_)
+          | i `elem` (fmap fst initial) ∨
+            i `elem` (fmap fst final  ) = (restrict σ low, nCfg)
+          | otherwise           = (σ,nCfg)
+          where (σ,nCfg) = fromJust $ lab system i
+        lowOnly []    = (Map.empty, -1)

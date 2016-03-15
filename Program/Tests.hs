@@ -150,11 +150,29 @@ genAndShowSimpleTransitionSystem = do
 
 showSimpleTransitionSystem = do
     let p :: Program Gr = simple2
-    let low  = Set.fromList ["x", "y", "z"] ∩ vars p
+    let low  = Set.fromList ["z"] ∩ vars p
     let high = Set.fromList ["a", "b", "c"] ∩ vars p
     showCFG   $ p
     showGraph $ fromSimpleProgram p
     putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic low high p)
+
+
+showConcreteTransitionSystem = do
+    let p :: Program Gr = simple
+    let low  = Set.fromList ["z"] ∩ vars p
+    let high = Set.fromList ["a", "b", "c"] ∩ vars p
+    let system = concreteFromSimpleProgram p
+    let obs = observablePartOfConcrete (vars p)
+                                       (entryOf p $ mainThread p)
+                                       (exitOf  p $ mainThread p)
+                                       low
+                                       system
+    showCFG   $ p
+    showGraph $ system
+--  showGraph $ trc system
+    showGraph $ obs
+
+--    putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic low high p)
 
 
 genAndShowSimpleTwoValuTransitionSystem = do

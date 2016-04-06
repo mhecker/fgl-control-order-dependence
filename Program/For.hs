@@ -32,6 +32,36 @@ data For = If   BoolFunction For For
          | SpawnThread StaticThread
   deriving Show
 
+
+toChannelJava ::
+  String ->
+  [InputChannel]  ->
+  [OutputChannel] ->
+  (InputChannel  -> SecurityLattice) ->
+  (OutputChannel -> SecurityLattice) -> String
+toChannelJava package inputs outputs obsIn obsOut = unlines $  [
+    "package example;",
+    "import static edu.kit.joana.ui.annotations.Level.*;",
+    "import edu.kit.joana.ui.annotations.Level;",
+    "import edu.kit.joana.ui.annotations.Sink;",
+    "import edu.kit.joana.ui.annotations.Source;",
+    "public class Channels {"
+   ] ++ concat [ [
+    "    @Source(level=" ++ (fromLevel $ obsIn channel) ++ ")",
+    "    public int readFromChannel() {",
+    "        return 0;",
+    "    }" ] | channel <- inputs
+   ] ++ concat [ [
+    "    @Source(level=" ++ (fromLevel $ obsOut channel) ++ ")",
+    "    public vouid printToChannel(int x) {",
+    "    }" ] | channel <- outputs
+   ]
+
+ where fromLevel Low  = "LOW"
+       fromLevel High = "HIGH"
+
+
+
 compile :: DynGraph gr => Map StaticThread Node -> Node -> For -> Gen Node (gr CFGNode CFGEdge, Node, [Node])
 compile entryOf nStart (If b sTrue sFalse) = do
   nTrue <- gen

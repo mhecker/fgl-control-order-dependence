@@ -42,6 +42,10 @@ import Data.Graph.Inductive.Query.TimingDependence
 import Data.Graph.Inductive.Query.DataDependence
 import Data.Graph.Inductive.Query.DataConflict
 import Data.Graph.Inductive.Query.TransClos
+import Data.Graph.Inductive.Query.DFS
+
+import Data.Tree
+
 
 import Data.Graph.Inductive.Query.Dominators
 

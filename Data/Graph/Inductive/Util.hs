@@ -9,6 +9,7 @@ import Control.Monad(liftM2)
 import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Query.DFS (scc)
+import Data.Graph.Inductive.Query.TransClos (trc)
 
 
 -- adapted from from https://hackage.haskell.org/package/gbu-0.1/
@@ -49,3 +50,17 @@ eqGraph classes gr = mkGraph vs es
     getN = (vMap Map.!)
     es = [ (getN c1, getN c2, ()) | c1 <- classes, c2 <- classes
                                   , (c1 /= c2) && any (hasEdge gr) (liftM2 (,) c1 c2) ]
+
+
+-- via http://dx.doi.org/10.1016/0167-6423(89)90039-7
+trrAcyclic :: DynGraph gr => gr a () -> gr a ()
+trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
+  where closure = delEdges [(n,n) | n <- nodes graph] $ trc graph
+        trrAcyclicCurrent g []     = g
+        trrAcyclicCurrent g (k:ks) =
+            trrAcyclicCurrent (delEdges [(i,j) | i <- pre g k,
+                                                 j <- suc g k
+                                        ]
+                                        g
+                              )
+                              ks

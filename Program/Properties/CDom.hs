@@ -1,23 +1,30 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Program.Properties.CDom where
 
 -- import Algebra.Lattice
+import Util
 
 import Unicode
 import Data.Bool.Unicode
 
 import Program
+import Program.For
 import Program.MHP
 -- import Program.MultiThread
 import Program.CDom
+import Program.Generator
 import Execution
 import ExecutionTree
+
 
 
 import IRLSOD
 
 -- import Data.Graph.Inductive.Util
 -- import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.PatriciaTree
 
 
 import Data.List (takeWhile, dropWhile)
@@ -26,6 +33,9 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+
+import Data.List(nub, (\\))
+import Data.Tree
 
 import Data.Util
 -- import Data.Set.Unicode
@@ -36,6 +46,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.Dominators
 import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Query.TimingDependence
+import Data.Graph.Inductive.Query.DFS (scc)
 
 
 
@@ -208,3 +219,54 @@ chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, mai
        chop :: Node -> Node -> Set Node
        chop s t =   (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+
+
+idomIsTree ::  forall gr. DynGraph gr => Program gr -> Map (Node,Node) Node -> Bool
+idomIsTree p@(Program { tcfg, observability, entryOf, mainThread }) idom =
+    (∀) (scc tree)               (\scc -> length scc == 1)
+ ∧  (∀) (nodes tree  \\ [entry]) (\n   -> hasEdge tree' (entry,n))
+   where tree :: gr CFGNode ()
+         tree =  mkGraph (labNodes tcfg)
+                         (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, (c,m)  <- [ (c,n) , (c,n') ]])
+         tree' = trc tree
+         entry = entryOf mainThread
+
+
+idomIsTreeGenerated :: GeneratedProgram -> Bool
+idomIsTreeGenerated gen = idomIsTree p idom
+  where p :: Program Gr
+        p = toProgram gen
+        idom = idomMohrEtAl p
+        -- idom = idomChef p
+
+
+-- asserts that conversion from a cdom relation to an underlying domination tree via idomToTree is "sound",
+-- in that at least for the naiive cdom relation "idomChef", exactly the underlying domTree is returned
+idomChefTreeIsDomTree :: Program Gr -> Bool
+idomChefTreeIsDomTree p = (toMap $ idomToTree (idomChef p)) == (invert dom)
+  where dom :: Map Node Node
+        dom = Map.fromList $ iDom (tcfg p) (entryOf p $ mainThread p)
+
+toMap :: Graph gr => gr () () -> Map Node (Set Node)
+toMap tree = Map.fromList [ (n,Set.fromList sucs) | n <- nodes tree, let sucs = suc tree n, (¬) (null sucs) ]
+
+chopsCdomArePrefixes :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
+chopsCdomArePrefixes cdomComputation p =
+    (∀) (Map.assocs cdom) (\((n,n'),c) -> let [ndom]  = pre idom n
+                                              [ndom'] = pre idom n'
+                                          in  (c == n  ∨  chop c n  == (chop c ndom ) ∪ (chop ndom  n ))
+                                              ∧ (c == n' ∨  chop c n' == (chop c ndom') ∪ (chop ndom' n'))
+                          )
+  where cdom = cdomComputation p
+
+        idom = insEdge (entry,entry,()) $ idomToTree cdom
+
+        entry = entryOf p $ mainThread p
+
+        trnsclos = trc $ tcfg p
+
+        chop :: Node -> Node -> Set Node
+        chop s t =   (Set.fromList $ suc trnsclos s)
+                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance

@@ -14,9 +14,13 @@ import Data.Ord
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 import Program (Program)
+
 import Program.Properties.Analysis
+import Program.Properties.CDom
+
 import Program.Examples (testsuite, ijisLSODistkaputt)
 import Program.Analysis
+import Program.CDom
 import Program.Generator (toProgram)
 
 main = defaultMain tests
@@ -25,7 +29,7 @@ tests :: TestTree
 tests = testGroup "Tests" [properties, unitTests]
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps ]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps ]
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationDomPaths == timingClassification"
@@ -38,7 +42,7 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
 
-unitTests = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests ]
+unitTests = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests ]
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
   [  testCase     ("timingClassificationDomPaths == timingClassificationDomPaths for " ++ exampleName)
@@ -72,3 +76,21 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+
+cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
+    testProperty  "chopsCdomArePrefixes idomChef"     $ chopsCdomArePrefixes idomChef,
+    testProperty  "chopsCdomArePrefixes idomMohrEtAl" $ chopsCdomArePrefixes idomMohrEtAl,
+    testProperty  "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree
+  ]
+
+
+cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
+  [ testCase ("chopsCdomArePrefixes idomChef for " ++ exampleName)  $ chopsCdomArePrefixes idomChef p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("idomChefTreeIsDomTree for " ++ exampleName)  $ idomChefTreeIsDomTree p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  []
+

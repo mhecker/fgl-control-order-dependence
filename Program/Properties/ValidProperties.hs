@@ -23,10 +23,14 @@ import Program.Analysis
 import Program.CDom
 import Program.Generator (toProgram)
 
-main = defaultMain tests
+-- main = defaultMain tests
+
+--main = defaultMain cdomTests
+main = defaultMain $ testGroup "cDom" [cdomTests, cdomProps]
 
 tests :: TestTree
 tests = testGroup "Tests" [properties, unitTests]
+
 
 properties :: TestTree
 properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps ]
@@ -81,7 +85,11 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
     testProperty  "chopsCdomArePrefixes idomChef"     $ chopsCdomArePrefixes idomChef,
     testProperty  "chopsCdomArePrefixes idomMohrEtAl" $ chopsCdomArePrefixes idomMohrEtAl,
-    testProperty  "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree
+    testProperty  "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree,
+    testProperty  "chopsCdomAreExclChops idomChef"     $ chopsCdomAreExclChops idomChef,
+    testProperty  "chopsCdomAreExclChops idomMohrEtAl" $ chopsCdomAreExclChops idomMohrEtAl,
+    testProperty  "inclChopIsChop"                     $ inclChopIsChop,
+    testProperty  "exclChopContainedinclChop"          $ exclChopContainedinclChop
   ]
 
 
@@ -89,7 +97,22 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   [ testCase ("chopsCdomArePrefixes idomChef for " ++ exampleName)  $ chopsCdomArePrefixes idomChef p @? ""
   | (exampleName, p) <- testsuite
   ] ++
+  [ testCase ("chopsCdomArePrefixes idomMohrEtAl for " ++ exampleName)  $ chopsCdomArePrefixes idomMohrEtAl p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [ testCase ("idomChefTreeIsDomTree for " ++ exampleName)  $ idomChefTreeIsDomTree p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomChef for " ++ exampleName)  $ chopsCdomAreExclChops idomChef p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomMohrEtAl for " ++ exampleName)  $ chopsCdomAreExclChops idomMohrEtAl p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("inclChopIsChop for " ++ exampleName)  $ inclChopIsChop p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("exclChopContainedinclChop for " ++ exampleName)  $ exclChopContainedinclChop p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

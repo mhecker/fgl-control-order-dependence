@@ -1356,6 +1356,48 @@ simple3 = p { observability = defaultObservabilityMap (tcfg p) }
 
          ]
 
+twoLoops :: Program Gr
+twoLoops = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ForC 5 Skip                                                      `Seq`
+           ForC 5 Skip                                                      `Seq`
+           Ass "z" (Var "tmp")
+          )
+
+         ]
+
+
+
+{-    1
+      2----spawn-
+      7<--       3
+    8    |     4   5
+    9    |       6
+      10-|
+      11
+      12
+-}
+twoLoops' :: Program Gr
+twoLoops' = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..8] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = 5
+        tcfg = mkGraph (genLNodes 1 8) $
+                        [(1,2,NoOp), (2,3,NoOp), (3,8,Guard True CTrue), (8,4,NoOp), (4,5, Guard True CTrue)]
+                    ++  [(3,6,Guard False CTrue), (6,2, NoOp), (4,7,Guard False CTrue), (7,8,NoOp)]
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
@@ -1393,5 +1435,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'aSecureGeneratedProgram),
               $(withName 'clientServerKeyExample),
               $(withName 'clientServerKeyExampleSimple),
-              $(withName 'singleThreadedDelay)
+              $(withName 'singleThreadedDelay),
+              $(withName 'twoLoops),
+              $(withName 'twoLoops')
             ]

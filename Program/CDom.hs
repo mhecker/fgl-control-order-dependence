@@ -23,7 +23,8 @@ import qualified Data.Set as Set
 import Data.Set.Unicode
 
 import Data.Tree
-import Data.List(nub)
+import Data.List(nub,intersect,(\\))
+
 
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
@@ -121,3 +122,70 @@ idomToTree idom = trrAcyclic tree
          tree =  mkGraph nodes
                          (nub [ (c,n,()) | ((a,b),c) <- Map.assocs idom, n  <- [ a,b]])
 
+
+chop graph s t =   (Set.fromList $ suc trnsclos s)
+                 ∩ (Set.fromList $ pre trnsclos t)
+  where trnsclos = trc $ graph
+
+-- inclChop graph s t
+--     | tFound    = bwd
+--     | otherwise = []
+--   where forward []     found tFound = (tFound, found)
+--         forward (n:ns) found tFound = forward  ((successors \\ found) ++ ns ) (n:found) (tFound || n == t || t `elem` successors )
+--            where successors = suc graph n
+
+--         backward []     found = found
+--         backward (n:ns) found = backward       (((predecessors \\ found) `intersect` fwd ) ++ ns) (n:found)
+--            where predecessors = pre graph n
+
+--         (tFound, fwd) = forward  [s] [] False
+--         bwd           = backward [t] []
+
+
+-- exclChop graph s t
+--     | tFound    = bwd
+--     | otherwise = []
+--   where forward []     found tFound = (tFound, found)
+--         forward (n:ns) found tFound = forward  (((successors \\ found) \\ [t]) ++ ns ) (n:found) (tFound || n == t || t `elem` successors )
+--            where successors = suc graph n 
+
+--         backward []     found = found
+--         backward (n:ns) found = backward       ((((predecessors \\ found) \\ [s]) `intersect` fwd ) ++ ns) (n:found)
+--            where predecessors = pre graph n
+
+--         (tFound, fwd) = forward  [s] [] False
+--         bwd           = backward [t] []
+
+
+exclChop graph s t
+    | tFound    = bwd
+    | otherwise = []
+  where forward []     found tFound = (tFound, found)
+        forward (n:ns) found tFound = forward  ((new \\ [t]) ++ ns) (new ++ found) (tFound || n == t || t `elem` successors )
+           where successors = suc graph n
+                 new        = successors \\ found
+
+        backward []     found = found
+        backward (n:ns) found = backward       ((new \\ [s]) ++ ns) (new ++ found)
+           where predecessors = pre graph n
+                 new          = (predecessors \\ found) `intersect` fwd
+
+        (tFound, fwd) = forward  [s] [s] False
+        bwd           = backward [t] [t]
+
+
+inclChop graph s t
+    | tFound    = bwd
+    | otherwise = []
+  where forward []     found tFound = (tFound, found)
+        forward (n:ns) found tFound = forward  ((new       ) ++ ns) (new ++ found) (tFound || n == t || t `elem` successors )
+           where successors = suc graph n
+                 new        = successors \\ found
+
+        backward []     found = found
+        backward (n:ns) found = backward       ((new       ) ++ ns) (new ++ found)
+           where predecessors = pre graph n
+                 new          = (predecessors \\ found) `intersect` fwd
+
+        (tFound, fwd) = forward  [s] [s] False
+        bwd           = backward [t] [t]

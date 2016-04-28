@@ -19,7 +19,6 @@ import Execution
 import ExecutionTree
 
 
-
 import IRLSOD
 
 -- import Data.Graph.Inductive.Util
@@ -256,8 +255,8 @@ chopsCdomArePrefixes :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bo
 chopsCdomArePrefixes cdomComputation p =
     (∀) (Map.assocs cdom) (\((n,n'),c) -> let [ndom]  = pre idom n
                                               [ndom'] = pre idom n'
-                                          in  (c == n  ∨  chop c n  == (chop c ndom ) ∪ (chop ndom  n ))
-                                              ∧ (c == n' ∨  chop c n' == (chop c ndom') ∪ (chop ndom' n'))
+                                          in  (c == n  ∨ chop c n  == (chop c ndom ) ∪ (chop ndom  n ))
+                                            ∧ (c == n' ∨ chop c n' == (chop c ndom') ∪ (chop ndom' n'))
                           )
   where cdom = cdomComputation p
 
@@ -270,3 +269,63 @@ chopsCdomArePrefixes cdomComputation p =
         chop :: Node -> Node -> Set Node
         chop s t =   (Set.fromList $ suc trnsclos s)
                    ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+chopsCdomArePrefixesGenerated :: (Program Gr -> Map (Node,Node) Node) -> GeneratedProgram -> Bool
+chopsCdomArePrefixesGenerated cdomComputation gen = chopsCdomArePrefixes cdomComputation p
+  where p :: Program Gr
+        p = toProgram gen
+
+
+
+chopsCdomAreExclChops :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
+chopsCdomAreExclChops cdomComputation p =
+    (∀) (Map.assocs cdom) (\((n,n'),c) -> let [ndom]  = pre idom n
+                                              [ndom'] = pre idom n'
+                                          in  (c == n  ∨ chop c n  ==   (exclChp c ndom ) ∪ (exclChp ndom  n )
+                                                                      ∪ (exclChp c c) ∪ (exclChp ndom  ndom ) ∪ (exclChp n  n )
+                                              )
+                                            ∧ (c == n' ∨ chop c n' ==   (exclChp c ndom') ∪ (exclChp ndom' n')
+                                                                      ∪ (exclChp c c) ∪ (exclChp ndom' ndom') ∪ (exclChp n' n')
+                                              )
+                          )
+  where cdom = cdomComputation p
+
+        idom = insEdge (entry,entry,()) $ idomToTree cdom
+
+        entry = entryOf p $ mainThread p
+
+        trnsclos = trc $ tcfg p
+
+        exclChp s t = Set.fromList $ (exclChop $ tcfg p) s t
+
+        chop :: Node -> Node -> Set Node
+        chop s t =   (Set.fromList $ suc trnsclos s)
+                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+--chopsCdomAreExclChopsGenerated :: (Program Gr -> Map (Node,Node) Node) -> GeneratedProgram -> Bool
+chopsCdomAreExclChopsGenerated cdomComputation gen = chopsCdomAreExclChops cdomComputation p
+  where p :: Program Gr
+        p = toProgram gen
+
+
+
+
+inclChopIsChop :: Program Gr -> Bool
+inclChopIsChop p =
+    (∀) (nodes $ tcfg p) (\s ->
+      (∀) (nodes $ tcfg p) (\t ->
+             (chop $ tcfg p) s t == (Set.fromList $ (inclChop $ tcfg p) s t)
+      )
+    )
+
+
+exclChopContainedinclChop :: Program Gr -> Bool
+exclChopContainedinclChop p =
+    (∀) (nodes $ tcfg p) (\s ->
+      (∀) (nodes $ tcfg p) (\t ->
+             (Set.fromList $ (exclChop $ tcfg p) s t) ⊆ (Set.fromList $ (inclChop $ tcfg p) s t)
+      )
+    )
+
+-- chop :: Node -> Node -> Set Node

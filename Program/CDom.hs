@@ -117,8 +117,8 @@ domPathBetween dom dominated dominator
 --          tree' = trc tree
 
 idomToTree idom = trrAcyclic tree
-   where nodes = nub [ (n,()) | ((a,b),c) <- Map.assocs idom,  n <- [ a, b, c] ]
-         tree :: Gr () ()
+   where nodes = nub [ (n,n) | ((a,b),c) <- Map.assocs idom,  n <- [ a, b, c] ]
+         tree :: Gr Int ()
          tree =  mkGraph nodes
                          (nub [ (c,n,()) | ((a,b),c) <- Map.assocs idom, n  <- [ a,b]])
 

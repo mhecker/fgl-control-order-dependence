@@ -46,7 +46,6 @@ import Data.Graph.Inductive.Query.DFS
 
 import Data.Tree
 
-
 import Data.Graph.Inductive.Query.Dominators
 
 
@@ -61,14 +60,22 @@ showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p 
 
 showGraph g = do
   let dot = showDot (fglToDot g)
-  writeFile "file.dot" dot
-  system "xdot file.dot"
+  randomInt <- getStdRandom (randomR (1,65536)) :: IO Int
+  let file = "file" ++ (show randomInt) ++ ".dot"
+  writeFile file dot
+  runInteractiveCommand $ "xdot " ++ file
 
 showPDG p = showGraph $ programDependenceGraphP p
 showCFG p = showGraph $ tcfg p
 showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
 
+
+showDomTree cdomComputation p = showGraph idom
+  where
+    cdom = cdomComputation p
+    idom = insEdge (entry,entry,()) $ idomToTree cdom
+    entry = entryOf p $ mainThread p
 
 -- p = cdomIsBroken'
 -- p = figure5right'

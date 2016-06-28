@@ -248,7 +248,7 @@ idomChefTreeIsDomTree p = (toMap $ idomToTree (idomChef p)) == (invert dom)
   where dom :: Map Node Node
         dom = Map.fromList $ iDom (tcfg p) (entryOf p $ mainThread p)
 
-toMap :: Graph gr => gr () () -> Map Node (Set Node)
+toMap :: Graph gr => gr Node () -> Map Node (Set Node)
 toMap tree = Map.fromList [ (n,Set.fromList sucs) | n <- nodes tree, let sucs = suc tree n, (¬) (null sucs) ]
 
 chopsCdomArePrefixes :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
@@ -328,4 +328,9 @@ exclChopContainedinclChop p =
       )
     )
 
--- chop :: Node -> Node -> Set Node
+selfChopsSame :: Program Gr -> Bool
+selfChopsSame p =
+    (∀) (nodes $ tcfg p) (\s ->
+             (Set.fromList $ (exclChop $ tcfg p) s s) ==  (Set.fromList $ (inclChop $ tcfg p) s s) -- == (chop $ tcfg p) s s via inclChopIsChop
+    )
+  where normalChop s = (chop $ tcfg p) s s

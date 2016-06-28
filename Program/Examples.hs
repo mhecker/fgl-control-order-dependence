@@ -1372,13 +1372,21 @@ twoLoops = p { observability = defaultObservabilityMap (tcfg p) }
 
 
 {-    1
-      2----spawn-
-      7<--       3
-    8    |     4   5
-    9    |       6
-      10-|
-      11
-      12
+      2<---
+      |   |
+      |   6
+      |   ^
+      |   |
+      3----
+      |
+      8<---
+      |   |
+      |   7
+      |   ^
+      |   |
+      4---|
+      |
+      5
 -}
 twoLoops' :: Program Gr
 twoLoops' = Program {

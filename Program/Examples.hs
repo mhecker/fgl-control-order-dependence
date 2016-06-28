@@ -1407,6 +1407,21 @@ twoLoops' = Program {
                         [(1,2,NoOp), (2,3,NoOp), (3,8,Guard True CTrue), (8,4,NoOp), (4,5, Guard True CTrue)]
                     ++  [(3,6,Guard False CTrue), (6,2, NoOp), (4,7,Guard False CTrue), (7,8,NoOp)]
 
+forIf :: Program Gr
+forIf = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ForC 5 (
+              If (Leq (Var "x") (Val 0)) Skip Skip
+           )                                                                `Seq`
+           Skip
+          )
+         ]
+
+
+
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
               $(withName 'example2'),
@@ -1445,5 +1460,6 @@ testsuite = [ $(withName 'example1),
               $(withName 'clientServerKeyExampleSimple),
               $(withName 'singleThreadedDelay),
               $(withName 'twoLoops),
-              $(withName 'twoLoops')
+              $(withName 'twoLoops'),
+              $(withName 'forIf)
             ]

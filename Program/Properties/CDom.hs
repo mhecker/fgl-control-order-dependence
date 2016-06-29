@@ -334,3 +334,11 @@ selfChopsSame p =
              (Set.fromList $ (exclChop $ tcfg p) s s) ==  (Set.fromList $ (inclChop $ tcfg p) s s) -- == (chop $ tcfg p) s s via inclChopIsChop
     )
   where normalChop s = (chop $ tcfg p) s s
+
+selfChopsSCC :: Program Gr -> Bool
+selfChopsSCC p =
+    (∀) (nodes $ tcfg p) (\s ->
+             (Set.fromList $ (exclChop $ tcfg p) s s) ==  (Set.fromList $ sccOf s)                 -- == (chop $ tcfg p) s s via inclChopIsChop
+    )
+  where sccs    = scc $ tcfg p
+        sccOf s =  the (s `elem`) $ sccs

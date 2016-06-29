@@ -90,7 +90,8 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
     testProperty  "chopsCdomAreExclChops idomMohrEtAl" $ chopsCdomAreExclChops idomMohrEtAl,
     testProperty  "inclChopIsChop"                     $ inclChopIsChop,
     testProperty  "exclChopContainedinclChop"          $ exclChopContainedinclChop,
-    testProperty  "selfChopsSame"                      $ selfChopsSame
+    testProperty  "selfChopsSame"                      $ selfChopsSame,
+    testProperty  "selfChopsSCC"                       $ selfChopsSCC
   ]
 
 
@@ -117,6 +118,9 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   | (exampleName, p) <- testsuite
   ] ++
   [ testCase ("selfChopsSame for " ++ exampleName)  $ selfChopsSame p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("selfChopsSCC for " ++ exampleName)  $ selfChopsSCC p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

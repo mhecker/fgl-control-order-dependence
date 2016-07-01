@@ -35,15 +35,15 @@ sccNaive :: DynGraph gr => gr a b -> [[Node]]
 sccNaive gr = scc (nodes gr) (edges gr) [[n] | n <- nodes gr] []
   where scc []        uedges sccs []          = sccs
         scc (u:us)    uedges sccs []          = scc (u:us) uedges sccs [u]
-        scc unodes    uedges sccs path@(n:ns) = -- trace ((show path) ++ "\t\t" ++ (show sccs)) $ 
-         case ms of
-          []     -> scc (delete n unodes) uedges sccs ns
-          (m:ms) -> if (any (m `elem`) (fmap sccOf path)) then
-                           scc unodes (delete (n,m) uedges) (merge sccs (m:cycle)) prefix
+        scc unodes    uedges sccs path@(n:ns) = trace ((show path) ++ "\t\t" ++ (show sccs)) $ 
+         case es of
+          []          -> scc (delete n unodes) uedges sccs ns
+          ((n',m):ms) -> if (any (m `elem`) (fmap sccOf path)) then
+                           scc unodes (delete (n',m) uedges) (merge sccs (m:cycle)) prefix
                          else
-                           scc unodes (delete (n,m) uedges)  sccs                  (m:path)
+                           scc unodes (delete (n',m) uedges)  sccs                  (m:path)
             where (cycle, prefix) = span (\n -> not $ m `elem` (sccOf n)) path
-         where ms = [ m | n' <- sccOf n, m <- suc gr n', (n,m) `elem` uedges ]
+         where es = [ (n',m) | n' <- sccOf n, m <- suc gr n', (n',m) `elem` uedges ]
                sccOf m =  the (m `elem`) $ sccs
 
 

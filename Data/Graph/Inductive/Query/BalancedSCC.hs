@@ -54,47 +54,42 @@ sccNaive gr = scc (edges gr) [[n] | n <- nodes gr] []
 
 
 
--- balancedScc :: DynGraph gr => gr a (Annotation b) -> Map Node [Node]
--- balancedScc gr = scc (nodes gr) (labEdges gr) (Map.fromList $ [(n,[n]) | n <- nodes gr]) []
---   where sameLevel = sameLevelNodes gr
---         scc uedges sccs []              = sccs
---         scc uedges@((n,m,_):es) sccs [] = scc uedges sccs [n]
---         scc uedges sccs []              = scc (u:us) uedges sccs [(u,c)]
---         scc uedges sccs path@(n:ns) (c:cs) = -- trace ((show path) ++ "\t\t" ++ (show sccs)) $
---          case es of
---           []                  -> scc uedges sccs ns cs
---           ((n',m,Nothing      ):_) ->    if (any (m `elem`) (fmap sccOf path)) then
---                                            scc (delete (n',m,c) uedges) (merge sccs (m:cycle)) prefix   (c:c:cs)
---                                          else
---                                            scc (delete (n',m,c) uedges)  sccs                  (m:path) (c:c:cs)
---             where (cycle, prefix) = span (\n -> not $ m `elem` (sccOf n)) path
---           ((n',m,Just (Open a)):_) -> let ms = sameLevel (
---                                          if (any (m `elem`) (fmap sccOf path)) then
---                                            scc (delete (n',m,c) uedges) (merge sccs (m:cycle)) prefix   (a:c:cs)
---                                          else
---                                            scc (delete (n',m,c) uedges)  sccs                  (m:path)
---             where (cycle, prefix) = span (\n -> not $ m `elem` (sccOf n)) path
---           ((n',m,Just (Close a)):ms) ->   if (any (m `elem`) (fmap sccOf path)) then
---                                            scc (delete (n',m,c) uedges) (merge sccs (m:cycle)) prefix
---                                          else
---                                            scc  (delete (n',m,c) uedges)  sccs                  (m:path)
---             where (cycle, prefix) = span (\n -> not $ m `elem` (sccOf n)) path
---          where es = [ (n',m) | n' <- sccOf n,
---                                (m,ann) <- lsuc gr n',
---                                ((n',m),c) `elem` uedges,
---                                 case ann of
---                                   Just (Close x) -> c == Just x
---                                   _              -> True
---                     ]
---                sccOf m =  sccs ! m
---                merge sccs cycle =
---                c = listToMaybe stack
+balancedScc :: DynGraph gr => gr a (Set Node) -> Map Node (Set Node)
+balancedScc gr = scc (labEdges gr) (Map.fromList $ [(n,Set.fromList [n]) | n <- nodes gr]) []
+  where scc :: [(Node,Node,Set Node)] -> Map Node (Set Node) -> [(Node, Set Node)] -> Map Node (Set Node)
+        scc []                  sccs []               = sccs
+        scc uedges@((n,m,_):es) sccs []               = scc uedges sccs [(n,Set.empty)]
+        scc uedges              sccs path@((n,_):ns)  = -- trace ((show path) ++ "\t\t" ++ (show sccs)) $
+         case es of
+          []                  -> scc uedges sccs ns
+          ((n',m,summ):_) ->   if (any (m ∈) ( [ sccOf n ⊔ summN | (n,summN) <- path] ++ [summ])) then
+                                 scc (delete (n',m,summ) uedges) (merge sccs ((m,summ):cycle)) prefix
+                               else
+                                 scc (delete (n',m,summ) uedges)  sccs                         ((m,summ):path)
+            where (cycle, prefix) = span (\(n,summ) -> not $ (m ∈) (sccOf n ⊔ summ)) path
+         where es :: [(Node,Node,Set Node)]
+               es = [ (n',m,summ) | n' <- Set.toList $ sccOf n, (m,summ) <- lsuc gr n', (n',m,summ) `elem` uedges ]
+               sccOf m =  sccs ! m
+               merge sccs cycle = -- trace ("Merge: " ++ ((show cycle) ++ "\t\t" ++ (show sccs))) $
+                                  sccs ⊔ (Map.fromList [ (n, (∐) [ sccs ! n' | (c,summ) <- cycle, n' <- c : (Set.toList summ) ])
+                                                       | (c,summ) <- cycle, m <- c : (Set.toList summ), n <- Set.toList (sccs ! m)
+                                                       ])
 
+
+toBalanced :: (Graph gr) => gr a b -> gr a (Annotation ())
+toBalanced gr = mkGraph (labNodes gr) [ (n,m,Nothing) | (m,n) <- edges gr]
 
 sccIsSccNaive :: Gr () () -> Bool
 sccIsSccNaive gr = sccs == sccsNaive
   where sccs      = Set.fromList $ (fmap Set.fromList $ scc gr)
         sccsNaive = Set.fromList $ (fmap Set.fromList $ sccNaive gr)
+
+
+sccIsBalancedSccNaive :: Gr () () -> Bool
+sccIsBalancedSccNaive gr = sccs == sccsNaive
+  where sccs      = Set.fromList $ (fmap Set.fromList $ scc gr)
+        sccsNaive = Set.fromList $ [ balancedSccs ! n | n <- nodes $ gr]
+        balancedSccs = balancedScc $ sameLevelSummaryGraph $ toBalanced $ gr
 
 
 
@@ -137,6 +132,7 @@ sameLevelSummaryGraph :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set N
 sameLevelSummaryGraph gr =
     mkGraph (labNodes gr)
             ( [(n,m,Set.empty) | (n,m,Nothing) <- labEdges gr] ++
+--              [(n,m,Set.empty) | (n,m, Just (Close _))) <- labEdges gr] ++
               [(n,n', sameLevel ! (m, m', b)) | n <- nodes gr, n' <- nodes gr,
                                                 (m',  Just (Close b)) <- lpre gr n',
                                                 (m,   Just (Open b')) <- lsuc gr n, b' == b

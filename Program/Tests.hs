@@ -43,6 +43,7 @@ import Data.Graph.Inductive.Query.DataDependence
 import Data.Graph.Inductive.Query.DataConflict
 import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Query.DFS
+import Data.Graph.Inductive.Query.BalancedSCC
 
 import Data.Tree
 

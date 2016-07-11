@@ -1,5 +1,6 @@
-module Data.Graph.Inductive.Query.BalancedSCC where
+{-# LANGUAGE FlexibleInstances, ScopedTypeVariables #-}
 
+module Data.Graph.Inductive.Query.BalancedSCC where
 
 
 import Debug.Trace
@@ -30,6 +31,24 @@ import Data.Graph.Inductive.Arbitrary
 
 data Parantheses b = Open b | Close b deriving (Ord, Eq, Show)
 type Annotation b = Maybe (Parantheses b)
+
+data   InterGraph a b = InterGraph (Gr a (Annotation b)) deriving (Show)
+
+instance Arbitrary (Parantheses String) where
+    arbitrary = sized $ \n ->
+                  do p <- elements ["a", "b", "c"]
+                     oc <- elements [Open, Close]
+                     return $ oc p
+
+instance Arbitrary (InterGraph () String) where
+  arbitrary = sized $ \s ->
+                 do (g :: Gr () ()) <- resize s arbitrary
+                    edges <- mapM (\(n,n',()) ->
+                      do (oc :: Maybe (Parantheses String)) <- resize s arbitrary
+                         return (n,n',oc)
+                     ) (labEdges g)
+                    return $ InterGraph $ mkGraph (labNodes g) edges
+
 
 merge :: [[Node]] -> [Node] -> [[Node]]
 merge [] cycle = [cycle]

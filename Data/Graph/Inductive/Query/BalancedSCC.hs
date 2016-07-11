@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances, ScopedTypeVariables #-}
 
 module Data.Graph.Inductive.Query.BalancedSCC where
-
+import Data.Time
 
 import Debug.Trace
 import Util
@@ -320,35 +320,32 @@ bunbl summary graph t = backward t t
 
 
 
-balancedChop graph s t = -- trace ((show $ Set.fromList w) ++ "   " ++ (show $ Set.fromList vr) ++ "   " ++ (show $ Set.fromList vl) ++ "\n")  $
+balancedChop summary graph s t = -- trace ((show $ Set.fromList w) ++ "   " ++ (show $ Set.fromList vr) ++ "   " ++ (show $ Set.fromList vl) ++ "\n")  $
  Set.fromList vr ∪ Set.fromList vl ∪ (∐) [ ms | (n,n',ms) <- labEdges summary, n `elem` (vr ++ vl), n' `elem` (vr ++ vl)]
-    where summary = sameLevelSummaryGraph graph
-          w  = (funbr summary graph [s]) `intersect` (bunbl summary graph [t])
+    where w  = (funbr summary graph [s]) `intersect` (bunbl summary graph [t])
           vr = (funbr summary graph [s]) `intersect` (bunbr summary graph w  )
           vl = (funbl summary graph w  ) `intersect` (bunbl summary graph [t])
 
 
-simulUnbr gr =
+simulUnbr summary gr =
     (㎲⊒) (  Map.fromList [ ((n,m),if n==m then Set.fromList [n] else Set.empty) | n <- nodes gr, m <- nodes gr])
           (\ch ->
              ch
            ⊔ Map.fromList [ ((n,m),  (∐) [ if (Set.null $ ch ! (n', m)) then Set.empty else ch ! (n',m) ⊔  ch ! (n,n)   | n' <- successors n]) | n <- nodes gr, m <- nodes gr ]
           )
-    where summary = sameLevelSummaryGraph gr
-          successors n = nub $
+    where successors n = nub $
                             [n' | (n',Nothing)          <- lsuc gr n]
                          ++ [n' | (n', Just (Close _))  <- lsuc gr n]
                          ++ [n' | (n', ms)              <- lsuc summary n, not $ Set.null ms]
 
 
-simulUnbl gr =
+simulUnbl summary gr =
     (㎲⊒) (  Map.fromList [ ((n,m),if n==m then Set.fromList [n] else Set.empty) | n <- nodes gr, m <- nodes gr])
           (\ch ->
              ch
            ⊔ Map.fromList [ ((n,m),  (∐) [ if (Set.null $ ch ! (n', m)) then Set.empty else ch ! (n',m) ⊔  ch ! (n,n)   | n' <- successors n]) | n <- nodes gr, m <- nodes gr ]
           )
-    where summary = sameLevelSummaryGraph gr
-          successors n = nub $
+    where successors n = nub $
                             [n' | (n',Nothing)          <- lsuc gr n]
                          ++ [n' | (n', Just (Open _))   <- lsuc gr n]
                          ++ [n' | (n', ms)              <- lsuc summary n, not $ Set.null ms]
@@ -356,13 +353,13 @@ simulUnbl gr =
 
 simulBalancedChop gr =  Map.fromList [((n,m),  updown ! (n,m) ⊔ (∐) [ ms | (n',m',ms) <- labEdges summary, n' ∈ updown ! (n,m), m' ∈ updown ! (n,m)])
                                      | n <- nodes gr, m <- nodes gr]
-  where 
+  where
         updown = Map.fromList [ ((n,m), (∐) [ if ((Set.null $ unbr ! (n,n')) || (Set.null $ unbl ! (n',m))) then Set.empty else unbr ! (n,n') ⊔  unbl ! (n',m)   | n' <- nodes gr]) 
                               | n <- nodes gr, m <- nodes gr ]
 
         summary = sameLevelSummaryGraph gr
-        unbr = simulUnbr gr
-        unbl = simulUnbl gr
+        unbr = simulUnbr summary gr
+        unbl = simulUnbl summary gr
 
 
 simulUnbrIsUnbr ::  Gr () (Annotation String) -> Bool
@@ -373,7 +370,7 @@ simulUnbrIsUnbr gr =
              (Set.fromList $ bunbr summary gr [t])   == (simul ! (s,t))
       )
     )
-  where simul = simulUnbr gr
+  where simul = simulUnbr summary gr
         summary = sameLevelSummaryGraph gr
 
 
@@ -385,7 +382,7 @@ simulUnblIsUnbl gr =
              (Set.fromList $ bunbl summary gr [t])   == (simul ! (s,t))
       )
     )
-  where simul = simulUnbl gr
+  where simul = simulUnbl summary gr
         summary = sameLevelSummaryGraph gr
 
 
@@ -393,7 +390,31 @@ balancedChopIsSimulBalancedChop ::  Gr () (Annotation String) -> Bool
 balancedChopIsSimulBalancedChop gr =
     (∀) (nodes $ gr) (\s ->
       (∀) (nodes $ gr) (\t ->
-             (balancedChop  gr s t) == (simul ! (s,t))
+             (balanced s t) == (simul ! (s,t))
       )
     )
   where simul = simulBalancedChop gr
+        balanced = balancedChop summary gr
+        summary = sameLevelSummaryGraph gr
+
+rofl = do
+    InterGraph gr <- generate $ resize 150  (arbitrary :: Gen (InterGraph () String))
+
+    start <- getCurrentTime
+    putStrLn $ show (summe $ Map.toList $ fmap (Set.size) $ simulBalancedChop gr)
+    stop  <- getCurrentTime
+    print $ diffUTCTime stop start
+
+    start <- getCurrentTime
+    let summary = sameLevelSummaryGraph gr
+    putStrLn $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ])
+    stop <- getCurrentTime
+    print $ diffUTCTime stop start
+
+    start <- getCurrentTime
+    putStrLn $ show (summe $ [ ((s,t),Set.size $ balancedChop summary gr s t) | s <- nodes gr, t <- nodes gr])
+    stop <- getCurrentTime
+    print $ diffUTCTime stop start
+
+
+  where summe l = sum $ fmap (\((a,b),c) -> a+b+c) l

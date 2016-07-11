@@ -17,6 +17,8 @@ import Program (Program)
 
 import Program.Properties.Analysis
 import Program.Properties.CDom
+import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
+
 
 import Program.Examples (testsuite, ijisLSODistkaputt)
 import Program.Analysis
@@ -24,9 +26,8 @@ import Program.CDom
 import Program.Generator (toProgram)
 
 -- main = defaultMain tests
-
---main = defaultMain cdomTests
-main = defaultMain $ testGroup "cDom" [cdomTests, cdomProps]
+-- main = defaultMain $ testGroup "cDom" [cdomTests, cdomProps]
+main = defaultMain $ balancedParanthesesProps
 
 tests :: TestTree
 tests = testGroup "Tests" [properties, unitTests]
@@ -94,6 +95,13 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
     testProperty  "selfChopsSCC"                       $ selfChopsSCC
   ]
 
+balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
+    testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
+    testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
+    testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
+    testProperty  "simulUnblIsUnbl"                   $ simulUnblIsUnbl,
+    testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop
+  ]
 
 cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
   [ testCase ("chopsCdomArePrefixes idomChef for " ++ exampleName)  $ chopsCdomArePrefixes idomChef p @? ""

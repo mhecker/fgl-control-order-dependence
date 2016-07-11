@@ -397,9 +397,3 @@ balancedChopIsSimulBalancedChop gr =
       )
     )
   where simul = simulBalancedChop gr
-
-
-
-balancedChopIsSimulBalancedChop' gr = [ (s,t, balancedChop  gr s t, simul ! (s,t)) | s <- nodes gr, t <- nodes gr, balancedChop  gr s t /= simul ! (s,t)]
-  where simul = simulBalancedChop gr
-

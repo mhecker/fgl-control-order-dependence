@@ -44,6 +44,8 @@ import Data.Graph.Inductive.Query.DataConflict
 import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Query.BalancedSCC
+import Data.Graph.Inductive.Arbitrary
+
 
 import Data.Tree
 
@@ -70,6 +72,10 @@ showPDG p = showGraph $ programDependenceGraphP p
 showCFG p = showGraph $ tcfg p
 showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
+
+withNodes :: (Graph gr) => gr a b -> gr (Node,a) b
+withNodes g =  mkGraph [(n,(n,l)) | (n,l) <- labNodes g]
+                       (labEdges g)
 
 
 showDomTree cdomComputation p = showGraph idom

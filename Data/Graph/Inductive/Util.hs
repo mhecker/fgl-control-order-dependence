@@ -2,9 +2,11 @@ module Data.Graph.Inductive.Util where
 
 import Util
 
+import Data.List(delete)
+
 import Data.Maybe (fromJust)
 import qualified Data.Map as Map
-import Control.Monad(liftM2)
+import Control.Monad(liftM2,guard)
 
 import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
@@ -64,3 +66,24 @@ trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
                                         g
                               )
                               ks
+
+
+
+enumCycles :: (Graph gr) => gr a b -> [[Node]]
+enumCycles gr = do
+    c <- sccs
+    n <- c
+    cycles gr [n] c n
+  where sccs = scc gr
+
+cycles :: (Graph gr) => gr a b -> [Node] -> [Node] -> Node -> [[Node]]
+cycles gr (p:path) [] end = do
+      guard $ end `elem` (pre gr p)
+      return (p:path)
+cycles gr (p:path) ns end = do
+        n <- ns
+        guard $ n `elem` (pre gr p)
+        if (n == end) then
+          return (n:p:path)
+        else do
+          cycles gr (n:p:path) (delete n ns) end

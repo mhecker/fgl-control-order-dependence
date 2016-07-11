@@ -310,6 +310,23 @@ chopsCdomAreExclChopsGenerated cdomComputation gen = chopsCdomAreExclChops cdomC
 
 
 
+simulChopIsChop ::  Gr () () -> Bool
+simulChopIsChop gr =
+    (∀) (nodes $ gr) (\s ->
+      (∀) (nodes $ gr) (\t ->
+             (chop $ gr ) s t == (simul ! (s,t))
+      )
+    )
+  where simul = simulChop gr
+
+simulChopIsInclChop ::  Gr () () -> Bool
+simulChopIsInclChop gr =
+    (∀) (nodes $ gr) (\s ->
+      (∀) (nodes $ gr) (\t ->
+             (Set.fromList $ inclChop gr s t)  == (simul ! (s,t))
+      )
+    )
+  where simul = simulChop gr
 
 inclChopIsChop :: Program Gr -> Bool
 inclChopIsChop p =

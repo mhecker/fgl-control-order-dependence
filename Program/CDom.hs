@@ -189,3 +189,21 @@ inclChop graph s t
 
         (tFound, fwd) = forward  [s] [s] False
         bwd           = backward [t] [t]
+
+
+
+
+simulChop gr =
+    (㎲⊒) (  Map.fromList [ ((n,m),if n==m then Set.fromList [n] else Set.empty) | n <- nodes gr, m <- nodes gr])
+          (\ch ->
+             ch
+           ⊔ Map.fromList [ ((n,m),  (∐) [ if (Set.null $ ch ! (n', m)) then Set.empty else ch ! (n',m) ⊔  ch ! (n,n)   | n' <- suc gr n]) | n <- nodes gr, m <- nodes gr ]
+          )
+
+
+
+-- simulChop graph = forward (nodes
+--   where forward 
+--   case (nodes grap) of [] -> Map.empty
+--        (n:ns)             -> forward (
+

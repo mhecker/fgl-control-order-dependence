@@ -34,7 +34,7 @@ tests = testGroup "Tests" [properties, unitTests]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps ]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, balancedParanthesesProps ]
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationDomPaths == timingClassification"
@@ -100,7 +100,8 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
     testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
     testProperty  "simulUnblIsUnbl"                   $ simulUnblIsUnbl,
-    testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop
+    testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
+    testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops
   ]
 
 cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $

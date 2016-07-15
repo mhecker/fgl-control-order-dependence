@@ -25,6 +25,9 @@ import Data.Graph.Inductive.Tree
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Query.TransClos (trc)
+import Data.Graph.Inductive.Query.Dominators (dom, iDom)
+
+import Program.CDom (inclChop)
 
 import Test.QuickCheck
 import Test.QuickCheck.Random (mkQCGen)
@@ -36,6 +39,7 @@ data Parantheses b = Open b | Close b deriving (Ord, Eq, Show)
 type Annotation b = Maybe (Parantheses b)
 
 data   InterGraph a b = InterGraph (Gr a (Annotation b)) deriving (Show)
+data   InterCFG   a b = InterCFG Node (Gr a (Annotation b)) deriving (Show)
 
 instance Arbitrary (Parantheses String) where
     arbitrary = sized $ \n ->
@@ -44,13 +48,84 @@ instance Arbitrary (Parantheses String) where
                      return $ oc p
 
 instance Arbitrary (InterGraph () String) where
-  arbitrary = sized $ \s ->
-                 do (g :: Gr () ()) <- resize s arbitrary
+  arbitrary = sized $ \size ->
+                 do (g :: Gr () ()) <- resize size arbitrary
                     edges <- mapM (\(n,n',()) ->
-                      do (oc :: Maybe (Parantheses String)) <- resize s arbitrary
+                      do (oc :: Maybe (Parantheses String)) <- resize size arbitrary
                          return (n,n',oc)
                      ) (labEdges g)
                     return $ InterGraph $ mkGraph (labNodes g) edges
+
+
+-- instance Arbitrary (InterCFG () String) where
+--   arbitrary = sized $ \size ->
+--                  do (CG s g :: Connected Gr () ()) <- resize size arbitrary
+--                     edges <- mapM (\(n,n',()) ->
+--                       do (oc :: Maybe (Parantheses String)) <- resize size arbitrary
+--                          return (n,n',oc)
+--                      ) (labEdges g)
+--                     return $ InterCFG s $ mkGraph (labNodes g) edges
+
+
+instance Arbitrary (InterCFG () String) where
+    arbitrary = sized $ \size ->
+                  do (s,t,p) <- genProc size
+                     addProcedures [(InterCFG s p,t)] (size `div` 5) (size `div` 2) size
+      where
+        genProc :: Int -> Gen (Node, Node, Gr () (Annotation String))
+        genProc size =
+            do (CG s p  :: Connected Gr () ()) <- resize size arbitrary
+               t <- elements (nodes p)
+               let p' =   delEdges [(t,n) | n <- suc p t]
+                        $ emap (\() -> Nothing) p
+               return (s,t, subgraph (inclChop p' s t) p')
+        
+        addProcedures :: [(InterCFG () String,Node)] -> Int -> Int -> Int -> Gen (InterCFG () String)
+        addProcedures ps 0 nrCalls size = addCalls nrCalls  merged sts
+                 where (merged, sts) =
+                                foldr (\(InterCFG s p,t) (gr,sts) ->
+                                                               let relabeling = p `relabelingWrt` gr
+                                                                   (s',t') = (relabeling s, relabeling t)
+                                                                   p' = p `relabeledWrt` gr
+                                                                   gr' = p' `mergeTwoGraphs` gr
+                                                                   (n,m) = (head $ nodes p', last $ nodes p') -- TODO: choose random
+                                                                   (ssuc,tsuc) = head sts
+                                                                   gr'' = if (not $ all (`elem` nodes gr') [n,ssuc,tsuc,m]) then error (show ([n,ssuc,tsuc,t], gr', p')) else
+                                                                            insEdge (n,ssuc, Just $ Open (show (n,ssuc)))
+                                                                          $ insEdge (tsuc,m, Just $ Close (show (n,ssuc)))
+                                                                          $ gr'
+                                                               in (gr'', (s',t'):sts)
+                                      )
+                                      (mkGraph [(1,())] [] :: Gr () (Annotation String),
+                                       [(1,1)]
+                                      )
+                                      ps
+        addProcedures ps nrProcs nrCalls size = do (s,t,p) <- genProc size
+                                                   addProcedures ((InterCFG s p,t):ps) (nrProcs-1)  nrCalls size
+        
+        addCalls :: Int -> (Gr () (Annotation String)) -> [(Node,Node)] ->  Gen (InterCFG () String)
+        addCalls 0       gr sts = addMain gr s t 
+          where (s,t):_ = sts
+        addCalls nrCalls gr sts
+            | null candidates = addCalls 0 gr sts
+            | otherwise = do e@(n,m,Nothing) <- elements candidates
+                             (s,t) <- elements sts
+                             let gr' =   insEdge (n,s, Just $ Open (show (n,s)))
+                                       $ insEdge (t,m, Just $ Close (show (n,s)))
+                                       $ delLEdge e
+                                       $ gr
+                             addCalls (nrCalls-1) gr' sts
+          where candidates = [(n,m,Nothing) | (n,m,Nothing) <- labEdges gr, not $ n `elem` ((fmap fst sts) ++ (fmap snd sts)),
+                                                                            not $ m `elem` ((fmap fst sts) ++ (fmap snd sts))
+                             ]
+        
+        
+        addMain gr s t =  return $ InterCFG ms $
+                            insEdge (ms,s,  Just $ Open (show (ms,s)))
+                          $ insEdge (t,mt, Just $ Close (show (ms,s)))
+                          $ insNodes [(ms,()), (mt,())]
+                          $ gr
+          where [ms,mt] = newNodes 2 gr
 
 
 merge :: [[Node]] -> [Node] -> [[Node]]
@@ -278,10 +353,69 @@ graphTest4 =
               (4,6, Just $ Close "c"),
               (6,7, Just $ Close "main")
             ]
--- balancedScc :: DynGraph gr => gr a (Annotation b) -> Map Node [Node]
--- balancedScc :: bscc parenstack sccsOf unvisited 
 
---   w
+
+-- http://dx.doi.org/10.1145/1255450.1255452  Fig 2)
+graphTest5 :: Gr () (Annotation String)
+graphTest5 =
+    mkGraph [ (i,()) | i <- [1..8] ]
+            [ (1,2, Nothing),
+              (1,7, Nothing),
+              (2,3, Just $ Open "a"),
+              (7,3, Just $ Open "b"),
+              (3,4, Nothing),
+              (4,5, Just $ Close "a"),
+              (4,8, Just $ Close "b"),
+              (5,6, Nothing),
+              (8,6, Nothing)
+            ]
+
+-- http://dx.doi.org/10.1145/1255450.1255452  Fig 3)
+graphTest6 :: Gr () (Annotation String)
+graphTest6 =
+    mkGraph [ (i,()) | i <- [1..4] ]
+            [ (1,3, Nothing),
+              (1,2, Nothing),
+              (3,1, Just $ Open "a"),
+              (4,2, Nothing),
+              (2,3, Just $ Close "a")
+            ]
+
+-- http://dx.doi.org/10.1145/1255450.1255452  Fig 4)
+graphTest7 :: Gr () (Annotation String)
+graphTest7 =
+    mkGraph [ (i,()) | i <- [1..12] ]
+            [ ( 1, 2, Nothing),
+              ( 1,10, Nothing),
+              ( 8, 9, Nothing),
+              (12, 9, Nothing),
+              ( 3, 4, Nothing),
+              ( 6, 7, Nothing),
+
+              ( 2, 3, Just $ Open  "a1"),
+              ( 4, 5, Just $ Close "a1"),
+              (11, 3, Just $ Open  "a2"),
+              ( 4,12, Just $ Close "a2"),
+              (10, 6, Just $ Open  "b1"),
+              ( 7,11, Just $ Close "b1"),
+              ( 5, 6, Just $ Open  "b2"),
+              ( 7, 8, Just $ Close "b2")
+            ]
+
+-- http://dx.doi.org/10.1145/1255450.1255452  Fig 6)
+graphTest8 :: Gr () (Annotation String)
+graphTest8 =
+    mkGraph [ (i,()) | i <- [0..7] ]
+            [ 
+              (0,1, Nothing),
+              (0,6, Nothing),
+              (1,2, Just $ Open "a"),
+              (2,3, Nothing),
+              (6,3, Just $ Open "b"),
+              (3,4, Nothing),
+              (4,5, Just $ Close "a"),
+              (4,7, Just $ Close "b")
+            ]
 
 
 funbl summary graph s = forward s s
@@ -365,16 +499,39 @@ simulUnbl' summary gr =
                          ++ [(n',False) | (n', Just (Open _))   <- lsuc gr n]
                          ++ [(n',True)  | (n', ms)              <- lsuc summary n, not $ Set.null ms]
 
+
 simulUnbr' summary gr =
     (㎲⊒) (  Map.fromList [ ((n,m),(if n==m then Set.fromList [n] else Set.empty, Set.empty)) | n <- nodes gr, m <- nodes gr])
           (\ch ->
              ch
-           ⊔ Map.fromList [ ((n,m),  (∐) [ ch ! (n',m)  ⊔  ch ! (n,n) ⊔ (Set.empty, if (isSummary) then Set.fromList [(n,n')] else Set.empty) | (n',isSummary) <- successors n, not $ Set.null $ fst $ ch ! (n', m)]) | n <- nodes gr, m <- nodes gr ]
+           ⊔ Map.fromList [ ((n,m),  (∐) [ ch ! (n',m)  ⊔  ch ! (n,n) ⊔ (Set.empty,  if (isSummary) then Set.fromList [(n,n')] else Set.empty) | (n',isSummary) <- successors n, not $ Set.null $ fst $ ch ! (n', m)]) | n <- nodes gr, m <- nodes gr ]
           )
     where successors n = nub $
                             [(n',False) | (n',Nothing)          <- lsuc gr n]
-                         ++ [(n',False) | (n', Just (Close _))  <- lsuc gr n]
+                         ++ [(n',False) | (n', Just (Close _))   <- lsuc gr n]
                          ++ [(n',True)  | (n', ms)              <- lsuc summary n, not $ Set.null ms]
+
+simulUnbr'' summary gr =
+    floydWarshall (nodes gr)
+                  (         Map.fromList [((n,m), (Set.empty, Set.empty)) | n <- nodes gr, m <- nodes gr]
+                     ⊔ (∐) [Map.fromList [((n,m), (Set.fromList [n,m], ss))]  | (n,m,ss) <- es]
+                  )
+  where floydWarshall []     ch = ch
+        floydWarshall (k:ks) ch = floydWarshall ks (
+          Map.mapWithKey (\(n,m) chnm ->
+           let chnk = ch ! (n,k)
+               chkm = ch ! (k,m) in
+           if ((not $ Set.null $ fst $ chnk) &&
+               (not $ Set.null $ fst $ chkm))
+           then chnm  ⊔  chnk ⊔ chkm
+           else chnm
+          ) ch
+         )
+        es =    [(n, m, Set.empty)            | (n,m, Nothing)         <- labEdges gr]
+             ++ [(n, m, Set.empty)            | (n,m, Just (Close _))  <- labEdges gr]
+             ++ [(n, m, Set.fromList [(n,m)]) | (n,m, ms) <- labEdges summary, not $ Set.null ms]
+             ++ [(n, n, Set.empty)            | n <- nodes gr]
+
 
 simulBalancedChop gr =
     Map.mapWithKey (\(n,m) ns -> (fst ns) ⊔ (∐) [ ms | (n',m') <- Set.toList $ snd ns, ms <- [ ms | (n',m'',ms) <- out summary n', m'' == m']]) updown
@@ -485,3 +642,69 @@ rofl = do
 
 
   where summe l = sum $ fmap (\((a,b),c) -> a+b+c) l
+
+
+
+
+interDom gr s = (gfpFrom)
+                     (Map.fromList $ [(n, all) | n <- nodes gr, n/=s] ++ [(s,Set.fromList [s])])
+                     (\dom ->
+                        Map.fromList [(n,  Set.fromList [n] ⊔ meetFrom all [ (∐) [dom ! n' | n' <- preds] | preds <- predecessors gr ! n]) | n <- nodes gr]
+                     )
+    where all = Set.fromList $ nodes gr
+
+predecessors gr = Map.fromList [(n, [ [n'] | n' <- [ n' | (n',Nothing)  <- lpre gr n]
+                                                ++ [ n' | (n', Just (Open _)) <- lpre gr n]
+                                    ] ++
+                                    [ [n', n'']   | (n', Just (Close x)) <- lpre gr n,
+                                                    n'' <- if null [ n'' | (n'',_, Just (Open x')) <- labEdges gr, x == x'] then [n'] else  [n'' | (n'',_, Just (Open x')) <- labEdges gr, x == x']
+                                    ]
+                                )
+                               | n <- nodes gr
+                               ]
+
+interIDom :: (Eq b, Graph gr) =>  gr a (Annotation b) -> Node -> Map Node (Set Node)
+interIDom gr s =
+    Map.delete s $
+    Map.mapWithKey (\n ms -> Set.delete n ms  ) $  trrAcyclicPredMap $  interDom gr s
+
+interDomIsDomOnIntra :: Gr () () -> Bool
+interDomIsDomOnIntra gr
+    | null (nodes gr) = True
+    | otherwise       = doms == interDom (emap (\_ -> Nothing) gr :: Gr () (Annotation ())) s
+  where (s:_) = nodes gr
+        doms :: Map Node (Set Node)
+        doms = Map.fromList $ [(n, Set.fromList ns) | (n,ns) <- dom gr s]
+
+interIDomIsIDomOnIntra :: (Connected Gr () ()) -> Bool
+interIDomIsIDomOnIntra (CG s gr) = idoms == interIDom (emap (\_ -> Nothing) gr :: Gr () (Annotation ())) s
+  where idoms :: Map Node (Set Node)
+        idoms = Map.fromList $ [(n, Set.fromList [i]) | (n,i) <- iDom gr s]
+
+
+
+chopsInterIDomAreChops :: InterCFG () String -> Bool
+chopsInterIDomAreChops (InterCFG s gr) =
+    (∀) (nodes gr) (\n ->
+      (∀) (pre interDomsGraph n) (\c -> n == s ∨ c == n ∨
+        (∀) (interIDoms ! n) (\i ->  (balancedChop summary gr c n) == (balancedChop summary gr c i) ∪ (balancedChop summary gr i n)
+        )
+      )
+    )
+  where interDoms = interDom gr s
+        interDomsGraph = fromPredMap interDoms :: Gr () ()
+        interIDoms = interIDom gr s -- TODO: performance
+        summary = sameLevelSummaryGraph gr
+
+
+chopsInterIDomAreChopsCounterExamples :: InterCFG () String -> [(Node,Node,Node)]
+chopsInterIDomAreChopsCounterExamples (InterCFG s gr) = [ (c,i,n) | n <- (nodes gr),
+                                                     c <- pre interDomsGraph n,
+                                                     not $  n == s ∨ c == n,
+                                                     i <- Set.toList $ interIDoms ! n,
+                                                     not $  (balancedChop summary gr c n) == (balancedChop summary gr c i) ∪ (balancedChop summary gr i n)
+                                         ]
+  where interDoms = interDom gr s
+        interDomsGraph = fromPredMap interDoms :: Gr () ()
+        interIDoms = interIDom gr s -- TODO: performance
+        summary = sameLevelSummaryGraph gr

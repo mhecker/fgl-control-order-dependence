@@ -72,10 +72,17 @@ showPDG p = showGraph $ programDependenceGraphP p
 showCFG p = showGraph $ tcfg p
 showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
+showInterIDomGraph gr s = showGraph $ withNodes $ trrAcyclic $ ( fromPredMap (interDom gr s) :: Gr () ())
 
 withNodes :: (Graph gr) => gr a b -> gr (Node,a) b
 withNodes g =  mkGraph [(n,(n,l)) | (n,l) <- labNodes g]
                        (labEdges g)
+
+investigate s gr = do
+  showGraph $ withNodes $ gr
+  showInterIDomGraph gr s
+  putStrLn $ show $ chopsInterIDomAreChopsCounterExamples (InterCFG s gr)
+  
 
 
 showDomTree cdomComputation p = showGraph idom

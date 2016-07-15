@@ -6,13 +6,16 @@ import Data.List(delete)
 
 import Data.Maybe (fromJust)
 import qualified Data.Map as Map
+import Data.Map (Map)
+import qualified Data.Set as Set
+import Data.Set (Set)
 import Control.Monad(liftM2,guard)
 
 import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TransClos (trc)
-
+import Data.Graph.Inductive.Tree
 
 -- adapted from from https://hackage.haskell.org/package/gbu-0.1/
 mergeTwoGraphs :: DynGraph gr => gr a b -> gr a b -> gr a b
@@ -21,6 +24,19 @@ mergeTwoGraphs g1 g2 = foldr insEdge g1' $ labEdges g2
        mergeNode (n,a) g =
          if n `gelem` g1 then g
                          else insNode (n,a) g
+
+
+
+relabelingWrt :: (Graph gr, Graph gr') => gr a b -> gr' c d -> (Node -> Node)
+relabelingWrt g1 g2 n1
+    | isEmpty g1 || isEmpty g2 || max2 < min1 || max1 < min2 = n1
+    | otherwise                                = n1 + (max2 - min1) + 1
+  where (min1,max1) = nodeRange g1
+        (min2,max2) = nodeRange g2
+
+relabeledWrt :: (Graph gr, Graph gr', Graph gr'') => gr a b -> gr' a b -> gr'' a b
+g1 `relabeledWrt` g2 = mkGraph  [(newId n, a) | (n,a) <- labNodes g1] [(newId n, newId n', e) | (n,n',e) <- labEdges g1]
+ where newId = relabelingWrt g1 g2
 
 -- | Returns the subgraph only containing the nodes which satisfy the
 -- given predicate.
@@ -67,7 +83,16 @@ trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
                               )
                               ks
 
+fromPredMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
+fromPredMap pred = mkGraph [(n,()) | n <- Map.keys pred]
+                           [(m,n,()) | (n,ms) <- Map.assocs pred, m <- Set.toList ms]
 
+toPredMap ::  Graph gr => gr a b -> Map Node (Set Node)
+toPredMap gr = Map.fromList [(n, Set.fromList $ pre gr n ) | n <- nodes gr]
+
+
+trrAcyclicPredMap :: Map Node (Set Node) -> Map Node (Set Node)
+trrAcyclicPredMap pred = toPredMap $ trrAcyclic $ (fromPredMap pred :: Gr () ())
 
 enumCycles :: (Graph gr) => gr a b -> [[Node]]
 enumCycles gr = do

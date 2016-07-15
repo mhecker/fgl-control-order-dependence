@@ -7,7 +7,9 @@ import Data.Map (Map)
 import qualified Data.Set as Set
 import Data.Set (Set)
 
+import qualified Data.Foldable as Foldable
 import Unicode
+import Algebra.Lattice
 
 the p = fromJust . find p 
 
@@ -24,3 +26,6 @@ restrict σ vars = Map.filterWithKey (\var _ -> var ∈ vars) σ
 invert :: (Ord k, Ord v) => Map k v -> Map v (Set k)
 invert m = Map.fromListWith (∪) pairs
     where pairs = [(v, Set.singleton k) | (k, v) <- Map.toList m]
+
+meetFrom :: (Foldable.Foldable f,  MeetSemiLattice a) => a -> f a -> a
+meetFrom x l = Foldable.foldr (⊓) x l

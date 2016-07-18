@@ -19,9 +19,9 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Data.Graph.Inductive
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Util
-import Data.Graph.Inductive.Tree
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Query.TransClos (trc)
@@ -225,8 +225,8 @@ sccIsSameLevelScc gr = sccs == sccsNaive
 
 
 
-proceduresIn gr = Set.fromList $ [ b | (_,_,Just (Open b)) <- labEdges gr] ++
-                                 [ b | (_,_,Just (Close b)) <- labEdges gr]
+parenLabelsIn gr = Set.fromList $ [ b | (_,_,Just (Open b)) <- labEdges gr] ++
+                                  [ b | (_,_,Just (Close b)) <- labEdges gr]
 
 
 sameLvlNodes gr = 
@@ -257,20 +257,86 @@ sameLvlNodes gr =
             )
           )
 
+
+sameLvlNodes'WithoutBs gr =
+    (㎲⊒) (  Map.fromList [ ((n,m), Set.empty                                   ) | n <- nodes gr, m <- nodes gr],
+             Map.fromList [ ((n,m), if n==m then Set.fromList [n] else Set.empty) | n <- nodes gr, m <- nodes gr]
+          )
+          (\(sameLevel, onLevel) -> (
+             sameLevel ⊔ Map.fromList [ ((n,m), (∐) [ onLevel ! (n',m') | (n', Just (Open b ))  <- lsuc gr n,
+                                                                          (m', Just (Close b')) <- lpre gr m,  b' == b,  not $ Set.null $ onLevel ! (n',m')
+                                                    ]
+                                        )
+                                      | n <- nodes gr, m <- nodes gr ]
+             ,
+             onLevel   ⊔ Map.fromList [ ((n,m),   (∐) [ onLevel ! (n',m)  ⊔  onLevel ! (n,n)                        | n' <- successors           n, not $ Set.null $ onLevel ! (n', m)]
+                                                ⊔ (∐) [ onLevel ! (n',m)  ⊔  onLevel ! (n,n)  ⊔  sameLevel ! (n,n') | n' <- samelvlsuc sameLevel n, not $ Set.null $ onLevel ! (n', m)]
+                                        )
+                                      | n <- nodes gr, m <- nodes gr ]
+             )
+           )
+    where successors n = nub [ n' | (n',Nothing)         <- lsuc gr n]
+          samelvlsuc sameLevel
+                     n = nub [ n' | (n'',  Just (Open  b))  <- lsuc gr n,
+                                    (m,n', Just (Close b')) <- labEdges gr, b' == b, not $ Set.null $  sameLevel ! (n,n')
+                             ]
+
+
+sameLvlNodes' gr =
+    (㎲⊒) (  Map.fromList [ ((n,m,b), Set.empty                                  ) | n <- nodes gr, m <- nodes gr, b <- parenLabels],
+             Map.fromList [ ((n,m),if n==m then Set.fromList [n] else Set.empty)   | n <- nodes gr, m <- nodes gr]
+          )
+          (\(sameLevel, onLevel) -> (
+             sameLevel ⊔ Map.fromList [ ((n,m,b), (∐) [ onLevel ! (n',m') | (n', Just (Open b'))   <- lsuc gr n,  b'  == b,
+                                                                            (m', Just (Close b'')) <- lpre gr m,  b'' == b',  not $ Set.null $ onLevel ! (n',m')
+                                                      ]
+                                        )
+                                      | n <- nodes gr, m <- nodes gr, b <- parenLabels ]
+             ,
+             onLevel   ⊔ Map.fromList [ ((n,m),   (∐) [ onLevel ! (n',m)  ⊔  onLevel ! (n,n)                          | n' <- successors           n, not $ Set.null $ onLevel ! (n', m)]
+                                                ⊔ (∐) [ onLevel ! (n',m)  ⊔  onLevel ! (n,n)  ⊔  sameLevel ! (n,n',b) | n' <- samelvlsuc sameLevel n, not $ Set.null $ onLevel ! (n', m), b <- parenLabels ]
+                                        )
+                                      | n <- nodes gr, m <- nodes gr ]
+             )
+           )
+    where successors n = nub [ n' | (n',Nothing)         <- lsuc gr n]
+          samelvlsuc sameLevel
+                     n = nub [ n' | (n'',  Just (Open  b))  <- lsuc gr n,
+                                    (m,n', Just (Close b')) <- labEdges gr, b' == b, not $ Set.null $  sameLevel ! (n,n',b)
+                             ]
+          parenLabels = Set.toList $ parenLabelsIn gr
+
+
+
+
 sameLevelNodes :: (Graph gr, Ord b) => gr a (Annotation b) -> Map (Node,Node,b) (Set Node)
 sameLevelNodes = fst . sameLvlNodes
+
+sameLevelNodes' :: (Graph gr, Ord b) => gr a (Annotation b) -> Map (Node,Node,b) (Set Node)
+sameLevelNodes' = fst . sameLvlNodes'
 
 sameLevelSummaryGraph :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set Node)
 sameLevelSummaryGraph gr =
     mkGraph (labNodes gr)
             ( [(n,m,Set.empty) | (n,m,Nothing) <- labEdges gr] ++
---              [(n,m,Set.empty) | (n,m, Just (Close _))) <- labEdges gr] ++
               [(n,n', sameLevel ! (m, m', b)) | n <- nodes gr, n' <- nodes gr,
-                                                (m',  Just (Close b)) <- lpre gr n',
-                                                (m,   Just (Open b')) <- lsuc gr n, b' == b
+                                                (m',  Just (Close b)) <- nub $ lpre gr n',
+                                                (m,   Just (Open b')) <- nub $ lsuc gr n, b' == b
               ]
             )
   where sameLevel = sameLevelNodes gr
+
+sameLevelSummaryGraph' :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set Node)
+sameLevelSummaryGraph' gr =
+    mkGraph (labNodes gr)
+            ( [(n,m,Set.empty) | (n,m,Nothing) <- labEdges gr] ++
+              [(n,m, sameLevel ! (n,m,b)) | n <- nodes gr, m <- nodes gr, b <- parenLabels,
+                                            not $ Set.null $  sameLevel ! (n,m,b)
+              ]
+            )
+  where sameLevel = sameLevelNodes' gr
+        parenLabels = Set.toList $ parenLabelsIn gr
+
 
 
 sameLevelSummaryGraphNodeAnnotated :: (Graph gr, Ord b) => gr a (Annotation b) -> gr Node (Set Node)
@@ -708,3 +774,7 @@ chopsInterIDomAreChopsCounterExamples (InterCFG s gr) = [ (c,i,n) | n <- (nodes 
         interDomsGraph = fromPredMap interDoms :: Gr () ()
         interIDoms = interIDom gr s -- TODO: performance
         summary = sameLevelSummaryGraph gr
+
+
+sameLevelSummaryGraphIssameLevelSummaryGraph' :: InterCFG () String -> Bool
+sameLevelSummaryGraphIssameLevelSummaryGraph' (InterCFG _ gr) = sameLevelSummaryGraph gr == sameLevelSummaryGraph' gr

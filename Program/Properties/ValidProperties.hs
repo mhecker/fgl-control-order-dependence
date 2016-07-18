@@ -96,6 +96,7 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
+    testProperty  "sameLevelSummaryGraphIssameLevelSummaryGraph'" $ sameLevelSummaryGraphIssameLevelSummaryGraph',
     testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
     testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,

@@ -315,6 +315,9 @@ sameLevelNodes = fst . sameLvlNodes
 sameLevelNodes' :: (Graph gr, Ord b) => gr a (Annotation b) -> Map (Node,Node,b) (Set Node)
 sameLevelNodes' = fst . sameLvlNodes'
 
+sameLevelNodes'WithoutBs :: (Graph gr, Ord b) => gr a (Annotation b) -> Map (Node,Node) (Set Node)
+sameLevelNodes'WithoutBs = fst . sameLvlNodes'WithoutBs
+
 sameLevelSummaryGraph :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set Node)
 sameLevelSummaryGraph gr =
     mkGraph (labNodes gr)
@@ -323,6 +326,19 @@ sameLevelSummaryGraph gr =
                                                 (m',  Just (Close b)) <- nub $ lpre gr n',
                                                 (m,   Just (Open b')) <- nub $ lsuc gr n, b' == b
               ]
+            )
+  where sameLevel = sameLevelNodes gr
+
+sameLevelSummaryGraphMerged :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set Node)
+sameLevelSummaryGraphMerged gr =
+    mkGraph (labNodes gr)
+            ( [(n,m,Set.empty) | (n,m,Nothing) <- labEdges gr] ++
+              [(n,n', merged)  | n <- nodes gr, n' <- nodes gr,
+                                 let merged = (∐) [ sameLevel ! (m, m', b) | (m',  Just (Close b)) <- nub $ lpre gr n',
+                                                                             (m,   Just (Open b')) <- nub $ lsuc gr n, b' == b
+                                                  ],
+                                 not $ Set.null merged
+               ]
             )
   where sameLevel = sameLevelNodes gr
 
@@ -335,6 +351,18 @@ sameLevelSummaryGraph' gr =
               ]
             )
   where sameLevel = sameLevelNodes' gr
+        parenLabels = Set.toList $ parenLabelsIn gr
+
+
+sameLevelSummaryGraph'WithoutBs :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set Node)
+sameLevelSummaryGraph'WithoutBs gr =
+    mkGraph (labNodes gr)
+            ( [(n,m,Set.empty) | (n,m,Nothing) <- labEdges gr] ++
+              [(n,m, sameLevel ! (n,m)) | n <- nodes gr, m <- nodes gr,
+                                          not $ Set.null $  sameLevel ! (n,m)
+              ]
+            )
+  where sameLevel = sameLevelNodes'WithoutBs gr
         parenLabels = Set.toList $ parenLabelsIn gr
 
 
@@ -673,14 +701,30 @@ balancedChopIsSimulBalancedChop gr =
 
 rofl = do
 --    InterGraph gr <- generate $ resize 175  (arbitrary :: Gen (InterGraph () String))
-    let (MkGen g) = arbitrary :: Gen (InterGraph () String)
-    let (InterGraph gr) = g (mkQCGen 49) 175 -- 44, 48,
+--    let (MkGen g) = arbitrary :: Gen (InterGraph () String)
+--    let (InterGraph gr) = g (mkQCGen 49) 175 -- 44, 48,
 
-    -- start <- getCurrentTime
-    -- let summary = sameLevelSummaryGraph gr
-    -- putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
-    -- stop <- getCurrentTime
-    -- print $ diffUTCTime stop start
+    let (MkGen g) = arbitrary :: Gen (InterCFG () String)
+    let (InterCFG s gr) = g (mkQCGen 49) 40 -- 44, 48,
+
+    start <- getCurrentTime
+    let summary = sameLevelSummaryGraph gr
+    putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
+    stop <- getCurrentTime
+    print $ diffUTCTime stop start
+
+    start <- getCurrentTime
+    let summary = sameLevelSummaryGraph'WithoutBs gr
+    putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
+    stop <- getCurrentTime
+    print $ diffUTCTime stop start
+
+    start <- getCurrentTime
+    let summary = sameLevelSummaryGraph' gr
+    putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
+    stop <- getCurrentTime
+    print $ diffUTCTime stop start
+
 
     -- start <- getCurrentTime
     -- putStr $ show (summe $ Map.toList $ fmap (Set.size) $ simulUnbr summary gr) ++ "\t\t"
@@ -694,20 +738,23 @@ rofl = do
 
 
 
-    start <- getCurrentTime
-    putStr $ show (summe $ Map.toList $ fmap (Set.size) $ simulBalancedChop gr) ++ "\t\t"
-    stop  <- getCurrentTime
-    print $ diffUTCTime stop start
+    -- start <- getCurrentTime
+    -- putStr $ show (summe $ Map.toList $ fmap (Set.size) $ simulBalancedChop gr) ++ "\t\t"
+    -- stop  <- getCurrentTime
+    -- print $ diffUTCTime stop start
 
 
-    start <- getCurrentTime
-    let summary = sameLevelSummaryGraph gr
-    putStr $ show (summe $ [ ((s,t),Set.size $ balancedChop summary gr s t) | s <- nodes gr, t <- nodes gr])  ++ "\t\t"
-    stop <- getCurrentTime
-    print $ diffUTCTime stop start
+    -- start <- getCurrentTime
+    -- let summary = sameLevelSummaryGraph gr
+    -- putStr $ show (summe $ [ ((s,t),Set.size $ balancedChop summary gr s t) | s <- nodes gr, t <- nodes gr])  ++ "\t\t"
+    -- stop <- getCurrentTime
+    -- print $ diffUTCTime stop start
 
 
   where summe l = sum $ fmap (\((a,b),c) -> a+b+c) l
+
+
+
 
 
 
@@ -778,3 +825,6 @@ chopsInterIDomAreChopsCounterExamples (InterCFG s gr) = [ (c,i,n) | n <- (nodes 
 
 sameLevelSummaryGraphIssameLevelSummaryGraph' :: InterCFG () String -> Bool
 sameLevelSummaryGraphIssameLevelSummaryGraph' (InterCFG _ gr) = sameLevelSummaryGraph gr == sameLevelSummaryGraph' gr
+
+sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs :: InterCFG () String -> Bool
+sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = sameLevelSummaryGraphMerged gr == sameLevelSummaryGraph'WithoutBs gr

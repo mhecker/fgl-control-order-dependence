@@ -41,7 +41,7 @@ isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
   where p = toProgram generated
 
 
-timingDDomPathsIsTiming :: Program Gr => Bool
+timingDDomPathsIsTiming :: Program Gr -> Bool
 timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =
             (cl   == cl')
           ∧ (clt  == Map.fromList [((n,m), clt' (n,m)) | n <- nodes tcfg,

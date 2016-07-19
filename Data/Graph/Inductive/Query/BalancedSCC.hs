@@ -512,7 +512,7 @@ graphTest8 =
             ]
 
 
--- A counterexample to balancedChopIsSimulBalancedChop
+-- This used to be a  counterexample to balancedChopIsSimulBalancedChop when balancedChop was slightly buggy
 graphTest9  :: Gr () (Annotation String)
 graphTest9 = mkGraph [(-4,()),(-2,()),(3,()),(18,()),(55,())] [(-4,3,Just (Close "b")),(-2,-4,Just (Close "b")),(-2,-2,Nothing),(3,-2,Nothing),(3,55,Just (Open "a")),(18,-2,Just (Close "a")),(55,18,Just (Open "a"))] 
 
@@ -554,9 +554,8 @@ bunbl summary graph t = backward t t
                  new        = predecessors \\ found
 
 
-
 balancedChop summary graph s t = -- trace ((show $ Set.fromList w) ++ "   " ++ (show $ Set.fromList vr) ++ "   " ++ (show $ Set.fromList vl) ++ "\n")  $
- Set.fromList vr ∪ Set.fromList vl ∪ (∐) [ ms | (n,n',ms) <- labEdges summary, not $ Set.null ms, n `elem` (vr ++ vl), n' `elem` (vr ++ vl)]
+ Set.fromList vr ∪ Set.fromList vl ∪ (∐) [ ms | (n,n',ms) <- labEdges summary, not $ Set.null ms, (n `elem` vr && n' `elem` vr) || (n `elem` vl && n' `elem`vl)]
     where w  = (funbr summary graph [s]) `intersect` (bunbl summary graph [t])
           vr = (funbr summary graph [s]) `intersect` (bunbr summary graph w  )
           vl = (funbl summary graph w  ) `intersect` (bunbl summary graph [t])

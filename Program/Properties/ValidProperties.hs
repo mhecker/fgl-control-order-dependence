@@ -105,6 +105,8 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
     testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
     testProperty  "simulUnblIsUnbl"                   $ simulUnblIsUnbl,
+    testProperty  "simulUnbr'IsUnbr"                  $ simulUnbrIsUnbr,
+    testProperty  "simulUnbl'IsUnbl"                  $ simulUnblIsUnbl,
     testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
     testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops
   ]

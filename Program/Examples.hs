@@ -4,7 +4,6 @@ module Program.Examples where
 
 import Program
 import Program.For
-import Control.Monad.Gen
 
 import IRLSOD
 

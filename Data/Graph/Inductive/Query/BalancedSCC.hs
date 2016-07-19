@@ -221,7 +221,7 @@ sccIsSameLevelScc :: Gr () () -> Bool
 sccIsSameLevelScc gr = sccs == sccsNaive
   where sccs      = Set.fromList $ (fmap Set.fromList $ scc gr)
         sccsNaive = Set.fromList $ [ balancedSccs ! n | n <- nodes $ gr]
-        balancedSccs = sameLevelScc $ sameLevelSummaryGraph $ toBalanced $ gr
+        balancedSccs = sameLevelScc $ sameLevelSummaryGraph'WithoutBs $ toBalanced $ gr
 
 
 
@@ -365,18 +365,6 @@ sameLevelSummaryGraph'WithoutBs gr =
   where sameLevel = sameLevelNodes'WithoutBs gr
         parenLabels = Set.toList $ parenLabelsIn gr
 
-
-
-sameLevelSummaryGraphNodeAnnotated :: (Graph gr, Ord b) => gr a (Annotation b) -> gr Node (Set Node)
-sameLevelSummaryGraphNodeAnnotated gr =
-    mkGraph ( [(n,n) | n <- nodes gr])
-            ( [(n,m,Set.empty) | (n,m,Nothing) <- labEdges gr] ++
-              [(n,n', sameLevel ! (m, m', b)) | n <- nodes gr, n' <- nodes gr,
-                                                (m',  Just (Close b)) <- lpre gr n',
-                                                (m,   Just (Open b')) <- lsuc gr n, b' == b
-              ]
-            )
-  where sameLevel = sameLevelNodes gr
 
 
 graphTest0 :: Gr () (Annotation String)
@@ -651,7 +639,7 @@ simulUnbrIsUnbr gr =
       )
     )
   where simul = simulUnbr summary gr
-        summary = sameLevelSummaryGraph gr
+        summary = sameLevelSummaryGraph'WithoutBs gr
 
 
 simulUnblIsUnbl ::  Gr () (Annotation String) -> Bool
@@ -663,7 +651,7 @@ simulUnblIsUnbl gr =
       )
     )
   where simul = simulUnbl summary gr
-        summary = sameLevelSummaryGraph gr
+        summary = sameLevelSummaryGraph'WithoutBs gr
 
 
 simulUnbr'IsUnbr ::  Gr () (Annotation String) -> Bool
@@ -675,7 +663,7 @@ simulUnbr'IsUnbr gr =
       )
     )
   where simul = fmap fst $ simulUnbr' summary gr
-        summary = sameLevelSummaryGraph gr
+        summary = sameLevelSummaryGraph'WithoutBs gr
 
 
 simulUnbl'IsUnbl ::  Gr () (Annotation String) -> Bool
@@ -687,7 +675,7 @@ simulUnbl'IsUnbl gr =
       )
     )
   where simul = fmap fst $ simulUnbl' summary gr
-        summary = sameLevelSummaryGraph gr
+        summary = sameLevelSummaryGraph'WithoutBs gr
 
 
 balancedChopIsSimulBalancedChop ::  Gr () (Annotation String) -> Bool
@@ -699,7 +687,7 @@ balancedChopIsSimulBalancedChop gr =
     )
   where simul = simulBalancedChop summary gr
         balanced = balancedChop summary gr
-        summary = sameLevelSummaryGraph gr
+        summary = sameLevelSummaryGraph'WithoutBs gr
 
 rofl = do
 --    InterGraph gr <- generate $ resize 175  (arbitrary :: Gen (InterGraph () String))
@@ -710,13 +698,21 @@ rofl = do
     let (InterCFG s gr) = g (mkQCGen 49) 40 -- 44, 48,
 
     start <- getCurrentTime
-    let summary = sameLevelSummaryGraph gr
+    let summary = sameLevelSummaryGraphMerged gr
     putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
     stop <- getCurrentTime
     print $ diffUTCTime stop start
 
     start <- getCurrentTime
     let summary = sameLevelSummaryGraph'WithoutBs gr
+    putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
+    stop <- getCurrentTime
+    print $ diffUTCTime stop start
+
+    putStrLn "-----------------"
+
+    start <- getCurrentTime
+    let summary = sameLevelSummaryGraph gr
     putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
     stop <- getCurrentTime
     print $ diffUTCTime stop start
@@ -809,7 +805,7 @@ chopsInterIDomAreChops (InterCFG s gr) =
   where interDoms = interDom gr s
         interDomsGraph = fromPredMap interDoms :: Gr () ()
         interIDoms = interIDom gr s -- TODO: performance
-        summary = sameLevelSummaryGraph gr
+        summary = sameLevelSummaryGraph'WithoutBs gr
 
 
 chopsInterIDomAreChopsCounterExamples :: InterCFG () String -> [(Node,Node,Node)]
@@ -822,7 +818,7 @@ chopsInterIDomAreChopsCounterExamples (InterCFG s gr) = [ (c,i,n) | n <- (nodes 
   where interDoms = interDom gr s
         interDomsGraph = fromPredMap interDoms :: Gr () ()
         interIDoms = interIDom gr s -- TODO: performance
-        summary = sameLevelSummaryGraph gr
+        summary = sameLevelSummaryGraph'WithoutBs gr
 
 
 sameLevelSummaryGraphIssameLevelSummaryGraph' :: InterCFG () String -> Bool

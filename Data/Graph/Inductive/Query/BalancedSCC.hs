@@ -631,13 +631,12 @@ simulUnbr'' summary gr =
              ++ [(n, n, Set.empty)            | n <- nodes gr]
 
 
-simulBalancedChop gr =
+simulBalancedChop summary gr =
     Map.mapWithKey (\(n,m) ns -> (fst ns) ⊔ (∐) [ ms | (n',m') <- Set.toList $ snd ns, ms <- [ ms | (n',m'',ms) <- out summary n', m'' == m']]) updown
   where
         updown = Map.fromList [ ((n,m), (∐) [ if ((Set.null $ fst $ unbr ! (n,n')) || (Set.null $ fst $ unbl ! (n',m))) then (Set.empty, Set.empty) else unbr ! (n,n') ⊔  unbl ! (n',m)   | n' <- nodes gr]) 
                               | n <- nodes gr, m <- nodes gr ]
 
-        summary = sameLevelSummaryGraph gr
         unbr = simulUnbr' summary gr
         unbl = simulUnbl' summary gr
 
@@ -699,7 +698,7 @@ balancedChopIsSimulBalancedChop gr =
              (balanced s t) == (simul ! (s,t))
       )
     )
-  where simul = simulBalancedChop gr
+  where simul = simulBalancedChop summary gr
         balanced = balancedChop summary gr
         summary = sameLevelSummaryGraph gr
 

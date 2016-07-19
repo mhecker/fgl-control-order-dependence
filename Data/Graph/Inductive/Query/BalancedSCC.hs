@@ -6,7 +6,8 @@ import Data.Time
 import Debug.Trace
 import Util
 
-import Algebra.Lattice
+import Algebra.Lattice hiding (gfpFrom)
+import Algebra.PartialOrd (gfpFrom)
 
 import Unicode
 

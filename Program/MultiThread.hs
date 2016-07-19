@@ -57,6 +57,6 @@ multiThreadAnalysis p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, e
 isInMultiThread :: Graph gr => Program gr -> Map Node Bool
 isInMultiThread p@(Program { tcfg, entryOf, mainThread}) = analysis (multiThreadAnalysis p) tcfg (entryOf mainThread)
 
-isMultiThread :: Graph gr => Program gr => Map StaticThread Bool
+isMultiThread :: (Graph gr, Program gr) => Map StaticThread Bool
 isMultiThread p@(Program { tcfg, entryOf, staticThreads } ) =
     Map.fromList [ (thread, (isInMultiThread p) ! (entryOf thread)) | thread <- Set.toList staticThreads ]

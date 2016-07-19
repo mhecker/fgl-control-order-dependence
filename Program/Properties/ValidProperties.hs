@@ -1,6 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Program.Properties.ValidProperties where
 
+import Prelude hiding (all)
+
 import Algebra.Lattice
 import Unicode
 
@@ -8,7 +10,6 @@ import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
-import Data.List
 import Data.Ord
 
 import qualified Data.Set as Set
@@ -28,9 +29,13 @@ import Program.Analysis
 import Program.CDom
 import Program.Generator (toProgram)
 
--- main = defaultMain tests
--- main = defaultMain $ testGroup "cDom" [cdomTests, cdomProps]
-main = defaultMain $ balancedParanthesesProps
+main      = all
+
+all       = defaultMain $ tests
+cdom      = defaultMain $ testGroup "cdom"     [cdomTests, cdomProps]
+balanced  = defaultMain $ testGroup "balanced" [balancedParanthesesTests, balancedParanthesesProps ]
+timing    = defaultMain $ testGroup "timing"   [timingClassificationDomPathsTests, timingClassificationDomPathsProps ]
+giffhorn  = defaultMain $ testGroup "giffhorn" [giffhornTests, giffhornProps ]
 
 tests :: TestTree
 tests = testGroup "Tests" [properties, unitTests]
@@ -38,6 +43,10 @@ tests = testGroup "Tests" [properties, unitTests]
 
 properties :: TestTree
 properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, balancedParanthesesProps ]
+
+unitTests :: TestTree
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTests ]
+
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationDomPaths == timingClassification"
@@ -50,7 +59,6 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
 
-unitTests = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTest ]
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
   [  testCase     ("timingClassificationDomPaths == timingClassificationDomPaths for " ++ exampleName)
@@ -99,8 +107,6 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
-    testProperty  "sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs" $ sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs,
---    testProperty  "sameLevelSummaryGraphIssameLevelSummaryGraph'" $ sameLevelSummaryGraphIssameLevelSummaryGraph', -- this appears to hold, but takes fucking long to quickcheck, so we skip it here
     testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
     testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
@@ -108,10 +114,12 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
     testProperty  "simulUnbr'IsUnbr"                  $ simulUnbrIsUnbr,
     testProperty  "simulUnbl'IsUnbl"                  $ simulUnblIsUnbl,
     testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
-    testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops
+    testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops,
+    testProperty  "sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs" $ sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs
+--    testProperty  "sameLevelSummaryGraphIssameLevelSummaryGraph'" $ sameLevelSummaryGraphIssameLevelSummaryGraph', -- this appears to hold, but takes fucking long to quickcheck, so we skip it here
   ]
 
-balancedParanthesesTest = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" $
+balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" $
   [ testCase (rpad 35 summName ++ "for graphTest0") $
              summ graphTest0  @=?
              mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,())] [(0,7,fromList [1,2,3,4,5,6]),(1,4,fromList [2,3]),(2,3,fromList []),(4,5,fromList []),(5,6,fromList [2,3])]

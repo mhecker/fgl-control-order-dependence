@@ -1,13 +1,16 @@
-TEST = Program/Properties/ValidProperties
 ROFL = Data/Graph/Inductive/Query/BalancedSCC
 
 
-.PHONY: test rofl .FORCE
+# all.test giffhorn.test cdom.test balanced.test timing.test all should be .PHONY targets here, but the pattern rules below dont like that
+.PHONY: all  rofl .FORCE
 
-$(TEST) : .FORCE
-	ghc -threaded -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties
-test : $(TEST)
-	$(TEST) +RTS -N -RTS
+all : all.test rofl
+
+%.test.bin : .FORCE
+	ghc -threaded -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+
+%.test : %.test.bin .FORCE
+	./$< +RTS -N -RTS
 
 $(ROFL) : .FORCE
 	ghc -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl

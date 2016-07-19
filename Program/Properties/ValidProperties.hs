@@ -11,6 +11,9 @@ import Test.Tasty.HUnit
 import Data.List
 import Data.Ord
 
+import qualified Data.Set as Set
+
+import Data.Graph.Inductive (mkGraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 import Program (Program)
@@ -47,7 +50,7 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
 
-unitTests = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests ]
+unitTests = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTest ]
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
   [  testCase     ("timingClassificationDomPaths == timingClassificationDomPaths for " ++ exampleName)
@@ -105,6 +108,61 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
     testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
     testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops
   ]
+
+balancedParanthesesTest = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" $
+  [ testCase (rpad 35 summName ++ "for graphTest0") $
+             summ graphTest0  @=?
+             mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,())] [(0,7,fromList [1,2,3,4,5,6]),(1,4,fromList [2,3]),(2,3,fromList []),(4,5,fromList []),(5,6,fromList [2,3])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest") $
+             summ graphTest  @=?
+             mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,())] [(0,7,fromList [1,2,3,4,5,6]),(1,4,fromList [2,3]),(2,3,fromList []),(4,5,fromList []),(5,6,fromList [2,3]),(6,5,fromList [])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest2") $
+             summ graphTest2 @=?
+             mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,())] [(0,8,fromList [1,2,3,4,5,6,7]),(1,4,fromList [1,2,3,4,5,6,7]),(2,3,fromList []),(2,7,fromList []),(3,6,fromList [1,2,3,4,5,6,7]),(4,5,fromList []),(6,7,fromList [])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest3") $
+             summ graphTest3 @=?
+             mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,())] [(0,7,fromList [1,2,4,5,6]),(1,2,fromList []),(2,3,fromList [1,2,4,5,6]),(2,4,fromList [1,2,4,5,6]),(2,6,fromList []),(4,5,fromList []),(6,5,fromList [])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest4") $
+             summ graphTest4 @=?
+             mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,())] [(0,7,fromList [1,2,3,4,5,6]),(1,5,fromList [2,3,4]),(2,4,fromList [3]),(5,6,fromList [2,3,4])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest5") $
+             summ graphTest5 @=?
+             mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,())] [(1,2,fromList []),(1,7,fromList []),(2,5,fromList [3,4]),(3,4,fromList []),(5,6,fromList []),(7,8,fromList [3,4]),(8,6,fromList [])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest6") $
+             summ graphTest6 @=?
+             mkGraph [(1,()),(2,()),(3,()),(4,())] [(1,2,fromList []),(1,3,fromList []),(3,3,fromList [1,2]),(4,2,fromList [])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest7") $
+             summ graphTest7 @=?
+             mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,()),(9,()),(10,()),(11,()),(12,())] [(1,2,fromList []),(1,10,fromList []),(2,5,fromList [3,4]),(3,4,fromList []),(5,8,fromList [6,7]),(6,7,fromList []),(8,9,fromList []),(10,11,fromList [6,7]),(11,12,fromList [3,4]),(12,9,fromList [])]
+  | (summ,summName) <- summs
+  ] ++
+  [ testCase (rpad 35 summName ++ "for graphTest8") $
+             summ graphTest8 @=?
+             mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,())] [(0,1,fromList []),(0,6,fromList []),(1,5,fromList [2,3,4]),(2,3,fromList []),(3,4,fromList []),(6,7,fromList [3,4])]
+  | (summ,summName) <- summs
+  ] ++
+  []
+ where fromList = Set.fromList
+       summs = [(sameLevelSummaryGraph',          "sameLevelSummaryGraph'"),
+                (sameLevelSummaryGraph,           "sameLevelSummaryGraph"),
+                (sameLevelSummaryGraphMerged,     "sameLevelSummaryGraphMerged"),
+                (sameLevelSummaryGraph'WithoutBs, "sameLevelSummaryGraph'WithoutBs")
+               ]
+       rpad m xs = take m $ xs ++ repeat ' '
 
 cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
   [ testCase ("chopsCdomArePrefixes idomChef for " ++ exampleName)  $ chopsCdomArePrefixes idomChef p @? ""

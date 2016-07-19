@@ -512,6 +512,10 @@ graphTest8 =
             ]
 
 
+-- A counterexample to balancedChopIsSimulBalancedChop
+graphTest9  :: Gr () (Annotation String)
+graphTest9 = mkGraph [(-4,()),(-2,()),(3,()),(18,()),(55,())] [(-4,3,Just (Close "b")),(-2,-4,Just (Close "b")),(-2,-2,Nothing),(3,-2,Nothing),(3,55,Just (Open "a")),(18,-2,Just (Close "a")),(55,18,Just (Open "a"))] 
+
 funbl summary graph s = forward s s
   where forward []     found = found
         forward (n:ns) found = forward  ((new       ) ++ ns) (new ++ found)

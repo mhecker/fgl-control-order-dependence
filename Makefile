@@ -1,3 +1,5 @@
+THREADED="-threaded"
+RTS="+RTS -N -RTS"
 ROFL = Data/Graph/Inductive/Query/BalancedSCC
 
 
@@ -7,13 +9,13 @@ ROFL = Data/Graph/Inductive/Query/BalancedSCC
 all : all.test rofl
 
 %.test.bin : .FORCE
-	ghc -threaded -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+	ghc $(THREADED) -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 
 %.test : %.test.bin .FORCE
-	./$< +RTS -N -RTS
+	./$< $(RTS)
 
 $(ROFL) : .FORCE
-	ghc -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl
+	ghc $(THREADED) -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl
 
 rofl : $(ROFL)
-	$(ROFL)
+	$(ROFL) $(RTS)

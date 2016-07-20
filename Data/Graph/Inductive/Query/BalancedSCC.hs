@@ -761,7 +761,8 @@ rofl = do
 interDom gr s = (gfpFrom)
                      (Map.fromList $ [(n, all) | n <- nodes gr, n/=s] ++ [(s,Set.fromList [s])])
                      (\dom ->
-                        Map.fromList [(n,  Set.fromList [n] ⊔ meetFrom all [ (∐) [dom ! n' | n' <- preds] | preds <- predecessors gr ! n]) | n <- nodes gr]
+                        Map.fromList $ [(n,  Set.fromList [n] ⊔ meetFrom all [ (∐) [dom ! n' | n' <- preds] | preds <- predecessors gr ! n]) | n <- nodes gr, n /=s]
+                                    ++ [(s, Set.fromList [s])]
                      )
     where all = Set.fromList $ nodes gr
 

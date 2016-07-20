@@ -7,7 +7,7 @@ import Debug.Trace
 import Util
 
 import Algebra.Lattice hiding (gfpFrom)
-import Algebra.PartialOrd (gfpFrom)
+import Algebra.PartialOrd (unsafeGfpFrom)
 
 import Unicode
 
@@ -35,6 +35,9 @@ import Test.QuickCheck.Random (mkQCGen)
 import Test.QuickCheck.Gen (Gen(MkGen))
 
 import Data.Graph.Inductive.Arbitrary
+
+-- for some reason, the gfpFrom in Algebra.Lattice requires functions to be antitone, instead of monotone!!?!?
+gfpFrom  = unsafeGfpFrom
 
 data Parantheses b = Open b | Close b deriving (Ord, Eq, Show)
 type Annotation b = Maybe (Parantheses b)

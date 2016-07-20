@@ -9,7 +9,7 @@ ROFL = Data/Graph/Inductive/Query/BalancedSCC
 all : all.test rofl
 
 %.test.bin : .FORCE
-	ghc $(THREADED) -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+	ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 
 %.test : %.test.bin .FORCE
 	./$< $(RTS)

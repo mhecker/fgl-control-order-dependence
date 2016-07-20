@@ -100,7 +100,7 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
     testProperty  "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree,
     testProperty  "chopsCdomAreExclChops idomChef"     $ chopsCdomAreExclChops idomChef,
     testProperty  "chopsCdomAreExclChops idomMohrEtAl" $ chopsCdomAreExclChops idomMohrEtAl,
-    testProperty  "inclChopIsChop"                     $ inclChopIsChop,
+    -- testProperty  "inclChopIsChop"                     $ inclChopIsChop, -- this appears to hold, but takes fucking long to quickcheck, so we skip it here
     testProperty  "exclChopContainedinclChop"          $ exclChopContainedinclChop,
     testProperty  "selfChopsSame"                      $ selfChopsSame,
     testProperty  "selfChopsSCC"                       $ selfChopsSCC

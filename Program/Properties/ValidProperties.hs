@@ -13,6 +13,7 @@ import Test.Tasty.HUnit
 import Data.Ord
 
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 
 import Data.Graph.Inductive (mkGraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
@@ -164,6 +165,21 @@ balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops
              summ graphTest8 @=?
              mkGraph [(0,()),(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,())] [(0,1,fromList []),(0,6,fromList []),(1,5,fromList [2,3,4]),(2,3,fromList []),(3,4,fromList []),(6,7,fromList [3,4])]
   | (summ,summName) <- summs
+  ] ++
+  [ testCase ("interIdom for graphTest5") $
+             interIDom graphTest5 1 @=? Map.fromList [(2,fromList [1]),(3,fromList [1]),(4,fromList [3]),(5,fromList [2,4]),(6,fromList [4]),(7,fromList [1]),(8,fromList [4,7])]
+  ] ++
+  [ testCase ("interIdom for graphTest6") $
+             interIDom graphTest6 1 @=? Map.fromList [(2,fromList [1]),(3,fromList [1]),(4,fromList [2,3])]
+  ] ++
+  [ testCase ("interIdom for graphTest7") $
+             interIDom graphTest7 1 @=? Map.fromList [(2,fromList [1]),(3,fromList [1]),(4,fromList [3]),(5,fromList [2,4]),(6,fromList [1]),(7,fromList [6]),(8,fromList [5,7]),(9,fromList [4,7]),(10,fromList [1]),(11,fromList [7,10]),(12,fromList [4,11])]
+  ] ++
+  [ testCase ("interIdom for graphTest8") $  -- TODO: the expected result as below is NOT correct: 5 *is* dominated by 2, but the interIDom implementation assumes a "CFG"-Like Graph (i.e.: nu multiple procedure entries), so it gives the result below.
+             interIDom graphTest8 0 @=? Map.fromList [(1,fromList [0]),(2,fromList [1]),(3,fromList [0]),(4,fromList [3]),(5,fromList [1,4]),(6,fromList [0]),(7,fromList [4,6])]
+  ] ++
+  [ testCase ("balancedChopIsSimulBalancedChop for graphTest9") $
+             balancedChopIsSimulBalancedChop graphTest9 @? ""
   ] ++
   []
  where fromList = Set.fromList

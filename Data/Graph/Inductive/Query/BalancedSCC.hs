@@ -312,6 +312,29 @@ sameLvlNodes' gr =
 
 
 
+sameLvlNodes'WithBs gr =
+    (㎲⊒) (  Map.fromList [ ((n,m), (Set.empty,Set.empty)                       ) | n <- nodes gr, m <- nodes gr],
+             Map.fromList [ ((n,m), if n==m then Set.fromList [n] else Set.empty) | n <- nodes gr, m <- nodes gr]
+          )
+          (\(sameLevel, onLevel) -> (
+             sameLevel ⊔ Map.fromList [ ((n,m), (∐) [ (onLevel ! (n',m'), Set.fromList [b]) | (n', Just (Open b ))  <- lsuc gr n,
+                                                                                              (m', Just (Close b')) <- lpre gr m,  b' == b,  not $ Set.null $ onLevel ! (n',m')
+                                                    ]
+                                        )
+                                      | n <- nodes gr, m <- nodes gr ]
+             ,
+             onLevel   ⊔ Map.fromList [ ((n,m),   (∐) [ onLevel ! (n',m)  ⊔  onLevel ! (n,n)                                | n' <- successors           n, not $ Set.null $ onLevel ! (n', m)]
+                                                ⊔ (∐) [ onLevel ! (n',m)  ⊔  onLevel ! (n,n)  ⊔  (fst $ sameLevel ! (n,n')) | n' <- samelvlsuc sameLevel n, not $ Set.null $ onLevel ! (n', m)]
+                                        )
+                                      | n <- nodes gr, m <- nodes gr ]
+             )
+           )
+    where successors n = nub [ n' | (n',Nothing)         <- lsuc gr n]
+          samelvlsuc sameLevel
+                     n = nub [ n' | (n'',  Just (Open  b))  <- lsuc gr n,
+                                    (m,n', Just (Close b')) <- labEdges gr, b' == b, not $ Set.null $  (fst $ sameLevel ! (n,n'))
+                             ]
+
 
 sameLevelNodes :: (Graph gr, Ord b) => gr a (Annotation b) -> Map (Node,Node,b) (Set Node)
 sameLevelNodes = fst . sameLvlNodes
@@ -321,6 +344,9 @@ sameLevelNodes' = fst . sameLvlNodes'
 
 sameLevelNodes'WithoutBs :: (Graph gr, Ord b) => gr a (Annotation b) -> Map (Node,Node) (Set Node)
 sameLevelNodes'WithoutBs = fst . sameLvlNodes'WithoutBs
+
+sameLevelNodes'WithBs :: (Graph gr, Ord b) => gr a (Annotation b) -> Map (Node,Node) (Set Node, Set b)
+sameLevelNodes'WithBs = fst . sameLvlNodes'WithBs
 
 sameLevelSummaryGraph :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set Node)
 sameLevelSummaryGraph gr =
@@ -367,8 +393,17 @@ sameLevelSummaryGraph'WithoutBs gr =
               ]
             )
   where sameLevel = sameLevelNodes'WithoutBs gr
-        parenLabels = Set.toList $ parenLabelsIn gr
 
+sameLevelSummaryGraph'WithBs :: (Graph gr, Ord b) => gr a (Annotation b) -> gr a (Set Node, Set b)
+sameLevelSummaryGraph'WithBs gr =
+    mkGraph (labNodes gr)
+            ( [(n,m,(Set.empty, Set.empty)) | (n,m,Nothing) <- labEdges gr] ++
+              [(n,m, sameLevel ! (n,m)) | n <- nodes gr, m <- nodes gr,
+                                          not $ Set.null $  fst $ sameLevel ! (n,m)
+              ]
+            )
+  where sameLevel = sameLevelNodes'WithBs gr
+        parenLabels = Set.toList $ parenLabelsIn gr
 
 
 graphTest0 :: Gr () (Annotation String)
@@ -702,6 +737,14 @@ rofl = do
     let (InterCFG s gr) = g (mkQCGen 49) 40 -- 44, 48,
 
     start <- getCurrentTime
+    let summary = sameLevelSummaryGraph'WithBs gr
+    putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,(ms,_)) <- labEdges summary ]) ++ "\t\t"
+    stop <- getCurrentTime
+    print $ diffUTCTime stop start
+
+    putStrLn "-----------------"
+
+    start <- getCurrentTime
     let summary = sameLevelSummaryGraphMerged gr
     putStr $ show (summe $ [ ((s,t),Set.size ms) | (s,t,ms) <- labEdges summary ]) ++ "\t\t"
     stop <- getCurrentTime
@@ -768,16 +811,38 @@ interDom gr s = (gfpFrom)
                                     ++ [(s, Set.fromList [s])]
                      )
     where all = Set.fromList $ nodes gr
-
-predecessors gr = Map.fromList [(n, [ [n'] | n' <- [ n' | (n',Nothing)  <- lpre gr n]
-                                                ++ [ n' | (n', Just (Open _)) <- lpre gr n]
-                                    ] ++
-                                    [ [n', n'']   | (n', Just (Close x)) <- lpre gr n,
-                                                    n'' <- if null [ n'' | (n'',_, Just (Open x')) <- labEdges gr, x == x'] then [n'] else  [n'' | (n'',_, Just (Open x')) <- labEdges gr, x == x']
+          predecessors gr = Map.fromList
+                                    [(n, [ [n'] | n' <- [ n' | (n',Nothing)  <- lpre gr n]
+                                                     ++ [ n' | (n', Just (Open _)) <- lpre gr n]
+                                         ] ++
+                                         [ [n', n'']   | (n', Just (Close x)) <- lpre gr n,
+                                                         n'' <- if null [ n'' | (n'',_, Just (Open x')) <- labEdges gr, x == x'] then [n'] else  [n'' | (n'',_, Just (Open x')) <- labEdges gr, x == x']
                                     ]
                                 )
                                | n <- nodes gr
                                ]
+
+
+
+interDomGeneral summary gr s = (gfpFrom)
+                     (Map.fromList $ [(n, all) | n <- nodes gr, n/=s] ++ [(s,Set.fromList [s])])
+                     (\dom ->
+                        Map.fromList $ [(n,  Set.fromList [n] ⊔ meetFrom all [ (∐) [dom ! n' | n' <- preds] | preds <- predecessors gr ! n]) | n <- nodes gr, n /=s]
+                                    ++ [(s, Set.fromList [s])]
+                     )
+    where all = Set.fromList $ nodes gr
+          predecessors gr = Map.fromList
+                                    [(n, [ [n'] | n' <- [ n' | (n',Nothing)  <- lpre gr n]
+                                                     ++ [ n' | (n', Just (Open _)) <- lpre gr n]
+                                         ] ++
+                                         [ [n', n'']   | (n', Just (Close x)) <- lpre gr n,
+                                                         n'' <- if null [ n'' | (n'', (_,xs)) <- lpre summary n, x ∈ xs] then [n'] else
+                                                                        [ n'' | (n'', (_,xs)) <- lpre summary n, x ∈ xs] -- TODO: this should always be a singular list, fix accordingly?!?!
+                                         ]
+                                )
+                               | n <- nodes gr
+                               ]
+
 
 interIDom :: (Eq b, Graph gr) =>  gr a (Annotation b) -> Node -> Map Node (Set Node)
 interIDom gr s =
@@ -831,3 +896,6 @@ sameLevelSummaryGraphIssameLevelSummaryGraph' (InterCFG _ gr) = sameLevelSummary
 
 sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs :: InterCFG () String -> Bool
 sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = sameLevelSummaryGraphMerged gr == sameLevelSummaryGraph'WithoutBs gr
+
+sameLevelSummaryGraph'WithBsIssameLevelSummaryGraph'WithoutBs :: InterCFG () String -> Bool
+sameLevelSummaryGraph'WithBsIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = emap fst (sameLevelSummaryGraph'WithBs gr) == sameLevelSummaryGraph'WithoutBs gr

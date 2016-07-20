@@ -73,6 +73,8 @@ showCFG p = showGraph $ tcfg p
 showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
 showInterIDomGraph gr s = showGraph $ withNodes $ trrAcyclic $ ( fromPredMap (interDom gr s) :: Gr () ())
+showInterIDomGraphGeneral gr s = showGraph $ withNodes $ trrAcyclic $ ( fromPredMap (interDomGeneral summary gr s) :: Gr () ())
+  where summary = sameLevelSummaryGraph'WithBs gr
 
 withNodes :: (Graph gr) => gr a b -> gr (Node,a) b
 withNodes g =  mkGraph [(n,(n,l)) | (n,l) <- labNodes g]

@@ -233,12 +233,9 @@ idomIsTree p@(Program { tcfg, observability, entryOf, mainThread }) idom =
          entry = entryOf mainThread
 
 
-idomIsTreeGenerated :: GeneratedProgram -> Bool
-idomIsTreeGenerated gen = idomIsTree p idom
-  where p :: Program Gr
-        p = toProgram gen
-        idom = idomMohrEtAl p
-        -- idom = idomChef p
+idomIsTreeProgram :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
+idomIsTreeProgram cdomComputation p = idomIsTree p idom
+  where idom = cdomComputation  p
 
 
 -- asserts that conversion from a cdom relation to an underlying domination tree via idomToTree is "sound",

@@ -96,6 +96,8 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
+    testProperty  "idomIsTreeProgram idomChef"        $ idomIsTreeProgram idomChef,
+    testProperty  "idomIsTreeProgram idomMohrEtAl"    $ idomIsTreeProgram idomMohrEtAl,
     testProperty  "chopsCdomArePrefixes idomChef"     $ chopsCdomArePrefixes idomChef,
     testProperty  "chopsCdomArePrefixes idomMohrEtAl" $ chopsCdomArePrefixes idomMohrEtAl,
     testProperty  "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree,

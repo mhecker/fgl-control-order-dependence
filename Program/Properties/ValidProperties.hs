@@ -15,6 +15,7 @@ import Data.Ord
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc)
 import Data.Graph.Inductive (mkGraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
@@ -37,6 +38,8 @@ cdom      = defaultMain $ testGroup "cdom"     [cdomTests, cdomProps]
 balanced  = defaultMain $ testGroup "balanced" [balancedParanthesesTests, balancedParanthesesProps ]
 timing    = defaultMain $ testGroup "timing"   [timingClassificationDomPathsTests, timingClassificationDomPathsProps ]
 giffhorn  = defaultMain $ testGroup "giffhorn" [giffhornTests, giffhornProps ]
+misc      = defaultMain $ testGroup "misc"     [miscProps]
+
 
 tests :: TestTree
 tests = testGroup "Tests" [properties, unitTests]
@@ -222,3 +225,7 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ] ++
   []
 
+
+miscProps = testGroup "(misc)" [
+    testProperty  "trcOfTrrIsTrc"                     $ trcOfTrrIsTrc
+  ]

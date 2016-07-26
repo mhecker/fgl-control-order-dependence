@@ -13,7 +13,7 @@ import Control.Monad(liftM2,guard)
 
 import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
-import Data.Graph.Inductive.Query.DFS (scc)
+import Data.Graph.Inductive.Query.DFS (scc, condensation)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Tree
 
@@ -82,6 +82,22 @@ trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
                                         g
                               )
                               ks
+
+
+trr :: DynGraph gr => gr a () -> gr a ()
+trr g =
+    mkGraph (labNodes g)
+            (    [(n, n', ())           | (_,e) <- labNodes g1t, (n,n') <- zip e (tail e)]
+              ++ [(last e, head e,  ()) | (_,e) <- labNodes g1t, length e > 1            ]
+              ++ [(head e, head e', ()) | (m,m') <- edges g1t, let (Just e, Just e') = (lab g1 m, lab g1 m') ]
+            )
+  where g1   = condensation g
+        g1t  = trrAcyclic g1
+
+
+trcOfTrrIsTrc ::  Gr String () -> Bool
+trcOfTrrIsTrc g = trc g == (trc $ trr g)
+
 
 fromPredMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
 fromPredMap pred = mkGraph [(n,()) | n <- Map.keys pred]

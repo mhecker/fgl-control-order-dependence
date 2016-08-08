@@ -1433,12 +1433,8 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
           ),
           (2, Skip `Seq`
               ForC 2 (
-                     (If CFalse
-                         (ReadFromChannel "z" "stdIn")
-                         (Ass "z" (Val 17))
-                     )                                                      `Seq`
                      (If (Leq (Val 0) (Times (Var "z") (Var "z")))
-                         (Ass "x" (Times (Var "z") (Var "z")))
+                         Skip
                          (ReadFromChannel "z" "stdIn"))
              )
           ),

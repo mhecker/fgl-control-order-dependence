@@ -1420,6 +1420,62 @@ forIf = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+minimalClassificationVstimingClassificationDomPathsCounterExample :: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExample = p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           ForC 2 (
+               If CTrue
+                  (SpawnThread 3                                           `Seq`
+                   ReadFromChannel "a" "lowIn1"
+                  )
+                  (If CTrue
+                      (Ass "a" (Val 42))
+                      (SpawnThread 2)
+                  )
+               )                                                            `Seq`
+               (If CFalse
+                   (ReadFromChannel "b" "lowIn1"                            `Seq`
+                    Ass "c" (Times (Var "b") (Var "b"))
+                   )
+                   (Skip                                                    `Seq`
+                    Skip
+                   )
+               )
+          ),
+          (2,ForC 2 (
+                 ForC 2 (
+                     (If CFalse
+                         (ReadFromChannel "z" "stdIn")
+                         (Ass "z" (Val 17))
+                     )                                                      `Seq`
+                     (If (Leq (Val 0) (Times (Var "z") (Var "z")))
+                         (Ass "x" (Times (Var "z") (Var "z")))
+                         (ReadFromChannel "z" "stdIn"))
+                 )
+             )
+          ),
+          (3,If CTrue
+                (Ass "c" (Val (-1))                           `Seq`
+                 Ass "c" (Times (Var "c") (Var "c"))          `Seq`
+                 ReadFromChannel "y" "lowIn1"                 `Seq`
+                 Ass "y" (Times (Var "y") (Var "y"))          `Seq`
+                 ForV "y" (
+                      ForC 1 (
+                          Ass "b" (Times (Var "y") (Var "c"))
+                      )
+                 )
+                )
+                (ForC 1
+                    (If CTrue
+                        (PrintToChannel (Val 1) "stdOut")
+                        Skip                                               `Seq`
+                    PrintToChannel (Val 1) "stdOut"                      `Seq`
+                    ReadFromChannel "z" "lowIn1")
+                 )
+           )
+          ]
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),

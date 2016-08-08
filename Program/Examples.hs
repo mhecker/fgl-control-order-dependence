@@ -1434,14 +1434,6 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
                       (Ass "a" (Val 42))
                       (SpawnThread 2)
                   )
-               )                                                            `Seq`
-               (If CFalse
-                   (ReadFromChannel "b" "lowIn1"                            `Seq`
-                    Ass "c" (Times (Var "b") (Var "b"))
-                   )
-                   (Skip                                                    `Seq`
-                    Skip
-                   )
                )
           ),
           (2,ForC 2 (
@@ -1456,25 +1448,8 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
                  )
              )
           ),
-          (3,If CTrue
-                (Ass "c" (Val (-1))                           `Seq`
-                 Ass "c" (Times (Var "c") (Var "c"))          `Seq`
-                 ReadFromChannel "y" "lowIn1"                 `Seq`
-                 Ass "y" (Times (Var "y") (Var "y"))          `Seq`
-                 ForV "y" (
-                      ForC 1 (
-                          Ass "b" (Times (Var "y") (Var "c"))
-                      )
-                 )
-                )
-                (ForC 1
-                    (If CTrue
-                        (PrintToChannel (Val 1) "stdOut")
-                        Skip                                               `Seq`
-                    PrintToChannel (Val 1) "stdOut"                      `Seq`
-                    ReadFromChannel "z" "lowIn1")
-                 )
-           )
+          (3, ReadFromChannel "z" "lowIn1"
+          )
           ]
 
 testsuite = [ $(withName 'example1),

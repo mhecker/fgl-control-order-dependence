@@ -1443,6 +1443,24 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
           )
           ]
 
+
+minimalClassificationVstimingClassificationDomPathsCounterExampleEssential :: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, Skip                             `Seq`
+              SpawnThread 2                    `Seq`
+              ReadFromChannel "h" "stdIn"      `Seq`
+              If (Leq (Var "h") (Val 0))
+                 (Skip `Seq` Skip)
+                 (Skip)                        `Seq`
+              Ass "x" (Val 1)
+          ),
+          (2, Skip                             `Seq`
+              ReadFromChannel "x" "lowIn1"
+          )
+          ]
+
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
               $(withName 'example2'),

@@ -1427,17 +1427,12 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
           (1,
            ForC 2 (
                If CTrue
-                  (SpawnThread 3                                           `Seq`
-                   ReadFromChannel "a" "lowIn1"
-                  )
-                  (If CTrue
-                      (Ass "a" (Val 42))
-                      (SpawnThread 2)
-                  )
+                  (SpawnThread 3)
+                  (SpawnThread 2)
                )
           ),
-          (2,ForC 2 (
-                 ForC 2 (
+          (2, Skip `Seq`
+              ForC 2 (
                      (If CFalse
                          (ReadFromChannel "z" "stdIn")
                          (Ass "z" (Val 17))
@@ -1445,10 +1440,10 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
                      (If (Leq (Val 0) (Times (Var "z") (Var "z")))
                          (Ass "x" (Times (Var "z") (Var "z")))
                          (ReadFromChannel "z" "stdIn"))
-                 )
              )
           ),
-          (3, ReadFromChannel "z" "lowIn1"
+          (3, Skip `Seq`
+              ReadFromChannel "z" "lowIn1"
           )
           ]
 

@@ -71,7 +71,7 @@ soundnessTests =  testGroup "(concerning soundness)" $
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationDomPaths == timingClassification"
-                  timingDDomPathsIsTiming,
+                  timingDDomPathsIsTimingG,
     testProperty  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
     testProperty  "timingClassificationDomPaths is at least as precise as minimalClassification"

@@ -1,9 +1,9 @@
-THREADED="-threaded"
-RTS="+RTS -N -RTS"
+THREADED=-threaded
+RTS=+RTS -N -RTS
 ROFL = Data/Graph/Inductive/Query/BalancedSCC
 
 
-# all.test giffhorn.test cdom.test balanced.test timing.test all should be .PHONY targets here, but the pattern rules below dont like that
+# all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE
 
 all : all.test rofl

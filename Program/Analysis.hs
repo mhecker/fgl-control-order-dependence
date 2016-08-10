@@ -82,7 +82,7 @@ timingClassification p@(Program { tcfg, observability }) =
                   )
     )
  where cpdg = concurrentProgramDependenceGraphP p
-       idom = idomChef p
+       idom = idomMohrEtAl p
        mhp = mhpFor p
        trnsclos = trc tcfg
        dataConflictGraph = dataConflictGraphP p
@@ -90,7 +90,6 @@ timingClassification p@(Program { tcfg, observability }) =
        chop :: Node -> Node -> Set Node
        chop s t =   (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
-
 
 
 
@@ -115,7 +114,7 @@ timingClassificationDomPaths p@(Program { tcfg, observability, entryOf, mainThre
        dom = Map.fromList $ iDom tcfg (entryOf mainThread)
 
        cpdg = concurrentProgramDependenceGraphP p
-       idom = idomChef p
+       idom = idomMohrEtAl p
        mhp = mhpFor p
        trnsclos = trc tcfg
        dataConflictGraph = dataConflictGraphP p
@@ -174,7 +173,7 @@ isSecureTimingClassificationDomPaths p = isSecureTimingClassificationFor cl clt 
           where dom :: Map Node Node
                 dom = Map.fromList $ iDom (tcfg p) (entryOf p $ mainThread p)
 
-                idom = idomChef p
+                idom = idomMohrEtAl p
                 mhp = mhpFor p
 
 isSecureTimingClassificationFor ::  Map Node SecurityLattice -> Map (Node, Node) SecurityLattice  -> SecurityAnalysis gr

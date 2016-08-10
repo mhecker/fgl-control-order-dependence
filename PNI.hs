@@ -217,7 +217,7 @@ showCounterExamplesPniForEquivAnnotatedSome n program@(Program { tcfg, observabi
   let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotatedIf areDifferent tcfg observability θ θ'
   showCounterExamples counterExamples
  where n' = fromInteger n
-       areDifferent p p' =   abs(p-p') > 1/100
+       areDifferent p p' =   abs(p-p') > 2/100
 
 
 

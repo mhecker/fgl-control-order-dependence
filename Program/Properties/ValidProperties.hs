@@ -7,8 +7,12 @@ import Algebra.Lattice
 import Unicode
 
 import Test.Tasty
-import Test.Tasty.QuickCheck as QC
+import Test.Tasty.Providers (singleTest)
+import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
+
+import Test.QuickCheck (Testable, property)
+import Test.QuickCheck.Property (Property(..))
 
 import Data.Ord
 
@@ -26,7 +30,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 
-import Program.Examples (testsuite, ijisLSODistkaputt)
+import Program.Examples (testsuite, ijisLSODistkaputt, cdomIsBroken')
 import Program.Analysis
 import Program.CDom
 import Program.Generator (toProgram)
@@ -39,18 +43,31 @@ balanced  = defaultMain $ testGroup "balanced" [balancedParanthesesTests, balanc
 timing    = defaultMain $ testGroup "timing"   [timingClassificationDomPathsTests, timingClassificationDomPathsProps ]
 giffhorn  = defaultMain $ testGroup "giffhorn" [giffhornTests, giffhornProps ]
 misc      = defaultMain $ testGroup "misc"     [miscProps]
-
+soundness = defaultMain $ testGroup "soundness" [soundnessTests, soundnessProps]
 
 tests :: TestTree
-tests = testGroup "Tests" [properties, unitTests]
+tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, balancedParanthesesProps ]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, balancedParanthesesProps, soundnessProps ]
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTests ]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTests, soundnessTests ]
 
+
+soundnessProps =  testGroup "(concerning soundness)" [
+    testPropertySized 15
+     ("allSound [ timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD ] ")
+     ( allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD ] )
+  ]
+
+soundnessTests =  testGroup "(concerning soundness)" $
+  [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD ] for " ++ exampleName)
+                  ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD ] example @? "")
+  | (exampleName, example) <- testsuite
+  ] ++
+  []
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationDomPaths == timingClassification"
@@ -229,3 +246,9 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 miscProps = testGroup "(misc)" [
     testProperty  "trcOfTrrIsTrc"                     $ trcOfTrrIsTrc
   ]
+
+
+testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
+testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
+  where MkProperty gen = property prop
+

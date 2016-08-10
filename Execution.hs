@@ -137,5 +137,5 @@ someFinishedAnnotatedExecutionTraces n program@(Program { tcfg }) input = sample
           | otherwise = do
                ((n,e'),c'') <- sample successors
                sampleTrace ((c',(n,e'),c''):t0)
-         where finished   = eventStep tcfg c' == []
+         where finished   = successors == []
                successors = eventStep tcfg c'

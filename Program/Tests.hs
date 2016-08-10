@@ -98,7 +98,8 @@ showDomTree cdomComputation p = showGraph idom
 -- p = someGeneratedProgram
 -- p = timingSecureButNotCombinedTimingSecure
 -- p = aSecureGeneratedProgram
-p = anotherGeneratedProgram
+-- p = anotherGeneratedProgram
+p = rofllol
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
@@ -116,7 +117,7 @@ mainEquivAnnotatedSampled = do
   showCounterExamplesPniForEquivAnnotatedSampled p defaultInput defaultInput'
 
 mainEquivAnnotatedSome = do
-  showCounterExamplesPniForEquivAnnotatedSome 10000 p defaultInput defaultInput'
+  showCounterExamplesPniForEquivAnnotatedSome 7500 p defaultInput defaultInput'
 
 
 mainFindMorePrecise = forever $ showMorePrecise isSecureTimingClassification isSecureTimingCombinedTimingClassification
@@ -153,9 +154,12 @@ isSecureEmpirically program@(Program { tcfg, observability }) = unsafePerformIO 
   θ' <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program defaultInput'
   let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotatedIf areDifferent tcfg observability θ θ'
   return $ length counterExamples == 0
- where areDifferent p p' =   abs(p-p') > 1/100
-       n = 10000
+ where areDifferent p p' =   abs(p-p') > 2/100
+       n = 7500
 
+
+rofllol :: Program Gr
+rofllol = toProgram $  GeneratedProgram (Map.fromList [(1,Generated (Seq (ForC 1 (If CFalse (PrintToChannel (Val 1) "stdOut") (ReadFromChannel "c" "stdIn"))) (ForC 2 (Seq (SpawnThread 2) (PrintToChannel (Val 42) "stdOut")))) (Set.fromList []) (Map.fromList [(2,Set.fromList [])])),(2,Generated (Seq (Seq (Seq (SpawnThread 3) (Ass "a" (Val 1))) (Seq (Ass "b" (Times (Var "a") (Var "a"))) (Ass "y" (Times (Var "a") (Var "b"))))) (ForC 1 (Seq Skip (Ass "a" (Times (Var "y") (Var "a")))))) (Set.fromList ["a","b","y"]) (Map.fromList [(3,Set.fromList [])])),(3,Generated (ForC 1 (Seq (Seq (PrintToChannel (Val 0) "stdOut") Skip) (Seq (PrintToChannel (Val 17) "stdOut") (ReadFromChannel "x" "stdIn")))) (Set.fromList ["x"]) (Map.fromList []))])
 
 
 genAndShowSimpleTransitionSystem = do

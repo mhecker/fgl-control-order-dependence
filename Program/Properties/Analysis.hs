@@ -16,6 +16,7 @@ import Program.Generator
 
 import Program.CDom
 
+import Program.Tests (isSecureEmpirically)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Graph
@@ -25,6 +26,7 @@ import Data.Graph.Inductive.Query.Dominators
 import Data.Graph.Inductive.Query.DataConflict (dataConflictGraphP)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependenceGraphP)
 
+import Test.QuickCheck
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -40,6 +42,13 @@ isAtLeastAsPreciseAs :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> Generate
 isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
   where p = toProgram generated
 
+
+allSound ::  [(Program Gr -> Bool)] -> GeneratedProgram -> Property
+allSound as generated = any ($ p) as  ==> isSecureEmpirically p
+  where p = toProgram generated
+
+allSoundP ::  [(Program Gr -> Bool)] -> Program Gr -> Bool
+allSoundP as p        = any ($ p) as  → isSecureEmpirically p
 
 timingDDomPathsIsTiming :: Program Gr -> Bool
 timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =

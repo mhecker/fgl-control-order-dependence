@@ -108,7 +108,7 @@ example2 = Program {
         exitOf 1 = 12
         tcfg = mkGraph (genLNodes 1 12)  $
                        [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(7,8,true),(8,9,nop),(9,7,nop),(7,10,false),(10,11,Assign "x" (Var "x")),(11,12,nop)]
+                   ++  [(7,8,false),(8,9,nop),(9,7,nop),(7,10,true),(10,11,Assign "x" (Var "x")),(11,12,nop)]
 
 
 
@@ -1412,6 +1412,7 @@ forIf = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
+           Ass "x" (Val 42)                                                 `Seq`
            ForC 5 (
               If (Leq (Var "x") (Val 0)) Skip Skip
            )                                                                `Seq`

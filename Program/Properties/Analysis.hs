@@ -50,6 +50,11 @@ allSound as generated = any ($ p) as  ==> isSecureEmpirically p
 allSoundP ::  [(Program Gr -> Bool)] -> Program Gr -> Bool
 allSoundP as p        = any ($ p) as  → isSecureEmpirically p
 
+
+timingDDomPathsIsTimingG :: GeneratedProgram -> Bool
+timingDDomPathsIsTimingG generated = timingDDomPathsIsTiming p
+  where p = toProgram generated
+
 timingDDomPathsIsTiming :: Program Gr -> Bool
 timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =
             (cl   == cl')

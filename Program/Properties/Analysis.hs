@@ -63,7 +63,7 @@ timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =
         dom :: Map Node Node
         dom = Map.fromList $ iDom tcfg (entryOf mainThread)
 
-        idom = idomChef p
+        idom = idomMohrEtAl p
         mhp = mhpFor p
 
 

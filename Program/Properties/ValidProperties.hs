@@ -82,7 +82,7 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
 
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
-  [  testCase     ("timingClassificationDomPaths == timingClassificationDomPaths for " ++ exampleName)
+  [  testCase     ("timingClassificationDomPaths == timingClassification for " ++ exampleName)
                  (timingDDomPathsIsTiming example @? "")
   | (exampleName, example) <- testsuite
   ] ++

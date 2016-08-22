@@ -30,7 +30,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 
-import Program.Examples (testsuite, ijisLSODistkaputt, cdomIsBroken')
+import Program.Examples (testsuite)
 import Program.Analysis
 import Program.CDom
 import Program.Generator (toProgram)

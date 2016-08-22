@@ -99,7 +99,8 @@ showDomTree cdomComputation p = showGraph idom
 -- p = timingSecureButNotCombinedTimingSecure
 -- p = aSecureGeneratedProgram
 -- p = anotherGeneratedProgram
-p = rofllol
+-- p = rofllol
+p = unsound
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput

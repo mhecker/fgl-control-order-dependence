@@ -1462,9 +1462,9 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p {
           )
           ]
 
-
-unsound :: Program Gr
-unsound = p { observability = defaultObservabilityMap (tcfg p) }
+-- This was spurioulsy reported as a counterExample to allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD ] in some test run: probably just bad luck in sampling executions ¯\__(ツ)__/¯
+notReallyUnsound :: Program Gr
+notReallyUnsound = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,(Seq (Seq (Seq (Seq Skip (Ass "z" (Val 0))) (ForV "z" Skip)) (Seq (Seq (SpawnThread 2) (PrintToChannel (Times (Var "z") (Var "z")) "stdOut")) (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (ReadFromChannel "c" "lowIn1") (ReadFromChannel "b" "stdIn")))) (Seq (ForC 2 (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") Skip)) (ForC 2 (Seq (SpawnThread 3) Skip))))),

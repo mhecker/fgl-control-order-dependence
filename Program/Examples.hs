@@ -1445,6 +1445,35 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
           ]
 
 
+minimalClassificationVstimingClassificationDomPathsCounterExample2 :: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExample2 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, (Seq (Seq (If CFalse (Seq (SpawnThread 3) (PrintToChannel (Val 1) "stdOut")) (If CFalse (ReadFromChannel "c" "lowIn1") (SpawnThread 2))) (If CFalse (If CTrue (Ass "a" (Val (-1))) (Ass "y" (Val 17))) (ForC 1 (PrintToChannel (Val 42) "stdOut")))) (ForC 1 (Seq (If CFalse (ReadFromChannel "c" "lowIn1") (ReadFromChannel "b" "lowIn1")) (If CFalse (ReadFromChannel "x" "lowIn1") (Ass "z" (Val 0)))))) ),
+          (2, (Seq (Seq (Seq (ForC 1 (Ass "y" (Val (-1)))) (Seq (ReadFromChannel "b" "lowIn1") (Ass "b" (Times (Var "y") (Var "y"))))) (Seq (If (Leq (Val 0) (Times (Var "y") (Var "y"))) Skip (Ass "c" (Times (Var "y") (Var "b")))) (Seq (ReadFromChannel "x" "stdIn") (ReadFromChannel "b" "stdIn")))) (ForV "x" (ForV "b" (If (Leq (Val 0) (Times (Var "y") (Var "x"))) (Ass "a" (Times (Var "x") (Var "b"))) (ReadFromChannel "a" "stdIn"))))) ),
+          (3,(ForC 2 (Seq (Seq (Seq (PrintToChannel (Val 17) "stdOut") (Ass "b" (Val 42))) (ForC 2 (PrintToChannel (Times (Var "b") (Var "b")) "stdOut"))) (Seq (Seq (PrintToChannel (Times (Var "b") (Var "b")) "stdOut") (PrintToChannel (Times (Var "b") (Var "b")) "stdOut")) (Seq (PrintToChannel (Times (Var "b") (Var "b")) "stdOut") (Ass "y" (Times (Var "b") (Var "b"))))))))
+          ]
+
+
+minimalClassificationVstimingClassificationDomPathsCounterExample3 :: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExample3 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(Seq (Seq (ForC 2 (Seq (SpawnThread 3) (SpawnThread 2))) (Seq (If CTrue (ReadFromChannel "z" "lowIn1") (PrintToChannel (Val (-1)) "stdOut")) (ForC 1 (Ass "x" (Val 1))))) (ForC 2 (Seq (ForC 1 Skip) (Seq (ReadFromChannel "b" "lowIn1") (ReadFromChannel "x" "lowIn1")))))),
+         (2,(Seq (Seq (Seq (Seq Skip (ReadFromChannel "x" "lowIn1")) (ForV "x" Skip)) (If (Leq (Val 0) (Times (Var "x") (Var "x"))) (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")) (ForC 2 (ReadFromChannel "x" "lowIn1")))) (ForV "x" (Seq (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (ReadFromChannel "z" "lowIn1")) (Seq (ReadFromChannel "z" "lowIn1") (PrintToChannel (Times (Var "x") (Var "z")) "stdOut")))))),
+         (3,(Seq (Seq (Seq (Seq (Ass "b" (Val 17)) (ReadFromChannel "b" "lowIn1")) (ForC 2 (Ass "y" (Times (Var "b") (Var "b"))))) (Seq (Seq (Ass "c" (Times (Var "y") (Var "y"))) (Ass "b" (Times (Var "y") (Var "y")))) (ForC 1 (Ass "b" (Times (Var "y") (Var "y")))))) (ForC 1 (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "c" "stdIn")) (If (Leq (Val 0) (Times (Var "y") (Var "y"))) (ReadFromChannel "b" "stdIn") (Ass "y" (Times (Var "b") (Var "c"))))))))
+         ]
+
+minimalClassificationVstimingClassificationDomPathsCounterExample4 :: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExample4 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(If CFalse (ForC 2 (Seq (Seq Skip (ReadFromChannel "b" "lowIn1")) (ForC 2 (SpawnThread 2)))) (If CFalse (Seq (Seq (SpawnThread 3) (ReadFromChannel "z" "lowIn1")) (Seq (ReadFromChannel "x" "lowIn1") (ReadFromChannel "y" "lowIn1"))) (If CFalse (Seq (Ass "a" (Val 1)) (ReadFromChannel "x" "lowIn1")) (Seq (PrintToChannel (Val 17) "stdOut") (ReadFromChannel "a" "stdIn"))))) ),
+          (2,(ForV "b" (Seq (ForC 2 (Seq (ReadFromChannel "a" "stdIn") (Ass "c" (Times (Var "b") (Var "a"))))) (If (Leq (Val 0) (Times (Var "c") (Var "b"))) (ForC 1 (ReadFromChannel "y" "stdIn")) (Seq Skip (Ass "x" (Times (Var "b") (Var "c"))))))) ),
+          (3,(ForC 2 (If CFalse (Seq (Seq Skip (PrintToChannel (Val 1) "stdOut")) (Seq Skip Skip)) (Seq (Seq Skip (PrintToChannel (Val (-1)) "stdOut")) (Seq (ReadFromChannel "c" "lowIn1") (Ass "x" (Times (Var "c") (Var "c"))))))))
+         ]
+
+
 minimalClassificationVstimingClassificationDomPathsCounterExampleEssential :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
@@ -1471,6 +1500,9 @@ notReallyUnsound = p { observability = defaultObservabilityMap (tcfg p) }
           (2,(Seq (ForC 2 (ForV "z" (ForC 2 (Ass "y" (Times (Var "z") (Var "z")))))) (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Seq (ForC 1 (PrintToChannel (Times (Var "z") (Var "z")) "stdOut")) (ForC 2 (ReadFromChannel "x" "lowIn1"))) (ForV "z" (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Ass "x" (Times (Var "z") (Var "z"))) (ReadFromChannel "x" "lowIn1")))))),
           (3,(If (Leq (Val 0) (Times (Var "z") (Var "z"))) (ForV "z" (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") (Ass "a" (Times (Var "z") (Var "z")))) (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") (Ass "a" (Times (Var "z") (Var "z")))))) (ForV "z" (ForC 2 (Seq Skip (Ass "a" (Times (Var "z") (Var "z"))))))))
          ]
+
+
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),

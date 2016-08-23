@@ -33,7 +33,7 @@ import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into
 import Program.Examples (testsuite)
 import Program.Analysis
 import Program.CDom
-import Program.Generator (toProgram)
+import Program.Generator (toProgram, GeneratedProgram)
 
 main      = all
 
@@ -57,7 +57,7 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
-    testPropertySized 15
+    testPropertySized 4
      ("allSound [ timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD ] ")
      ( allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD ] )
   ]

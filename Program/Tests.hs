@@ -69,6 +69,7 @@ showGraph g = do
   runInteractiveCommand $ "xdot " ++ file
 
 showPDG p = showGraph $ programDependenceGraphP p
+showcPDG p = showGraph $ concurrentProgramDependenceGraphP p
 showCFG p = showGraph $ tcfg p
 showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
@@ -100,7 +101,7 @@ showDomTree cdomComputation p = showGraph idom
 -- p = aSecureGeneratedProgram
 -- p = anotherGeneratedProgram
 -- p = rofllol
-p = minimalClassificationVstimingClassificationDomPathsCounterExample2
+p = minimalClassificationVstimingClassificationDomPathsCounterExample2Essential
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput

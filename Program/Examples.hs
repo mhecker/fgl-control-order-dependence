@@ -1455,6 +1455,31 @@ minimalClassificationVstimingClassificationDomPathsCounterExample2 = p { observa
           ]
 
 
+
+minimalClassificationVstimingClassificationDomPathsCounterExample2Essential :: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExample2Essential = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, Skip                             `Seq`
+              If CTrue
+                (SpawnThread 2)
+                (SpawnThread 3)                `Seq`
+              ReadFromChannel "x" "lowIn1"
+          ),
+          (2, Skip                             `Seq`
+              ReadFromChannel "h" "stdIn"      `Seq`
+              If (Leq (Var "h") (Val 0))
+                 (Skip `Seq` Skip)
+                 (Skip)                        `Seq`
+              Ass "x" (Val 42)
+          ),
+          (3, Skip                             `Seq`
+              PrintToChannel (Var "x") "stdOut"
+          )
+          ]
+
+
+-- counter example 3 and 4 are essential the same as minimalClassificationVstimingClassificationDomPathsCounterExampleEssential
 minimalClassificationVstimingClassificationDomPathsCounterExample3 :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample3 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code

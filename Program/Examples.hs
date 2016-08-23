@@ -1527,6 +1527,33 @@ notReallyUnsound = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+-- similiar to notReallyUnsound
+-- here, at least i could reproduce the empirical "leak" once, but only with marginally difference in probabilities. Most of the times, the difference in empirical probabilities is within the set threshold.
+-- *Program.Tests> mainEquivAnnotatedSome
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[1,2,1,2,1])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,-2,-1,-2,-1])] ... 
+-- -----------------
+-- p  = 2011 % 7500 ≃ 0.26813                                  p' = 607 % 2500 ≃ 0.24280
+-- fromList []
+-- ---(36,PrintEvent 0 "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(73,PrintEvent 1 "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(85,PrintEvent 17 "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(85,PrintEvent 17 "stdOut")-->
+-- fromList []
+notReallyUnsound2 :: Program Gr
+notReallyUnsound2 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(If CFalse (If CFalse (If CFalse (Seq (PrintToChannel (Val 42) "stdOut") Skip) (Seq (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))) (Seq (If CTrue (SpawnThread 2) (Ass "x" (Val 0))) (ForC 1 (PrintToChannel (Val 17) "stdOut")))) (Seq (ForC 1 (If CFalse (PrintToChannel (Val 17) "stdOut") (SpawnThread 3))) (If CTrue (Seq Skip (PrintToChannel (Val 0) "stdOut")) (ForC 2 Skip))))),
+          (2,(ForC 2 (Seq (If CFalse (If CFalse (Ass "x" (Val 42)) (ReadFromChannel "c" "stdIn")) (Seq Skip (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (Ass "x" (Val 0)) (ReadFromChannel "b" "lowIn1")) (ForC 2 (Ass "c" (Times (Var "x") (Var "b")))))))),
+          (3,(Seq (If CFalse (If CFalse (Seq (Ass "a" (Val 17)) Skip) (Seq (Ass "z" (Val 17)) (PrintToChannel (Times (Var "z") (Var "z")) "stdOut"))) (ForC 1 (Seq (PrintToChannel (Val 1) "stdOut") Skip))) (If CFalse (Seq (Seq Skip Skip) (Seq (Ass "c" (Val 42)) (PrintToChannel (Times (Var "c") (Var "c")) "stdOut"))) (Seq (ForC 2 (PrintToChannel (Val 17) "stdOut")) (Seq (Ass "y" (Val 0)) (ReadFromChannel "y" "stdIn"))))))
+          ]
+
 
 
 testsuite = [ $(withName 'example1),

@@ -1461,6 +1461,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExample2Essential = p 
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1, Skip                             `Seq`
+              Ass "x" (Val 1)                  `Seq`
               If CTrue
                 (SpawnThread 2)
                 (SpawnThread 3)                `Seq`
@@ -1504,6 +1505,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p {
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1, Skip                             `Seq`
+              Ass "x" (Val 0)                  `Seq`
               SpawnThread 2                    `Seq`
               ReadFromChannel "h" "stdIn"      `Seq`
               If (Leq (Var "h") (Val 0))
@@ -1596,4 +1598,15 @@ testsuite = [ $(withName 'example1),
               $(withName 'twoLoops),
               $(withName 'twoLoops'),
               $(withName 'forIf)
+            ] ++
+            precisionCounterExamples ++
+            []
+
+precisionCounterExamples = [
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample3),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample4),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleEssential),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2Essential)
             ]

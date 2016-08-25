@@ -36,6 +36,7 @@ import Algebra.Lattice
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
+import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence
 import Data.Graph.Inductive.Query.TimingDependence
@@ -101,8 +102,8 @@ showDomTree cdomComputation p = showGraph idom
 -- p = aSecureGeneratedProgram
 -- p = anotherGeneratedProgram
 -- p = rofllol
--- p = minimalClassificationVstimingClassificationDomPathsCounterExample2Essential
-p = notReallyUnsound2
+p = minimalClassificationVstimingClassificationDomPathsCounterExample2Essential
+-- p = notReallyUnsound2
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput

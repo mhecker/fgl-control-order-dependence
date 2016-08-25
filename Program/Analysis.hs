@@ -33,6 +33,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.Dominators
 import Data.Graph.Inductive.Query.TransClos
 
+import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.DataConflict
 import Data.Graph.Inductive.Query.TimingDependence
@@ -82,6 +83,45 @@ timingClassification p@(Program { tcfg, observability }) =
                   )
     )
  where cpdg = concurrentProgramDependenceGraphP p
+       idom = idomMohrEtAl p
+       mhp = mhpFor p
+       trnsclos = trc tcfg
+       dataConflictGraph = dataConflictGraphP p
+       timing = timingDependenceGraphP p
+       chop :: Node -> Node -> Set Node
+       chop s t =   (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+
+
+timingClassificationAtUses p@(Program { tcfg, observability }) =
+  (㎲⊒) (Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ],
+         Map.fromList [ ((n,m), (⊥))  | ((n,m), True) <- Map.assocs mhp ])
+    (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
+                                       | n <- nodes tcfg])
+                       ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
+                                                                    m' <- ideps n x,
+                                                                   ((m,m'), True) ∈ Map.assocs mhp
+                                                 ]
+                                         )
+                                       | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])
+                       ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
+                                                                    m' <- ddeps n x,
+                                                                   ((m,m'), True) ∈ Map.assocs mhp
+                                                 ]
+                                         )
+                                       | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])
+                   ,
+                   clt ⊔ (Map.fromList [ ((n,m), (∐) [ cl ! c' | let c = idom ! (n,m),
+                                                                  c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timing n)))
+                                                                                   ∪ ((chop c m) ∩ (Set.fromList (pre timing m)))
+                                                     ])
+                                       |  ((n,m),True) <- Map.assocs mhp])
+                  )
+    )
+ where ddeps n x = [ m | (m,DataDependence)        <- lpre cpdg n, x `Set.member` def tcfg m ]
+       ideps n x = [ m | (m,InterThreadDependence) <- lpre cpdg n, x `Set.member` def tcfg m ]
+       cpdg = concurrentProgramDependenceGraphP p
        idom = idomMohrEtAl p
        mhp = mhpFor p
        trnsclos = trc tcfg
@@ -159,6 +199,12 @@ isSecureMinimalClassification  p@(Program{ tcfg, observability }) =
   where cl = minimalClassification p
 
 -- TODO: via ⊑ formulieren
+
+
+isSecureTimingClassificationAtUses :: SecurityAnalysis gr
+isSecureTimingClassificationAtUses p   = isSecureTimingClassificationFor cl clt p
+  where (cl,clt) = timingClassificationAtUses p
+
 
 isSecureTimingClassification :: SecurityAnalysis gr
 isSecureTimingClassification p         = isSecureTimingClassificationFor cl clt p

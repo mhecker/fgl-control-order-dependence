@@ -30,7 +30,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 
-import Program.Examples (testsuite)
+import Program.Examples (testsuite, precisionCounterExamples)
 import Program.Analysis
 import Program.CDom
 import Program.Generator (toProgram, GeneratedProgram)
@@ -40,7 +40,7 @@ main      = all
 all       = defaultMain $ tests
 cdom      = defaultMain $ testGroup "cdom"     [cdomTests, cdomProps]
 balanced  = defaultMain $ testGroup "balanced" [balancedParanthesesTests, balancedParanthesesProps ]
-timing    = defaultMain $ testGroup "timing"   [timingClassificationDomPathsTests, timingClassificationDomPathsProps ]
+timing    = defaultMain $ testGroup "timing"   [timingClassificationDomPathsTests, timingClassificationDomPathsProps, precisionCounterExampleTests ]
 giffhorn  = defaultMain $ testGroup "giffhorn" [giffhornTests, giffhornProps ]
 misc      = defaultMain $ testGroup "misc"     [miscProps]
 soundness = defaultMain $ testGroup "soundness" [soundnessTests, soundnessProps]
@@ -53,7 +53,7 @@ properties :: TestTree
 properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, balancedParanthesesProps, soundnessProps ]
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTests, soundnessTests ]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
@@ -69,17 +69,31 @@ soundnessTests =  testGroup "(concerning soundness)" $
   ] ++
   []
 
+
+precisionCounterExampleTests = testGroup "(counterxamples to: timingClassification(-DomPaths) is at least as precise as minimalClassification)" $
+  [ testCase     ("timingClassificationAtUses *is*  at least as precise as minimalClassification for " ++ exampleName)
+                ((      isSecureTimingClassificationAtUses example ⊒ isSecureMinimalClassification example) @? "")
+  | (exampleName, example) <- precisionCounterExamples
+  ] ++
+  [ testCase     ("timingClassification is *not* at least as precise as minimalClassification for " ++ exampleName)
+                ((not $ isSecureTimingClassification       example ⊒ isSecureMinimalClassification example) @? "")
+  | (exampleName, example) <- precisionCounterExamples
+  ] ++
+  []
+
+
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationDomPaths == timingClassification"
                   timingDDomPathsIsTimingG,
     testProperty  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
-    testProperty  "timingClassificationDomPaths is at least as precise as minimalClassification"
-                $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureMinimalClassification,
+    testProperty  "timingClassificationAtUses is at least as precise as minimalClassification"
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
+    testProperty  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
     testProperty  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
-
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
   [  testCase     ("timingClassificationDomPaths == timingClassification for " ++ exampleName)
@@ -90,8 +104,12 @@ timingClassificationDomPathsTests = testGroup "(concerning timingClassificationD
                 ((isSecureTimingClassificationDomPaths example ⊒ isSecureTimingClassificationSimple example) @? "")
   | (exampleName, example) <- testsuite
   ] ++
-  [ testCase     ("timingClassificationDomPaths is at least as precise as minimalClassification for " ++ exampleName)
-                ((isSecureTimingClassificationDomPaths example ⊒ isSecureMinimalClassification example) @? "")
+  [ testCase     ("timingClassificationAtUses is at least as precise as minimalClassification for " ++ exampleName)
+                ((isSecureTimingClassificationAtUses example ⊒ isSecureMinimalClassification example) @? "")
+  | (exampleName, example) <- testsuite
+  ] ++
+  [ testCase     ("timingClassificationAtUses is at least as precise as TimingClassificationDomPaths for " ++ exampleName)
+                ((isSecureTimingClassificationAtUses example ⊒ isSecureTimingClassificationDomPaths example) @? "")
   | (exampleName, example) <- testsuite
   ] ++
   [ testCase     ("timingClassificationDomPaths is at least as precise as giffhornLSOD for " ++ exampleName)

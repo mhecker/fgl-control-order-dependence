@@ -57,7 +57,7 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
-    testPropertySized 4
+    testPropertySized 3
      ("allSound [ timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD ] ")
      ( allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD ] )
   ]

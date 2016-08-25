@@ -101,13 +101,13 @@ timingClassificationAtUses p@(Program { tcfg, observability }) =
                                        | n <- nodes tcfg])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
                                                                     m' <- ideps n x,
-                                                                   ((m,m'), True) ∈ Map.assocs mhp
+                                                                   mhp ! (m,m')
                                                  ]
                                          )
                                        | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
                                                                     m' <- ddeps n x,
-                                                                   ((m,m'), True) ∈ Map.assocs mhp
+                                                                   mhp ! (m,m')
                                                  ]
                                          )
                                        | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])

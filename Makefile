@@ -1,5 +1,6 @@
 THREADED=-threaded
 RTS=+RTS -N -RTS
+COLOR=--color always
 ROFL = Data/Graph/Inductive/Query/BalancedSCC
 CABAL_PREFIX=cabal exec --
 
@@ -12,7 +13,7 @@ all : all.test rofl
 	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 
 %.test : %.test.bin .FORCE
-	./$< $(RTS)
+	./$< $(RTS) $(COLOR)
 
 $(ROFL) : .FORCE
 	$(CABAL_PREFIX) ghc $(THREADED) -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl

@@ -61,7 +61,7 @@ precomputedUsing idomComputation p@(Program { tcfg }) =
     PrecomputedResults { cpdg, idom, trnsclos, mhps, mhp, chop, dataConflictGraph, timing, dom }
   where
     cpdg = concurrentProgramDependenceGraphP p
-    idom = idomChef p
+    idom = idomComputation p
     trnsclos = trc tcfg
     mhps = Map.fromList [ (n, Set.fromList [ m | ((n',m), True) <- Map.assocs mhp, n' == n]) | n <- nodes tcfg ]
     mhp = mhpFor p

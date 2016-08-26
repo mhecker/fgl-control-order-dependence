@@ -11,6 +11,9 @@ import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
+import Test.Tasty.Runners.AntXML
+import Test.Tasty.Ingredients.Basic
+
 import Test.QuickCheck (Testable, property)
 import Test.QuickCheck.Property (Property(..))
 
@@ -37,13 +40,25 @@ import Program.Generator (toProgram, GeneratedProgram)
 
 main      = all
 
-all       = defaultMain $ tests
-cdom      = defaultMain $ testGroup "cdom"     [cdomTests, cdomProps]
-balanced  = defaultMain $ testGroup "balanced" [balancedParanthesesTests, balancedParanthesesProps ]
-timing    = defaultMain $ testGroup "timing"   [timingClassificationDomPathsTests, timingClassificationDomPathsProps, precisionCounterExampleTests ]
-giffhorn  = defaultMain $ testGroup "giffhorn" [giffhornTests, giffhornProps ]
-misc      = defaultMain $ testGroup "misc"     [miscProps]
-soundness = defaultMain $ testGroup "soundness" [soundnessTests, soundnessProps]
+all        = defaultMain                               $ tests
+allX       = defaultMainWithIngredients [antXMLRunner] $ tests
+cdom       = defaultMain                               $ testGroup "cdom"      [cdomTests, cdomProps]
+cdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "cdom"      [cdomTests, cdomProps]
+balanced   = defaultMain                               $ testGroup "balanced"  [balancedParanthesesTests, balancedParanthesesProps ]
+balancedX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "balanced"  [balancedParanthesesTests, balancedParanthesesProps ]
+timing     = defaultMain                               $ testGroup "timing"    [timingClassificationDomPathsTests, timingClassificationDomPathsProps, precisionCounterExampleTests ]
+timingX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"    [timingClassificationDomPathsTests, timingClassificationDomPathsProps, precisionCounterExampleTests ]
+giffhorn   = defaultMain                               $ testGroup "giffhorn"  [giffhornTests, giffhornProps ]
+giffhornX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "giffhorn"  [giffhornTests, giffhornProps ]
+soundness  = defaultMain                               $ testGroup "soundness" [soundnessTests, soundnessProps]
+soundnessX = defaultMainWithIngredients [antXMLRunner] $ testGroup "soundness" [soundnessTests, soundnessProps]
+preccex    = defaultMain                               $ testGroup "preccex"   [precisionCounterExampleTests]
+preccexX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "preccex"   [precisionCounterExampleTests]
+
+misc       = defaultMain                               $ testGroup "misc"      [miscProps]
+miscX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "misc"      [miscProps]
+
+
 
 tests :: TestTree
 tests = testGroup "Tests" [unitTests, properties]

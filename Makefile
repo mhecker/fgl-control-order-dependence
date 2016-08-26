@@ -12,8 +12,15 @@ all : all.test rofl
 %.test.bin : .FORCE
 	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 
+%.test-xml.bin : .FORCE
+	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+
+
 %.test : %.test.bin .FORCE
 	./$< $(RTS) $(COLOR)
+
+%.test.xml : %.test-xml.bin
+	./$< $(RTS) --xml $@
 
 $(ROFL) : .FORCE
 	$(CABAL_PREFIX) ghc $(THREADED) -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl

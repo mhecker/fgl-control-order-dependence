@@ -1,2 +1,2 @@
 sudo aptitude install libghc-fgl-dev libghc-quickcheck2-dev libghc-tasty-dev libghc-tasty-hunit-dev libghc-tasty-quickcheck-dev libghc-base-unicode-symbols-dev
-cabal install  lattices fgl-arbitrary containers-unicode-symbols  MonadRandom monad-gen fgl-visualize
+cabal install  lattices fgl-arbitrary containers-unicode-symbols  MonadRandom monad-gen fgl-visualize tasty-ant-xml

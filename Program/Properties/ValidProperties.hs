@@ -42,22 +42,24 @@ main      = all
 
 all        = defaultMain                               $ tests
 allX       = defaultMainWithIngredients [antXMLRunner] $ tests
-cdom       = defaultMain                               $ testGroup "cdom"      [cdomTests, cdomProps]
-cdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "cdom"      [cdomTests, cdomProps]
-balanced   = defaultMain                               $ testGroup "balanced"  [balancedParanthesesTests, balancedParanthesesProps ]
-balancedX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "balanced"  [balancedParanthesesTests, balancedParanthesesProps ]
-timing     = defaultMain                               $ testGroup "timing"    [timingClassificationDomPathsTests, timingClassificationDomPathsProps, precisionCounterExampleTests ]
-timingX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"    [timingClassificationDomPathsTests, timingClassificationDomPathsProps, precisionCounterExampleTests ]
-giffhorn   = defaultMain                               $ testGroup "giffhorn"  [giffhornTests, giffhornProps ]
-giffhornX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "giffhorn"  [giffhornTests, giffhornProps ]
-soundness  = defaultMain                               $ testGroup "soundness" [soundnessTests, soundnessProps]
-soundnessX = defaultMainWithIngredients [antXMLRunner] $ testGroup "soundness" [soundnessTests, soundnessProps]
-preccex    = defaultMain                               $ testGroup "preccex"   [precisionCounterExampleTests]
-preccexX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "preccex"   [precisionCounterExampleTests]
+cdom       = defaultMain                               $ testGroup "cdom"      [ mkTest [cdomTests], mkProp [cdomProps]]
+cdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "cdom"      [ mkTest [cdomTests], mkProp [cdomProps]]
+balanced   = defaultMain                               $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
+balancedX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
+timing     = defaultMain                               $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
+timingX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
+giffhorn   = defaultMain                               $ testGroup "giffhorn"  [ mkTest [giffhornTests], mkProp [giffhornProps] ]
+giffhornX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "giffhorn"  [ mkTest [giffhornTests], mkProp [giffhornProps] ]
+soundness  = defaultMain                               $ testGroup "soundness" [ mkTest [soundnessTests], mkProp [soundnessProps] ]
+soundnessX = defaultMainWithIngredients [antXMLRunner] $ testGroup "soundness" [ mkTest [soundnessTests], mkProp [soundnessProps] ]
+preccex    = defaultMain                               $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
+preccexX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
 
-misc       = defaultMain                               $ testGroup "misc"      [miscProps]
-miscX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "misc"      [miscProps]
+misc       = defaultMain                               $ testGroup "misc"      [ mkProp [miscProps] ]
+miscX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "misc"      [ mkProp [miscProps] ]
 
+mkTest = testGroup "Unit tests"
+mkProp = testGroup "Properties"
 
 
 tests :: TestTree

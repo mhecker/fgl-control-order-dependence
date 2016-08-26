@@ -3,6 +3,7 @@ RTS=+RTS -N -RTS
 COLOR=--color always
 ROFL = Data/Graph/Inductive/Query/BalancedSCC
 CABAL_PREFIX=cabal exec --
+PATTERN=
 
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE
@@ -17,10 +18,10 @@ all : all.test rofl
 
 
 %.test : %.test.bin .FORCE
-	./$< $(RTS) $(COLOR)
+	./$< $(RTS) $(PATTERN) $(COLOR)
 
 %.test.xml : %.test-xml.bin
-	./$< $(RTS) --xml $@
+	./$< $(RTS) $(PATTERN) --xml $@
 
 $(ROFL) : .FORCE
 	$(CABAL_PREFIX) ghc $(THREADED) -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl

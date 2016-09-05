@@ -1557,6 +1557,33 @@ notReallyUnsound2 = p { observability = defaultObservabilityMap (tcfg p) }
           ]
 
 
+-- see notReallyUnsound
+notReallyUnsound3 :: Program Gr
+notReallyUnsound3 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, (Seq (ForC 1 (SpawnThread 2)) (If CTrue (ReadFromChannel "y" "lowIn1") (ReadFromChannel "c" "stdIn")))),
+          (2, (Seq (Seq (Ass "a" (Val 0)) (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")) (Seq (PrintToChannel (Times (Var "a") (Var "a")) "stdOut") (PrintToChannel (Times (Var "a") (Var "a")) "stdOut"))))
+         ]
+
+-- see notReallyUnsound
+notReallyUnsound4 :: Program Gr
+notReallyUnsound4 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(Seq (Seq (Ass "y" (Val 1)) (SpawnThread 3)) (If (Leq (Val 0) (Times (Var "y") (Var "y"))) (ReadFromChannel "y" "lowIn1") (Ass "y" (Times (Var "y") (Var "y")))))),
+          (3,(If (Leq (Val 0) (Times (Var "y") (Var "y"))) (Seq (Ass "c" (Times (Var "y") (Var "y"))) (ReadFromChannel "c" "lowIn1")) (Seq (PrintToChannel (Times (Var "y") (Var "y")) "stdOut") (ReadFromChannel "b" "lowIn1"))))
+         ]
+
+-- see notReallyUnsound
+notReallyUnsound5 :: Program Gr
+notReallyUnsound5 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(Seq (Seq (SpawnThread 2) (Ass "c" (Val 1))) (Seq (Ass "c" (Times (Var "c") (Var "c"))) (PrintToChannel (Times (Var "c") (Var "c")) "stdOut")))),
+          (2,(Seq (Seq (Ass "y" (Val (-1))) (Ass "a" (Times (Var "y") (Var "y")))) (Seq (ReadFromChannel "b" "lowIn1") (ReadFromChannel "x" "stdIn"))) )
+         ]
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),

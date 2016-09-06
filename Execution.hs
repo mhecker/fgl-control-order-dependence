@@ -10,6 +10,8 @@ import Program
 import System.Random
 import Control.Monad.Random
 
+import Control.Monad (liftM)
+
 import Data.Map (Map)
 import qualified Data.Map as Map
 
@@ -121,8 +123,8 @@ sample xs = do
 -- it will also be sampled more often, and hence appear multiple times in the result, say: k times
 -- The empirical probability such a trace is then k/n, and hence we annotate each occurence with p = 1/n,
 -- which is more appropriate for functions like counterExamplesWithRegardToEquivAnnotated
-someFinishedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
-someFinishedAnnotatedExecutionTraces n program@(Program { tcfg }) input = sampleSome [] 0
+someFinishedReversedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
+someFinishedReversedAnnotatedExecutionTraces n program@(Program { tcfg }) input = sampleSome [] 0
   where initialTraces  =  [ [(initialConfiguration program input, e, c')] | (e,c') <- initialSteps ]
         initialSteps   = eventStep tcfg $ initialConfiguration program input
         p              = 1 / (toRational n)
@@ -139,3 +141,7 @@ someFinishedAnnotatedExecutionTraces n program@(Program { tcfg }) input = sample
                sampleTrace ((c',(n,e'),c''):t0)
          where finished   = successors == []
                successors = eventStep tcfg c'
+
+someFinishedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
+someFinishedAnnotatedExecutionTraces n p i = liftM (fmap (\(t,p) -> (reverse t,p))) $  someFinishedReversedAnnotatedExecutionTraces n p i
+

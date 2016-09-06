@@ -3,6 +3,9 @@ module Program.Properties.ValidProperties where
 
 import Prelude hiding (all)
 
+import System.IO.Unsafe(unsafePerformIO)
+import Control.Monad.Random(evalRandIO)
+
 import Algebra.Lattice
 import Unicode
 
@@ -32,8 +35,8 @@ import Program.Properties.Analysis
 import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
-
-import Program.Examples (testsuite, precisionCounterExamples)
+import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
+import Program.Examples (testsuite, precisionCounterExamples, defaultInput)
 import Program.Analysis
 import Program.CDom
 import Program.Generator (toProgram, GeneratedProgram)
@@ -42,8 +45,8 @@ main      = all
 
 all        = defaultMain                               $ tests
 allX       = defaultMainWithIngredients [antXMLRunner] $ tests
-cdom       = defaultMain                               $ testGroup "cdom"      [ mkTest [cdomTests], mkProp [cdomProps]]
-cdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "cdom"      [ mkTest [cdomTests], mkProp [cdomProps]]
+cdom       = defaultMain                               $ testGroup "cdom"      [ mkTest [cdomTests, cdomCdomTests], mkProp [cdomProps, cdomCdomProps]]
+cdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "cdom"      [ mkTest [cdomTests, cdomCdomTests], mkProp [cdomProps, cdomCdomProps]]
 balanced   = defaultMain                               $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
 balancedX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
 timing     = defaultMain                               $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
@@ -67,7 +70,7 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, balancedParanthesesProps, soundnessProps ]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps ]
 
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
@@ -149,6 +152,21 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
   ] ++
   []
 
+
+cdomCdomProps = testGroup "(concerning cdoms)" $
+  [ testProperty  ("cdomIsCdom idomMohrEtAl")
+                $ \generated -> let  p :: Program Gr = toProgram generated
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 5000 p defaultInput
+                                in cdomIsCdomViolations p execs idomMohrEtAl == []
+  ] ++
+  []
+
+
+cdomCdomTests = testGroup "(concerning cdoms)" $
+  [ testCase ("cdomIsCdom idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomMohrEtAl) == [] @? ""
+  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 5000 p defaultInput
+  ] ++
+  []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
     testProperty  "idomIsTreeProgram idomChef"        $ idomIsTreeProgram idomChef,
@@ -284,6 +302,7 @@ miscProps = testGroup "(misc)" [
 
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
-testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
-  where MkProperty gen = property prop
+-- testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
+--   where MkProperty gen = property prop
+testPropertySized n name prop = testProperty name prop
 

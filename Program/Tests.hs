@@ -24,6 +24,8 @@ import Program.Generator (GeneratedProgram(..), toCode, toProgram,
                           Generated(..))
 import Program.TransitionSystem
 
+import Program.Properties.CDom
+
 
 import IRLSOD
 import Execution

@@ -243,12 +243,12 @@ example5 = Program {
 
 {-       1
          2 Read h
-    ---  3----true --> 4
-  f|     ^              5 if h
-  a|     |            6   7
-  l|     |              8  ----spawn--->  9 print l
-  s|     | -------------                 10
-  e|
+    ---  3----false --> 4
+  t|     ^              5 if h
+  r|     |            6   7
+  u|     |              8  ----spawn--->  9 print l
+  e|     | -------------                 10
+   |
    |---->11  print l
          12
 -}
@@ -271,7 +271,7 @@ example6 = Program {
         exitOf 1 = 12
         exitOf 2 = 10
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,true),(3,11,false),(11,12,Print (Var "x") stdOut),
+                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,false),(3,11,true),(11,12,Print (Var "x") stdOut),
                         (4,5,nop), (5,6,Guard True (Leq (Var "h") (Var "h"))),(5,7,Guard False (Leq (Var "h") (Var "h"))),
                                    (6,8,nop),                     (7,8,nop),
                         (8,3,nop),
@@ -325,11 +325,11 @@ example7 = Program {
           2
     ¬ h /   \ h
        3     4
-        \   /tmp = 100
+        \   /tmp = 50
           5
           |
           6 -----spawn ------------------>   201
-          |                                   |   tmp2 = 100
+          |                                   |   tmp2 = 50
 --------> 7 -------                          202
 |         |       |
 |  tmp > 0|       |
@@ -387,7 +387,7 @@ example8 = Program {
                         (21,22, Assign "one" (Val 1)),
                         (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq (Var "h") (Var "h"))),
                                                      (2,4, Guard True  (Leq (Var "h") (Var "h"))),
-                        (4,5,Assign "tmp" (Val 100)),
+                        (4,5,Assign "tmp" (Val 50)),
                         (3,5,nop),
                         (5,6,nop),
                         (6,7,nop),(6,201,Spawn),
@@ -405,7 +405,7 @@ example8 = Program {
                         (15,13, nop),
                         (16,17, Print (Val 1) stdOut),
 
-                        (201,202, Assign "tmp2" (Val 100)),
+                        (201,202, Assign "tmp2" (Val 50)),
 
                         (301,302, Print (Val 0) stdOut)]
 
@@ -424,7 +424,7 @@ example8 = Program {
           2
     ¬ h /   \ h
        3     4
-        \   /tmp = 100
+        \   /tmp = 50
           5
           |
           6 -----spawn ------------------>   201
@@ -486,7 +486,7 @@ example8' = Program {
                         (21,22, Assign "one" (Val 1)),  -- TODO: entfernen
                         (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq (Var "h") (Var "h"))),
                                                      (2,4, Guard True  (Leq (Var "h") (Var "h"))),
-                        (4,5,Assign "tmp" (Val 100)),
+                        (4,5,Assign "tmp" (Val 50)),
                         (3,5,nop),
                         (5,6,nop),
                         (6,7,nop),(6,201,Spawn),

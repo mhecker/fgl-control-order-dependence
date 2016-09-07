@@ -1584,6 +1584,16 @@ notReallyUnsound5 = p { observability = defaultObservabilityMap (tcfg p) }
           (2,(Seq (Seq (Ass "y" (Val (-1))) (Ass "a" (Times (Var "y") (Var "y")))) (Seq (ReadFromChannel "b" "lowIn1") (ReadFromChannel "x" "stdIn"))) )
          ]
 
+-- see notReallyUnsound
+notReallyUnsound6 :: Program Gr
+notReallyUnsound6 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(Seq (Seq (SpawnThread 3) (SpawnThread 2)) (If CFalse (Ass "a" (Val 1)) (PrintToChannel (Val 0) "stdOut")))),
+           (2,(If CFalse (If CFalse (Ass "c" (Val 1)) Skip) (Seq (PrintToChannel (Val (-1)) "stdOut") Skip))),
+           (3,(ForC 1 (Seq Skip Skip)))
+         ]
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),

@@ -105,7 +105,7 @@ showDomTree cdomComputation p = showGraph idom
 -- p = anotherGeneratedProgram
 -- p = rofllol
 -- p = minimalClassificationVstimingClassificationDomPathsCounterExample2Essential
-p = notReallyUnsound5
+p = notReallyUnsound6
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput

@@ -154,11 +154,6 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
-  [ testPropertySized 4 ("cdomIsCdom' idomChef")
-                $ \generated -> let  p :: Program Gr = toProgram generated
-                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
-                                in cdomIsCdomViolations' p execs idomChef == []
-  ] ++
   [ testPropertySized 4 ("cdomIsCdom idomChef")
                 $ \generated -> let  p :: Program Gr = toProgram generated
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
@@ -178,9 +173,6 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
 
 
 cdomCdomTests = testGroup "(concerning cdoms)" $
-  [ testCase ("cdomIsCdom' idomChef for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomChef) == [] @? ""
-  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
-  ] ++
   [ testCase ("cdomIsCdom idomChef for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomChef) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
   ] ++

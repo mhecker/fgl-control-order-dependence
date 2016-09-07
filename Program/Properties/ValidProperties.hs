@@ -154,9 +154,9 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
-  [ testProperty  ("cdomIsCdom idomMohrEtAl")
+  [ testPropertySized 4 ("cdomIsCdom idomMohrEtAl")
                 $ \generated -> let  p :: Program Gr = toProgram generated
-                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 5000 p defaultInput
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 4000 p defaultInput
                                 in cdomIsCdomViolations p execs idomMohrEtAl == []
   ] ++
   []
@@ -302,7 +302,7 @@ miscProps = testGroup "(misc)" [
 
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
--- testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
---   where MkProperty gen = property prop
+testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
+   where MkProperty gen = property prop
 testPropertySized n name prop = testProperty name prop
 

@@ -304,5 +304,4 @@ miscProps = testGroup "(misc)" [
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
 testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
    where MkProperty gen = property prop
-testPropertySized n name prop = testProperty name prop
 

@@ -73,7 +73,7 @@ properties :: TestTree
 properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps ]
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
 
 
 soundnessProps =  testGroup "(concerning soundness)" [

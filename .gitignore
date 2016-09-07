@@ -1,3 +1,10 @@
 *~
 *.o
 *.hi
+*.dyn_hi
+*.dyn_o
+*.fail.xml
+*.test.xml
+*.test.bin
+*.test-xml.bin
+*.dot

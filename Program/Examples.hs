@@ -1647,3 +1647,27 @@ precisionCounterExamples = [
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleEssential),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2Essential)
             ]
+
+
+failingCdomIsCdom' = [
+              $(withName 'example8),
+              $(withName 'threadSpawn1),
+              $(withName 'cdomIsBroken),
+              $(withName 'cdomIsBroken'),
+              $(withName 'cdomIsBroken2),
+              $(withName 'noninterferingSchedulers),
+              $(withName 'figure5right'),
+              $(withName 'figure5right''),
+              $(withName 'someGeneratedProgram),
+              $(withName 'anotherGeneratedProgram),
+              $(withName 'aSecureGeneratedProgram),
+              $(withName 'clientServerKeyExample),
+              $(withName 'clientServerKeyExampleSimple),
+              $(withName 'singleThreadedDelay),
+              $(withName 'twoLoops),
+              $(withName 'forIf),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample3)
+            ]
+

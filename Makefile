@@ -8,13 +8,20 @@ PATTERN=
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE
 
-all : all.test rofl
+all : all.test all.fail rofl
 
 %.test.bin : .FORCE
 	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 
+%.fail.bin : .FORCE
+	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+
+
 %.test-xml.bin : .FORCE
 	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+
+%.fail-xml.bin : .FORCE
+	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
 
 
 %.test : %.test.bin .FORCE
@@ -22,6 +29,14 @@ all : all.test rofl
 
 %.test.xml : %.test-xml.bin
 	./$< $(RTS) $(PATTERN) --xml $@
+
+
+%.fail : %.fail.bin .FORCE
+	./$< $(RTS) $(PATTERN) $(COLOR)
+
+%.fail.xml : %.fail-xml.bin
+	./$< $(RTS) $(PATTERN) --xml $@
+
 
 $(ROFL) : .FORCE
 	$(CABAL_PREFIX) ghc $(THREADED) -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl

@@ -94,12 +94,13 @@ minimalClassificationUsing
                                | n <- nodes tcfg])
     )
 
-timingClassification p@(Program { tcfg, observability }) =
+timingClassification p = timingClassificationLevels pc p
+  where pc = precomputedUsing idomMohrEtAl p
+timingClassificationLevels pc@(PrecomputedResults { mhp }) p@(Program { tcfg, observability }) =
     timingClassificationUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ]
         cltInit = Map.fromList [ ((n,m), (⊥))  | ((n,m), True) <- Map.assocs mhp ]
-        pc@(PrecomputedResults { mhp }) = precomputedUsing idomMohrEtAl p
-timingClassificationNodes p@(Program { tcfg, observability }) =
+timingClassificationNodes pc p@(Program { tcfg, observability }) =
     timingClassificationUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes tcfg ]
         cltInit = Map.fromList [ ((n,m), (⊥))  | ((n,m), True) <- Map.assocs mhp ]
@@ -250,6 +251,12 @@ isSecureTimingClassificationAtUses p   = isSecureTimingClassificationFor cl clt 
 isSecureTimingClassification :: SecurityAnalysis gr
 isSecureTimingClassification p         = isSecureTimingClassificationFor cl clt p
   where (cl,clt) = timingClassification p
+
+isSecureTimingClassificationIdomChef :: SecurityAnalysis gr
+isSecureTimingClassificationIdomChef p = isSecureTimingClassificationFor cl clt p
+  where (cl,clt) = timingClassificationLevels (precomputedUsing idomChef p) p
+
+
 
 isSecureTimingClassificationDomPaths :: SecurityAnalysis gr
 isSecureTimingClassificationDomPaths p = isSecureTimingClassificationFor cl clt p

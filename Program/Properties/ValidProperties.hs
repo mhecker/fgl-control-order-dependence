@@ -154,24 +154,40 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
-  [ testPropertySized 4 ("cdomIsCdom idomMohrEtAl")
+  [ testPropertySized 4 ("cdomIsCdom' idomChef")
                 $ \generated -> let  p :: Program Gr = toProgram generated
-                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
-                                in cdomIsCdomViolations p execs idomMohrEtAl == []
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+                                in cdomIsCdomViolations' p execs idomChef == []
+  ] ++
+  [ testPropertySized 4 ("cdomIsCdom idomChef")
+                $ \generated -> let  p :: Program Gr = toProgram generated
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+                                in cdomIsCdomViolations p execs idomChef == []
   ] ++
   [ testPropertySized 4 ("cdomIsCdom' idomMohrEtAl")
                 $ \generated -> let  p :: Program Gr = toProgram generated
-                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations' p execs idomMohrEtAl == []
+  ] ++
+  [ testPropertySized 4 ("cdomIsCdom idomMohrEtAl")
+                $ \generated -> let  p :: Program Gr = toProgram generated
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+                                in cdomIsCdomViolations p execs idomMohrEtAl == []
   ] ++
   []
 
 
 cdomCdomTests = testGroup "(concerning cdoms)" $
-  [ testCase ("cdomIsCdom idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomMohrEtAl) == [] @? ""
+  [ testCase ("cdomIsCdom' idomChef for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomChef) == [] @? ""
+  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
+  ] ++
+  [ testCase ("cdomIsCdom idomChef for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomChef) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
   ] ++
   [ testCase ("cdomIsCdom' idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomMohrEtAl) == [] @? ""
+  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
+  ] ++
+  [ testCase ("cdomIsCdom idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomMohrEtAl) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
   ] ++
   []

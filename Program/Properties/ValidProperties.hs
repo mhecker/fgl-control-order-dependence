@@ -156,15 +156,23 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 cdomCdomProps = testGroup "(concerning cdoms)" $
   [ testPropertySized 4 ("cdomIsCdom idomMohrEtAl")
                 $ \generated -> let  p :: Program Gr = toProgram generated
-                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 4000 p defaultInput
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
                                 in cdomIsCdomViolations p execs idomMohrEtAl == []
+  ] ++
+  [ testPropertySized 4 ("cdomIsCdom' idomMohrEtAl")
+                $ \generated -> let  p :: Program Gr = toProgram generated
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
+                                in cdomIsCdomViolations' p execs idomMohrEtAl == []
   ] ++
   []
 
 
 cdomCdomTests = testGroup "(concerning cdoms)" $
   [ testCase ("cdomIsCdom idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomMohrEtAl) == [] @? ""
-  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 5000 p defaultInput
+  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
+  ] ++
+  [ testCase ("cdomIsCdom' idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomMohrEtAl) == [] @? ""
+  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 2000 p defaultInput
   ] ++
   []
 

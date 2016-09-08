@@ -43,3 +43,10 @@ $(ROFL) : .FORCE
 
 rofl : $(ROFL)
 	$(ROFL) $(RTS)
+
+clean :
+	find -name "*.hi"      -not -path "./.cabal-sandbox/*" -delete
+	find -name "*.dyn_hi"  -not -path "./.cabal-sandbox/*" -delete
+	find -name "*.o"       -not -path "./.cabal-sandbox/*" -delete
+	find -name "*.dyn_o"   -not -path "./.cabal-sandbox/*" -delete
+	find -name "*~"        -not -path "./.cabal-sandbox/*" -delete

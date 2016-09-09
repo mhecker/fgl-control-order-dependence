@@ -93,8 +93,11 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
   []
 
 
-timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
-  ]
+timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $ 
+  [ testCase ("isSecureTimingCombinedTimingClassification is at least as precise as isSecureTimingClassification for " ++ exampleName)  $   isSecureTimingCombinedTimingClassification p ⊒ isSecureTimingClassification p @? ""
+  | (exampleName, p) <- [("timingSecureButNotCombinedTimingSecure", timingSecureButNotCombinedTimingSecure) ]
+  ] ++
+  []
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
   []

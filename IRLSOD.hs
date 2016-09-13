@@ -21,6 +21,9 @@ type OutputChannel = String
 stdIn :: InputChannel
 stdIn = "stdIn"
 
+stdIn2 :: InputChannel
+stdIn2 = "stdIn"
+
 stdOut :: OutputChannel
 stdOut = "stdOut"
 

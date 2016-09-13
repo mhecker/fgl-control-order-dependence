@@ -26,6 +26,7 @@ defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]), (lowIn1, cycle [1,2,3,4])
 
 defaultChannelObservability channel
  | channel == stdIn     = High
+ | channel == stdIn2    = High
  | channel == lowIn1 = Low
  | channel == lowIn2 = Low
  | channel == stdOut = Low
@@ -1595,6 +1596,25 @@ notReallyUnsound6 = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+simpleBlocking :: Program Gr
+simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                            `Seq`
+           SpawnThread 2                   `Seq`
+           SpawnThread 3
+          ),
+          (2, Skip `Seq`
+              ReadFromChannel "z" stdIn    `Seq`
+              PrintToChannel (Val 2) stdOut
+          ),
+          (3, Skip `Seq`
+              ReadFromChannel "z" stdIn2   `Seq`
+              PrintToChannel (Val 1) stdOut
+          )
+         ]
+
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
               $(withName 'example2'),
@@ -1634,6 +1654,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'singleThreadedDelay),
               $(withName 'twoLoops),
               $(withName 'twoLoops'),
+              $(withName 'simpleBlocking),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

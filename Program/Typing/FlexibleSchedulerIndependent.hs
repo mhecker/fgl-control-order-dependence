@@ -43,8 +43,8 @@ example0 = Map.fromList $ [
  ]
 var0 "x" = High
 
--- exampleStock :: (Program, VarTyping)
-(exampleStock, varStock) = (
+-- exampleStock :: (Program, VarTyping, ThreadId)
+(exampleStock, varStock, mainStock) = (
     Map.fromList $ [
        (initialThread,
           Ass networkOut (Val 0)                 `Seq`
@@ -99,7 +99,8 @@ var0 "x" = High
          )
        )
     ],
-    var
+    var,
+    initialThread
  )
     where networkOut  = "networkOut"
           networkIn   = "networkIn"

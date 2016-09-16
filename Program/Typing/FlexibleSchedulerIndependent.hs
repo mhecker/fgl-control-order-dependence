@@ -42,6 +42,30 @@ example0 = Map.fromList $ [
   (1, Ass "x" (Val 1))
  ]
 var0 "x" = High
+main0 = 1
+
+example1 :: Program
+example1 = Map.fromList $ [
+  (1, Ass "x" (Val 1))
+ ]
+var1 "x" = Low
+main1 = 1
+
+example2 :: Program
+example2 = Map.fromList $ [
+  (1, If ((Var "h") `Leq` (Val 0)) (
+        Ass "l" (Val 1)
+      ) {-else-} (
+        Ass "l" (Val 2)
+      )
+   )
+ ]
+var2 "l" = Low
+var2 "h" = High
+main2 = 1
+
+
+
 
 -- exampleStock :: (Program, VarTyping, ThreadId)
 (exampleStock, varStock, mainStock) = (
@@ -50,7 +74,10 @@ var0 "x" = High
           Ass networkOut (Val 0)                 `Seq`
           Ass stockPrices (Var networkIn)        `Seq`
           SpawnThread writeStockPricesToDatabase `Seq`
-          Ass fundPrices (Var networkIn)
+          Ass networkOut (Val 0)                 `Seq`
+          Ass fundPrices (Var networkIn)         `Seq`
+          SpawnThread writeFundPricesToDatabase  `Seq`
+          SpawnThread computeAccountOverview
        ),
        (writeStockPricesToDatabase,
           Ass i (Val 0)                                                                 `Seq`
@@ -262,7 +289,7 @@ varDependenciesOf nPc nStp var p (SpawnThread θ) deps = do
     let deps' = insNodes [ (n,()) | n <- [nStp1] ] deps
     deps1 <- varDependenciesOf nPc nStp1 var p c1 deps'
     return $ insEdge (nLevel $ Low,                      nStp,                             ())
-             deps
+             deps1
   where c1 = (p ! θ)
 
 

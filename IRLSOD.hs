@@ -17,6 +17,7 @@ type Var = String
 type Val = Integer
 type InputChannel = String
 type OutputChannel = String
+type Channel = String
 
 stdIn :: InputChannel
 stdIn = "stdIn"

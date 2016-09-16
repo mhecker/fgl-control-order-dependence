@@ -1595,7 +1595,25 @@ notReallyUnsound6 = p { observability = defaultObservabilityMap (tcfg p) }
            (3,(ForC 1 (Seq Skip Skip)))
          ]
 
+-- see notReallyUnsound
+notReallyUnsound7 :: Program Gr
+notReallyUnsound7 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(Seq (Seq (SpawnThread 2) (SpawnThread 3)) (If CTrue (PrintToChannel (Val (-1)) "stdOut") (ReadFromChannel "a" "stdIn")))),
+          (2,(Seq (If CTrue (ReadFromChannel "y" "lowIn1") (ReadFromChannel "c" "lowIn1")) (ForC 2 (ReadFromChannel "a" "stdIn")))),
+          (3,(If CTrue (Seq Skip (ReadFromChannel "y" "lowIn1")) (ForC 2 (ReadFromChannel "x" "lowIn1"))))
+         ]
 
+-- see notReallyUnsound
+notReallyUnsound8 :: Program Gr
+notReallyUnsound8 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,(Seq (Seq (PrintToChannel (Val 0) "stdOut") (Ass "x" (Val 42))) (Seq (SpawnThread 2) (ReadFromChannel "x" "lowIn1")))),
+          (2,(Seq (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (SpawnThread 3)) (ForV "x" (ReadFromChannel "b" "lowIn1")))),
+          (3,(ForC 1 (If (Leq (Val 0) (Times (Var "x") (Var "x"))) (Ass "x" (Times (Var "x") (Var "x"))) (Ass "z" (Times (Var "x") (Var "x"))))))
+         ]
 simpleBlocking :: Program Gr
 simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) } 
   where p = compileAllToProgram code

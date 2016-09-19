@@ -343,7 +343,11 @@ varDependenciesOf nPc nStp var p obs (ReadFromChannel x ch) deps =
 
 varDependenciesOf nPc nStp var p obs (PrintToChannel  e ch) deps =
     return $ insEdges [ (var ! x,                        nLevel $ obs ch,                  ()) | x <- Set.toList $ useV e ]
-           $ insEdge (nLevel $ Low,                      nStp,                             ())
+
+           -- in the LSOD-Setting, a low print is always visible.
+           -- Hence, in order to obtain "fair"(™) comparison,
+           -- we demand that low print is visible-in-the-FSI-sense by treating it like an assignment to a low variable:
+           $ insEdge (nPc,                               nLevel $ obs ch,                   ())
              deps
 
 

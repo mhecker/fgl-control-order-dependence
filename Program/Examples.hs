@@ -20,8 +20,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Set.Unicode
 
-defaultInput  = Map.fromList [ (stdIn, cycle [ 1, 2]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
-defaultInput' = Map.fromList [ (stdIn, cycle [-1,-2]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
+defaultInput  = Map.fromList [ (stdIn, cycle [ 2, 4, 6, 8]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
+defaultInput' = Map.fromList [ (stdIn, cycle [-8,-6,-4,-2]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
 
 
 defaultChannelObservability channel
@@ -1518,6 +1518,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p {
               ReadFromChannel "x" "lowIn1"
           )
           ]
+
 
 -- This was spurioulsy reported as a counterExample to allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD ] in some test run: probably just bad luck in sampling executions ¯\__(ツ)__/¯
 notReallyUnsound :: Program Gr

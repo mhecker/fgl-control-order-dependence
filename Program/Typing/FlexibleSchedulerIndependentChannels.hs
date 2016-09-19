@@ -9,7 +9,7 @@ import Util
 
 -- import Program
 import Program.For
-import Program.Generator (GeneratedProgram, toCode)
+import Program.Generator (GeneratedProgram(..), Generated(..), toCode)
 
 import IRLSOD
 
@@ -40,21 +40,21 @@ type ExpVTyping = VarFunction -> SecurityLattice
 
 
 
-example0 :: Program
+example0 :: ForProgram
 example0 = Map.fromList $ [
   (1, Ass "x" (Val 1))
  ]
 var0 "x" = High
 main0 = 1
 
-example1 :: Program
+example1 :: ForProgram
 example1 = Map.fromList $ [
   (1, Ass "x" (Val 1))
  ]
 var1 "x" = Low
 main1 = 1
 
-example2 :: Program
+example2 :: ForProgram
 example2 = Map.fromList $ [
   (1, If ((Var "h") `Leq` (Val 0)) (
         Ass "l" (Val 1)
@@ -70,7 +70,7 @@ main2 = 1
 
 
 
--- exampleStock :: (Program, VarTyping, ThreadId)
+-- exampleStock :: (ForProgram, VarTyping, ThreadId)
 (exampleStock, varStock, obsStock, mainStock) = (
     Map.fromList $ [
        (initialThread,
@@ -206,23 +206,24 @@ nLevel High = nHigh
 
 
 
-type Program = Map ThreadId For
+type ForProgram = Map ThreadId For
 type ThreadId = Integer
 
 
 isSecureFlexibleSchedlerIndependentChannel :: GeneratedProgram -> Bool
-isSecureFlexibleSchedlerIndependentChannel gen = isJust typing
-  where typing = evalFresh $ principalTypingOf p defaultChannelObservability 1
-        p = toCode gen
+isSecureFlexibleSchedlerIndependentChannel gen = isJust $ principalTypingOfGen gen
 
+principalTypingOfGen :: GeneratedProgram -> Maybe ProgramTyping
+principalTypingOfGen gen = evalFresh $ principalTypingOf p defaultChannelObservability 1
+  where p = toCode gen
 
-principalTypingOf ::  Program -> ChannelTyping -> ThreadId -> Fresh (Maybe ProgramTyping)
+principalTypingOf ::  ForProgram -> ChannelTyping -> ThreadId -> Fresh (Maybe ProgramTyping)
 principalTypingOf p obs θ = principalTypingUsing initial var obs p θ
     where initial = mkGraph ([(nLow,()), (nHigh,())] ++ [ (n,()) | n <- Map.elems var ])
                             [(nLow,nHigh,())]
           var =  varsToLevelVariable p
 
-varsToLevelVariable :: Program -> Map Var LevelVariable
+varsToLevelVariable :: ForProgram -> Map Var LevelVariable
 varsToLevelVariable ps = Map.fromList [
     (x,n) | (x,n) <- zip (nub $ [ x | p <- Map.elems ps,
                                   x <- [ x | Ass  x' e            <- subCommands p, x <- [x'] ++ (Set.toList $ useV e)]
@@ -236,7 +237,7 @@ varsToLevelVariable ps = Map.fromList [
   ]
 
 
-principalTypingUsing ::  Gr () () -> Map Var LevelVariable -> ChannelTyping -> Program -> ThreadId -> Fresh (Maybe ProgramTyping)
+principalTypingUsing ::  Gr () () -> Map Var LevelVariable -> ChannelTyping -> ForProgram -> ThreadId -> Fresh (Maybe ProgramTyping)
 --principalTypingOf :: VarTyping -> For -> Fresh (Maybe ProgramTyping, Gr () ())
 principalTypingUsing initial var obs p θ =
  do  nPc  <- freshVar
@@ -265,7 +266,7 @@ principalTypingUsing initial var obs p θ =
 --       , varDependencies )
 --      else return (Nothing, varDependencies)
       else return Nothing
-varDependenciesOf :: LevelVariable -> LevelVariable -> (Map Var LevelVariable) -> Program ->  ChannelTyping -> For ->  Gr () () -> Fresh (Gr () ())
+varDependenciesOf :: LevelVariable -> LevelVariable -> (Map Var LevelVariable) -> ForProgram ->  ChannelTyping -> For ->  Gr () () -> Fresh (Gr () ())
 varDependenciesOf nPc nL var obs p (Skip)    deps =
     return deps
 varDependenciesOf nPc nStpJoinTau var p obs (If b c1 c2) deps = do

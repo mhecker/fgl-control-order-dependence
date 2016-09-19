@@ -12,6 +12,7 @@ import Control.Monad.Random
 import Control.Monad(forM_, when, forever)
 import Test.QuickCheck
 
+import Program.Typing.FlexibleSchedulerIndependentChannels
 import Program.For
 import Program
 import Program.Examples
@@ -97,6 +98,7 @@ showDomTree cdomComputation p = showGraph idom
     idom = insEdge (entry,entry,()) $ idomToTree cdom
     entry = entryOf p $ mainThread p
 
+p :: Program Gr
 -- p = cdomIsBroken'
 -- p = figure5right'
 -- p = someGeneratedProgram
@@ -105,7 +107,8 @@ showDomTree cdomComputation p = showGraph idom
 -- p = anotherGeneratedProgram
 -- p = rofllol
 -- p = minimalClassificationVstimingClassificationDomPathsCounterExample2Essential
-p = notReallyUnsound8
+-- p = notReallyUnsound8
+p = toProgram timingVsFSI 
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
@@ -265,3 +268,30 @@ showSimpleOneValueTransitionSystem = do
     showGraph $ system
     showGraph $ obs
     putStrLn  $ "secure: " ++ (show $ secureOneValueDefUse low p)
+
+
+timingVsFSI :: GeneratedProgram
+timingVsFSI = GeneratedProgram $ Map.fromList [
+    (1,Generated (Seq (Seq (Seq (Seq
+            (Ass "y" (Val 0))
+            (Ass "a" (Times (Var "y") (Var "y"))))
+       (Seq (PrintToChannel (Times (Var "a") (Var "y")) "stdOut")
+            (SpawnThread 2)))
+  (Seq (Seq (PrintToChannel (Times (Var "y") (Var "y")) "stdOut")
+            (ReadFromChannel "x" "stdIn"))
+            (ForV "x" Skip)))
+            (ForV "y"
+               (ForV "x"
+                  (Seq (ReadFromChannel "z" "stdIn")
+                        Skip))))
+       (Set.fromList ["a","x","y"])
+       (Map.fromList [(2,Set.fromList ["a","y"])])),
+    (2,Generated
+            (ForV "a"
+               (ForC 1 (
+                   ForC 1
+                     (ForV "y"
+                        (ReadFromChannel "b" "stdIn")))))
+       (Set.fromList ["a","y"])
+       (Map.fromList []))
+    ]

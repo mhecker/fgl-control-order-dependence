@@ -326,6 +326,12 @@ varDependenciesOf nPc nStp var p obs (Ass x e) deps =
 varDependenciesOf nPc nStp var p obs (ReadFromChannel x ch) deps =
     return $ insEdge (nPc,                               var ! x,                          ())
            $ insEdge (nLevel $ obs ch,                   var ! x,                          ())
+
+           -- in the LSOD-Setting, a low read is always visible.
+           -- Hence, in order to obtain "fair"(™) comparison,
+           -- we demand that low read cannot be made invisible-in-the-FSI-sense by assigning to a high variable:
+           $ insEdge (var ! x,                           nLevel $ obs ch,                  ())
+
            $ insEdge (nLevel $ Low,                      nStp,                             ())
              deps
 

@@ -108,7 +108,7 @@ p :: Program Gr
 -- p = rofllol
 -- p = minimalClassificationVstimingClassificationDomPathsCounterExample2Essential
 -- p = notReallyUnsound8
-p = toProgram timingVsFSI 
+p = toProgram timingVsFSI2
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
@@ -295,3 +295,17 @@ timingVsFSI = GeneratedProgram $ Map.fromList [
        (Set.fromList ["a","y"])
        (Map.fromList []))
     ]
+
+timingVsFSI2 :: GeneratedProgram
+timingVsFSI2 = GeneratedProgram $ Map.fromList [
+    (1,Generated
+          (If CTrue
+               (Seq (Seq (ForC 1 (Ass "a" (Val 1))) (Seq (ReadFromChannel "c" "stdIn") (Ass "z" (Times (Var "a") (Var "a"))))) (Seq (If (Leq (Val 0) (Times (Var "a") (Var "z"))) (Ass "a" (Times (Var "z") (Var "z"))) (ReadFromChannel "c" "stdIn")) (ForV "c" (ReadFromChannel "z" "lowIn1"))))
+               {-else-}
+               (If CTrue
+                   (ForC 2 (Seq (Ass "b" (Val 17)) (ReadFromChannel "c" "lowIn1")))
+                   {-else-}
+                   (Seq (Seq (ReadFromChannel "a" "stdIn") (Ass "y" (Times (Var "a") (Var "a")))) (ForV "a" (ReadFromChannel "b" "stdIn")))))
+       (Set.fromList [])
+       (Map.fromList []))
+  ]

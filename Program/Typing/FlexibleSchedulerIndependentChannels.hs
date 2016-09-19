@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
-module Program.Typin.FlexibleSchedulerIndependentChannels where
+module Program.Typing.FlexibleSchedulerIndependentChannels where
 
 import Algebra.Lattice
 

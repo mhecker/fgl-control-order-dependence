@@ -33,6 +33,15 @@ data For = If   BoolFunction For For
   deriving Show
 
 
+subCommands :: For -> [For]
+subCommands c@(If _ c1 c2) = c:(subCommands c1 ++ subCommands c2)
+subCommands c@(ForC _ c1) = c:(subCommands c1)
+subCommands c@(ForV _ c1) = c:(subCommands c1)
+subCommands c@(Seq c1 c2) = c:(subCommands c1++ subCommands c2)
+subCommands c = [c]
+
+
+
 toChannelJava ::
   String ->
   [InputChannel]  ->

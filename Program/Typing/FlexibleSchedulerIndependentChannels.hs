@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 module Program.Typing.FlexibleSchedulerIndependentChannels where
@@ -22,7 +23,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.List (nub)
 import Data.Maybe (isJust)
-import Program.Examples (defaultChannelObservability)
+import Program.Defaults (defaultChannelObservability)
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -40,21 +41,21 @@ type ExpVTyping = VarFunction -> SecurityLattice
 
 
 
-example0 :: ForProgram
+example0 :: Map ThreadId For
 example0 = Map.fromList $ [
   (1, Ass "x" (Val 1))
  ]
 var0 "x" = High
 main0 = 1
 
-example1 :: ForProgram
+example1 :: Map ThreadId For
 example1 = Map.fromList $ [
   (1, Ass "x" (Val 1))
  ]
 var1 "x" = Low
 main1 = 1
 
-example2 :: ForProgram
+example2 :: Map ThreadId For
 example2 = Map.fromList $ [
   (1, If ((Var "h") `Leq` (Val 0)) (
         Ass "l" (Val 1)
@@ -206,29 +207,33 @@ nLevel High = nHigh
 
 
 
-type ForProgram = Map ThreadId For
+data ForProgram = ForProgram {
+  code :: Map ThreadId For,
+  channelTyping :: ChannelTyping,
+  mainThreadFor :: ThreadId
+ }
 type ThreadId = Integer
 
 
-isSecureFlexibleSchedlerIndependentChannel :: GeneratedProgram -> Bool
-isSecureFlexibleSchedlerIndependentChannel gen = isJust $ principalTypingOfGen gen
+isSecureFlexibleSchedulerIndependentChannel :: GeneratedProgram -> Bool
+isSecureFlexibleSchedulerIndependentChannel gen = isJust $ principalTypingOfGen gen
 
 
-isSecureFlexibleSchedlerIndependentChannelCode ::  ForProgram -> ChannelTyping -> ThreadId -> Bool
-isSecureFlexibleSchedlerIndependentChannelCode p obs θ = isJust $ evalFresh $ principalTypingOf p obs θ
+isSecureFlexibleSchedulerIndependentChannelFor ::  ForProgram -> Bool
+isSecureFlexibleSchedulerIndependentChannelFor p = isJust $ evalFresh $ principalTypingOf p
 
 
 principalTypingOfGen :: GeneratedProgram -> Maybe ProgramTyping
-principalTypingOfGen gen = evalFresh $ principalTypingOf p defaultChannelObservability 1
-  where p = toCode gen
+principalTypingOfGen gen = evalFresh $ principalTypingOf (ForProgram { code = code, channelTyping = defaultChannelObservability, mainThreadFor = 1})
+  where code = toCode gen
 
-principalTypingOf ::  ForProgram -> ChannelTyping -> ThreadId -> Fresh (Maybe ProgramTyping)
-principalTypingOf p obs θ = principalTypingUsing initial var obs p θ
+principalTypingOf ::  ForProgram ->  Fresh (Maybe ProgramTyping)
+principalTypingOf p@(ForProgram { code }) = principalTypingUsing initial var p
     where initial = mkGraph ([(nLow,()), (nHigh,())] ++ [ (n,()) | n <- Map.elems var ])
                             [(nLow,nHigh,())]
-          var =  varsToLevelVariable p
+          var =  varsToLevelVariable code
 
-varsToLevelVariable :: ForProgram -> Map Var LevelVariable
+varsToLevelVariable :: (Map ThreadId For) -> Map Var LevelVariable
 varsToLevelVariable ps = Map.fromList [
     (x,n) | (x,n) <- zip (nub $ [ x | p <- Map.elems ps,
                                   x <- [ x | Ass  x' e            <- subCommands p, x <- [x'] ++ (Set.toList $ useV e)]
@@ -242,14 +247,14 @@ varsToLevelVariable ps = Map.fromList [
   ]
 
 
-principalTypingUsing ::  Gr () () -> Map Var LevelVariable -> ChannelTyping -> ForProgram -> ThreadId -> Fresh (Maybe ProgramTyping)
+principalTypingUsing ::  Gr () () -> Map Var LevelVariable -> ForProgram -> Fresh (Maybe ProgramTyping)
 --principalTypingOf :: VarTyping -> For -> Fresh (Maybe ProgramTyping, Gr () ())
-principalTypingUsing initial var obs p θ =
+principalTypingUsing initial var p@(ForProgram { code, channelTyping, mainThreadFor})  =
  do  nPc  <- freshVar
      nStp <- freshVar
 
      let initial' = insNodes [ (n,()) | n <- [nPc, nStp] ] initial
-     varDependencies :: Gr () () <- (varDependenciesOf nPc nStp var p obs (p ! θ) initial')
+     varDependencies :: Gr () () <- (varDependenciesOf nPc nStp var code channelTyping (code ! mainThreadFor) initial')
 
      let deps = trc varDependencies
      let sccs = scc varDependencies
@@ -271,7 +276,7 @@ principalTypingUsing initial var obs p θ =
 --       , varDependencies )
 --      else return (Nothing, varDependencies)
       else return Nothing
-varDependenciesOf :: LevelVariable -> LevelVariable -> (Map Var LevelVariable) -> ForProgram ->  ChannelTyping -> For ->  Gr () () -> Fresh (Gr () ())
+varDependenciesOf :: LevelVariable -> LevelVariable -> (Map Var LevelVariable) -> (Map ThreadId For) -> ChannelTyping -> For ->  Gr () () -> Fresh (Gr () ())
 varDependenciesOf nPc nL var obs p (Skip)    deps =
     return deps
 varDependenciesOf nPc nStpJoinTau var p obs (If b c1 c2) deps = do

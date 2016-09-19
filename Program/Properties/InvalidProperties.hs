@@ -32,7 +32,9 @@ import Data.Graph.Inductive (mkGraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 import Program (Program)
+import Program.Defaults
 
+import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannelFor)
 import Program.Properties.Analysis
 import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
@@ -93,7 +95,11 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
   []
 
 
-timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $ 
+timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $
+  [ testCase ("isSecureFlexibleSchedulerIndependentChannel is at least as precise as isSecureTimingCombinedTimingClassification for " ++ exampleName)
+    $   isSecureTimingClassificationAtUses program ⊑ isSecureFlexibleSchedulerIndependentChannelFor forProgram @? ""
+  | (exampleName, program, forProgram) <- [("figure5left", figure5left, figure5leftFor) ]
+  ] ++
   [ testCase ("isSecureTimingCombinedTimingClassification is at least as precise as isSecureTimingClassification for " ++ exampleName)  $   isSecureTimingCombinedTimingClassification p ⊒ isSecureTimingClassification p @? ""
   | (exampleName, p) <- [("timingSecureButNotCombinedTimingSecure", timingSecureButNotCombinedTimingSecure) ]
   ] ++

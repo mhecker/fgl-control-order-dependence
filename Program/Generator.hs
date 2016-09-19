@@ -4,7 +4,7 @@ module Program.Generator where
 import IRLSOD
 import Program (StaticThread, Program(..))
 import Program.For
-import Program.Examples (defaultObservabilityMap)
+import Program.Defaults (defaultObservabilityMap)
 import Unicode
 
 import Test.QuickCheck

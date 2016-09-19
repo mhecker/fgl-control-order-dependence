@@ -15,6 +15,7 @@ import Test.QuickCheck
 import Program.Typing.FlexibleSchedulerIndependentChannels
 import Program.For
 import Program
+import Program.Defaults
 import Program.Examples
 import Program.MultiThread
 import Program.MHP

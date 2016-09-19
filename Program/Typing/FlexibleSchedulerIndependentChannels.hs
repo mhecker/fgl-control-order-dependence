@@ -9,7 +9,7 @@ import Util
 
 -- import Program
 import Program.For
-
+import Program.Generator (GeneratedProgram, toCode)
 
 import IRLSOD
 
@@ -21,6 +21,8 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.List (nub)
+import Data.Maybe (isJust)
+import Program.Examples (defaultChannelObservability)
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -206,6 +208,13 @@ nLevel High = nHigh
 
 type Program = Map ThreadId For
 type ThreadId = Integer
+
+
+isSecureFlexibleSchedlerIndependentChannel :: GeneratedProgram -> Bool
+isSecureFlexibleSchedlerIndependentChannel gen = isJust typing
+  where typing = evalFresh $ principalTypingOf p defaultChannelObservability 1
+        p = toCode gen
+
 
 principalTypingOf ::  Program -> ChannelTyping -> ThreadId -> Fresh (Maybe ProgramTyping)
 principalTypingOf p obs θ = principalTypingUsing initial var obs p θ

@@ -274,6 +274,7 @@ varDependenciesOf nPc1MeetPc2 nStp1JoinStp2 var p (Seq c1 c2) deps = do
            $ insEdge (nStp2,                              nStp1JoinStp2,                  ())
            $ insEdge (nPc1MeetPc2,                        nPc1,                            ())
            $ insEdge (nPc1MeetPc2,                        nPc2,                            ())
+           $ insEdge (nStp1,                              nPc2,                           ())
            $ deps2
 
 

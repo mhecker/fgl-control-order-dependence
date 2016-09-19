@@ -213,6 +213,11 @@ type ThreadId = Integer
 isSecureFlexibleSchedlerIndependentChannel :: GeneratedProgram -> Bool
 isSecureFlexibleSchedlerIndependentChannel gen = isJust $ principalTypingOfGen gen
 
+
+isSecureFlexibleSchedlerIndependentChannelCode ::  ForProgram -> ChannelTyping -> ThreadId -> Bool
+isSecureFlexibleSchedlerIndependentChannelCode p obs θ = isJust $ evalFresh $ principalTypingOf p obs θ
+
+
 principalTypingOfGen :: GeneratedProgram -> Maybe ProgramTyping
 principalTypingOfGen gen = evalFresh $ principalTypingOf p defaultChannelObservability 1
   where p = toCode gen
@@ -313,6 +318,7 @@ varDependenciesOf nPc1MeetPc2 nStp1JoinStp2 var p obs (Seq c1 c2) deps = do
            $ insEdge (nStp2,                              nStp1JoinStp2,                  ())
            $ insEdge (nPc1MeetPc2,                        nPc1,                            ())
            $ insEdge (nPc1MeetPc2,                        nPc2,                            ())
+           $ insEdge (nStp1,                              nPc2,                           ())
            $ deps2
 
 

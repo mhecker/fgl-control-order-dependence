@@ -884,6 +884,28 @@ noninterferingSchedulers = p { observability = defaultObservabilityMap (tcfg p) 
 
 
 
+timingVsFSI3 :: Program Gr
+timingVsFSI3 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram timingVsFSI3Code
+
+timingVsFSI3For :: ForProgram
+timingVsFSI3For = ForProgram {
+    code = timingVsFSI3Code,
+    channelTyping = defaultChannelObservability,
+    mainThreadFor = 1
+  }
+  
+timingVsFSI3Code = code where
+         code = Map.fromList $ [
+           (1, Skip                                         `Seq`   -- remove this line to obtain a program that is FSI-Secure, but which timingAnalysis cannot determine!
+               ReadFromChannel "a" "stdIn"                  `Seq`
+               SpawnThread 2
+           ),
+           (2, ReadFromChannel "x" "lowIn1"                 `Seq`
+               Ass "a" (Times (Var "x") (Var "a"))
+           )
+          ]
+
 
 figure5left :: Program Gr
 figure5left = p { observability = defaultObservabilityMap (tcfg p) }

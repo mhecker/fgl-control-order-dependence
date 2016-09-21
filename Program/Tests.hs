@@ -109,7 +109,7 @@ p :: Program Gr
 -- p = rofllol
 -- p = minimalClassificationVstimingClassificationDomPathsCounterExample2Essential
 -- p = notReallyUnsound8
-p = toProgram timingVsFSI2
+p = timingVsFSI3
 
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput

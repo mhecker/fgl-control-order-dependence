@@ -183,7 +183,10 @@ compileAll threads = do
   graphs <- forM nodes $ (\(t,entryNode,program) -> do
      (graph,exitNode,nodes) <- compile entryOf
                                        entryNode
-                                       program
+                                       (Skip `Seq` program) -- prevent the first edge in any thread from being a (possibly high)
+                                                            -- Read instruction, which would make the first node, on which all
+                                                            -- others control-depend by default, high
+                                                            -- TODO: better cope with this in the analysis!?!?
      return $ (t, (entryNode,graph,exitNode,nodes))
    )
   return $ Map.fromList graphs

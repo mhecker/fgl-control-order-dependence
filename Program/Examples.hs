@@ -1115,6 +1115,25 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2 = p { observability 
          ]
 
 
+minimalClassificationIsLessPreciseThanSimonClassification ::  Program Gr
+minimalClassificationIsLessPreciseThanSimonClassification = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           If (Leq (Val 0) (Val 1))                                         
+               (ReadFromChannel "h" stdIn)                                  
+               (SpawnThread 2)                                                `Seq`
+           PrintToChannel (Val 42) stdOut
+          ),
+          (2,
+           Skip                                                             `Seq`
+           PrintToChannel (Val 17) stdOut
+          )
+         ]
+
+
+
 timingSecureButNotCombinedTimingSecure ::  Program Gr
 timingSecureButNotCombinedTimingSecure = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
@@ -1691,6 +1710,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'ijisLSODistkaputt),
               $(withName 'minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD),
               $(withName 'minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2),
+              $(withName 'minimalClassificationIsLessPreciseThanSimonClassification),
               $(withName 'timingSecureButNotCombinedTimingSecure),
               $(withName 'timingSecureButNotCombinedTimingSecureGenerated),
               $(withName 'someGeneratedProgram),

@@ -94,6 +94,25 @@ minimalClassificationUsing
                                | n <- nodes tcfg])
     )
 
+
+
+simonClassification p@(Program { tcfg, observability }) =
+    simonClassificationUsing (precomputedUsing idomChef p) p clInit
+  where clInit = Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ]
+simonClassificationNodes p@(Program { tcfg, observability }) =
+    simonClassificationUsing (precomputedUsing idomChef p) p clInit
+  where clInit = Map.fromList [ (n, Set.fromList [n]) | n <- nodes tcfg ]
+simonClassificationUsing
+    (PrecomputedResults { cpdg, idom, mhps, chop})
+    (Program { tcfg })
+    clInit =
+  (㎲⊒) clInit
+    (\cl -> cl ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
+                               | n <- nodes tcfg])
+               ⊔ (Map.fromList [ (n,(∐) [ cl ! p | not $ Set.null $ mhps ! n, p <- pre tcfg n])
+                               | n <- nodes tcfg])
+    )
+
 timingClassification p = timingClassificationLevels pc p
   where pc = precomputedUsing idomMohrEtAl p
 timingClassificationLevels pc@(PrecomputedResults { mhp }) p@(Program { tcfg, observability }) =
@@ -240,6 +259,15 @@ isSecureMinimalClassification  p@(Program{ tcfg, observability }) =
        )
   where cl = minimalClassification p
 
+
+isSecureSimonClassification :: SecurityAnalysis gr
+isSecureSimonClassification  p@(Program{ tcfg, observability }) =
+       ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> cl ! n == Low)
+       )
+  where cl = simonClassification p
+
+        
 -- TODO: via ⊑ formulieren
 
 

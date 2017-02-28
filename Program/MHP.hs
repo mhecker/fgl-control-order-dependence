@@ -39,6 +39,17 @@ type MhpInformation = Set (Node,Node)
 -- instance BoundedJoinSemiLattice MhpInformation where
 
 
+
+
+simonMhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
+simonMhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
+  where mhp n1 n2
+         | staticThreadOf n1 == staticThreadOf n2 = isInMulti ! n1  -- == isInMulti ! n2
+         | otherwise                              = (n1,n2) ∈ mhpDiff
+
+        isInMulti = isInMultiThread p
+        mhpDiff   = mhpDifferentSimon p
+
 mhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
 mhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
   where mhp n1 n2
@@ -51,6 +62,17 @@ mhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp n1 n2
 
 mhpDifferent p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ [(a,b),(b,a)] | a <- nodes tcfg, (b,Spawn) <- lsuc tcfg a ])
+       (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
+                                                                   b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a], -- TODO: Performance
+                                                                   a' <- suc trnsclos a])
+       )
+
+ where trnsclos = trc tcfg
+
+
+mhpDifferentSimon p@(Program { tcfg }) =
+  (㎲⊒)  (Set.fromList $ concat $ [ if (e /= NoOp) then (error $ "invalid spawn-node successor " ++ show (b,e)) else
+                                    [(a,b),(b,a)] | n <- nodes tcfg, (a,Spawn) <- lsuc tcfg n, (b,e) <- lsuc tcfg n, e /= Spawn ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
                                                                    b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a], -- TODO: Performance
                                                                    a' <- suc trnsclos a])

@@ -160,6 +160,7 @@ example3 = Program {
       6
       7 ----------8
       10          9
+      11
 -}
 example4 :: Program Gr
 example4 = Program {
@@ -172,20 +173,21 @@ example4 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..7] ++ [10]) = 1
-         | n `elem` ([8..9])         = 2
+         | n `elem` ([1..7] ++ [10,11]) = 1
+         | n `elem` ([8..9])           = 2
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 8
-        exitOf 1 = 10
+        exitOf 1 = 11
         exitOf 2 = 9
-        tcfg = mkGraph (genLNodes 1 10)  $
+        tcfg = mkGraph (genLNodes 1 11)  $
                        [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(7,8,Spawn),(7,10,Print (Var "x") stdOut),(8,9,Print (Var "x") stdOut)]
+                   ++  [(7,8,Spawn),(7,10, NoOp), (10,11,Print (Var "x") stdOut),(8,9,Print (Var "x") stdOut)]
 
 
 {-          1
    Read h   2 -----spawn-- 8
+           11
      if h   3              9 print l 
           4   5
             6
@@ -203,15 +205,15 @@ example5 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..7] ++ [10]) = 1
+         | n `elem` ([1..7] ++ [10,11]) = 1
          | n `elem` ([8..9])         = 2
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 8
         exitOf 1 = 10
         exitOf 2 = 9
-        tcfg = mkGraph (genLNodes 1 10)  $
-                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
+        tcfg = mkGraph (genLNodes 1 11)  $
+                       [(1,2,Assign "x" (Val 42)), (2,11, NoOp), (11,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
                    ++  [(2,8,Spawn),(7,10,Print (Var "x") stdOut),(8,9,Print (Var "x") stdOut)]
 
 

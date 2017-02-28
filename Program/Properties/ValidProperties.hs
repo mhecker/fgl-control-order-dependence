@@ -83,12 +83,12 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 soundnessProps =  testGroup "(concerning soundness)" [
     testPropertySized 3
      ("allSound [ timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD, simonClassification ] ")
-     ( allSound [ {- isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, -} isSecureSimonClassification ] )
+     ( allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
   [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
-                  ( allSoundP [ {- isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, -} isSecureSimonClassification ] example @? "")
+                  ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
   | (exampleName, example) <- testsuite
   ] ++
   []
@@ -149,40 +149,13 @@ timingClassificationDomPathsTests = testGroup "(concerning timingClassificationD
 
 
 simonClassificationProps = testGroup "(concerning simonClassification)" [
-    testProperty  "simongClassification is at least as precise as FlexibleSchedulerIndependence"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                isSecureSimonClassification p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
-    -- testProperty  "timingClassificationDomPaths == timingClassification"
-    --               timingDDomPathsIsTimingG,
-    testProperty  "simonClassification is at least as precise as timingClassificationSimple"
-                $ isSecureSimonClassification `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
     testProperty  "simonClassification is at least as precise as minimalClassification"
-                $ isSecureSimonClassification `isAtLeastAsPreciseAs` isSecureMinimalClassification,
-    testProperty  "simonClassification is at least as precise as timingClassificationDomPaths"
-                $ isSecureSimonClassification `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
-    testProperty  "simonClassification is at least as precise as giffhornLSOD"
-                $ isSecureSimonClassification `isAtLeastAsPreciseAs` giffhornLSOD
+                $ isSecureSimonClassification `isAtLeastAsPreciseAs` isSecureMinimalClassification
   ]
 
 simonClassificationTests = testGroup "(concerning timingClassificationDomPaths)" $
-  -- [  testCase     ("simonClassificationDomPaths == timingClassification for " ++ exampleName)
-  --                (timingDDomPathsIsTiming example @? "")
-  -- | (exampleName, example) <- testsuite
-  -- ] ++
-  [ testCase     ("simongClassifications is at least as precise as timingClassificationSimple for " ++ exampleName)
-                ((isSecureSimonClassification example ⊒ isSecureTimingClassificationSimple example) @? "")
-  | (exampleName, example) <- testsuite
-  ] ++
   [ testCase     ("simonClassification is at least as precise as minimalClassification for " ++ exampleName)
                 ((isSecureSimonClassification example ⊒ isSecureMinimalClassification example) @? "")
-  | (exampleName, example) <- testsuite
-  ] ++
-  [ testCase     ("simonClassificatios is at least as precise as TimingClassificationDomPaths for " ++ exampleName)
-                ((isSecureSimonClassification example ⊒ isSecureTimingClassification example) @? "")
-  | (exampleName, example) <- testsuite
-  ] ++
-  [ testCase     ("simonClassificationDomPaths is at least as precise as giffhornLSOD for " ++ exampleName)
-                ((isSecureSimonClassification example ⊒ giffhornLSOD example) @? "")
   | (exampleName, example) <- testsuite
   ] ++
   []

@@ -1661,6 +1661,42 @@ notReallyUnsound8 = p { observability = defaultObservabilityMap (tcfg p) }
           (2,(Seq (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (SpawnThread 3)) (ForV "x" (ReadFromChannel "b" "lowIn1")))),
           (3,(ForC 1 (If (Leq (Val 0) (Times (Var "x") (Var "x"))) (Ass "x" (Times (Var "x") (Var "x"))) (Ass "z" (Times (Var "x") (Var "x"))))))
          ]
+
+-- see notReallyUnsound
+-- reported in run http://i44pc16:8080/job/irlsod/620/
+-- p  = 253 % 500 ≃ 0.50600                                  p' = 791 % 1500 ≃ 0.52733
+-- fromList []
+-- ---(6,PrintEvent 0 "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(8,PrintEvent 1 "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(10,PrintEvent 1 "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(12,ReadEvent 1 "lowIn1")-->
+-- fromList [("y",1)]
+-- fromList []
+-- ---(13,ReadEvent 2 "lowIn1")-->
+-- fromList [("b",2)]
+-- fromList []
+-- ---(17,PrintEvent (-1) "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(20,PrintEvent (-1) "stdOut")-->
+-- fromList []
+
+notReallyUnsound9 :: Program Gr
+notReallyUnsound9 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, (Seq (Seq Skip (PrintToChannel (Val 0) "stdOut")) (Seq (SpawnThread 2) (PrintToChannel (Val 1) "stdOut")))),
+          (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut") (SpawnThread 3)) (Seq (ReadFromChannel "y" "lowIn1") (ReadFromChannel "b" "lowIn1")))),
+          (3, (If CFalse (Seq (ReadFromChannel "x" "stdIn") (Ass "z" (Times (Var "x") (Var "x")))) (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))))
+         ]
+
+
 simpleBlocking :: Program Gr
 simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) } 
   where p = compileAllToProgram code

@@ -909,6 +909,24 @@ timingVsFSI3Code = code where
           ]
 
 
+
+
+timingDependenceExample:: Program Gr
+timingDependenceExample = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+           (1, Skip                                         `Seq`
+               ReadFromChannel "h" "stdIn"                  `Seq`
+               SpawnThread 2                                `Seq`
+               ForV "h" (Ass "x" (Val 42))                  `Seq`
+               PrintToChannel (Var "x") stdOut
+           ),
+           (2, ReadFromChannel "x" "lowIn1"                 `Seq`
+               ForC 5 Skip                                  `Seq`
+               Ass "x" (Val 17)
+           )
+          ]
+
 figure5left :: Program Gr
 figure5left = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram figure5leftCode
@@ -1468,6 +1486,40 @@ forIf = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+minimalClassificationVstimingClassificationDomPathsCounterExampleSimon:: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExampleSimon = p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                          `Seq`
+           ReadFromChannel "h" "stdIn"   `Seq`
+           SpawnThread 2                 `Seq`
+           ForV "h" (Ass "h" ((Var "h") `Plus` (Val (-1)))) `Seq`
+           PrintToChannel (Val 42) "stdOut"
+          ),
+          (2, Skip
+          )
+          ]
+
+
+minimalClassificationVstimingClassificationDomPathsCounterExampleMartin:: Program Gr
+minimalClassificationVstimingClassificationDomPathsCounterExampleMartin = p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                          `Seq`
+           ReadFromChannel "h" "stdIn"   `Seq`
+           SpawnThread 2                 `Seq`
+           Ass "h2" (Var "h")            `Seq`
+           PrintToChannel (Val 42) "stdOut"
+          ),
+          (2, Skip                       `Seq`
+              PrintToChannel (Val 17) "stdOut"
+          )
+          ]
+
+
+
 minimalClassificationVstimingClassificationDomPathsCounterExample :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample = p { observability = defaultObservabilityMap (tcfg p) } 
   where p = compileAllToProgram code
@@ -1739,6 +1791,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'cdomIsBroken'),
               $(withName 'cdomIsBroken2),
               $(withName 'noninterferingSchedulers),
+              $(withName 'timingDependenceExample),
               $(withName 'figure5left),
               $(withName 'figure5right),
               $(withName 'figure5right'),
@@ -1764,6 +1817,8 @@ testsuite = [ $(withName 'example1),
             []
 
 precisionCounterExamples = [
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleMartin),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleSimon),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample3),

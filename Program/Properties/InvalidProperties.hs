@@ -13,6 +13,7 @@ import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
+import Test.Tasty.Options
 
 import Test.Tasty.Runners.AntXML
 import Test.Tasty.Ingredients.Basic
@@ -80,13 +81,21 @@ unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
 
 
-soundnessProps =  testGroup "(concerning soundness)" [
+soundnessProps =  localOption d $ testGroup "(concerning soundness)" [
+    testPropertySized 3
+     ("allSound [ unsoundIRLSODAttempt  ] ")
+     ( allSound [ unsoundIRLSODAttempt  ] )
   ]
+ where d = 2000000 :: QuickCheckTests
 
 soundnessTests =  testGroup "(concerning soundness)" $
   [ testCase      ("allSoundP [ timingClassification using idomChef ] for " ++ exampleName)
                   ( allSoundP [ isSecureTimingClassificationIdomChef ] example @? "")
   | (exampleName, example) <- [ ("cdomIsBroken'", cdomIsBroken') ]
+  ] ++
+  [ testCase      ("allSoundP [ unsoundIRLSODAttempt ] for " ++ exampleName)
+                  ( allSoundP [ unsoundIRLSODAttempt ] example @? "")
+  | (exampleName, example) <- [ ("figure5right", figure5right) ]
   ] ++
   []
 

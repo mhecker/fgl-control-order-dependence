@@ -157,7 +157,7 @@ timingClassificationAtUsesNodes p@(Program { tcfg, observability }) =
         cltInit = Map.fromList [ ((n,m), (⊥))  | ((n,m), True) <- Map.assocs mhp ]
         pc@(PrecomputedResults { mhp }) = precomputedUsing idomMohrEtAl p
 timingClassificationAtUsesUsing
-    (PrecomputedResults { cpdg, idom, mhp, chop, timing, dataConflictGraph})
+    (PrecomputedResults { cpdg, idom, mhp, chop, timing })
     (Program { tcfg })
     clInit
     cltInit =
@@ -437,6 +437,46 @@ giffhornLSOD p@(Program{ tcfg, observability }) =
        bs = trc cpdg -- TODO: name :)
        mhp = mhpFor p
 
+
+
+unsoundIRLSODAttempt :: SecurityAnalysis gr
+unsoundIRLSODAttempt p@(Program{ tcfg, observability }) =
+    ((∀) [ (n,n')     | n   <- nodes tcfg, observability n  == Just Low,
+                        n'  <- nodes tcfg, observability n' == Just High ] (\(n,n') ->
+         (¬) (n' ∈ pre bs n)
+    ))
+    ∧
+    ((∀) [ (n,n',n'') | n   <- nodes tcfg,
+                        n'  <- nodes tcfg,
+                        mhp ! (n,n'),
+                        n'' <- nodes tcfg, observability n'' == Just Low   ] (\(n,n',n'') ->
+         ((∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')))
+         →
+         (((¬) (n' ∈ pre bs n'')) ∧
+          ((¬) (n  ∈ pre bs n''))
+         )
+    ))
+    ∧
+    ((∀) [ (n,n')     | n   <- nodes tcfg,
+                        n'  <- nodes tcfg,
+                        mhp ! (n,n')                                     ] (\(n,n') ->
+         (¬) (observability n  == Just Low) ∨
+         (¬) (observability n' == Just Low) ∨
+         let c = idom ! (n,n') in
+           (∀) (chop c n ∪ chop c n') (\c' -> not $ observability c' == Just High)
+    ))
+  where
+       def_ = def tcfg
+       use_ = use tcfg
+       cpdg = concurrentProgramDependenceGraphP p
+       bs = trc cpdg -- TODO: name :)
+       trnsclos = bs
+       mhp = mhpFor p
+       idom = idomMohrEtAl p
+       chop s t =    (Set.fromList $ suc trnsclos s)
+                  ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+
+       
 observableNodes p@(Program{ tcfg, observability }) =
     [ n  | n   <- nodes tcfg, observability n  == Just Low ]
 

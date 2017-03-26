@@ -43,6 +43,7 @@ import Data.Graph.Inductive.PatriciaTree
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence
+import Data.Graph.Inductive.Query.NTICD
 import Data.Graph.Inductive.Query.TimingDependence
 import Data.Graph.Inductive.Query.DataDependence
 import Data.Graph.Inductive.Query.DataConflict

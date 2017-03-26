@@ -11,6 +11,11 @@ import Data.List (filter)
 import Data.Set.Unicode as Set hiding ((∈))
 import Data.Bool.Unicode as Bool
 
+
+
+
+import qualified Algebra.PartialOrd as PO
+
 infixl 6 ⊔
 (⊔) :: (JoinSemiLattice a) => a -> a -> a
 (⊔) = join
@@ -30,14 +35,14 @@ infixl 7 ⊓
 (∐) = joins
 
 (∏) :: (BoundedMeetSemiLattice a) => [a] -> a
-(∏) = meets
+(∏) = meets1
 
 
 𝝁 :: (Eq a, BoundedJoinSemiLattice a) => (a -> a) -> a
 𝝁 = lfp
 
-𝝂 :: (Eq a, BoundedMeetSemiLattice a) => (a -> a) -> a
-𝝂 = gfp
+𝝂 :: (Eq a, PO.PartialOrd a) => a -> (a -> a) -> a
+𝝂 = PO.unsafeGfpFrom
 
 (㎲⊒) :: (Eq a, BoundedJoinSemiLattice a) => a -> (a -> a) -> a
 (㎲⊒) = lfpFrom

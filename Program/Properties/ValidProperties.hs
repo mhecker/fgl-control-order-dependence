@@ -28,6 +28,10 @@ import qualified Data.Map as Map
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc)
 import Data.Graph.Inductive (mkGraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
+import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP)
+import Data.Graph.Inductive.Query.NTICD (nticdGraphP)
+
+
 
 import Program (Program)
 
@@ -61,6 +65,10 @@ soundness  = defaultMain                               $ testGroup "soundness" [
 soundnessX = defaultMainWithIngredients [antXMLRunner] $ testGroup "soundness" [ mkTest [soundnessTests], mkProp [soundnessProps] ]
 preccex    = defaultMain                               $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
 preccexX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
+nticd      = defaultMain                               $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
+nticdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
+
+
 
 misc       = defaultMain                               $ testGroup "misc"      [ mkProp [miscProps] ]
 miscX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "misc"      [ mkProp [miscProps] ]
@@ -171,6 +179,20 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+
+nticdProps = testGroup "(concerning nticd )" [
+    testProperty  "controlDependenceGraph == nticdGraphP"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  controlDependenceGraphP p == nticdGraphP p
+  ]
+nticdTests = testGroup "(concerning nticd)" $
+  [  testCase    ( "controlDependenceGraph == nticdGraphP for " ++ exampleName)
+                $ controlDependenceGraphP p == nticdGraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  []
+
 
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
@@ -340,4 +362,3 @@ miscProps = testGroup "(misc)" [
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
 testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
    where MkProperty gen = property prop
-

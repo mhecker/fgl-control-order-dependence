@@ -53,7 +53,7 @@ f :: DynGraph gr => gr a b -> [Node] -> Map (Node,Node) (Set (T Node)) -> Map (N
 f graph condNodes s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
-  | otherwise = tr ("\n\nIteration:\n" ++ (show s)) $  
+  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $  
                    Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n,

@@ -1749,6 +1749,21 @@ notReallyUnsound9 = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+
+controlDepExample :: Program Gr
+controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, (ForC 1
+                 (If CFalse (Seq (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut"))
+                            (ForC 1 (ReadFromChannel "c" "lowIn1"))
+                 )
+              ) `Seq`
+              (Ass "x" (Val 0))
+          )
+         ]
+
+
 simpleBlocking :: Program Gr
 simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) } 
   where p = compileAllToProgram code
@@ -1810,6 +1825,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'singleThreadedDelay),
               $(withName 'twoLoops),
               $(withName 'twoLoops'),
+              $(withName 'controlDepExample),
               $(withName 'simpleBlocking),
               $(withName 'forIf)
             ] ++

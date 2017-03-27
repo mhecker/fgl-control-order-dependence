@@ -4,7 +4,7 @@ module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Maybe(fromJust)
 
-import Data.List(foldl')
+import Data.List(foldl', intersect)
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -49,11 +49,11 @@ type T n = (n, n)
 
 
 
-f :: DynGraph gr => gr a b -> [Node] -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
-f graph condNodes s
+f :: DynGraph gr => gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
+f graph condNodes _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
-  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $  
+  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
                    Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n,
@@ -63,12 +63,50 @@ f graph condNodes s
 
                  ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
 
+
+f2 :: DynGraph gr => gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
+f2 graph condNodes reachable nextCond s
+  | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
+  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
+                   Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
+                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
+                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n, (∀) (reachable n `intersect` condNodes) (\n'-> 
+                                                             (Set.size $ s ! (m,n')) == (length $ suc graph n')
+                                                            )
+                                               ]
+                                  ) | m <- nodes graph, p <- condNodes ]
+
+                 ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
+
+
+f3 :: DynGraph gr => gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
+f3 graph condNodes _ nextCond s
+  | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
+  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
+                   Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
+                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x], 
+                                                                  (Set.size $ s ! (m,n)) == (length $ suc graph n)
+                                               ]
+                                  ) | m <- nodes graph, p <- condNodes ]
+
+--                 ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
+
+
+
+
 snm :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snm graph = (𝝂) smnInit (f graph condNodes)  
+snm graph = (𝝂) smnInit (f3 graph condNodes reachable nextCond)
   where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
-                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, reachable x m]) | m <- nodes graph, p <- condNodes]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        reachable x n = n `elem` (suc trncl x)
+        reachable x = suc trncl x
+        nextCond n = case suc graph n of
+         []    -> Nothing
+         [ n'] -> nextCond n'
+         (_:_) -> Just n
         trncl = trc graph
 
 

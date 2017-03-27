@@ -29,7 +29,7 @@ import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
 import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
-import qualified Data.Graph.Inductive.Query.NTICD as NTICD (nticdGraphP, ntscdGraphP, ntscdGraphP', nticd) 
+import qualified Data.Graph.Inductive.Query.NTICD as NTICD (nticdGraphP, ntscdGraphP, ntscdGraphP', nticd, ntscd, ntscd') 
 
 
 import Data.Graph.Inductive.Arbitrary
@@ -190,7 +190,7 @@ nticdProps = testGroup "(concerning nticd )" [
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   controlDependenceGraphP p == NTICD.nticdGraphP p,
                 
-    testProperty  "controlDependence == nticd"
+    testProperty  "controlDependence      == nticd"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let -- (entry:_) = nodes generatedGraph
                         (exit, g) = withUniqueEndNode () () generatedGraph
@@ -209,7 +209,13 @@ nticdTests = testGroup "(concerning nticd)" $
 ntscdProps = testGroup "(concerning ntscd )" [
     testProperty  "ntscdGraphP == ntscdGraphP'"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.ntscdGraphP p == NTICD.ntscdGraphP' p
+                  NTICD.ntscdGraphP p == NTICD.ntscdGraphP' p,
+                
+    testProperty  "ntscd       == ntscd'"
+                $ \((CG entry g) :: (Connected Gr () ())) ->
+                    let exit = entry -- all this does is add a self-loop to entry
+                    in NTICD.ntscd       g entry () exit ==
+                       NTICD.ntscd'      g entry () exit
   ]
 ntscdTests = testGroup "(concerning ntscd)" $
   [  testCase    ( "ntscdGraphP == ntscdGraphP' for " ++ exampleName)

@@ -86,10 +86,7 @@ snm graph = (𝝂) smnInit (f3 graph condNodes reachable nextCond)
                  ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
-        nextCond n = case suc graph n of
-         []    -> Nothing
-         [ n'] -> nextCond n'
-         (_:_) -> Just n
+        nextCond = nextCondNode graph
         trncl = trc graph
 
 
@@ -168,10 +165,7 @@ snmSensitive graph = (㎲⊒) smnInit (f4 graph condNodes reachable nextCond)
   where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
-        nextCond n = case suc graph n of
-         []    -> Nothing
-         [ n'] -> nextCond n'
-         (_:_) -> Just n
+        nextCond = nextCondNode graph
         trncl = trc graph
 
 
@@ -239,11 +233,15 @@ snmSensitive' graph = (㎲⊒) smnInit (f3 graph condNodes reachable nextCond)
   where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
-        nextCond n = case suc graph n of
-         []    -> Nothing
-         [ n'] -> nextCond n'
-         (_:_) -> Just n
+        nextCond = nextCondNode graph
         trncl = trc graph
+
+
+nextCondNode graph n = nextCondSeen [n] n
+    where nextCondSeen seen n = case suc graph n of
+            []    -> Nothing
+            [ n'] -> if n' `elem` seen then Nothing else nextCondSeen (n':seen) n'
+            (_:_) -> Just n
 
 
 

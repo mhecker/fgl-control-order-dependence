@@ -29,7 +29,7 @@ import Data.Graph.Inductive.Util (trcOfTrrIsTrc)
 import Data.Graph.Inductive (mkGraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP)
-import Data.Graph.Inductive.Query.NTICD (nticdGraphP)
+import Data.Graph.Inductive.Query.NTICD (nticdGraphP, ntscdGraphP, ntscdGraphP')
 
 
 
@@ -67,6 +67,8 @@ preccex    = defaultMain                               $ testGroup "preccex"   [
 preccexX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
 nticd      = defaultMain                               $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
 nticdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
+ntscd      = defaultMain                               $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
+ntscdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 
 
 
@@ -192,6 +194,21 @@ nticdTests = testGroup "(concerning nticd)" $
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+
+ntscdProps = testGroup "(concerning ntscd )" [
+    testProperty  "ntscdGraphP == ntscdGraphP'"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  ntscdGraphP p == ntscdGraphP' p
+  ]
+ntscdTests = testGroup "(concerning ntscd)" $
+  [  testCase    ( "ntscdGraphP == ntscdGraphP' for " ++ exampleName)
+                $ ntscdGraphP p == ntscdGraphP' p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  []
+
+
 
 
 

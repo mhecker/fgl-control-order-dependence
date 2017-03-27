@@ -123,3 +123,148 @@ nticd graph entry label exit =
   where graph' = insEdge (entry, exit, label) graph 
         s = snm graph' 
         condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ntscdGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntscdGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
+    foldr mergeTwoGraphs empty [ ntscdGraph (nfilter (\node -> staticThreadOf node == thread) tcfg)
+                                                        (entryOf thread)
+                                                        (false)
+                                                        (exitOf thread)
+                                 | thread <- Set.toList staticThreads ]
+
+ntscdGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdGraph graph entry label exit = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
+  where dependencies = ntscd graph entry label exit
+
+
+
+ntscd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscd graph entry label exit =
+      Map.fromList [ (n, Set.empty) | n <- nodes graph']
+    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', m /= n, 
+                                            let tmn = Set.size $ s ! (m,n),
+                                            0 < tmn, tmn < (length $ suc graph' n)
+                                      ]
+                     ) | n <- condNodes
+                  ]
+    ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
+  where graph' = insEdge (entry, exit, label) graph 
+        s = snmSensitive graph' 
+        condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+
+
+
+snmSensitive :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmSensitive graph = (㎲⊒) smnInit (f4 graph condNodes reachable nextCond)
+  where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond n = case suc graph n of
+         []    -> Nothing
+         [ n'] -> nextCond n'
+         (_:_) -> Just n
+        trncl = trc graph
+
+
+f4 graph condNodes _ _ s
+  | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
+  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
+                   Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
+                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
+                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n,
+                                                             (Set.size $ s ! (m,n)) == (length $ suc graph n)
+                                               ]
+                                  ) | m <- nodes graph, p <- condNodes ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ntscdGraphP' :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntscdGraphP' p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
+    foldr mergeTwoGraphs empty [ ntscdGraph' (nfilter (\node -> staticThreadOf node == thread) tcfg)
+                                                        (entryOf thread)
+                                                        (false)
+                                                        (exitOf thread)
+                                 | thread <- Set.toList staticThreads ]
+
+ntscdGraph' :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdGraph' graph entry label exit = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
+  where dependencies = ntscd' graph entry label exit
+
+ntscd' :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscd' graph entry label exit =
+      Map.fromList [ (n, Set.empty) | n <- nodes graph']
+    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', m /= n, 
+                                            let tmn = Set.size $ s ! (m,n),
+                                            0 < tmn, tmn < (length $ suc graph' n)
+                                      ]
+                     ) | n <- condNodes
+                  ]
+    ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
+  where graph' = insEdge (entry, exit, label) graph 
+        s = snmSensitive' graph' 
+        condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+
+snmSensitive' :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmSensitive' graph = (㎲⊒) smnInit (f3 graph condNodes reachable nextCond)
+  where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond n = case suc graph n of
+         []    -> Nothing
+         [ n'] -> nextCond n'
+         (_:_) -> Just n
+        trncl = trc graph
+
+
+
+
+
+
+

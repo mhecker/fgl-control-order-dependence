@@ -25,12 +25,14 @@ import Data.Ord
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc)
-import Data.Graph.Inductive (mkGraph)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
+import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP)
-import Data.Graph.Inductive.Query.NTICD (nticdGraphP, ntscdGraphP, ntscdGraphP')
+import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
+import qualified Data.Graph.Inductive.Query.NTICD as NTICD (nticdGraphP, ntscdGraphP, ntscdGraphP', nticd) 
 
+
+import Data.Graph.Inductive.Arbitrary
 
 
 import Program (Program)
@@ -186,11 +188,19 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 nticdProps = testGroup "(concerning nticd )" [
     testProperty  "controlDependenceGraph == nticdGraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  controlDependenceGraphP p == nticdGraphP p
+                  controlDependenceGraphP p == NTICD.nticdGraphP p,
+                
+    testProperty  "controlDependence == nticd"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let -- (entry:_) = nodes generatedGraph
+                        (exit, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.nticd       g entry () exit ==
+                       controlDependence g entry () exit
+                
   ]
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "controlDependenceGraph == nticdGraphP for " ++ exampleName)
-                $ controlDependenceGraphP p == nticdGraphP p @? ""
+                $ controlDependenceGraphP p == NTICD.nticdGraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -199,11 +209,11 @@ nticdTests = testGroup "(concerning nticd)" $
 ntscdProps = testGroup "(concerning ntscd )" [
     testProperty  "ntscdGraphP == ntscdGraphP'"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  ntscdGraphP p == ntscdGraphP' p
+                  NTICD.ntscdGraphP p == NTICD.ntscdGraphP' p
   ]
 ntscdTests = testGroup "(concerning ntscd)" $
   [  testCase    ( "ntscdGraphP == ntscdGraphP' for " ++ exampleName)
-                $ ntscdGraphP p == ntscdGraphP' p @? ""
+                $ NTICD.ntscdGraphP p == NTICD.ntscdGraphP' p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

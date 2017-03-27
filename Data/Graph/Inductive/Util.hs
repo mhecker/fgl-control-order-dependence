@@ -1,6 +1,7 @@
 module Data.Graph.Inductive.Util where
 
 import Util
+import Unicode
 
 import Data.List(delete)
 
@@ -128,3 +129,15 @@ cycles gr (p:path) ns end = do
           return (n:p:path)
         else do
           cycles gr (n:p:path) (delete n ns) end
+
+
+
+withUniqueEndNode :: DynGraph gr => a -> b -> gr a b -> (Node, gr a b)
+withUniqueEndNode endLabel endEdgeLabel gr = (end, 
+        foldr (\n g -> insEdge (n, end, endEdgeLabel) g)
+              (insNode (end, endLabel) gr)
+              [ n | scc <- sccs, isEndScc scc, let n = head scc ]
+      )
+    where sccs = scc gr
+          [end] = newNodes 1 gr
+          isEndScc scc = (∀) scc (\n -> (∀) (suc gr n) (\n' -> n' `elem` scc))

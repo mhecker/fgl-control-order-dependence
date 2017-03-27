@@ -52,12 +52,12 @@ type T n = (n, n)
 f :: DynGraph gr => gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
 f graph condNodes _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
-        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
                    Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n,
-                                                             (Set.size $ s ! (m,n)) == (length $ suc graph n)
+                                                             (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                                ]
                                   ) | m <- nodes graph, p <- condNodes ]
 
@@ -68,12 +68,12 @@ f graph condNodes _ _ s
 f3 :: DynGraph gr => gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
 f3 graph condNodes _ nextCond s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
-        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
                    Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
                  ⊔ Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x], 
-                                                                  (Set.size $ s ! (m,n)) == (length $ suc graph n)
+                                                                  (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                                ]
                                   ) | m <- nodes graph, p <- condNodes ]
 
@@ -98,7 +98,7 @@ nticd graph entry label exit =
       Map.fromList [ (n, Set.empty) | n <- nodes graph']
     ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', m /= n, 
                                             let tmn = Set.size $ s ! (m,n),
-                                            0 < tmn, tmn < (length $ suc graph' n)
+                                            0 < tmn, tmn < (Set.size $ Set.fromList $ suc graph' n)
                                       ]
                      ) | n <- condNodes
                   ]
@@ -152,7 +152,7 @@ ntscd graph entry label exit =
       Map.fromList [ (n, Set.empty) | n <- nodes graph']
     ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', m /= n, 
                                             let tmn = Set.size $ s ! (m,n),
-                                            0 < tmn, tmn < (length $ suc graph' n)
+                                            0 < tmn, tmn < (Set.size $ Set.fromList $ suc graph' n)
                                       ]
                      ) | n <- condNodes
                   ]
@@ -177,12 +177,12 @@ snmSensitive graph = (㎲⊒) smnInit (f4 graph condNodes reachable nextCond)
 
 f4 graph condNodes _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
-        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
                    Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n,
-                                                             (Set.size $ s ! (m,n)) == (length $ suc graph n)
+                                                             (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                                ]
                                   ) | m <- nodes graph, p <- condNodes ]
 
@@ -225,7 +225,7 @@ ntscd' graph entry label exit =
       Map.fromList [ (n, Set.empty) | n <- nodes graph']
     ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', m /= n, 
                                             let tmn = Set.size $ s ! (m,n),
-                                            0 < tmn, tmn < (length $ suc graph' n)
+                                            0 < tmn, tmn < (Set.size $ Set.fromList $ suc graph' n)
                                       ]
                      ) | n <- condNodes
                   ]

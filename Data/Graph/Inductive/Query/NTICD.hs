@@ -64,21 +64,6 @@ f graph condNodes _ _ s
                  ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
 
 
-f2 :: DynGraph gr => gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
-f2 graph condNodes reachable nextCond s
-  | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
-        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (length $ suc graph n)) = error "rofl"
-  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
-                   Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
-                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
-                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n, (∀) (reachable n `intersect` condNodes) (\n'-> 
-                                                             (Set.size $ s ! (m,n')) == (length $ suc graph n')
-                                                            )
-                                               ]
-                                  ) | m <- nodes graph, p <- condNodes ]
-
-                 ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
-
 
 f3 :: DynGraph gr => gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
 f3 graph condNodes _ nextCond s
@@ -91,8 +76,6 @@ f3 graph condNodes _ nextCond s
                                                                   (Set.size $ s ! (m,n)) == (length $ suc graph n)
                                                ]
                                   ) | m <- nodes graph, p <- condNodes ]
-
---                 ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
 
 
 

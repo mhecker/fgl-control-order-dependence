@@ -1815,6 +1815,8 @@ testsuite = [ $(withName 'example1),
               $(withName 'minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD),
               $(withName 'minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2),
               $(withName 'minimalClassificationIsLessPreciseThanSimonClassification),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleMartin),
+              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleSimon),
               $(withName 'timingSecureButNotCombinedTimingSecure),
               $(withName 'timingSecureButNotCombinedTimingSecureGenerated),
               $(withName 'someGeneratedProgram),
@@ -1832,9 +1834,9 @@ testsuite = [ $(withName 'example1),
             precisionCounterExamples ++
             []
 
+-- These are counter-Examples to the claim that minimalClassification (i.e.: the old version, not the "atUses" version)
+-- is strictly more precise than timingClassification.
 precisionCounterExamples = [
-              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleMartin),
-              $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExampleSimon),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample3),

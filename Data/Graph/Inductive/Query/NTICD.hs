@@ -197,13 +197,15 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
                     influenced = if (smp == smp')
                       then Set.empty
                       else   Set.fromList [ (n,p) | [ n ] <- [suc graph m] ]
-                           ⊔ Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
+--                           ⊔ Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
+                           ⊔ Set.fromList [ (m,n) | n <- prevConds p ]
 
         smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
                  ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
         nextCond = nextCondNode graph
+        prevConds = prevCondNodes graph
         trncl = trc graph
 
 
@@ -268,6 +270,13 @@ nextCondNode graph n = nextCondSeen [n] n
             (_:_) -> Just n
 
 
+prevCondNodes graph start = prevCondsF (pre graph start)
+    where prevCondsF front = concat $ fmap prevConds front
+          prevConds  n
+            | n == start = [n]
+            | otherwise  = case suc graph n of
+                [ n'] -> prevCondsF (pre graph n)
+                (_:_) -> [n]
 
 
 

@@ -116,14 +116,7 @@ f graph condNodes _ _ s
 
 
 
-{- a correct nticd implementation, using the gfp of functional f3 -}
-
-nticdGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdGraphP = cdepGraphP nticdGraph
-
-nticdGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
-nticdGraph = cdepGraph nticd 
-
+{- two correct nticd implementations, using the gfp of functional f3/f3' -}
 f3 :: DynGraph gr => SmnFunctionalGen gr a b
 f3 graph condNodes _ nextCond s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
@@ -137,15 +130,44 @@ f3 graph condNodes _ nextCond s
                                   ) | m <- nodes graph, p <- condNodes ]
 
 
-snm :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snm graph = snmGfp graph f3
+f3' :: DynGraph gr => SmnFunctionalGen gr a b
+f3' graph condNodes _ nextCond s
+  | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
+  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
+                   Map.fromList [ ((m,p),
+                        Set.fromList [ (p,m) | m `elem` suc graph p ]
+                      ⊔ (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n]
+                      ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
+                                                (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
+                                      ]
+                    ) | m <- nodes graph, p <- condNodes ]
 
 
-nticd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-nticd = ntXcd snm
+nticdF3GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdF3GraphP = cdepGraphP nticdF3Graph
+
+nticdF3Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3Graph = cdepGraph nticdF3
+
+nticdF3 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3 = ntXcd snmF3
+
+snmF3 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF3 graph = snmGfp graph f3
 
 
+nticdF3'GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdF3'GraphP = cdepGraphP nticdF3'Graph
 
+nticdF3'Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3'Graph = cdepGraph nticdF3'
+
+nticdF3' :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3' = ntXcd snmF3'
+
+snmF3' :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF3' graph = snmGfp graph f3'
 
 
 
@@ -153,17 +175,17 @@ nticd = ntXcd snm
 {- A correct implementation of ntscd, as given in [1], Figure 4,
    using the lfp of functional f4
 -}
-ntscdGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntscdGraphP p = cdepGraphP ntscdGraph p
+ntscdF4GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntscdF4GraphP p = cdepGraphP ntscdF4Graph p
 
-ntscdGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
-ntscdGraph = cdepGraph ntscd 
+ntscdF4Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdF4Graph = cdepGraph ntscdF4 
 
-ntscd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-ntscd = ntXcd snmSensitive 
+ntscdF4 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdF4 = ntXcd snmF4
 
-snmSensitive :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snmSensitive graph = snmLfp graph f4
+snmF4 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF4 graph = snmLfp graph f4
 
 f4 graph condNodes _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
@@ -184,17 +206,17 @@ f4 graph condNodes _ _ s
 
    This shows that ntscd and nticd are, essentially, the lfp/gfp (respectively) of the *same* functional f3.
 -}
-ntscdGraphP' :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntscdGraphP' = cdepGraphP ntscdGraph'
+ntscdF3GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntscdF3GraphP = cdepGraphP ntscdF3Graph
 
-ntscdGraph' :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
-ntscdGraph' = cdepGraph ntscd'
+ntscdF3Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdF3Graph = cdepGraph ntscdF3
 
-ntscd' :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-ntscd' = ntXcd snmSensitive' 
+ntscdF3 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdF3 = ntXcd snmF3Lfp
 
-snmSensitive' :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snmSensitive' graph = snmLfp graph f3
+snmF3Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF3Lfp graph = snmLfp graph f3
 
 
 

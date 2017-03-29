@@ -29,7 +29,7 @@ import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
 import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
-import qualified Data.Graph.Inductive.Query.NTICD as NTICD (nticdGraphP, ntscdGraphP, ntscdGraphP', nticd, ntscd, ntscd') 
+import qualified Data.Graph.Inductive.Query.NTICD as NTICD (nticdF3GraphP, nticdF3'GraphP, ntscdF4GraphP, ntscdF3GraphP, nticdF3, nticdF3', ntscdF4, ntscdF3) 
 
 
 import Data.Graph.Inductive.Arbitrary
@@ -186,40 +186,52 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 nticdProps = testGroup "(concerning nticd )" [
-    testProperty  "controlDependenceGraph == nticdGraphP"
+    testProperty  "controlDependenceGraph == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  controlDependenceGraphP p == NTICD.nticdGraphP p,
+                  controlDependenceGraphP p == NTICD.nticdF3GraphP p,
+    testProperty  "nticdF3'GraphP         == nticdF3GraphP"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  NTICD.nticdF3'GraphP p    == NTICD.nticdF3GraphP p,
                 
-    testProperty  "controlDependence      == nticd"
+    testProperty  "controlDependence      == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let -- (entry:_) = nodes generatedGraph
                         (exit, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.nticd       g entry () exit ==
-                       controlDependence g entry () exit
-                
+                    in NTICD.nticdF3       g entry () exit ==
+                       controlDependence   g entry () exit,
+    testProperty  "nticdF3'               == nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let -- (entry:_) = nodes generatedGraph
+                        (exit, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.nticdF3       g entry () exit ==
+                       NTICD.nticdF3'      g entry () exit
   ]
 nticdTests = testGroup "(concerning nticd)" $
-  [  testCase    ( "controlDependenceGraph == nticdGraphP for " ++ exampleName)
-                $ controlDependenceGraphP p == NTICD.nticdGraphP p @? ""
+  [  testCase    ( "controlDependenceGraph  == nticdF3GraphP for " ++ exampleName)
+                $ controlDependenceGraphP p == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "nticdF3'GraphP          == nticdF3GraphP for " ++ exampleName)
+                $ NTICD.nticdF3'GraphP p    == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
 
 
 ntscdProps = testGroup "(concerning ntscd )" [
-    testProperty  "ntscdGraphP == ntscdGraphP'"
+    testProperty  "ntscdF4GraphP  == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.ntscdGraphP p == NTICD.ntscdGraphP' p,
+                  NTICD.ntscdF4GraphP p == NTICD.ntscdF3GraphP p,
                 
-    testProperty  "ntscd       == ntscd'"
+    testProperty  "ntscdF4        == ntscdF3"
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry
-                    in NTICD.ntscd       g entry () exit ==
-                       NTICD.ntscd'      g entry () exit
+                    in NTICD.ntscdF4      g entry () exit ==
+                       NTICD.ntscdF3      g entry () exit
   ]
 ntscdTests = testGroup "(concerning ntscd)" $
-  [  testCase    ( "ntscdGraphP == ntscdGraphP' for " ++ exampleName)
-                $ NTICD.ntscdGraphP p == NTICD.ntscdGraphP' p @? ""
+  [  testCase    ( "ntscdF4GraphP == ntscdF3GraphP for " ++ exampleName)
+                $ NTICD.ntscdF4GraphP p == NTICD.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

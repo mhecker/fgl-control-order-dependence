@@ -171,6 +171,42 @@ snmF3' graph = snmGfp graph f3'
 
 
 
+{- A Worklist-Implementation of nticd, based on f3 -}
+nticdF3WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdF3WorkListGraphP = cdepGraphP nticdF3WorkListGraph
+
+nticdF3WorkListGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3WorkListGraph = cdepGraph nticdF3WorkList
+
+nticdF3WorkList :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3WorkList = ntXcd snmF3WorkListGfp
+
+snmF3WorkListGfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p <- condNodes ]) smnInit
+  where snmWorkList :: Set (Node, Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
+        snmWorkList workList s
+          | Set.null workList = s
+          | otherwise         = snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
+              where ((m,p), workList') = Set.deleteFindMin workList
+                    smp  = s ! (m,p)
+                    smp' =   Set.fromList [ (p,m) | m `elem` suc graph p ]
+                           ⊔ (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n]
+                           ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
+                                                     (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
+                                           ]
+                    influenced = if (smp == smp')
+                      then Set.empty
+                      else   Set.fromList [ (n,p) | [ n ] <- [suc graph m] ]
+                           ⊔ Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
+
+        smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        trncl = trc graph
+
+
 
 {- A correct implementation of ntscd, as given in [1], Figure 4,
    using the lfp of functional f4

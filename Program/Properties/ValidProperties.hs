@@ -29,7 +29,10 @@ import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
 import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
-import qualified Data.Graph.Inductive.Query.NTICD as NTICD (nticdF3GraphP, nticdF3'GraphP, ntscdF4GraphP, ntscdF3GraphP, nticdF3, nticdF3', ntscdF4, ntscdF3) 
+import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    nticdF3GraphP, nticdF3'GraphP, nticdF3WorkList,    nticdF3, nticdF3', nticdF3WorkListGraphP,
+    ntscdF4GraphP, ntscdF3GraphP,                      ntscdF4, ntscdF3
+  ) 
 
 
 import Data.Graph.Inductive.Arbitrary
@@ -186,33 +189,46 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 nticdProps = testGroup "(concerning nticd )" [
-    testProperty  "controlDependenceGraph == nticdF3GraphP"
+    testProperty  "controlDependenceGraphp       == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  controlDependenceGraphP p == NTICD.nticdF3GraphP p,
-    testProperty  "nticdF3'GraphP         == nticdF3GraphP"
+                  controlDependenceGraphP p      == NTICD.nticdF3GraphP p,
+    testProperty  "nticdF3'GraphP                == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3'GraphP p    == NTICD.nticdF3GraphP p,
-                
+                  NTICD.nticdF3'GraphP p         == NTICD.nticdF3GraphP p,
+    testProperty  "nticdF3WorkListGraphP         == nticdF3GraphP"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  NTICD.nticdF3WorkListGraphP p  == NTICD.nticdF3GraphP p,
+
     testProperty  "controlDependence      == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let -- (entry:_) = nodes generatedGraph
                         (exit, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.nticdF3       g entry () exit ==
-                       controlDependence   g entry () exit,
+                    in controlDependence      g entry () exit ==
+                       NTICD.nticdF3          g entry () exit,
     testProperty  "nticdF3'               == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let -- (entry:_) = nodes generatedGraph
                         (exit, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.nticdF3       g entry () exit ==
-                       NTICD.nticdF3'      g entry () exit
+                    in NTICD.nticdF3'         g entry () exit ==
+                       NTICD.nticdF3          g entry () exit,
+    testProperty  "nticdF3WorkList        == nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let -- (entry:_) = nodes generatedGraph
+                        (exit, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.nticdF3WorkList  g entry () exit ==
+                       NTICD.nticdF3          g entry () exit
   ]
 nticdTests = testGroup "(concerning nticd)" $
-  [  testCase    ( "controlDependenceGraph  == nticdF3GraphP for " ++ exampleName)
-                $ controlDependenceGraphP p == NTICD.nticdF3GraphP p @? ""
+  [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)
+                  $ controlDependenceGraphP p == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
-  [  testCase    ( "nticdF3'GraphP          == nticdF3GraphP for " ++ exampleName)
-                $ NTICD.nticdF3'GraphP p    == NTICD.nticdF3GraphP p @? ""
+  [  testCase    ( "nticdF3'GraphP            ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.nticdF3'GraphP p          == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "nticdF3WorkListGraphP     ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.nticdF3WorkListGraphP p   == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

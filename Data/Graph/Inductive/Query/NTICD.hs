@@ -190,7 +190,7 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
               where ((m,p), workList') = Set.deleteFindMin workList
                     smp  = s ! (m,p)
                     smp' =   Set.fromList [ (p,m) | m `elem` suc graph p ]
-                           ⊔ (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n]
+                           ⊔ (∐) [ s ! (n,p) | n <- pre graph m, [ m ] == suc graph n]
                            ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
                                                      (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                            ]

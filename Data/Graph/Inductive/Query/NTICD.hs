@@ -197,10 +197,10 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
                     influenced = if (smp == smp')
                       then Set.empty
                       else   Set.fromList [ (n,p) | [ n ] <- [suc graph m] ]
---                           ⊔ Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
                            ⊔ if (Set.size smp') == (Set.size $ Set.fromList $ suc graph p)
                                then Set.empty
                                else Set.fromList [ (m,n) | n <- prevConds p ]
+--                             else Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
 
         smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
                  ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]

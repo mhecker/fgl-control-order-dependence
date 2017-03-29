@@ -1749,6 +1749,71 @@ notReallyUnsound9 = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+-- see notReallyUnsound
+-- reported in run http://i44pc16:8080/job/irlsod/693/
+-- λ> forever $ mainEquivAnnotatedSome 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- -----------------
+-- p  = 569 % 1500 ≃ 0.37933                                  p' = 2687 % 7500 ≃ 0.35827
+-- fromList []
+-- ---(12,ReadEvent 1 "lowIn1")-->
+-- fromList [("b",1)]
+-- fromList [("b",1),("z",-1)]
+-- ---(13,PrintEvent (-1) "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(14,ReadEvent 2 "lowIn1")-->
+-- fromList [("b",2)]
+-- fromList []
+-- ---(8,ReadEvent 3 "lowIn1")-->
+-- fromList [("a",3)]
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- Interrupted.
+notReallyUnsound10 :: Program Gr
+notReallyUnsound10 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, (Seq (Seq (SpawnThread 3) (ReadFromChannel "c" "stdIn")) (ForC 1 (ReadFromChannel "a" "lowIn1"))) ),
+          (3, (Seq (Seq (Ass "z" (Val (-1))) (ReadFromChannel "b" "lowIn1")) (Seq (PrintToChannel (Times (Var "b") (Var "z")) "stdOut") (ReadFromChannel "b" "lowIn1"))))
+         ]
+
+
+-- see notReallyUnsound
+-- reported in run http://i44pc16:8080/job/irlsod/694/
+-- λ> forever $ mainEquivAnnotatedSome 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- Interrupted.
+notReallyUnsound11 :: Program Gr
+notReallyUnsound11 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1, (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (ForC 2 (ReadFromChannel "c" "lowIn1")))),
+          (2, (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel "x" "stdIn")))),
+          (3, (Seq (ForC 1 (ReadFromChannel "c" "stdIn")) (ForC 2 (Ass "y" (Times (Var "c") (Var "c"))))))
+         ]
+
+
+
 
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
@@ -1829,6 +1894,17 @@ testsuite = [ $(withName 'example1),
               $(withName 'twoLoops'),
               $(withName 'controlDepExample),
               $(withName 'simpleBlocking),
+              $(withName 'notReallyUnsound),
+              $(withName 'notReallyUnsound2),
+              $(withName 'notReallyUnsound3),
+              $(withName 'notReallyUnsound4),
+              $(withName 'notReallyUnsound5),
+              $(withName 'notReallyUnsound6),
+              $(withName 'notReallyUnsound7),
+              $(withName 'notReallyUnsound8),
+              $(withName 'notReallyUnsound9),
+              $(withName 'notReallyUnsound10),
+              $(withName 'notReallyUnsound11),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

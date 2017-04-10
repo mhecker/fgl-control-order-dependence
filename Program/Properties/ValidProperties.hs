@@ -30,8 +30,8 @@ import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    nticdF3GraphP, nticdF3'GraphP, nticdF3WorkList,    nticdF3, nticdF3', nticdF3WorkListGraphP, nticdDef, nticdDefGraphP,
-    ntscdF4GraphP, ntscdF3GraphP,                      ntscdF4, ntscdF3
+    nticdF3GraphP, nticdF3'GraphP, nticdF3WorkList, nticdF3WorkListSymbolic,   nticdF3, nticdF3', nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP,
+    ntscdF4GraphP, ntscdF3GraphP,                                              ntscdF4, ntscdF3
   ) 
 
 
@@ -198,6 +198,9 @@ nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdF3WorkListGraphP         == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.nticdF3WorkListGraphP p  == NTICD.nticdF3GraphP p,
+    testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
 
     testProperty  "controlDependence      == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
@@ -218,7 +221,12 @@ nticdProps = testGroup "(concerning nticd )" [
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = (entry, generatedGraph)
                     in NTICD.nticdF3WorkList  g entry () exit ==
-                       NTICD.nticdF3          g entry () exit
+                       NTICD.nticdF3          g entry () exit,
+    testProperty  "nticdF3WorkListSymbolic== nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.nticdF3WorkListSymbolic g entry () exit ==
+                       NTICD.nticdF3                 g entry () exit
   ]
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)
@@ -235,6 +243,10 @@ nticdTests = testGroup "(concerning nticd)" $
   ] ++
   [  testCase    ( "nticdF3WorkListGraphP     ==       nticdF3GraphP for " ++ exampleName)
             $ NTICD.nticdF3WorkListGraphP p   == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "nticdF3WorkListSymbolicGraphP     ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.nticdF3WorkListSymbolicGraphP p   == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

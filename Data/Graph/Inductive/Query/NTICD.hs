@@ -217,6 +217,45 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
         prevConds = prevCondNodes graph
         trncl = trc graph
 
+{- the same, with less memory consumption -}
+-- here, fiven a sucessor x of a predicate node p,   S[x,p] represents S[m,p] for all m such that   m `elem`  (toNextCond x)
+nticdF3WorkListSymbolicGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdF3WorkListSymbolicGraphP = cdepGraphP nticdF3WorkListGraph
+
+nticdF3WorkListSymbolicGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3WorkListSymbolicGraph = cdepGraph nticdF3WorkList
+
+nticdF3WorkListSymbolic :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3WorkListSymbolic = ntXcd snmF3WorkListGfp
+
+snmF3WorkListSymbolicGfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF3WorkListSymbolicGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p <- condNodes ]) smnInit
+  where snmWorkList :: Set (Node, Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
+        snmWorkList workList s
+          | Set.null workList = expandSymbolic s
+          | otherwise         = snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
+              where ((m,p), workList') = Set.deleteFindMin workList
+                    smp  = s ! (m,p)
+                    smp' =   Set.fromList  [ (p,x) | x <- (suc graph p), m == x]
+                           ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), m == x, Just n <- [nextCond x],
+                                                     (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
+                                           ]
+                    influenced = if (Set.size smp == Set.size smp')
+                                   then Set.empty
+                                   else Set.fromList [ (m,n) | n <- prevConds p ]
+--                                 else Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
+
+        smnInit =  Map.fromList [ ((m,p), Set.empty) | p <- condNodes, x <- (suc graph p), let m = x ]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m == x]) | m <- nodes graph, p <- condNodes]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        prevConds = prevCondNodes graph
+        trncl = trc graph
+        expandSymbolic s =
+              Map.fromList [ ((m,p), s ! (x,p))      | p <- condNodes, x <- (suc graph p), m <- toNextCond x]
+
 
 
 {- A correct implementation of ntscd, as given in [1], Figure 4,

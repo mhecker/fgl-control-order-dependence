@@ -30,7 +30,7 @@ import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    nticdF3GraphP, nticdF3'GraphP, nticdF3WorkList,    nticdF3, nticdF3', nticdF3WorkListGraphP,
+    nticdF3GraphP, nticdF3'GraphP, nticdF3WorkList,    nticdF3, nticdF3', nticdF3WorkListGraphP, nticdDef, nticdDefGraphP,
     ntscdF4GraphP, ntscdF3GraphP,                      ntscdF4, ntscdF3
   ) 
 
@@ -201,26 +201,32 @@ nticdProps = testGroup "(concerning nticd )" [
 
     testProperty  "controlDependence      == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let -- (entry:_) = nodes generatedGraph
-                        (exit, g) = withUniqueEndNode () () generatedGraph
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g entry () exit ==
+                       NTICD.nticdF3          g entry () exit,
+    testProperty  "nticdDef               == nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.nticdDef         g entry () exit ==
                        NTICD.nticdF3          g entry () exit,
     testProperty  "nticdF3'               == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let -- (entry:_) = nodes generatedGraph
-                        (exit, g) = withUniqueEndNode () () generatedGraph
+                    let (exit, g) = (entry, generatedGraph)
                     in NTICD.nticdF3'         g entry () exit ==
                        NTICD.nticdF3          g entry () exit,
     testProperty  "nticdF3WorkList        == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let -- (entry:_) = nodes generatedGraph
-                        (exit, g) = withUniqueEndNode () () generatedGraph
+                    let (exit, g) = (entry, generatedGraph)
                     in NTICD.nticdF3WorkList  g entry () exit ==
                        NTICD.nticdF3          g entry () exit
   ]
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)
                   $ controlDependenceGraphP p == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "nticdDefGraphP            ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.nticdDefGraphP p          == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3'GraphP            ==       nticdF3GraphP for " ++ exampleName)

@@ -47,13 +47,13 @@ infixl 7 ⊓
 (㎲⊒) :: (Eq a, BoundedJoinSemiLattice a) => a -> (a -> a) -> a
 (㎲⊒) = lfpFrom
 
-(∀) :: (Eq a, Foldable t) => t a -> (a -> Bool) -> Bool
+(∀) :: (Foldable t) => t a -> (a -> Bool) -> Bool
 (∀) a pred = null $ filter (not.pred) $ toList a
 
 (∫) :: (Eq a, Foldable t) => t a -> (a -> Bool) -> [a]
 (∫) a pred = filter (not.pred) $ toList a
 
-(∃) :: (Eq a, Foldable t) => t a -> (a -> Bool) -> Bool
+(∃) :: (Foldable t) => t a -> (a -> Bool) -> Bool
 (∃) a pred = (not.null) $ filter pred $ toList a
 
 infix 4 ∈

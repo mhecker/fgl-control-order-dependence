@@ -115,6 +115,12 @@ p :: Program Gr
 p = notReallyUnsound14
 --p = minimalClassificationVstimingClassificationDomPathsCounterExampleMartin
 
+testSinkPaths = do
+  (CG _ generatedGraph) <- (generate $ resize 40 arbitrary :: IO ((Connected Gr () ())))
+  --(NME generatedGraph) <- (generate $ resize 30 arbitrary :: IO ((NoMultipleEdges Gr () ())))
+  showGraph $ withNodes $ withoutMultipeEdges generatedGraph
+  let n = head $ nodes generatedGraph
+  forM ((sinkPathsFor generatedGraph) ! n) (\p -> putStrLn $ show (n,p))
 mainEquiv = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput'
@@ -133,6 +139,10 @@ mainEquivAnnotatedSampled = do
 mainEquivAnnotatedSome = do
   showCounterExamplesPniForEquivAnnotatedSome 7500 p defaultInput defaultInput'
 
+
+withoutMultipeEdges :: (Eq b ,DynGraph gr) => gr a b -> gr a b
+withoutMultipeEdges g =
+  mkGraph (labNodes g) [ (n,m,e) | (n,m,e) <- nub $ labEdges g]
 
 mainFindMorePrecise = forever $ showMorePrecise isSecureTimingClassification isSecureTimingCombinedTimingClassification
 mainFindUnsound     = forever $ showMorePrecise isSecureTimingClassification isSecureEmpirically

@@ -10,10 +10,17 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Graph.Inductive.Query.Dominators (dom)
+
+import qualified Data.List as List
+
+import Data.List ((\\))
+
 
 import IRLSOD
 import Program
 
+import Util(the)
 import Unicode
 
 
@@ -22,7 +29,7 @@ import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dependence
-
+import Data.Graph.Inductive.Query.DFS (scc, condensation)
 
 import Debug.Trace
 
@@ -70,7 +77,7 @@ snmLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond)
 ntXcd :: DynGraph gr => (gr a b -> Map (Node, Node) (Set (T Node))) -> gr a b -> Node -> b -> Node -> Map Node (Set Node)
 ntXcd snm graph entry label exit = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph']
-    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', m /= n, 
+    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', 
                                             let tmn = Set.size $ s ! (m,n),
                                             0 < tmn, tmn < (Set.size $ Set.fromList $ suc graph' n)
                                       ]
@@ -259,7 +266,42 @@ snmF3Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF3Lfp graph = snmLfp graph f3
 
 
+{- The definition of nticd -}
+nticdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdDefGraphP = cdepGraphP nticdDefGraph
 
+nticdDefGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdDefGraph  = cdepGraph nticdDef
+
+nticdDef :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdDef graph entry label exit =
+        Map.fromList [ (n, Set.empty) | n <- nodes graph']
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph',
+                                                nk <- suc graph' ni, nl <- suc graph' ni, nk /= nl,
+                                                (∀) (sinkPaths ! nk) (\path ->       nj `inPath` (nk,path)),
+                                                (∃) (sinkPaths ! nl) (\path -> not $ nj `inPath` (nl,path))
+                                         ]
+                       )
+                     | ni <- condNodes ]
+    ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
+
+  where graph' = insEdge (entry, exit, label) graph 
+        condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+        sinkPaths = sinkPathsFor graph'
+        inPath = inPathFor graph'
+
+inPathFor graph' n (s, path) = inPathFromEntries [s] path
+          where inPathFromEntries _       (SinkPath []           controlSink) = n `elem` controlSink
+                inPathFromEntries entries (SinkPath (scc:prefix) controlSink)
+                    | n `elem` scc = (∀) entries (\entry -> let doms = (dom graph' entry) in
+                                      (∀) exits (\exit -> let domsexit = doms `get` exit in
+                                             (entry /= exit || n == entry) && n `elem` domsexit)
+                                     )
+                    | otherwise    =  inPathFromEntries [ n' | (_,n') <- borderEdges ] (SinkPath prefix controlSink)
+                  where next = if (null prefix) then controlSink else head prefix
+                        borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
+                        exits = [ n | (n,_) <- borderEdges ]
+                        get assocs key = fromJust $ List.lookup key assocs
 
 
 
@@ -281,6 +323,28 @@ prevCondNodes graph start = prevCondsF (pre graph start)
                 (_:_) -> [n]
 
 
+data SinkPath = SinkPath { prefix :: [[Node]], controlSink :: [Node] } deriving Show
 
+controlSinks :: Graph gr => gr a b -> [[Node]]
+controlSinks graph =
+      [ scc | scc <- sccs, (∀) scc (\n ->
+                            (∀) (suc graph n) (\n' -> n' `elem` scc)
+                           )
+                   ]
+    where sccs = scc graph
 
+sinkPathsFor :: DynGraph gr => gr a b -> Map Node [SinkPath]
+sinkPathsFor graph = Map.fromList [ (n, sinkPaths n) | n <- nodes graph ]
+    where
+      sccs = scc graph
+      sccOf m =  the (m `elem`) $ sccs
+      sinks = controlSinks graph     -- TODO: dont repeat scc computation
+      condensed = condensation graph --       or here
+--      trcCondensed = trc condensed
+      sinkPaths n = [ SinkPath { prefix = fmap (fromJust . (lab condensed)) revPath, controlSink = sink } | sink <- sinks , revPath <- revPaths (nodeMap ! (sccOf n)) ( nodeMap ! sink) ]
+      revPaths :: Node -> Node -> [[Node]]
+      revPaths ns sink
+       | ns == sink    = [[]]
+       | otherwise     = fmap (ns:) [ path | ns' <- suc condensed ns, path <- revPaths ns' sink ]
+      nodeMap = Map.fromList [ (ns, n) | (n, ns) <- labNodes condensed ]
 

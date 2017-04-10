@@ -39,7 +39,7 @@ tr msg x = seq x $ trace msg x
 type T n = (n, n)
 
 type SmnFunctional = Map (Node,Node) (Set (T Node)) -> Map (Node,Node) (Set (T Node))
-type SmnFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> SmnFunctional
+type SmnFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> SmnFunctional
 
 
 {- Generic utility functions -}
@@ -58,20 +58,22 @@ cdepGraph cdGen graph entry label exit = mkGraph (labNodes graph) [ (n,n',Contro
 
 
 snmGfp :: DynGraph gr => gr a b -> SmnFunctionalGen gr a b -> Map (Node, Node) (Set (T Node))
-snmGfp graph f = (𝝂) smnInit (f3 graph condNodes reachable nextCond)
+snmGfp graph f = (𝝂) smnInit (f3 graph condNodes reachable nextCond toNextCond)
   where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
                  ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
         nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
         trncl = trc graph
 
 snmLfp :: DynGraph gr => gr a b -> SmnFunctionalGen gr a b -> Map (Node, Node) (Set (T Node))
-snmLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond)
+snmLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCond)
   where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
         nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
         trncl = trc graph
 
 ntXcd :: DynGraph gr => (gr a b -> Map (Node, Node) (Set (T Node))) -> gr a b -> Node -> b -> Node -> Map Node (Set Node)
@@ -107,7 +109,7 @@ ntXcd snm graph entry label exit =
 -}
 
 f :: DynGraph gr => SmnFunctionalGen gr a b
-f graph condNodes _ _ s
+f graph condNodes _ _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
@@ -125,26 +127,26 @@ f graph condNodes _ _ s
 
 {- two correct nticd implementations, using the gfp of functional f3/f3' -}
 f3 :: DynGraph gr => SmnFunctionalGen gr a b
-f3 graph condNodes _ nextCond s
+f3 graph condNodes _ nextCond toNextCond s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
                    Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
-                 ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- suc graph p, m `elem` toNextCond x ]
+                                  ) | m <- nodes graph, p <- condNodes]
                  ⊔ Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x], 
                                                                   (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                                ]
                                   ) | m <- nodes graph, p <- condNodes ]
 
-
 f3' :: DynGraph gr => SmnFunctionalGen gr a b
-f3' graph condNodes _ nextCond s
+f3' graph condNodes _ nextCond toNextCond s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
                    Map.fromList [ ((m,p),
                         Set.fromList [ (p,m) | m `elem` suc graph p ]
-                      ⊔ (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n]
+                      ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` toNextCond x]
                       ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
                                                 (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                       ]
@@ -197,7 +199,7 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
               where ((m,p), workList') = Set.deleteFindMin workList
                     smp  = s ! (m,p)
                     smp' =   Set.fromList [ (p,m) | m `elem` suc graph p ]
-                           ⊔ (∐) [ s ! (n,p) | n <- pre graph m, [ m ] == suc graph n]
+                           ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` toNextCond x]
                            ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
                                                      (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                            ]
@@ -214,6 +216,7 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
         nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
         prevConds = prevCondNodes graph
         trncl = trc graph
 
@@ -234,7 +237,7 @@ ntscdF4 = ntXcd snmF4
 snmF4 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF4 graph = snmLfp graph f4
 
-f4 graph condNodes _ _ s
+f4 graph condNodes _ _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
@@ -307,6 +310,14 @@ inPathFor graph' n (s, path) = inPathFromEntries [s] path
 
 
 {- Utility functions -}
+
+
+toNextCondNode graph n = toNextCondSeen [n] n
+    where toNextCondSeen seen n = case suc graph n of
+            []    -> seen
+            [ n'] -> if n' `elem` seen then seen else toNextCondSeen (n':seen) n'
+            (_:_) -> seen
+
 nextCondNode graph n = nextCondSeen [n] n
     where nextCondSeen seen n = case suc graph n of
             []    -> Nothing
@@ -348,3 +359,26 @@ sinkPathsFor graph = Map.fromList [ (n, sinkPaths n) | n <- nodes graph ]
        | otherwise     = fmap (ns:) [ path | ns' <- suc condensed ns, path <- revPaths ns' sink ]
       nodeMap = Map.fromList [ (ns, n) | (n, ns) <- labNodes condensed ]
 
+
+
+-- Examples
+
+-- shows necessity of change in the "linear path section" rule
+exampleLinear :: Graph gr => gr () ()
+exampleLinear = mkGraph [(-27,()),(-23,()),(-10,()),(4,()),(21,()),(25,()),(26,())] [(-27,21,()),(-23,-10,()),(-23,25,()),(21,-27,()),(25,-27,()),(25,-27,()),(25,4,()),(25,21,()),(26,-27,()),(26,-23,()),(26,-10,()),(26,4,()),(26,21,()),(26,25,())]
+
+exampleLinearSimple :: Graph gr => gr () ()
+exampleLinearSimple =
+    mkGraph [(n,()) | n <- [1..5]]
+            [(1,2,()), (1,4,()),
+             (4,5,()), (4,3,()),
+             (2,3,()), (3,2,())
+            ]
+
+exampleLinearSimpleLong :: Graph gr => gr () ()
+exampleLinearSimpleLong =
+    mkGraph [(n,()) | n <- [1..7]]
+            [(1,2,()), (1,4,()),
+             (4,5,()), (4,3,()),
+             (2,3,()), (3,6,()), (6,7,()), (7,2,())
+            ]

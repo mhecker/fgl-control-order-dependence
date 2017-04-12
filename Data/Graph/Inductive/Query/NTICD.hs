@@ -459,8 +459,9 @@ sinkPathsFor graph = Map.fromList [ (n, sinkPaths n) | n <- nodes graph ]
 
 
 maximalPathsFor :: DynGraph gr => gr a b -> Map Node [MaximalPath]
-maximalPathsFor graph = Map.fromList [ (n, maximalPaths n) | n <- nodes graph ]
+maximalPathsFor graph = Map.fromList [ (n, maximalPaths n) | p <- condNodes, n <- suc graph p ]
     where
+      condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
       sccs = scc graph
       sccOf m =  the (m `elem`) $ sccs
       condensed = condensation graph --       or here
@@ -481,7 +482,7 @@ maximalPathsFor graph = Map.fromList [ (n, maximalPaths n) | n <- nodes graph ]
                                       ++ pathsToSuccessors
          | otherwise                =    pathsToSuccessors
        where
-         pathsToCycleInNs  = [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
+         pathsToCycleInNs  = [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- cyclesInScc nsNodes graph ]
          pathsToSinkInNs   = [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = sink  } | sink  <- [ [n] | n <- nsNodes, length (suc graph n) == 0] ]
          pathsToSuccessors = [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
          nsNodes = fromJust $ lab condensed ns
@@ -489,11 +490,12 @@ maximalPathsFor graph = Map.fromList [ (n, maximalPaths n) | n <- nodes graph ]
 
 
 -- Speed this up, using http://dx.doi.org/10.1137/0205007 or http://dx.doi.org/10.1137/0205007 ?!?! See http://stackoverflow.com/questions/546655/finding-all-cycles-in-graph
+cyclesInScc scc@(n:_) graph = cyclesFromIn scc graph n
 cyclesFrom graph n = cyclesFromIn (nodes graph) graph n
-cyclesFromIn nodes graph n = reverse $ cyclesFromPath [n]
+cyclesFromIn nodes graph n = cyclesFromPath [n]
     where
-      cyclesFromPath path@(n:_) =      [ [n'] ++ (takeWhile (/=n') path) ++ [n'] | n' <- suc graph n, n' `elem` nodes,       n' `elem` path]
-                                   ++  [ cycle                                   | n' <- suc graph n, n' `elem` nodes, not $ n' `elem` path, cycle <- cyclesFromPath (n':path) ]
+      cyclesFromPath path@(n:_) =      [ n':(takeWhile (/=n') path) | n' <- suc graph n, n' `elem` nodes,       n' `elem` path]
+                                   ++  [ cycle                      | n' <- suc graph n, n' `elem` nodes, not $ n' `elem` path, cycle <- cyclesFromPath (n':path) ]
 
 
 

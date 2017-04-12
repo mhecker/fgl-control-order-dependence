@@ -477,7 +477,7 @@ maximalPathsFor graph = Map.fromList [ (n, maximalPaths n) | n <- nodes graph ]
                                       ++ pathsToSinkInNs
                                       ++ pathsToSuccessors
          | let [n] = nsNodes in
-           n `elem` suc graph n     =    pathsToCycleInNs
+           n `elem` suc graph n     =    [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = nsNodes } ] -- ==  pathsToCycleInNs
                                       ++ pathsToSuccessors
          | otherwise                =    pathsToSuccessors
        where

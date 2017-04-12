@@ -14,7 +14,7 @@ import Data.Graph.Inductive.Query.Dominators (dom)
 
 import qualified Data.List as List
 
-import Data.List ((\\))
+import Data.List ((\\), nub)
 
 
 import IRLSOD
@@ -327,9 +327,7 @@ nticdDef graph entry label exit =
   where graph' = insEdge (entry, exit, label) graph 
         condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
         sinkPaths = sinkPathsFor graph'
-        inPath = inPathFor graph'
-
-inPathFor graph' n (s, path) = inPathFromEntries [s] path
+        inPath n (s, path) = inPathFromEntries [s] path
           where inPathFromEntries _       (SinkPath []           controlSink) = n `elem` controlSink
                 inPathFromEntries entries (SinkPath (scc:prefix) controlSink)
                     | n `elem` scc = (∀) entries (\entry -> let doms = (dom graph' entry) in
@@ -341,6 +339,62 @@ inPathFor graph' n (s, path) = inPathFromEntries [s] path
                         borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
                         exits = [ n | (n,_) <- borderEdges ]
                         get assocs key = fromJust $ List.lookup key assocs
+
+
+
+{- The definition of ntscd -}
+ntscdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntscdDefGraphP = cdepGraphP ntscdDefGraph
+
+ntscdDefGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdDefGraph  = cdepGraph ntscdDef
+
+ntscdDef :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdDef graph entry label exit =
+        Map.fromList [ (n, Set.empty) | n <- nodes graph']
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph',
+                                                nk <- suc graph' ni, nl <- suc graph' ni, nk /= nl,
+                                                (∀) (maximalPaths ! nk) (\path ->       nj `inPath` (nk,path)),
+                                                (∃) (maximalPaths ! nl) (\path -> not $ nj `inPath` (nl,path))
+                                         ]
+                       )
+                     | ni <- condNodes ]
+    ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
+
+  where graph' = insEdge (entry, exit, label) graph 
+        condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+        maximalPaths = maximalPathsFor graph'
+        inPath = inPathFor graph'
+
+inPathFor graph' n (s, path) = inPathFromEntries [s] path
+          where inPathFromEntries entries  (MaximalPath []            endScc endNodes@(end:_))
+                    | n `elem` endScc  = (∀) entries (\entry -> let doms = (dom graph' entry) in
+                                                                let domsEnd = doms `get` end in
+                                                                (entry /= end || n == entry) && n `elem` domsEnd
+                                         )
+                                       ∨ (n `elem` endNodes)
+                    | otherwise =  False
+                inPathFromEntries entries  (MaximalPath (scc:prefix)  endScc endNodes)
+                    | n `elem` scc = (∀) entries (\entry -> let doms = (dom graph' entry) in
+                                      (∀) exits (\exit -> let domsexit = doms `get` exit in
+                                             (entry /= exit || n == entry) && n `elem` domsexit)
+                                     )
+                                     ∨ (n `elem` endNodes)
+                    | otherwise    =  inPathFromEntries [ n' | (_,n') <- borderEdges ] (MaximalPath prefix endScc endNodes)
+                  where next =  if (null prefix) then endScc else head prefix
+                        borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
+                        exits = [ n | (n,_) <- borderEdges ]
+                  
+                -- inPathFromEntries entries  (scc:prefix) 
+                --     | n `elem` scc = (∀) entries (\entry -> let doms = (dom graph' entry) in
+                --                       (∀) exits (\exit -> let domsexit = doms `get` exit in
+                --                              (entry /= exit || n == entry) && n `elem` domsexit)
+                --                      )
+                --     | otherwise    =  inPathFromEntries [ n' | (_,n') <- borderEdges ] prefix
+                --   where next = head prefix
+                --         borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
+                --         exits = [ n | (n,_) <- borderEdges ]
+                get assocs key = fromJust $ List.lookup key assocs
 
 
 
@@ -372,6 +426,13 @@ prevCondNodes graph start = prevCondsF (pre graph start)
 
 data SinkPath = SinkPath { prefix :: [[Node]], controlSink :: [Node] } deriving Show
 
+data MaximalPath          = MaximalPath { mPrefix :: [[Node]],  mScc :: [Node], mEndNodes  :: [Node] } deriving Show
+data MaximalPathCondensed = MaximalPathCondensed {
+  mcPrefix :: [Node],   -- of Nodes in the condensed graph
+  mcScc ::  Node,       --    Node  in the condensed graph
+  mcEndNodes :: [Node]  -- of Nodes in the original graph
+ }
+
 controlSinks :: Graph gr => gr a b -> [[Node]]
 controlSinks graph =
       [ scc | scc <- sccs, (∀) scc (\n ->
@@ -397,8 +458,44 @@ sinkPathsFor graph = Map.fromList [ (n, sinkPaths n) | n <- nodes graph ]
 
 
 
--- Examples
+maximalPathsFor :: DynGraph gr => gr a b -> Map Node [MaximalPath]
+maximalPathsFor graph = Map.fromList [ (n, maximalPaths n) | n <- nodes graph ]
+    where
+      sccs = scc graph
+      sccOf m =  the (m `elem`) $ sccs
+      condensed = condensation graph --       or here
+      maximalPaths n = [ MaximalPath { mPrefix   = reverse $  fmap (fromJust . (lab condensed)) $ mcPrefix revPath,
+                                       mScc      =                 (fromJust . (lab condensed)) (mcScc revPath),
+                                       mEndNodes = reverse $ mcEndNodes revPath
+                                     }
+                       |  revPath <- revPaths [(nodeMap ! (sccOf n))] ]
+      revPaths :: [Node] -> [MaximalPathCondensed]
+      revPaths (ns:rest)
+         | suc condensed ns == []   =    [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
+                                      ++ [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = sink  } | sink  <- [ [n] | n <- nsNodes, length (suc graph n) == 0] ]
+         | (length nsNodes ) > 1    =    [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
+                                      ++ [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = sink  } | sink  <- [ [n] | n <- nsNodes, length (suc graph n) == 0] ]
+                                      ++ [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
+         | let [n] = nsNodes in
+           n `elem` suc graph n     =    [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
+                                      ++ [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
+         | otherwise                =    [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
+       where
+         nsNodes = fromJust $ lab condensed ns
+      nodeMap = Map.fromList [ (ns, n) | (n, ns) <- labNodes condensed ]
 
+
+-- Speed this up, using http://dx.doi.org/10.1137/0205007 or http://dx.doi.org/10.1137/0205007 ?!?! See http://stackoverflow.com/questions/546655/finding-all-cycles-in-graph
+cyclesFrom graph n = cyclesFromIn (nodes graph) graph n
+cyclesFromIn nodes graph n = reverse $ cyclesFromPath [n]
+    where
+      cyclesFromPath path@(n:_) =      [ [n'] ++ (takeWhile (/=n') path) ++ [n'] | n' <- suc graph n, n' `elem` nodes,       n' `elem` path]
+                                   ++  [ cycle                                   | n' <- suc graph n, n' `elem` nodes, not $ n' `elem` path, cycle <- cyclesFromPath (n':path) ]
+
+
+
+-- Examples
+      
 -- shows necessity of change in the "linear path section" rule
 exampleLinear :: Graph gr => gr () ()
 exampleLinear = mkGraph [(-27,()),(-23,()),(-10,()),(4,()),(21,()),(25,()),(26,())] [(-27,21,()),(-23,-10,()),(-23,25,()),(21,-27,()),(25,-27,()),(25,-27,()),(25,4,()),(25,21,()),(26,-27,()),(26,-23,()),(26,-10,()),(26,4,()),(26,21,()),(26,25,())]

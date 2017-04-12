@@ -31,7 +31,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdF3GraphP, nticdF3'GraphP, nticdF3WorkList, nticdF3WorkListSymbolic,   nticdF3, nticdF3', nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP,
-    ntscdF4GraphP, ntscdF3GraphP,                                              ntscdF4, ntscdF3
+    ntscdF4GraphP, ntscdF3GraphP,                                              ntscdF4, ntscdF3,                         ntscdDef, ntscdDefGraphP
   ) 
 
 
@@ -261,11 +261,20 @@ ntscdProps = testGroup "(concerning ntscd )" [
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry
                     in NTICD.ntscdF4      g entry () exit ==
+                       NTICD.ntscdF3      g entry () exit,
+    testProperty  "ntscdDef        == ntscdF3"
+                $ \((CG entry g) :: (Connected Gr () ())) ->
+                    let exit = entry -- all this does is add a self-loop to entry
+                    in NTICD.ntscdDef     g entry () exit ==
                        NTICD.ntscdF3      g entry () exit
   ]
 ntscdTests = testGroup "(concerning ntscd)" $
-  [  testCase    ( "ntscdF4GraphP == ntscdF3GraphP for " ++ exampleName)
-                $ NTICD.ntscdF4GraphP p == NTICD.ntscdF3GraphP p @? ""
+  [  testCase    ( "ntscdF4GraphP     ==       ntscdF3GraphP for " ++ exampleName)
+            $ NTICD.ntscdF4GraphP p   == NTICD.ntscdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "ntscdDefGraphP    ==       ntscdF3GraphP for " ++ exampleName)
+            $ NTICD.ntscdDefGraphP p  == NTICD.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

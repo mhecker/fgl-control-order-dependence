@@ -9,7 +9,7 @@ import Data.List
 
 import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random
-import Control.Monad(forM_, when, forever)
+import Control.Monad(forM_, when, forever, forM)
 import Test.QuickCheck
 
 import Program.Typing.FlexibleSchedulerIndependentChannels

@@ -471,16 +471,19 @@ maximalPathsFor graph = Map.fromList [ (n, maximalPaths n) | n <- nodes graph ]
                        |  revPath <- revPaths [(nodeMap ! (sccOf n))] ]
       revPaths :: [Node] -> [MaximalPathCondensed]
       revPaths (ns:rest)
-         | suc condensed ns == []   =    [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
-                                      ++ [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = sink  } | sink  <- [ [n] | n <- nsNodes, length (suc graph n) == 0] ]
-         | (length nsNodes ) > 1    =    [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
-                                      ++ [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = sink  } | sink  <- [ [n] | n <- nsNodes, length (suc graph n) == 0] ]
-                                      ++ [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
+         | suc condensed ns == []   =    pathsToCycleInNs
+                                      ++ pathsToSinkInNs
+         | (length nsNodes ) > 1    =    pathsToCycleInNs
+                                      ++ pathsToSinkInNs
+                                      ++ pathsToSuccessors
          | let [n] = nsNodes in
-           n `elem` suc graph n     =    [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
-                                      ++ [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
-         | otherwise                =    [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
+           n `elem` suc graph n     =    pathsToCycleInNs
+                                      ++ pathsToSuccessors
+         | otherwise                =    pathsToSuccessors
        where
+         pathsToCycleInNs  = [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = cycle } | cycle <- nub $ [ cycle | n <- nsNodes, cycle <- cyclesFromIn nsNodes graph n] ]
+         pathsToSinkInNs   = [ MaximalPathCondensed { mcPrefix = rest, mcScc = ns, mcEndNodes = sink  } | sink  <- [ [n] | n <- nsNodes, length (suc graph n) == 0] ]
+         pathsToSuccessors = [ path | ns' <- suc condensed ns, path <- revPaths (ns':ns:rest)]
          nsNodes = fromJust $ lab condensed ns
       nodeMap = Map.fromList [ (ns, n) | (n, ns) <- labNodes condensed ]
 

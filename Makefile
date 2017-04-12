@@ -1,5 +1,13 @@
+# uncomment for profiling builds
+# PROF=defined
+
+ifdef PROF
+PROF_GHC=-prof -fprof-auto -osuf p_o
+PROF_RTS=-p
+endif
+
 THREADED=-threaded
-RTS=+RTS -N -RTS
+RTS=+RTS -N $(PROF_RTS) -RTS
 COLOR=--color always
 ROFL = Data/Graph/Inductive/Query/BalancedSCC
 CABAL_PREFIX=cabal exec --
@@ -11,17 +19,29 @@ PATTERN=
 all : all.test all.fail rofl
 
 %.test.bin : .FORCE
-	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+ifdef PROF
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+endif
 
 %.fail.bin : .FORCE
-	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+ifdef PROF
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+endif
 
 
 %.test-xml.bin : .FORCE
-	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+ifdef PROF
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+endif
 
 %.fail-xml.bin : .FORCE
-	$(CABAL_PREFIX) ghc $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+ifdef PROF
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+endif
 
 
 %.test : %.test.bin .FORCE
@@ -49,4 +69,5 @@ clean :
 	find -name "*.dyn_hi"  -not -path "./.cabal-sandbox/*" -delete
 	find -name "*.o"       -not -path "./.cabal-sandbox/*" -delete
 	find -name "*.dyn_o"   -not -path "./.cabal-sandbox/*" -delete
+	find -name "*.p_o"     -not -path "./.cabal-sandbox/*" -delete
 	find -name "*~"        -not -path "./.cabal-sandbox/*" -delete

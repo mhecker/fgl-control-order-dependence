@@ -361,22 +361,25 @@ ntscdDef graph entry label exit =
                      | ni <- condNodes ]
     ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
 
-  where graph' = insEdge (entry, exit, label) graph 
+  where graph' = insEdge (entry, exit, label) graph
+        sccs = scc graph'
+        sccOf m =  the (m `elem`) $ sccs
         condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
         maximalPaths = maximalPathsFor graph'
-        inPath = inPathFor graph'
+        inPath = inPathFor graph' doms
+        doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph') entry) | entry <- nodes graph' ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
 
-inPathFor graph' n (s, path) = inPathFromEntries [s] path
-          where inPathFromEntries entries  (MaximalPath []            endScc endNodes@(end:_))
-                    | n `elem` endScc  = (∀) entries (\entry -> let doms = (dom graph' entry) in
-                                                                let domsEnd = doms `get` end in
+inPathFor graph' doms n (s, path) = inPathFromEntries [s] path
+          where 
+                inPathFromEntries entries  (MaximalPath []            endScc endNodes@(end:_))
+                    | n `elem` endScc  = (∀) entries (\entry -> let domsEnd = (doms ! entry) `get` end in
                                                                 (entry /= end || n == entry) && n `elem` domsEnd
                                          )
                                        ∨ (n `elem` endNodes)
                     | otherwise =  False
                 inPathFromEntries entries  (MaximalPath (scc:prefix)  endScc endNodes)
-                    | n `elem` scc = (∀) entries (\entry -> let doms = (dom graph' entry) in
-                                      (∀) exits (\exit -> let domsexit = doms `get` exit in
+                    | n `elem` scc = (∀) entries (\entry ->
+                                      (∀) exits (\exit -> let domsexit = (doms ! entry) `get` exit in
                                              (entry /= exit || n == entry) && n `elem` domsexit)
                                      )
                                      ∨ (n `elem` endNodes)
@@ -384,16 +387,6 @@ inPathFor graph' n (s, path) = inPathFromEntries [s] path
                   where next =  if (null prefix) then endScc else head prefix
                         borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
                         exits = [ n | (n,_) <- borderEdges ]
-                  
-                -- inPathFromEntries entries  (scc:prefix) 
-                --     | n `elem` scc = (∀) entries (\entry -> let doms = (dom graph' entry) in
-                --                       (∀) exits (\exit -> let domsexit = doms `get` exit in
-                --                              (entry /= exit || n == entry) && n `elem` domsexit)
-                --                      )
-                --     | otherwise    =  inPathFromEntries [ n' | (_,n') <- borderEdges ] prefix
-                --   where next = head prefix
-                --         borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
-                --         exits = [ n | (n,_) <- borderEdges ]
                 get assocs key = fromJust $ List.lookup key assocs
 
 

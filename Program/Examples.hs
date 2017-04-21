@@ -1953,7 +1953,6 @@ notReallyUnsound14 = p { observability = defaultObservabilityMap (tcfg p) }
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
-
 notReallyUnsound15 :: Program Gr
 notReallyUnsound15 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
@@ -1963,6 +1962,23 @@ notReallyUnsound15 = p { observability = defaultObservabilityMap (tcfg p) }
             (3,(Seq (Seq (SpawnThread 2) (ReadFromChannel "c" "stdIn")) (Seq (Ass "c" (Times (Var "z") (Var "z"))) (ReadFromChannel "x" "lowIn1"))))
          ]
 
+
+
+-- see notReallyUnsound
+-- reported in run http://i44pc16:8080/job/irlsod/767/
+-- λ> forever $ mainEquivAnnotatedSome
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ...
+notReallyUnsound16 :: Program Gr
+notReallyUnsound16 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+            (1,(Seq (Seq (Ass "a" (Val 17)) (SpawnThread 2)) (ForV "a" (Ass "z" (Times (Var "a") (Var "a")))))),
+            (2,(Seq (ForV "a" (SpawnThread 3)) (If (Leq (Val 0) (Times (Var "a") (Var "a"))) (PrintToChannel (Times (Var "a") (Var "a")) "stdOut") (Ass "b" (Times (Var "a") (Var "a")))))),
+            (3,(If (Leq (Val 0) (Times (Var "a") (Var "a"))) (Seq Skip (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")) (ForC 1 (Ass "a" (Times (Var "a") (Var "a"))))))
+         ]
 
 
 controlDepExample :: Program Gr

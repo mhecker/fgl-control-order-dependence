@@ -218,26 +218,27 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
         trncl = trc graph
 
 {- the same, with less memory consumption -}
--- here, fiven a sucessor x of a predicate node p,   S[x,p] represents S[m,p] for all m such that   m `elem`  (toNextCond x)
+-- here, for given node node m, S[m,p] is represented by S[m',p] for that condition or join node m'
+-- which preceeds  m in the graph (or: m itself, if there is no such node)
 nticdF3WorkListSymbolicGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3WorkListSymbolicGraphP = cdepGraphP nticdF3WorkListGraph
+nticdF3WorkListSymbolicGraphP = cdepGraphP nticdF3WorkListSymbolicGraph
 
 nticdF3WorkListSymbolicGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
-nticdF3WorkListSymbolicGraph = cdepGraph nticdF3WorkList
+nticdF3WorkListSymbolicGraph = cdepGraph nticdF3WorkListSymbolic
 
 nticdF3WorkListSymbolic :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-nticdF3WorkListSymbolic = ntXcd snmF3WorkListGfp
+nticdF3WorkListSymbolic = ntXcd snmF3WorkListSymbolicGfp
 
 snmF3WorkListSymbolicGfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snmF3WorkListSymbolicGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p <- condNodes ]) smnInit
+snmF3WorkListSymbolicGfp graph = snmWorkList (Set.fromList [ (m,p) | p <- condNodes, m <- representants  ]) smnInit
   where snmWorkList :: Set (Node, Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
         snmWorkList workList s
           | Set.null workList = expandSymbolic s
           | otherwise         = snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
               where ((m,p), workList') = Set.deleteFindMin workList
                     smp  = s ! (m,p)
-                    smp' =   Set.fromList  [ (p,x) | x <- (suc graph p), m == x]
-                           ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), m == x, Just n <- [nextCond x],
+                    smp' =   Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` toNextCond x]
+                           ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
                                                      (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                            ]
                     influenced = if (Set.size smp == Set.size smp')
@@ -245,16 +246,17 @@ snmF3WorkListSymbolicGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes 
                                    else Set.fromList [ (m,n) | n <- prevConds p ]
 --                                 else Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
 
-        smnInit =  Map.fromList [ ((m,p), Set.empty) | p <- condNodes, x <- (suc graph p), let m = x ]
-                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m == x]) | m <- nodes graph, p <- condNodes]
+        smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- condNodes, p <- condNodes]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | p <- condNodes, m <- representants]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
         nextCond = nextCondNode graph
         toNextCond = toNextCondNode graph
         prevConds = prevCondNodes graph
+        representantOf = prevRepresentantNodes graph
+        representants = [ m | m <- nodes graph, (length (pre graph m) /= 1) ∨ (let [n] = pre graph m in n `elem` condNodes)]
         trncl = trc graph
-        expandSymbolic s =
-              Map.fromList [ ((m,p), s ! (x,p))      | p <- condNodes, x <- (suc graph p), m <- toNextCond x]
+        expandSymbolic s = Map.fromList [ ((m,p), s ! (representantOf m, p)) | p <- condNodes, m <- nodes graph]
 
 
 
@@ -416,6 +418,20 @@ prevCondNodes graph start = prevCondsF (pre graph start)
                 [ n'] -> prevCondsF (pre graph n)
                 (_:_) -> [n]
 
+
+
+prevRepresentantNodes graph start =
+      case suc graph start of
+        (_:_:_) -> case pre graph start of
+                     [n] -> prevRepresentant n start
+                     _   -> start
+        _       -> prevRepresentant start start
+    where prevRepresentant n m =
+            case suc graph n of
+                [_] -> case pre graph n of
+                  [n'] -> prevRepresentant n' n
+                  _    -> n
+                _   -> m
 
 data SinkPath = SinkPath { prefix :: [[Node]], controlSink :: [Node] } deriving Show
 

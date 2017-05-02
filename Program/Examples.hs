@@ -1982,6 +1982,44 @@ notReallyUnsound16 = p { observability = defaultObservabilityMap (tcfg p) }
 
 
 -- see notReallyUnsound
+-- reported in run http://i44pc16:8080/job/irlsod/800/
+-- λ> forever $ mainEquivAnnotatedSome
+-- λ> forever $ mainEquivAnnotatedSome
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ...
+-- ... (90 times) ..
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- -----------------
+-- p  = 1123 % 1875 ≃ 0.59893                                  p' = 1078 % 1875 ≃ 0.57493
+-- fromList []
+-- ---(10,PrintEvent 42 "stdOut")-->
+-- fromList []
+-- fromList []
+-- ---(15,ReadEvent 1 "lowIn1")-->
+-- fromList [("c",1)]
+-- fromList []
+-- ---(15,ReadEvent 2 "lowIn1")-->
+-- fromList [("c",2)]
+-- fromList [("c",2)]
+-- ---(22,PrintEvent 4 "stdOut")-->
+-- fromList []
+-- fromList [("c",2)]
+-- ---(22,PrintEvent 4 "stdOut")-->
+-- fromList []
+-- fromList [("c",2)]
+-- ---(22,PrintEvent 4 "stdOut")-->
+-- fromList []
+notReallyUnsound18 :: Program Gr
+notReallyUnsound18 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+            (1,(Seq (If CTrue Skip (ReadFromChannel "a" "lowIn1")) (Seq (PrintToChannel (Val 42) "stdOut") (SpawnThread 2)))),
+            (2,(ForC 2 (Seq (ReadFromChannel "c" "lowIn1") (SpawnThread 3))) ),
+            (3,(ForV "c" (If (Leq (Val 0) (Times (Var "c") (Var "c"))) (PrintToChannel (Times (Var "c") (Var "c")) "stdOut") (ReadFromChannel "a" "stdIn"))))
+         ]
+
+
+
+-- see notReallyUnsound
 -- reported in run http://i44pc16:8080/job/irlsod/814/
 -- λ> forever $ mainEquivAnnotatedSome
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
@@ -2097,6 +2135,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound15),
               $(withName 'notReallyUnsound16),
               $(withName 'notReallyUnsound17),
+              $(withName 'notReallyUnsound18),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

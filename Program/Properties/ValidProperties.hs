@@ -189,7 +189,7 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 nticdProps = testGroup "(concerning nticd )" [
-    testProperty  "controlDependenceGraphp       == nticdF3GraphP"
+    testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   controlDependenceGraphP p      == NTICD.nticdF3GraphP p,
     testProperty  "nticdF3'GraphP                == nticdF3GraphP"
@@ -202,7 +202,7 @@ nticdProps = testGroup "(concerning nticd )" [
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
 
-    testProperty  "controlDependence      == nticdF3"
+    testProperty  "controlDependence      == nticdF3                for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g entry () exit ==

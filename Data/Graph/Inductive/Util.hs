@@ -130,10 +130,8 @@ cycles gr (p:path) ns end = do
         else do
           cycles gr (n:p:path) (delete n ns) end
 
-
-
-withUniqueEndNode :: DynGraph gr => a -> b -> gr a b -> (Node, gr a b)
-withUniqueEndNode endLabel endEdgeLabel gr = (end, 
+addUniqueEndNode :: DynGraph gr => a -> b -> gr a b -> (Node, gr a b)
+addUniqueEndNode endLabel endEdgeLabel gr = (end,
         foldr (\n g -> insEdge (n, end, endEdgeLabel) g)
               (insNode (end, endLabel) gr)
               [ n | scc <- sccs, isEndScc scc, let n = head scc ]
@@ -141,3 +139,15 @@ withUniqueEndNode endLabel endEdgeLabel gr = (end,
     where sccs = scc gr
           [end] = newNodes 1 gr
           isEndScc scc = (∀) scc (\n -> (∀) (suc gr n) (\n' -> n' `elem` scc))
+
+
+uniqueEndNodes :: DynGraph gr => gr a b -> [Node]
+uniqueEndNodes gr = [ n | n <- nodes gr, (∀) (nodes gr) (\m -> n `elem` suc trncl m), suc gr n == []]
+    where trncl = trc gr
+
+withUniqueEndNode :: DynGraph gr => a -> b -> gr a b -> (Node, gr a b)
+withUniqueEndNode endLabel endEdgeLabel gr =
+    case uniqueEndNodes gr of
+      []    -> addUniqueEndNode endLabel endEdgeLabel gr
+      [end] -> (end, gr)
+      _     -> error "cannot happen: there cannot be multiple unique nodes"

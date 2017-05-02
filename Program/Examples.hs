@@ -1981,6 +1981,26 @@ notReallyUnsound16 = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+-- see notReallyUnsound
+-- reported in run http://i44pc16:8080/job/irlsod/814/
+-- λ> forever $ mainEquivAnnotatedSome
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+notReallyUnsound17 :: Program Gr
+notReallyUnsound17 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+            (1, (Seq (Seq (SpawnThread 2) (PrintToChannel (Val 0) "stdOut")) (Seq (PrintToChannel (Val 0) "stdOut") (ReadFromChannel "b" "lowIn1")))),
+            (2, (ForC 2 (Seq (ReadFromChannel "x" "lowIn1") (ReadFromChannel "x" "lowIn1"))))
+         ]
+
+
+
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
@@ -2071,6 +2091,12 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound9),
               $(withName 'notReallyUnsound10),
               $(withName 'notReallyUnsound11),
+              $(withName 'notReallyUnsound12),
+              $(withName 'notReallyUnsound13),
+              $(withName 'notReallyUnsound14),
+              $(withName 'notReallyUnsound15),
+              $(withName 'notReallyUnsound16),
+              $(withName 'notReallyUnsound17),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

@@ -2039,6 +2039,31 @@ notReallyUnsound17 = p { observability = defaultObservabilityMap (tcfg p) }
 
 
 
+-- see notReallyUnsound
+-- reported in run http://i44pc16:8080/job/irlsod/835/
+-- λ> forever $ mainEquivAnnotatedSome
+λ> forever $ mainEquivAnnotatedSome
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+-- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
+notReallyUnsound19 :: Program Gr
+notReallyUnsound19 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+            (1,(Seq (Seq (Ass "y" (Val 17)) (Ass "a" (Times (Var "y") (Var "y")))) (ForC 2 (SpawnThread 3)))),
+            (2,(ForC 1 (Seq (ReadFromChannel "c" "stdIn") (ReadFromChannel "c" "stdIn")))),
+            (3,(ForV "y" (Seq (PrintToChannel (Times (Var "y") (Var "y")) "stdOut") (SpawnThread 2))))
+         ]
+
+
+
+
+
+
+
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
@@ -2136,6 +2161,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound16),
               $(withName 'notReallyUnsound17),
               $(withName 'notReallyUnsound18),
+              $(withName 'notReallyUnsound19),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

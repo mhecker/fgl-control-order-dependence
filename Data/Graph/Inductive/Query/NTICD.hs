@@ -220,6 +220,43 @@ snmF3'dual :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF3'dual graph = snmLfpDual graph f3'dual
 
 
+{- the same, with less memory consumption -}
+-- here, for given node node m, S[m,p] is represented by S[m',p] for that condition or join node m'
+-- which preceeds  m in the graph (or: m itself, if there is no such node)
+nticdF3'dualWorkListSymbolicGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdF3'dualWorkListSymbolicGraphP = cdepGraphP nticdF3'dualWorkListSymbolicGraph
+
+nticdF3'dualWorkListSymbolicGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3'dualWorkListSymbolicGraph = cdepGraph nticdF3'dualWorkListSymbolic
+
+nticdF3'dualWorkListSymbolic :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3'dualWorkListSymbolic = ntXcd snmF3'dualWorkListSymbolicLfp
+
+snmF3'dualWorkListSymbolicLfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF3'dualWorkListSymbolicLfp graph = snmWorkList (Set.fromList [ (m,n,x) | p <- condNodes, m <- representants, Set.size (smnInit ! (m,p)) /= 0, (n,x) <- prevCondsWithSucc p ]) smnInit
+  where snmWorkList :: Set (Node, Node, Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
+        snmWorkList workList s
+          | Set.null workList = expandSymbolic s
+          | otherwise         = snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
+              where ((m,p,x), workList') = Set.deleteFindMin workList
+                    smp  = s ! (m,p)
+                    smp' = if (not $ m `elem` toNextCond x) then (Set.insert (p,x) smp) else smp
+                    influenced = if (Set.size smp == 0 && Set.size smp' > 0)
+                                   then Set.fromList [ (m,n,x') | (n,x') <- prevCondsWithSucc p ]
+                                   else Set.empty
+
+        smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- condNodes, p <- condNodes]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, not $ m `elem` reachable x]) | p <- condNodes, m <- representants]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        prevCondsWithSucc = prevCondsWithSuccNode graph
+        representantOf = prevRepresentantNodes graph
+        representants = [ m | m <- nodes graph, (length (pre graph m) /= 1) ∨ (let [n] = pre graph m in n `elem` condNodes)]
+        trncl = trc graph
+        expandSymbolic s = Map.fromList [ ((m,p), s ! (representantOf m, p)) | p <- condNodes, m <- nodes graph]
+
 {- A Worklist-Implementation of nticd, based on f3 -}
 nticdF3WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF3WorkListGraphP = cdepGraphP nticdF3WorkListGraph
@@ -457,6 +494,14 @@ prevCondNodes graph start = prevCondsF (pre graph start)
             | otherwise  = case suc graph n of
                 [ n'] -> prevCondsF (pre graph n)
                 (_:_) -> [n]
+
+prevCondsWithSuccNode graph start = prevCondsF [(p, start) | p <- pre graph start]
+    where prevCondsF front = concat $ fmap prevConds front
+          prevConds  (n,x)
+            | n == start = [(n,x)]
+            | otherwise  = case suc graph n of
+                [ n'] -> prevCondsF [ (p,n) | p <- pre graph n]
+                (_:_) -> [(n,x)]
 
 
 

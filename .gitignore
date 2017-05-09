@@ -8,4 +8,9 @@
 *.test.bin
 *.test-xml.bin
 *.dot
+.cabal-sandbox/
+cabal.sandbox.config
 TAGS
+Data/Graph/Inductive/Query/BalancedSCC
+Program/Properties/TransitionSystems
+Program/Properties/ValidProperties

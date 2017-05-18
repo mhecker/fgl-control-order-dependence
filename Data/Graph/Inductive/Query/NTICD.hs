@@ -399,6 +399,12 @@ snmF3Lfp graph = snmLfp graph f3
 
 
 
+nticdIndusGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdIndusGraphP = cdepGraphP nticdIndusGraph
+
+nticdIndusGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdIndusGraph = cdepGraph nticdIndus
+
 nticdIndus :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
 nticdIndus graph entry b exit = go (nodes graph) [] deps
     where

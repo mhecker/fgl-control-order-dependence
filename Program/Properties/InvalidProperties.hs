@@ -50,7 +50,8 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    nticdFGraphP,  nticdF
+    nticdFGraphP, nticdF,
+    nticdFGraphP, nticdIndusGraphP
   ) 
 
 
@@ -150,6 +151,10 @@ nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "controlDependenceGraphP   ==       nticdFGraphP for " ++ exampleName)
                   $ controlDependenceGraphP p == NTICD.nticdFGraphP p @? ""
   | (exampleName, p) <- failingNticd
+  ] ++
+  [  testCase    ( "nticdFGraphP    ==       nticdIndusGraphP for " ++ exampleName)
+            $ NTICD.nticdFGraphP p  == NTICD.nticdIndusGraphP p @? ""
+  | (exampleName, p) <- testsuite
   ] ++
   []
 

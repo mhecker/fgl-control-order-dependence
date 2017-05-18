@@ -379,6 +379,38 @@ f4 graph condNodes _ _ _ s
 
 
 
+{- A correct implementation of ntscd, as given in [1], Figure 4 -}
+ntscdF4WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntscdF4WorkListGraphP = cdepGraphP ntscdF4WorkListGraph
+
+ntscdF4WorkListGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdF4WorkListGraph = cdepGraph ntscdF4WorkList
+
+ntscdF4WorkList :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdF4WorkList = ntXcd snmF4WorkListLfp
+
+snmF4WorkListLfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF4WorkListLfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- suc graph n ]) smnInit
+  where snmWorkList :: Set (Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
+        snmWorkList workList s
+          | Set.null workList = s
+          | otherwise         = snmWorkList (influenced ⊔ workList') s'
+              where (n, workList') = Set.deleteFindMin workList
+                    tn = Set.size $ Set.fromList $ suc graph n
+                    s'
+                     | tn == 1   = let [m] = nub $ suc graph n in     s ⊔  Map.fromList [ ((m,p), s ! (m,p)  ⊔  s ! (n,p)) |                                                 p <- condNodes ]
+                     | tn  > 1   =                                    s ⊔  Map.fromList [ ((m,p), s ! (m,p)  ⊔  s ! (n,p)) | m <- nodes graph, (Set.size $ s ! (m,n)) == tn, p <- condNodes ]
+                     | otherwise = s 
+                    influenced 
+                     | tn == 1   = let [m] = nub $ suc graph n in  Set.fromList [ m |                                                 p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)]
+                                                                 ⊔ Set.fromList [ p |                                                 p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)] -- these are missing in their paper
+                     | tn  > 1   =                                 Set.fromList [ m | m <- nodes graph, (Set.size $ s ! (m,n)) == tn, p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)]
+                                                                 ⊔ Set.fromList [ p | m <- nodes graph, (Set.size $ s ! (m,n)) == tn, p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)] -- these are missing in their paper
+                     | otherwise = Set.empty
+        smnInit =  Map.fromList [ ((m,n), Set.empty)              | n <- condNodes, m <- nodes graph]
+                 ⊔ Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
 
 {- A correct implementation of ntscd,
    using the lfp of functional f3.

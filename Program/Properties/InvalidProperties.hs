@@ -50,8 +50,8 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    nticdFGraphP, nticdF,
-    nticdFGraphP, nticdIndusGraphP
+    nticdF,                          ntscdFig4,       ntscdF3,
+    nticdFGraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP
   ) 
 
 
@@ -74,6 +74,9 @@ preccexX   = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup 
 
 nticd      = defaultMain                               $ expectFail $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
 nticdX     = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
+
+ntscd      = defaultMain                               $ expectFail $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
+ntscdX     = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 
 
 misc       = defaultMain                               $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
@@ -146,7 +149,7 @@ nticdProps = testGroup "(concerning nticd )" [
                     in controlDependence      g entry () exit ==
                        NTICD.nticdF          g entry () exit
   ]
-
+  
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "controlDependenceGraphP   ==       nticdFGraphP for " ++ exampleName)
                   $ controlDependenceGraphP p == NTICD.nticdFGraphP p @? ""
@@ -157,6 +160,22 @@ nticdTests = testGroup "(concerning nticd)" $
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+
+ntscdTests = testGroup "(concerning ntsd)" $
+  []
+
+ntscdProps = testGroup "(concerning ntscd )" [
+    testProperty  "ntscdFig4GraphP          == ntscdF3GraphP"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  NTICD.ntscdFig4GraphP p   == NTICD.ntscdF3GraphP p,
+    testProperty  "ntscdFig4                == ntscdF3"
+                $ \((CG entry g) :: (Connected Gr () ())) ->
+                    let exit = entry -- all this does is add a self-loop to entry
+                    in NTICD.ntscdFig4       g entry () exit ==
+                       NTICD.ntscdF3         g entry () exit
+  ]
+
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
   [ testCase ("cdomIsCdom' idomChef for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomChef) == [] @? ""

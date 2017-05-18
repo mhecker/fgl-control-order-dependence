@@ -24,6 +24,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Set.Unicode
 
+
+
 {-    1
       2----spawn-
       7<--       3
@@ -120,7 +122,28 @@ example2' = Program {
         tcfg = mkGraph (genLNodes 1 12)  $
                        [(1,2,Assign "x" (Val 42)),(2,3,true),(2,4,false),(3,5,nop),(4,5,nop),(5,6,Assign "x" (Var "x")),(6,7,nop)]
                    ++  [(7,8,nop),(8,9,nop),(9,10,nop),(10,7,false),(10,11,true),(11,12,Assign "x" (Var "x"))]
- 
+
+
+
+
+
+exampleNticd :: Program Gr
+exampleNticd = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [4, 1, 6, 10, 15, -1] = 1
+         | otherwise = error "uknown node"
+        entryOf 1 = 15
+        exitOf 1 = -1
+        tcfg =  mkGraph [(15,15),(4,4),(1,1),(-1,-1)] [(4,1,nop),(4,-1,nop),(1,4,nop),(1,-1,nop),(15,1,nop),(15,-1,nop)]
+
 {-
      1
      2 ----   3
@@ -2198,5 +2221,10 @@ failingCdomIsCdom' = [
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample3)
+            ]
+
+
+failingNticd = [
+              $(withName 'exampleNticd)
             ]
 

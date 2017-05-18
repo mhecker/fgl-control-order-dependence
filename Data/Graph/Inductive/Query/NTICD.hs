@@ -133,6 +133,20 @@ f graph condNodes _ _ _ s
                  ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
 
 
+nticdFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdFGraphP = cdepGraphP nticdFGraph
+
+nticdFGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdFGraph = cdepGraph nticdF
+
+nticdF :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF = ntXcd snmF
+
+snmF :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF graph = snmLfp graph f
+
+
+
 
 
 {- two correct nticd implementations, using the gfp of functional f3/f3' -}

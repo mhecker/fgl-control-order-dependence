@@ -61,8 +61,9 @@ nodeDomFront :: DynGraph gr =>
              -> Node
              -> Map Node (Set Node)
 nodeDomFront g doms df b = case preds of
-        _:_:_ -> foldl' addDoms df preds
-        _     -> df
+        []    -> df
+        [_]   -> df
+        _     -> foldl' addDoms df preds
     where  preds = pre g b
            addDoms :: Map Node (Set Node)
                    -> Node

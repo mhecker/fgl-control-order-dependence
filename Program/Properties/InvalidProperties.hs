@@ -28,7 +28,7 @@ import Data.Ord
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
 import Data.Graph.Inductive (mkGraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
@@ -46,6 +46,14 @@ import Program.Analysis
 import Program.CDom
 import Program.Generator (toProgram, GeneratedProgram)
 
+import Data.Graph.Inductive.Arbitrary
+
+import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
+import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    nticdFGraphP,  nticdF
+  ) 
+
+
 main      = all
 
 all        = defaultMain                               $ expectFail $ tests
@@ -62,6 +70,10 @@ soundness  = defaultMain                               $ expectFail $ testGroup 
 soundnessX = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "soundness" [ mkTest [soundnessTests], mkProp [soundnessProps] ]
 preccex    = defaultMain                               $ expectFail $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
 preccexX   = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
+
+nticd      = defaultMain                               $ expectFail $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
+nticdX     = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
+
 
 misc       = defaultMain                               $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
 miscX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
@@ -124,6 +136,22 @@ giffhornProps = testGroup "(concerning Giffhorns LSOD)" [
 giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
   []
 
+
+
+nticdProps = testGroup "(concerning nticd )" [
+    testProperty  "controlDependence      == nticdF                for graphs with unique end node property"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                    in controlDependence      g entry () exit ==
+                       NTICD.nticdF          g entry () exit
+  ]
+
+nticdTests = testGroup "(concerning nticd)" $
+  [  testCase    ( "controlDependenceGraphP   ==       nticdFGraphP for " ++ exampleName)
+                  $ controlDependenceGraphP p == NTICD.nticdFGraphP p @? ""
+  | (exampleName, p) <- failingNticd
+  ] ++
+  []
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
   [ testCase ("cdomIsCdom' idomChef for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomChef) == [] @? ""

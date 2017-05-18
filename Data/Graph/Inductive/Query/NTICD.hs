@@ -384,6 +384,46 @@ snmF3Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF3Lfp graph = snmLfp graph f3
 
 
+
+nticdIndus :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdIndus graph entry b exit = go (nodes graph) [] deps
+    where
+      go []             seen newDeps = newDeps
+      go (dependent:ds) seen newDeps = go ds seen newDeps'
+        where newDeps' = process dependent newDeps
+      process dependent newDeps = run dependent [ d | d <- nodes graph, dependent ∈ (deps ! d)] [] newDeps
+        where 
+          run dependent []            seen newDeps = newDeps
+          run dependent (dependee:ds) seen newDeps
+            | dependee `elem` seen                                       = run
+                dependent
+                ds
+                seen
+                newDeps
+            | shouldRemoveDepBetween dependee dependent sinkNodes = run
+                dependent
+                (ds ++ [ d | d <- nodes graph, dependee ∈ (deps ! d) ])
+                (dependee:seen)
+                (Map.update (\dependents -> Just $ Set.delete  dependent  dependents) dependee newDeps)
+            | otherwise               = run
+                dependent
+                ds
+                (dependee:seen)
+                (Map.update (\dependents -> Just $ Set.insert dependent  dependents) dependee newDeps)
+          sinkNodes = nodesOfSinksNotContainingNode dependent
+      
+      deps = ntscdF4 graph entry b exit
+      csinks = controlSinks graph
+      nodesOfSinksNotContainingNode node = [ n | sink <- csinks, not $ node `elem` sink, n <- sink]
+      shouldRemoveDepBetween dependee dependent sinkNodes = run [dependee] [dependent]
+        where run []     seen = True
+              run (n:ns) seen
+                | n `elem` seen   = run ns seen
+                | n `elem` sinkNodes = False
+                | otherwise = run ((suc graph n) ++ ns) (n:seen)
+
+
+
 {- The definition of nticd -}
 nticdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdDefGraphP = cdepGraphP nticdDefGraph

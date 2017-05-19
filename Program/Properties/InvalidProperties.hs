@@ -163,6 +163,10 @@ nticdTests = testGroup "(concerning nticd)" $
 
 
 ntscdTests = testGroup "(concerning ntsd)" $
+  [  testCase    ( "ntscdFig4GraphP         ==       ntscdF3GraphP for " ++ exampleName)
+            $ NTICD.ntscdFig4GraphP p       == NTICD.ntscdF3GraphP p @? ""
+  | (exampleName, p) <- failingNtscd
+  ] ++
   []
 
 ntscdProps = testGroup "(concerning ntscd )" [

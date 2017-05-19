@@ -144,6 +144,38 @@ exampleNticd = Program {
         exitOf 1 = -1
         tcfg =  mkGraph [(15,15),(4,4),(1,1),(-1,-1)] [(4,1,nop),(4,-1,nop),(1,4,nop),(1,-1,nop),(15,1,nop),(15,-1,nop)]
 
+
+exampleNtscd :: Program Gr
+exampleNtscd = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+         (1,ForC 1 (Seq (ForC 2
+                            (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))
+                        (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                            (ReadFromChannel "a" "stdIn")
+                         {-else-}
+                            (ReadFromChannel "a" "stdIn"))))
+         ]
+
+
+exampleNtscd2 :: Program Gr
+exampleNtscd2 = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [-20,15,18,22,27] = 1
+         | otherwise = error "uknown node"
+        entryOf 1 = 27
+        exitOf 1 = 18
+        tcfg = mkGraph [(-20,-20),(15,15),(18,18),(22,22),(27,27)] [(-20,15,nop),(-20,18,nop),(15,18,nop),(15,22,nop),(22,18,nop),(27,-20,nop),(27,18,nop)]
+
+
 {-
      1
      2 ----   3
@@ -2226,5 +2258,10 @@ failingCdomIsCdom' = [
 
 failingNticd = [
               $(withName 'exampleNticd)
+            ]
+
+failingNtscd = [
+              $(withName 'exampleNtscd),
+              $(withName 'exampleNtscd2)
             ]
 

@@ -443,6 +443,50 @@ snmFig4Lfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- suc grap
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 
+
+{- A faulty implementation of nticd, as given in [1], Figure 5, with attempts to fix the worklist updates  -}
+nticdFig5GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdFig5GraphP = cdepGraphP nticdFig5Graph
+
+nticdFig5Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdFig5Graph = cdepGraph nticdFig5
+
+nticdFig5 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdFig5 = ntXcd snmFig5Lfp
+
+snmFig5Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmFig5Lfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- suc graph n ]) smnInit
+  where snmWorkList :: Set (Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
+        snmWorkList workList s
+          | Set.null workList = s
+          | otherwise         = snmWorkList (influenced ⊔ influenced2 ⊔ workList') s''
+              where (n, workList') = Set.deleteFindMin workList
+                    tn = Set.size $ Set.fromList $ suc graph n
+                    s'
+                     | tn == 1   = let [m] = nub $ suc graph n in     s ⊔  Map.fromList [ ((m,p), s ! (m,p)  ⊔  s ! (n,p)) |                                                 p <- condNodes ]
+                     | tn  > 1   =                                    s ⊔  Map.fromList [ ((m,p), s ! (m,p)  ⊔  s ! (n,p)) | m <- nodes graph, (Set.size $ s ! (m,n)) == tn, p <- condNodes ]
+                     | otherwise = s
+                    influenced
+                     | tn == 1   = let [m] = nub $ suc graph n in  Set.fromList [ m |                                                 p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)]
+                                                                 ⊔ Set.fromList [ p |                                                 p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)] -- these are missing in their paper
+                     | tn  > 1   =                                 Set.fromList [ m | m <- nodes graph, (Set.size $ s ! (m,n)) == tn, p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)]
+                                                                 ⊔ Set.fromList [ p | m <- nodes graph, (Set.size $ s ! (m,n)) == tn, p <- condNodes, s ! (m,p)  /=  s ! (m,p)  ⊔  s ! (n,p)] -- these are missing in their paper
+                     | otherwise = Set.empty
+
+                    s''
+                     | n `elem` condNodes ∧ (Set.size $ s' ! (n,n)) > 0  =  s' ⊔  Map.fromList [ ((m,n),                               s' ! (m,n)  ⊔  s' ! (n,n)) | m <- suc graph n, m /= n]
+                     | otherwise = s'
+                    influenced2
+                     | n `elem` condNodes ∧ (Set.size $ s' ! (n,n)) > 0  =  Set.fromList [m | m <- suc graph n, m /= n, s' ! (m,n) /=  s' ! (m,n)  ⊔  s' ! (n,n)]
+                                                                          ⊔ Set.fromList [n | m <- suc graph n, m /= n, s' ! (m,n) /=  s' ! (m,n)  ⊔  s' ! (n,n)] -- this is missing in their paper
+                     | otherwise = Set.empty
+
+        smnInit =  Map.fromList [ ((m,n), Set.empty)              | n <- condNodes, m <- nodes graph]
+                 ⊔ Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+
 {- A correct implementation of ntscd,
    using the lfp of functional f3.
 

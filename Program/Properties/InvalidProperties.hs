@@ -50,8 +50,8 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    nticdF,                          ntscdFig4,       ntscdF3, nticdF, nticdFig5,
-    nticdFGraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdFGraphP, nticdFig5GraphP
+    nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus,
+    nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP
   ) 
 
 
@@ -147,31 +147,36 @@ nticdProps = testGroup "(concerning nticd )" [
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g entry () exit ==
-                       NTICD.nticdF           g entry () exit,
+                       NTICD.nticdF5          g entry () exit,
     testProperty  "controlDependence      == nticdFig5             for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g entry () exit ==
-                       NTICD.nticdFig5        g entry () exit
+                       NTICD.nticdFig5        g entry () exit,
+    testProperty  "controlDependence      == nticdIndus            for graphs with unique end node property"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                    in controlDependence      g entry () exit ==
+                       NTICD.nticdIndus       g entry () exit
   ]
   
 nticdTests = testGroup "(concerning nticd)" $
-  [  testCase    ( "controlDependenceGraphP   ==       nticdFGraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == NTICD.nticdFGraphP p @? ""
+  [  testCase    ( "controlDependenceGraphP   ==       nticdF5GraphP for " ++ exampleName)
+                  $ controlDependenceGraphP p == NTICD.nticdF5GraphP p @? ""
   | (exampleName, p) <- failingNticd
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdFig5GraphP for " ++ exampleName)
                   $ controlDependenceGraphP p == NTICD.nticdFig5GraphP p @? ""
   | (exampleName, p) <- failingNticd
   ] ++
-  [  testCase    ( "nticdFGraphP    ==       nticdIndusGraphP for " ++ exampleName)
-            $ NTICD.nticdFGraphP p  == NTICD.nticdIndusGraphP p @? ""
+  [  testCase    ( "controlDependenceGraphP   ==       nticdIndusGraphP for " ++ exampleName)
+                  $ controlDependenceGraphP p == NTICD.nticdIndusGraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
 
 
-ntscdTests = testGroup "(concerning ntsd)" $
+ntscdTests = testGroup "(concerning ntscd)" $
   [  testCase    ( "ntscdFig4GraphP         ==       ntscdF3GraphP for " ++ exampleName)
             $ NTICD.ntscdFig4GraphP p       == NTICD.ntscdF3GraphP p @? ""
   | (exampleName, p) <- failingNtscd

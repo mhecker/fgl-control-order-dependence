@@ -118,8 +118,8 @@ ntXcd snm graph entry label exit =
        University of Nebraska
 -}
 
-f :: DynGraph gr => SmnFunctionalGen gr a b
-f graph condNodes _ _ _ s
+f5 :: DynGraph gr => SmnFunctionalGen gr a b
+f5 graph condNodes _ _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise =
@@ -133,17 +133,17 @@ f graph condNodes _ _ _ s
                  ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
 
 
-nticdFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdFGraphP = cdepGraphP nticdFGraph
+nticdF5GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdF5GraphP = cdepGraphP nticdF5Graph
 
-nticdFGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
-nticdFGraph = cdepGraph nticdF
+nticdF5Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF5Graph = cdepGraph nticdF5
 
-nticdF :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-nticdF = ntXcd snmF
+nticdF5 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF5 = ntXcd snmF5
 
-snmF :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snmF graph = snmLfp graph f
+snmF5 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF5 graph = snmLfp graph f5
 
 
 

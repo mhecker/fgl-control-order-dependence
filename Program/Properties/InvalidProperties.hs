@@ -144,7 +144,8 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 nticdProps = testGroup "(concerning nticd )" [
-    testProperty  "snmF5                  ⊑  snmf3                  for graphs with unique end node property"
+    testProperty ("nticdF5               /= nticdF3 implies that\n" ++ 
+                  "snmF5                  ⊑  snmf3                  , for graphs with unique end node property, without self-edges")
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                         selfedges = [ e | e@(n,m) <- edges g, n == m]

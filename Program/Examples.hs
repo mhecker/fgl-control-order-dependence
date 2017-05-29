@@ -126,7 +126,18 @@ example2' = Program {
 
 
 
-
+--    15
+--  /    \
+--  |    |
+--  |    v
+--  |<---1 ----
+--  |    ^    |
+--  |    |    |
+--  |<---4<----
+--  |   /
+--  |
+--  v
+-- -1
 exampleNticd :: Program Gr
 exampleNticd = Program {
     tcfg = tcfg,
@@ -143,6 +154,43 @@ exampleNticd = Program {
         entryOf 1 = 15
         exitOf 1 = -1
         tcfg =  mkGraph [(15,15),(4,4),(1,1),(-1,-1)] [(4,1,nop),(4,-1,nop),(1,4,nop),(1,-1,nop),(15,1,nop),(15,-1,nop)]
+
+
+
+exampleSmnF5 :: Program Gr
+exampleSmnF5 = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n
+         | n `elem` [8, 5, 1, 12] = 1
+         | otherwise = error "uknown node"
+        entryOf 1 = 12
+        exitOf 1 = 5
+        tcfg =  mkGraph [(8,8),(5,5),(1,1),(12,12)] [(8,5,nop),(1,8,nop),(1,5,nop),(1,1,nop),(12,8,nop),(12,5,nop),(12,1,nop)]
+
+
+exampleNticd2SmnF5 :: Program Gr
+exampleNticd2SmnF5 = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n
+         | n `elem` [17, 1, 2, 3, 7, 8] = 1
+         | otherwise = error "uknown node"
+        entryOf 1 = 8
+        exitOf 1 = 7
+        tcfg = mkGraph [(17,17),(1,1),(2,2),(3,3),(7,7),(8,8)] [(1,7,nop), (17,1,nop),(17,2,nop),(17,3,nop),(2,17,nop),(3,17,nop),(3,7,nop),(8,17,nop),(8,1,nop),(8,2,nop),(8,3,nop),(8,7,nop)]
 
 
 exampleNtscd :: Program Gr
@@ -2257,11 +2305,20 @@ failingCdomIsCdom' = [
 
 
 failingNticd = [
-              $(withName 'exampleNticd)
+              $(withName 'exampleNticd),
+              $(withName 'exampleNticd2SmnF5)
             ]
 
 failingNtscd = [
               $(withName 'exampleNtscd),
               $(withName 'exampleNtscd2)
             ]
+
+failingSnmF3F5 = [
+              $(withName 'exampleNticd2SmnF5),
+              $(withName 'exampleSmnF5)
+            ]
+
+
+
 

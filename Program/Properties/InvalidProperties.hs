@@ -29,7 +29,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
-import Data.Graph.Inductive (mkGraph)
+import Data.Graph.Inductive (mkGraph, edges)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 import Program (Program)
@@ -50,8 +50,9 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus,
-    nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP
+    nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
+    nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
+    snmF3, snmF5
   ) 
 
 
@@ -143,6 +144,17 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 nticdProps = testGroup "(concerning nticd )" [
+    testProperty  "snmF5                  ⊑  snmf3                  for graphs with unique end node property"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                        selfedges = [ e | e@(n,m) <- edges g, n == m]
+                    in
+                       selfedges == [] &&
+                       NTICD.nticdF5      g entry () exit /=
+                       NTICD.nticdF3      g entry () exit
+                       ==>
+                       NTICD.snmF5        g ⊑
+                       NTICD.snmF3        g,
     testProperty  "controlDependence      == nticdF                for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph

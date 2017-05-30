@@ -32,7 +32,7 @@ import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
 import Data.Graph.Inductive (mkGraph, edges)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
-import Program (Program)
+import Program (Program, tcfg)
 import Program.Defaults
 
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannelFor)
@@ -174,6 +174,14 @@ nticdProps = testGroup "(concerning nticd )" [
   ]
   
 nticdTests = testGroup "(concerning nticd)" $
+  [  testCase    ( "snmF5                     ⊑  snmF3 for " ++ exampleName)
+                  $ let g = tcfg p
+                    in
+                       NTICD.snmF5        g ⊑
+                       NTICD.snmF3        g
+                    @? ""
+  | (exampleName, p) <- failingSnmF3F5
+  ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF5GraphP for " ++ exampleName)
                   $ controlDependenceGraphP p == NTICD.nticdF5GraphP p @? ""
   | (exampleName, p) <- failingNticd

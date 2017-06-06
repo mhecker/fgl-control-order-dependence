@@ -60,7 +60,7 @@ cdepGraph cdGen graph entry label exit = mkGraph (labNodes graph) [ (n,n',Contro
 snmGfp :: DynGraph gr => gr a b -> SmnFunctionalGen gr a b -> Map (Node, Node) (Set (T Node))
 snmGfp graph f = (𝝂) smnInit (f3 graph condNodes reachable nextCond toNextCond)
   where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
-                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p]) | m <- nodes graph, p <- condNodes]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
         nextCond = nextCondNode graph
@@ -79,7 +79,7 @@ snmLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCo
 
 snmLfpDual :: DynGraph gr => gr a b -> SmnFunctionalGen gr a b -> Map (Node, Node) (Set (T Node))
 snmLfpDual graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCond)
-  where smnInit =  Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, not $ m `elem` reachable x ]) | m <- nodes graph, p <- condNodes ]
+  where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         reachable x = suc trncl x
         nextCond = nextCondNode graph
@@ -151,30 +151,34 @@ snmF5 graph = snmLfp graph f5
 
 {- two correct nticd implementations, using the gfp of functional f3/f3' -}
 f3 :: DynGraph gr => SmnFunctionalGen gr a b
-f3 graph condNodes _ nextCond toNextCond s
+f3 graph condNodes reachable nextCond toNextCond s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise =
---                 Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ] ⊔
-                   Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- suc graph p, m `elem` toNextCond x ]
+                   Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- suc graph p,
+                                                                  m `elem` reachable x,
+                                                                  m `elem` toNextCond x]
                                   ) | m <- nodes graph, p <- condNodes]
-                 ⊔ Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x], 
+                 ⊔ Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- (suc graph p),
+                                                                  m `elem` reachable x,
+                                                                  Just n <- [nextCond x], 
                                                                   (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                                ]
                                   ) | m <- nodes graph, p <- condNodes ]
 
 f3' :: DynGraph gr => SmnFunctionalGen gr a b
-f3' graph condNodes _ nextCond toNextCond s
+f3' graph condNodes reachable nextCond toNextCond s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise =
                    Map.fromList [ ((m,p),
---                      Set.fromList [ (p,m) | m `elem` suc graph p ] ⊔
-                        Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` toNextCond x]
-                      ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
+                        Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` reachable x,
+                                                                    m `elem` toNextCond x]
+                      ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` reachable x,
+                                                                    Just n <- [nextCond x],
                                                 (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                       ]
-                    ) | m <- nodes graph, p <- condNodes ]
+                    ) | m <- nodes graph, p <- condNodes]
 
 
 nticdF3GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
@@ -205,19 +209,15 @@ snmF3' graph = snmGfp graph f3'
 
 
 f3'dual :: DynGraph gr => SmnFunctionalGen gr a b
-f3'dual graph condNodes _ nextCond toNextCond s
+f3'dual graph condNodes reachable nextCond toNextCond s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise =
-                   Map.fromList [ ((m,p),
+                   Map.fromList [ ((m,p), (
                         Set.fromList  [ (p,x) | x <- (suc graph p), not $ m `elem` toNextCond x]
-                      -- ⊓ ( (Set.fromList $ [ (p,x) | x <- suc graph p]) ∖
-                      --   Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
-                      --                           (Set.size $ s ! (m,n)) == 0  -- (Set.size $ Set.fromList $ suc graph n)
-                      --                 ]
-                      --   )
                       ⊓ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x], (Set.size $ s ! (m,n)) /= 0 ]
-                    ) | m <- nodes graph, p <- condNodes ]
+                    ) ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), not $ m `elem` reachable x ]
+                   ) | m <- nodes graph, p <- condNodes]
   where all p m = [ (p,x) | x <- (suc graph p)]
 
 

@@ -76,16 +76,6 @@ snmLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCo
         toNextCond = toNextCondNode graph
         trncl = trc graph
 
-
-snmLfpDual :: DynGraph gr => gr a b -> SmnFunctionalGen gr a b -> Map (Node, Node) (Set (T Node))
-snmLfpDual graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCond)
-  where smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        reachable x = suc trncl x
-        nextCond = nextCondNode graph
-        toNextCond = toNextCondNode graph
-        trncl = trc graph
-
 ntXcd :: DynGraph gr => (gr a b -> Map (Node, Node) (Set (T Node))) -> gr a b -> Node -> b -> Node -> Map Node (Set Node)
 ntXcd snm graph entry label exit = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph']
@@ -231,7 +221,7 @@ nticdF3'dual :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node
 nticdF3'dual = ntXcd snmF3'dual
 
 snmF3'dual :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snmF3'dual graph = snmLfpDual graph f3'dual
+snmF3'dual graph = snmLfp graph f3'dual
 
 
 {- the same, with less memory consumption -}

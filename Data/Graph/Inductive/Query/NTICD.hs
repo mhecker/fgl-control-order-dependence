@@ -79,7 +79,8 @@ snmLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCo
 ntXcd :: DynGraph gr => (gr a b -> Map (Node, Node) (Set (T Node))) -> gr a b -> Node -> b -> Node -> Map Node (Set Node)
 ntXcd snm graph entry label exit = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph']
-    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph', 
+    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph',
+                                            m /= n,
                                             let tmn = Set.size $ s ! (m,n),
                                             0 < tmn, tmn < (Set.size $ Set.fromList $ suc graph' n)
                                       ]
@@ -551,7 +552,7 @@ nticdDefGraph  = cdepGraph nticdDef
 nticdDef :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
 nticdDef graph entry label exit =
         Map.fromList [ (n, Set.empty) | n <- nodes graph']
-    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph',
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph', nj /= ni,
                                                 nk <- suc graph' ni, nl <- suc graph' ni, nk /= nl,
                                                 (∀) (sinkPaths ! nk) (\path ->       nj `inPath` (nk,path)),
                                                 (∃) (sinkPaths ! nl) (\path -> not $ nj `inPath` (nl,path))
@@ -589,6 +590,7 @@ ntscdDef :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
 ntscdDef graph entry label exit =
         Map.fromList [ (n, Set.empty) | n <- nodes graph']
     ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph',
+                                                nj /= ni,
                                                 nk <- suc graph' ni, nl <- suc graph' ni, nk /= nl,
                                                 (∀) (maximalPaths ! nk) (\path ->       nj `inPath` (nk,path)),
                                                 (∃) (maximalPaths ! nl) (\path -> not $ nj `inPath` (nl,path))

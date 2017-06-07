@@ -39,6 +39,7 @@ controlDependence graph entry label exit =
     [ (n, Set.fromList $
           (if (n==entry) then [ exit ] else [] ) ++
           [ controlledByN | controlledByN <- nodes graph,
+                            n /= controlledByN,
                             n `Set.member` (postDomFronts ! controlledByN)
                             ])
      | n <- nodes graph

@@ -26,6 +26,127 @@ import Data.Set.Unicode
 
 
 
+{-    
+        1---------|
+        |         |
+        2         |
+       / \        |
+      /   \       |
+     /     \      |
+ -->3->   <-6<--  |
+ |  4 |   | 7  |  |
+ ---5 |   | 8---  |
+      |   |       |
+      \   /       |
+       \ /        |
+        9         |
+       10<--------|
+-}
+exampleSimpleClassic :: Program Gr
+exampleSimpleClassic = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..10] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = 10
+        tcfg = mkGraph [(n,n) | n <- [1..10]]  $
+                       [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
+                   ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
+                   ++  [(6,7,false),(7,8,nop),(8,6,nop),(6,9,true)]
+                   ++  [(9,10,nop)]
+
+
+
+
+{-    
+        1---------|
+        |         |
+        2         |
+       / \        |
+      /   \       |
+     /     \      |
+ -->3->   <-6<--  |
+ |  4 |   | 7  |  |
+ ---5 |   | 8---  |
+      |   |       |
+      \   /       |
+       \ /        |
+        9         |
+       10<--------|
+-}
+exampleSimpleArtificialEndNode :: Program Gr
+exampleSimpleArtificialEndNode = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..10] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = 10
+        tcfg = mkGraph [(n,n) | n <- [1..10]]  $
+                       [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
+                   ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
+                   ++  [(6,7,false),(7,8,nop),(8,6,nop),(6,10,true), (7,10,true), (8,10,true)]
+                   ++  [(9,10,nop)]
+
+
+
+
+{-    
+        1---------|
+        |         |
+        2         |
+       / \        |
+      /   \       |
+     /     \      |
+ -->3->     6<--  |
+ |  4 |     7  |  |
+ ---5 |     8---  |
+      |           |
+      \           |
+       \          |
+        9         |
+       10<--------|
+-}
+exampleSimpleNoUniqueEndNode :: Program Gr
+exampleSimpleNoUniqueEndNode = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..10] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = 10
+        tcfg = mkGraph [(n,n) | n <- [1..10]]  $
+                       [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
+                   ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
+                   ++  [(6,7,false),(7,8,nop),(8,6,nop)]
+                   ++  [(9,10,nop)]
+
+
+
+
+
 {-    1
       2----spawn-
       7<--       3
@@ -2318,7 +2439,6 @@ failingSnmF3F5 = [
               $(withName 'exampleNticd2SmnF5),
               $(withName 'exampleSmnF5)
             ]
-
 
 
 

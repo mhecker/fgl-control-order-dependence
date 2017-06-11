@@ -289,11 +289,11 @@ exampleSmnF5 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` [8, 5, 1, 12] = 1
+         | n `elem` [8, 5, 1, 12, 2] = 1
          | otherwise = error "uknown node"
         entryOf 1 = 12
         exitOf 1 = 5
-        tcfg =  mkGraph [(8,8),(5,5),(1,1),(12,12)] [(8,5,nop),(1,8,nop),(1,5,nop),(1,1,nop),(12,8,nop),(12,5,nop),(12,1,nop)]
+        tcfg =  mkGraph [(8,8),(5,5),(1,1),(12,12),(2,2)] [(8,5,nop),(1,8,nop),(1,5,nop),(1,2,nop),(2,1,nop),(12,8,nop),(12,5,nop),(12,1,nop)]
 
 
 exampleNticd2SmnF5 :: Program Gr

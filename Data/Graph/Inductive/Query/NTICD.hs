@@ -147,7 +147,7 @@ f3 graph condNodes reachable nextCond toNextCond s
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise =
                    Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- suc graph p,
-                                                                  m `elem` reachable x,
+                                                                  -- m `elem` reachable x,
                                                                   m `elem` toNextCond x]
                                   ) | m <- nodes graph, p <- condNodes]
                  ⊔ Map.fromList [ ((m,p), Set.fromList  [ (p,x) | x <- (suc graph p),
@@ -280,15 +280,13 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
           | otherwise         = snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
               where ((m,p), workList') = Set.deleteFindMin workList
                     smp  = s ! (m,p)
-                    smp' = --  Set.fromList [ (p,m) | m `elem` suc graph p ] ⊔
-                             Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` toNextCond x]
+                    smp' =   Set.fromList  [ (p,x) | x <- (suc graph p), m `elem` toNextCond x]
                            ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
                                                      (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                            ]
                     influenced = if (Set.size smp == Set.size smp')
                                    then Set.empty
                                    else Set.fromList [ (m,n) | n <- prevConds p ]
---                                 else Set.fromList [ (m,n) | n <- condNodes, x <- (suc graph n), Just p == nextCond x ]
 
         smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- nodes graph, p <- condNodes ]
                  ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, m `elem` reachable x]) | m <- nodes graph, p <- condNodes]
@@ -361,7 +359,7 @@ f4 graph condNodes _ _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
-                   Map.fromList [ ((m,n), Set.fromList [ (n,m) ]) | n <- condNodes, m <- suc graph n ]
+                   Map.fromList [ ((x,p), Set.fromList [ (p,x) ]) | p <- condNodes, x <- suc graph p ]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph]
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n,
                                                              (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)

@@ -145,6 +145,46 @@ exampleSimpleNoUniqueEndNode = Program {
 
 
 
+{-    
+        1---------|
+        |         |
+        2         |
+       / \        |
+      /   \       |
+     /     \      |
+ -->3->     6<--  |
+ |  4 |     7  |  |
+ ---5 |     |\8-  |
+      |     |  |  |
+      \     11-|  |
+       \          |
+        9         |
+       10<--------|
+-}
+exampleSimpleNoUniqueEndNodeWithChoice :: Program Gr
+exampleSimpleNoUniqueEndNodeWithChoice = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..11] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = 10
+        tcfg = mkGraph [(n,n) | n <- [1..11]]  $
+                       [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
+                   ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
+                   ++  [(6,7,false),(7,8,true),(8,6,true)]
+                   ++  [            (7,11,false),(11,8,nop)]
+                   ++  [(9,10,nop)]
+
+
+
 
 
 {-    1
@@ -270,11 +310,11 @@ exampleNticd = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [4, 1, 6, 10, 15, -1] = 1
+         | n `elem` [3, 1, 6, 10, 15, 42] = 1
          | otherwise = error "uknown node"
         entryOf 1 = 15
-        exitOf 1 = -1
-        tcfg =  mkGraph [(15,15),(4,4),(1,1),(-1,-1)] [(4,1,nop),(4,-1,nop),(1,4,nop),(1,-1,nop),(15,1,nop),(15,-1,nop)]
+        exitOf 1 = 42
+        tcfg =  mkGraph [(15,15),(3,3),(1,1),(42,42)] [(3,1,nop),(3,42,nop),(1,3,nop),(1,42,nop),(15,1,nop),(15,42,nop)]
 
 
 

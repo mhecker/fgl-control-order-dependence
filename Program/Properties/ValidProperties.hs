@@ -30,6 +30,7 @@ import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp,
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   ) 
@@ -207,7 +208,16 @@ nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
-
+    testProperty  "sinkdomOf              == sinkdomOfGfp "
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.sinkdomOf              g ==
+                       NTICD.sinkdomOfGfp           g,
+    testProperty  "mdomOf              == mdomOfLfp "
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.mdomOf                 g ==
+                       NTICD.mdomOfLfp              g,
     testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph

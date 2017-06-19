@@ -20,7 +20,7 @@ import Data.List ((\\), nub)
 import IRLSOD
 import Program
 
-import Util(the)
+import Util(the, invert')
 import Unicode
 
 
@@ -780,22 +780,26 @@ sinkDFF2 graph =
 
 
 sinkDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-sinkDFF2GraphP = cdepGraphP $ sinkDFF2Graph
+sinkDFF2GraphP = cdepGraphP sinkDFF2Graph
 
 sinkDFF2Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
-sinkDFF2Graph = cdepGraph $ xDFcd sinkDFF2
+sinkDFF2Graph = cdepGraph sinkDFF2cd
 
-  
+sinkDFF2cd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFF2cd = xDFcd sinkDFF2
+
 xDFcd :: DynGraph gr => (gr a b -> Map Node (Set Node)) -> gr a b -> Node -> b -> Node -> Map Node (Set Node)
-xDFcd xDF graph entry label exit = Map.fromList [ (n, Set.delete n ns) | (n,ns) <- Map.assocs $
-                                                                            (fmap Set.fromList $ invert $ fmap Set.toList df )
+xDFcd xDF graph entry label exit = Map.fromList [ (n, Set.empty)       | n <- nodes graph]
+                                 ⊔ Map.fromList [ (n, Set.delete n ns) | (n,ns) <- Map.assocs $
+                                                                            (fmap Set.fromList $ invert' $ fmap Set.toList df )
                                                 ]
                                  ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
+  
   where graph' = insEdge (entry, exit, label) graph 
         df = xDF graph'
 
 
-        
+
 immediateOf :: DynGraph gr => Map Node (Set Node) -> gr () ()
 immediateOf succs = trr $ fromSuccMap $ succs
 

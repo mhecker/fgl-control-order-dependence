@@ -155,8 +155,3 @@ withUniqueEndNode endLabel endEdgeLabel gr =
       []    -> addUniqueEndNode endLabel endEdgeLabel gr
       [end] -> (end, gr)
       _     -> error "cannot happen: there cannot be multiple unique nodes"
-
-
-invert :: (Ord k, Ord v) => Map k [v] -> Map v [k]
-invert m = Map.fromListWith (++) pairs
-    where pairs = [(v, [k]) | (k, vs) <- Map.toList m, v <- vs]

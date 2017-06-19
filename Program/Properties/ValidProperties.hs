@@ -30,7 +30,7 @@ import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp,
+    sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp, sinkDFF2cd, sinkDFF2GraphP,
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   ) 
@@ -228,6 +228,11 @@ nticdProps = testGroup "(concerning nticd )" [
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g entry () exit ==
                        NTICD.nticdF3          g entry () exit,
+    testProperty   "sinkDFF2cd            == nticdF3                for graphs with unique end node property"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.sinkDFF2cd       g entry () exit ==
+                       NTICD.nticdF3          g entry () exit,
     testProperty  "nticdDef               == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = (entry, generatedGraph)
@@ -266,6 +271,10 @@ nticdTests = testGroup "(concerning nticd)" $
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)
                   $ controlDependenceGraphP p == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdDefGraphP            ==       nticdF3GraphP for " ++ exampleName)

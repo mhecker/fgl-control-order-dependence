@@ -76,6 +76,11 @@ nticdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "nticd"     [
 ntscd      = defaultMain                               $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 ntscdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 
+insensitiveDom    = defaultMain                               $ testGroup "insensitiveDom"   [ mkTest [insensitiveDomTests], mkProp [insensitiveDomProps]]
+insensitiveDomX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "insensitiveDom"   [ mkTest [insensitiveDomTests], mkProp [insensitiveDomProps]]
+sensitiveDom      = defaultMain                               $ testGroup "sensitiveDom"     [ {- mkTest [sensitiveDomTests], -} mkProp [sensitiveDomProps]]
+sensitiveDomX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "sensitiveDom"     [ {- mkTest [sensitiveDomTests], -} mkProp [sensitiveDomProps]]
+
 
 
 misc       = defaultMain                               $ testGroup "misc"      [ mkProp [miscProps] ]
@@ -90,10 +95,10 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps]
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests]
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
@@ -189,6 +194,38 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
   []
 
 
+insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty  "sinkdomOf              == sinkdomOfGfp "
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.sinkdomOf              g ==
+                       NTICD.sinkdomOfGfp           g,
+    testProperty   "sinkDFF2cd            == nticdF3                for graphs with unique end node property"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.sinkDFF2cd       g entry () exit ==
+                       NTICD.nticdF3          g entry () exit
+  ]
+
+insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
+  [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  []
+
+
+
+sensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty  "mdomOf              == mdomOfLfp "
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.mdomOf                 g ==
+                       NTICD.mdomOfLfp              g
+  ]
+
+
+
 nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
@@ -208,16 +245,6 @@ nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
-    testProperty  "sinkdomOf              == sinkdomOfGfp "
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.sinkdomOf              g ==
-                       NTICD.sinkdomOfGfp           g,
-    testProperty  "mdomOf              == mdomOfLfp "
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.mdomOf                 g ==
-                       NTICD.mdomOfLfp              g,
     testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
@@ -227,11 +254,6 @@ nticdProps = testGroup "(concerning nticd )" [
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g entry () exit ==
-                       NTICD.nticdF3          g entry () exit,
-    testProperty   "sinkDFF2cd            == nticdF3                for graphs with unique end node property"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.sinkDFF2cd       g entry () exit ==
                        NTICD.nticdF3          g entry () exit,
     testProperty  "nticdDef               == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->

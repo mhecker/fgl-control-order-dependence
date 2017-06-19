@@ -104,6 +104,10 @@ fromPredMap :: DynGraph gr => Map Node (Set Node) -> gr () ()
 fromPredMap pred = mkGraph [(n,()) | n <- Map.keys pred]
                            [(m,n,()) | (n,ms) <- Map.assocs pred, m <- Set.toList ms]
 
+fromSuccMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
+fromSuccMap succ = mkGraph [(n,()) | n <- Map.keys succ]
+                           [(n,m,()) | (n,ms) <- Map.assocs succ, m <- Set.toList ms]
+
 toPredMap ::  Graph gr => gr a b -> Map Node (Set Node)
 toPredMap gr = Map.fromList [(n, Set.fromList $ pre gr n ) | n <- nodes gr]
 

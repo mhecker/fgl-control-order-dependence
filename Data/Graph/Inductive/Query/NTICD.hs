@@ -696,6 +696,99 @@ sinkdomOfGfp graph = domOfGfp graph fSinkDom
 mdomOfLfp graph = domOfLfp graph fSinkDom
 
 
+sinkDF graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
+                                            p <- suc graph y,
+                                                   x ∈ sinkdom ! p,
+                                            (not $ x ∈ sinkdom ! y)  ∨  x == y ])
+                   | x <- nodes graph ]
+  where sinkdom = sinkdomOf graph
+
+sinkDFLocalDef graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            (not $ x ∈ sinkdom ! y)  ∨  x == y ])
+                   | x <- nodes graph ]
+  where sinkdom = sinkdomOf graph
+
+sinkDFLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFLocal graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            (∀) (suc isinkdom y) (/= x)])
+                   | x <- nodes graph ]
+  where sinkdom = sinkdomOf graph
+        isinkdom = immediateOf sinkdom :: gr () ()
+
+
+sinkDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFUpDef graph =
+      Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
+                                            (∀) (suc isinkdom z) (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
+                                      ]
+                     )
+                   | z <- nodes graph ]
+  where sinkdom  = sinkdomOf graph
+        sinkdf   = sinkDF graph
+        isinkdom = immediateOf sinkdom :: gr () ()
+        
+
+sinkDFUp :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
+sinkDFUp graph =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
+                                                (∀) (suc isinkdom y) (/= x)
+                                      ]
+                     )
+                   | x <- nodes graph, z <- pre isinkdom x]
+  where sinkdom  = sinkdomOf graph
+        sinkdf   = sinkDF graph
+        isinkdom = immediateOf sinkdom :: gr () ()
+        
+
+
+sinkDFFromUpLocalDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFFromUpLocalDef graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, (∐) [ dfup ! z  | z <- pre isinkdom x  ] ) | x <- nodes graph]
+  where dflocal = sinkDFLocalDef graph
+        dfup = sinkDFUpDef graph
+        sinkdom  = sinkdomOf graph
+        isinkdom = immediateOf sinkdom :: gr () ()
+
+
+sinkDFFromUpLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFFromUpLocal graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, (∐) [ dfup ! (x,z)  | z <- pre isinkdom x  ] ) | x <- nodes graph]
+  where dflocal = sinkDFLocal graph
+        dfup = sinkDFUp graph
+        sinkdom  = sinkdomOf graph
+        isinkdom = immediateOf sinkdom :: gr () ()
+
+
+sinkDFF2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFF2 graph =
+      (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
+  where f2 df = df ⊔ 
+           Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
+                                                         (∀) (suc isinkdom y) (/= x) ])
+                        | x <- nodes graph]
+         ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre isinkdom x,
+                                                          y <- Set.toList $ df ! z,
+                                                         (∀) (suc isinkdom y) (/= x) ])
+                        | x <- nodes graph]
+        sinkdom  = sinkdomOf graph
+        isinkdom = immediateOf sinkdom :: gr () ()
+
+immediateOf :: DynGraph gr => Map Node (Set Node) -> gr () ()
+immediateOf succs = trr $ fromSuccMap $ succs
+
+isinkdomOf    graph = immediateOf $ sinkdomOf    graph
+isinkdomOfGfp graph = immediateOf $ sinkdomOfGfp graph
+
+imdomOf    graph = immediateOf $ mdomOf    graph
+imdomOfGfp graph = immediateOf $ mdomOfLfp graph
+
+
+
 
 
 {- Utility functions -}

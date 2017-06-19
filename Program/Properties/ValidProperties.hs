@@ -30,7 +30,7 @@ import Data.Graph.Inductive (mkGraph, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp, sinkDFF2cd, sinkDFF2GraphP,
+    sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP,
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   ) 
@@ -200,14 +200,43 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let (exit, g) = (entry, generatedGraph)
                     in NTICD.sinkdomOf              g ==
                        NTICD.sinkdomOfGfp           g,
-    testProperty   "sinkDFF2cd            == nticdF3                for graphs with unique end node property"
+    testProperty   "sinkDFcd              == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.sinkDFcd         g entry () exit ==
+                       NTICD.nticdF3          g entry () exit,
+    testProperty   "sinkDFFromUpLocalDefcd== nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.sinkDFFromUpLocalDefcd  g entry () exit ==
+                       NTICD.nticdF3                 g entry () exit,
+    testProperty   "sinkDFFromUpLocalcd   == nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.sinkDFFromUpLocalcd     g entry () exit ==
+                       NTICD.nticdF3                 g entry () exit,
+    testProperty   "sinkDFF2cd            == nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
                     in NTICD.sinkDFF2cd       g entry () exit ==
                        NTICD.nticdF3          g entry () exit
   ]
 
 insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
+  [  testCase    ( "sinkDFGraphP              ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.sinkDFGraphP p            == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "sinkDFFromUpLocalGraphP   ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.sinkDFFromUpLocalGraphP p == NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "sinkDFFromUpLocalDefGraphP==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.sinkDFFromUpLocalDefGraphP p
+                                              ==
+                                                 NTICD.nticdF3GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
             $ NTICD.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite

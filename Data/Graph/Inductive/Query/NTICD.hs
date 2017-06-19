@@ -639,8 +639,8 @@ mdomOf graph = Map.fromList [ (y, Set.fromList [ x | x <- nodes graph, x `mdom` 
         sccOf m =  the (m `elem`) $ sccs
 
 sinkdomOf ::  DynGraph gr => gr a b -> Map Node (Set Node)
-sinkdomOf graph = Map.fromList [ (y, Set.fromList [ x | x <- nodes graph, x `mdom` y]) | y <- nodes graph]
-  where mdom x y =  (∀) (sinkPaths ! y) (\path ->       x `inPath` (y,path))
+sinkdomOf graph = Map.fromList [ (y, Set.fromList [ x | x <- nodes graph, x `sinkdom` y]) | y <- nodes graph]
+  where sinkdom x y =  (∀) (sinkPaths ! y) (\path ->       x `inPath` (y,path))
         sinkPaths = sinkPathsFor graph
         inPath = inSinkPathFor graph
 
@@ -704,19 +704,40 @@ sinkDF graph =
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
 
+
+sinkDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+sinkDFGraphP = cdepGraphP sinkDFGraph
+
+sinkDFGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+sinkDFGraph = cdepGraph sinkDFcd
+
+sinkDFcd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFcd = xDFcd sinkDF
+
+
 sinkDFLocalDef graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
                                             (not $ x ∈ sinkdom ! y)  ∨  x == y ])
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
 
+
+
+
 sinkDFLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFLocal graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                            (∀) (suc isinkdom y) (/= x)])
+                                            (∀) (suc isinkdom y) (\z -> 
+                                              (∀) (isinkdomSccOf z) (/= x)
+                                            )
+                                      ]
+                     )
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
         isinkdom = immediateOf sinkdom :: gr () ()
+        isinkdomSccs = scc isinkdom
+        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
+
 
 
 sinkDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
@@ -729,7 +750,8 @@ sinkDFUpDef graph =
   where sinkdom  = sinkdomOf graph
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
-        
+        isinkdomSccs = scc isinkdom
+        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
 
 sinkDFUp :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 sinkDFUp graph =
@@ -741,7 +763,7 @@ sinkDFUp graph =
   where sinkdom  = sinkdomOf graph
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
-        
+
 
 
 sinkDFFromUpLocalDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
@@ -754,6 +776,17 @@ sinkDFFromUpLocalDef graph =
         isinkdom = immediateOf sinkdom :: gr () ()
 
 
+sinkDFFromUpLocalDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+sinkDFFromUpLocalDefGraphP = cdepGraphP sinkDFFromUpLocalDefGraph
+
+sinkDFFromUpLocalDefGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+sinkDFFromUpLocalDefGraph = cdepGraph sinkDFFromUpLocalDefcd
+
+sinkDFFromUpLocalDefcd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFFromUpLocalDefcd = xDFcd sinkDFFromUpLocalDef
+
+
+
 sinkDFFromUpLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFFromUpLocal graph =
       Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
@@ -764,12 +797,26 @@ sinkDFFromUpLocal graph =
         isinkdom = immediateOf sinkdom :: gr () ()
 
 
+sinkDFFromUpLocalGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+sinkDFFromUpLocalGraphP = cdepGraphP sinkDFFromUpLocalGraph
+
+sinkDFFromUpLocalGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+sinkDFFromUpLocalGraph = cdepGraph sinkDFFromUpLocalcd
+
+sinkDFFromUpLocalcd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFFromUpLocalcd = xDFcd sinkDFFromUpLocal
+
+
 sinkDFF2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFF2 graph =
       (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
   where f2 df = df ⊔ 
            Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc isinkdom y) (/= x) ])
+                                                         (∀) (suc isinkdom y) (\z -> 
+                                                           (∀) (isinkdomSccOf z) (/= x)
+                                                         )
+                                   ]
+                          )
                         | x <- nodes graph]
          ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre isinkdom x,
                                                           y <- Set.toList $ df ! z,
@@ -777,6 +824,8 @@ sinkDFF2 graph =
                         | x <- nodes graph]
         sinkdom  = sinkdomOf graph
         isinkdom = immediateOf sinkdom :: gr () ()
+        isinkdomSccs = scc isinkdom
+        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
 
 
 sinkDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence

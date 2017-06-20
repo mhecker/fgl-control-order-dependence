@@ -712,6 +712,18 @@ fSinkDomDual graph _ reachable nextCond toNextCond = f
 sinkdomOfLfp graph = fmap (\s -> allNodes ∖ s) $ domOfLfp graph fSinkDomDual
   where allNodes = Set.fromList $ nodes graph
 
+sinkdomOfisinkdomProperty :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkdomOfisinkdomProperty graph =
+          Map.fromList [ (y,
+                 Set.fromList [ y ]
+               ⊔ (∐) [ sinkdom ! z | z <- suc isinkdom y]
+            )
+          | y <- nodes graph]
+  where sinkdom = sinkdomOf graph
+        isinkdom = immediateOf sinkdom :: gr () ()
+        isinkdomSccs = scc isinkdom
+        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
+
 sinkDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
                                             p <- suc graph y,

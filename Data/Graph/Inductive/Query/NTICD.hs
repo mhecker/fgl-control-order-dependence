@@ -724,6 +724,32 @@ sinkdomOfisinkdomProperty graph =
         isinkdomSccs = scc isinkdom
         isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
 
+
+{- this is somewhat inspired by [2]
+   [2] Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy
+       A Simple, Fast Dominance Algorithm
+
+   http://www.citeulike.org/user/MatzeB/article/571160
+-} 
+isinkdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger graph =  (㎲⊒) init f
+  where init   = Map.fromList [ (x, Set.empty)        | x <- nodes graph]
+               ⊔ Map.fromList [ (x, Set.fromList [y]) | x <- nodes graph, (_:y:_) <- [reverse $ toNextCond x]]
+        f isinkdom = isinkdom 
+                   ⊔ Map.fromList [ (x, Set.fromList [ z | z <- suc graph x,
+                                                           let isinkdomTrc = trc $ insEdge (x,z,()) $ (fromSuccMap isinkdom :: gr () ()),
+                                                           (∀) (suc graph x) (\y -> z `elem` (suc isinkdomTrc y))
+                                                     ]
+                                    )
+                                  | x <- condNodes]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+
+
 sinkDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
                                             p <- suc graph y,

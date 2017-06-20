@@ -687,6 +687,8 @@ domOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
         toNextCond = toNextCondNode graph
         trncl = trc graph
 
+
+
 fSinkDom graph _ _ nextCond toNextCond = f 
   where f sinkdomOf =
                       Map.fromList [ (y, Set.fromList [y])                          | y <- nodes graph]
@@ -695,6 +697,20 @@ fSinkDom graph _ _ nextCond toNextCond = f
 sinkdomOfGfp graph = domOfGfp graph fSinkDom
 mdomOfLfp graph = domOfLfp graph fSinkDom
 
+
+
+fSinkDomDual graph _ reachable nextCond toNextCond = f 
+  where f sinkdomOfCompl = Map.fromList [ (y, (
+                             Set.fromList [ x | x <- nodes graph, x /= y]
+                           ⊓ Set.fromList [ x | x <- nodes graph, not $ x ∈ ny]
+                           ⊓ ((∐) [ sinkdomOfCompl ! x | Just n <- [nextCond y], x <- suc graph n ])
+                           -- ⊓ ( case nextCond y of Just n  -> (∐) [  (sinkdomOfCompl! x) | x <- suc graph n ]
+                           --                        Nothing -> allNodes)
+                         ) ⊔ Set.fromList  [ x | x <- nodes graph, not $ x `elem` reachable y ]
+                        ) | y <- nodes graph, let ny = Set.fromList $ toNextCond y]
+        allNodes = Set.fromList $ nodes graph
+sinkdomOfLfp graph = fmap (\s -> allNodes ∖ s) $ domOfLfp graph fSinkDomDual
+  where allNodes = Set.fromList $ nodes graph
 
 sinkDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,

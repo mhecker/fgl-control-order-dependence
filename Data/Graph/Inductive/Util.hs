@@ -10,11 +10,13 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import qualified Data.Set as Set
 import Data.Set (Set)
+import qualified Data.Tree as Tree
+import Data.Tree (Tree)
 import Control.Monad(liftM2,guard)
 
 import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
-import Data.Graph.Inductive.Query.DFS (scc, condensation)
+import Data.Graph.Inductive.Query.DFS (scc, condensation, dff')
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Tree
 
@@ -155,3 +157,23 @@ withUniqueEndNode endLabel endEdgeLabel gr =
       []    -> addUniqueEndNode endLabel endEdgeLabel gr
       [end] -> (end, gr)
       _     -> error "cannot happen: there cannot be multiple unique nodes"
+
+
+
+postorder :: Graph gr => gr a b -> (Map Node Integer, Map Integer Node)
+postorder g = (Map.fromList $ zip po [0..],
+               Map.fromList $ zip [0..] po)
+  where po = (postorderF $ dff' g)
+{-
+postorder g = Map.fromList $ postorderTs 0 dftree
+  where dftree = dff' g
+        postorderTs :: Integer -> [Tree Node] -> [(Node, Integer)]
+        postorderTs n [] = []
+        postorderTs n (t:ts) = foldr f first ts
+          where first@((m,p):mps) = postorderT n t
+                f t ((m,p):mps) = (postorderT (p+1) t) ++ ((m,p) : mps)
+        postorderT :: Integer -> Tree Node -> [(Node, Integer)]
+        postorderT n (Tree.Node x []) = [(x,n)]
+        postorderT n (Tree.Node x ts) = (x, p+1) : (m,p) : mps
+          where (m,p):mps = postorderTs n ts
+-}

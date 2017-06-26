@@ -25,12 +25,13 @@ import Data.Ord
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
+import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
 import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    isinkdomOf, isinkdomOfTwoFinger,
+    isinkdomOf, isinkdomOfGfp2,
     sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
     sinkDFUp, sinkDFUpDef,
     sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
@@ -197,12 +198,12 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
-    testProperty   "isinkdomOf            == isinkdomOfTwoFinger"
+    testProperty   "isinkdomOf^*          == isinkdomOfGfp2^*"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = (entry, generatedGraph)
-                    in (NTICD.isinkdomOf                 g :: Gr () ()) ==
-                       (fromSuccMap $
-                        NTICD.isinkdomOfTwoFinger        g),
+                    in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
+                       (trc $ fromSuccMap $
+                        NTICD.isinkdomOfGfp2             g),
     testProperty   "sinkdomOf reduces, in some sense,  to a multi-rooted tree"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = (entry, generatedGraph)

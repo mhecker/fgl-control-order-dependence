@@ -11,6 +11,7 @@ import qualified Data.Foldable as Foldable
 import Unicode
 import Algebra.Lattice
 
+import Control.Monad (foldM)
 the p = fromJust . find p 
 
 
@@ -37,3 +38,7 @@ invert' m = Map.fromListWith (++) pairs
 
 meetFrom :: (Foldable.Foldable f,  MeetSemiLattice a) => a -> f a -> a
 meetFrom x l = Foldable.foldr (⊓) x l
+                               
+foldM1 :: (Monad m) => (a -> a -> m a) -> [a] -> m a
+foldM1 _ [] = error "foldM1" "empty list"
+foldM1 f (x:xs) = foldM f x xs

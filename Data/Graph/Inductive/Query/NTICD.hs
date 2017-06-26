@@ -20,12 +20,12 @@ import Data.List ((\\), nub)
 import IRLSOD
 import Program
 
-import Util(the, invert')
+import Util(the, invert', foldM1)
 import Unicode
 
 
 import Data.Graph.Inductive.Query.TransClos
-import Data.Graph.Inductive.Basic 
+import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dependence
@@ -724,7 +724,6 @@ sinkdomOfisinkdomProperty graph =
         isinkdomSccs = scc isinkdom
         isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
 
-
 {- this is somewhat inspired by [2]
    [2] Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy
        A Simple, Fast Dominance Algorithm
@@ -732,11 +731,12 @@ sinkdomOfisinkdomProperty graph =
    http://www.citeulike.org/user/MatzeB/article/571160
 -} 
 isinkdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-isinkdomOfTwoFinger graph =  (㎲⊒) init f
+isinkdomOfTwoFinger graph = fmap (\s -> Set.fromList [ Set.findMin s | not $ Set.null s]) $  (㎲⊒) init f
   where init   = Map.fromList [ (x, Set.empty)        | x <- nodes graph]
                ⊔ Map.fromList [ (x, Set.fromList [y]) | x <- nodes graph, (_:y:_) <- [reverse $ toNextCond x]]
         f isinkdom = isinkdom 
                    ⊔ Map.fromList [ (x, Set.fromList [ z | z <- suc graph x,
+                                                           z /= x,
                                                            let isinkdomTrc = trc $ insEdge (x,z,()) $ (fromSuccMap isinkdom :: gr () ()),
                                                            (∀) (suc graph x) (\y -> z `elem` (suc isinkdomTrc y))
                                                      ]
@@ -747,6 +747,34 @@ isinkdomOfTwoFinger graph =  (㎲⊒) init f
         nextCond = nextCondNode graph
         toNextCond = toNextCondNode graph
         trncl = trc graph
+
+isinkdomOfGfp2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+isinkdomOfGfp2 graph = -- fmap (\s -> Set.fromList [ Set.findMin s | not $ Set.null s]) $  (𝝂) init f
+                               (𝝂) init f
+  where base  =       Map.fromList [ (x, Set.empty )          | x <- nodes graph, (Set.size $ succs x) == 0]
+                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1]
+        init  =       base 
+                    ⊔ Map.fromList [ (x, Set.fromList [ y | y <- reachable x, y ∈ joinNodes ] )
+                                                              | x <- condNodes ]
+        f :: Map Node (Set Node) -> Map Node (Set Node)
+        f isinkdom = -- traceShow isinkdom $
+                     base 
+                   ⊔ Map.fromList [ (x, Set.fromList [ z | z <- Set.toList $ isinkdom ! x,
+                                                           (∀) (suc graph x) (\y -> z `elem` (suc isinkdomTrc y))
+                                                     ]
+                                    )
+                                  | x <- condNodes]
+          where isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: gr () ())
+        condNodes = [ x | x <- nodes graph, (Set.size $ succs x) >= 1  ]
+        joinNodes = [ x | x <- nodes graph, (Set.size $ preds x) >= 1  ]
+        succs x     = Set.delete x $ Set.fromList $ suc graph x
+        preds x     = Set.delete x $ Set.fromList $ pre graph x
+        reachable x = suc trncl x
+        trncl = trc graph
+
+
+
+
 
 
 

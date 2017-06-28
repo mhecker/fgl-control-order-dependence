@@ -4,7 +4,7 @@ module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Maybe(fromJust)
 
-import Data.List(foldl', intersect)
+import Data.List(foldl', intersect,foldr1)
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -32,7 +32,7 @@ import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.DFS (scc, condensation)
 
 import Debug.Trace
-
+import Control.Exception.Base (assert)
 tr msg x = seq x $ trace msg x
 
 
@@ -774,6 +774,258 @@ isinkdomOfGfp2 graph = -- fmap (\s -> Set.fromList [ Set.findMin s | not $ Set.n
 
 
 
+isinkdomOfTwoFinger5 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger5 graph = twoFinger worklist0 confirmed0 isinkdom0 succs0
+  where isinkdom0   = Map.fromList [ (x, Set.empty )          | x <- nodes graph]
+--                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1]
+                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1, not $ x ∈ sinkNodes]
+                    ⊔ Map.fromList [ (x, Set.fromList [y])    | (s:sink) <- controlSinks graph, not $ null sink, (x,y) <- zip (s:sink) (sink ++ [s])]
+        worklist0   = Map.keysSet $ Map.filter (\x -> x ∈ condNodes   ∧  (not $ x ∈ sinkNodes)) pon2node
+        confirmed0  = Set.fromList [ x                        | x <- nodes graph, (Set.size $ succs x) == 1]
+                    ⊔ sinkNodes  
+        succs  x    = Set.delete x $ Set.fromList $ suc graph x
+        succs0      = Map.fromList [ (x, succs x)             | x <- nodes graph]
+        condNodes   = Set.fromList [ x | x <- nodes graph, (Set.size $ succs x) > 1 ]
+        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- controlSinks graph, x <- sink]
+        (node2pon, pon2node) = postorder graph
+        
+        twoFinger :: Set Integer -> Set Node -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node)
+        twoFinger worklist confirmed isinkdom remsuccs
+            | Set.null worklist = traceShow ("x", "mz", "zs", Set.map (pon2node !) worklist, confirmed, isinkdom, remsuccs) $
+                                  -- let confirmedtrc = confirmed0 
+                                  --                  ⊔ Set.fromList [ x | x <- Set.toList condNodes,
+                                  --                                       x ∈ confirmed,
+                                  --                                       ((Set.size $ remsuccs ! x) <= 1 ∧ (∀) (succs x ∖ (remsuccs ! x)) (\y -> let Just n = nextCond y in n ∈ confirmed))
+                                  --                                       ∨
+                                  --                                       (∀) [ n | y <- Set.toList $ succs x, Just n <- [nextCond y] ] (\n -> n ∈ confirmed) ]
+                                  --     nextCond = nextCondNode graph
+                                  -- in  (Map.filterWithKey (\x _ -> x ∈ confirmedtrc) isinkdom) ⊔  Map.fromList [ (x, Set.empty ) | x <- nodes graph]
+                                  let 
+                                      f isinkdom = isinkdom0
+                                                 ⊔ Map.fromList [ (x, Set.fromList [ z | z <- Set.toList $ isinkdom ! x,
+                                                                                         (∀) (suc graph x) (\y -> z `elem` (suc isinkdomTrc y))
+                                                                                   ]
+                                                                   )
+                                                                | x <- Set.toList $ condNodes ∖ sinkNodes ]
+                                        where isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: gr () ())
+                                  in   (𝝂) isinkdom f
+            | otherwise         = traceShow (x, mz, zs, Set.map (pon2node !) worklist, confirmed, isinkdom, remsuccs) $
+                                  if (not $ changed) then twoFinger               worklist'  confirmed'                                   isinkdom  remsuccs'
+                                                     else twoFinger (influenced ⊔ worklist') confirmed'  (Map.insert x zs                isinkdom) remsuccs'
+          where (pon, worklist')  = Set.deleteFindMin worklist
+                x = pon2node ! pon
+                -- (x', others) = if (Set.null $ remsuccs ! x) then error $ "remsuccs ! " ++ (show x) else Set.deleteFindMin $ remsuccs ! x
+                mz = foldM1 lca (Set.toList $ succs x)
+                zs = case mz of
+                      Just z  ->  if (x ∈ reachable isinkdom z) then
+                                    first     $ Set.fromList [ x' | x' <- Set.toList $ remsuccs ! x, not $ x ∈ reachable isinkdom x'] 
+                                  else
+                                    Set.fromList [ z ]
+                      Nothing ->  if Set.null $ Set.fromList [ x' | x' <- Set.toList $ remsuccs ! x, not $ x ∈ reachable isinkdom x'] then
+                                    error "rofl"
+                                  else
+                                    first     $ Set.fromList [ x' | x' <- Set.toList $ remsuccs ! x, not $ x ∈ reachable isinkdom x']
+                confirmed' = case mz of
+                      Just z  -> Set.insert x confirmed
+                      Nothing ->              confirmed
+                remsuccs' :: Map Node (Set Node)
+                remsuccs'  = case mz of
+                      Just z  -> if (x ∈ reachable isinkdom z) then
+                                   Map.insert x (remsuccs ! x ∖ (Set.fromList $ [ x' | x' <- Set.toList $ succs x, x ∈ reachable isinkdom x'])) remsuccs
+                                 else
+                                   remsuccs
+                      Nothing ->   Map.insert x (remsuccs ! x ∖ (Set.fromList $ [ x' | x' <- Set.toList $ succs x, x ∈ reachable isinkdom x'])) remsuccs
+                -- remsuccs' = if closedCycle then Map.insert x (Set.delete x' (remsuccs ! x)) remsuccs else remsuccs
+                -- closedCycle = (x ∈ (reachable isinkdom x'))
+                first :: Set Node -> Set Node
+                first s = if Set.null s then Set.empty else Set.fromList [Set.findMin s]
+                changed = if (Map.member x isinkdom) then (zs /= (isinkdom ! x)) {- ∨ closedCycle  -} else True
+                influenced = {- Set.filter (\pon -> not $ Set.null $ remsuccs' ! (pon2node ! pon)) -} worklist0
+                lca  n m = lca' isinkdom (n, Set.fromList [n]) (m, Set.fromList [m])
+                lca' c (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((c ! n) ∖ ns ) of
+                                     []   -> case Set.toList $ ((c ! m) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' c (m', Set.insert m' ms) (n, ns)
+                                                _    -> error "more than one successor in isinkdom" 
+                                     [n'] -> lca' c (m,ms) (n', Set.insert n' ns)
+                                     _    -> error "more than one successor in isinkdom" 
+
+                reachable :: Map Node (Set Node) -> Node -> [Node]
+                reachable c x = reverse $ reach x []
+                  where reach :: Node -> [Node] -> [Node]
+                        reach x seen
+                          | x `elem` seen = seen
+                          | otherwise     = case Set.toList $ c ! x of
+                            []   -> (x:seen)
+                            [x'] -> reach x' (x:seen)
+                            _    -> error $ "reach " ++ (show x) ++ " " ++ (show seen) ++ " " ++ (show $ c ! x)
+
+
+
+
+type Successor = (Set Node, Maybe Node)
+
+sinkdomOfJoinUpperBound :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkdomOfJoinUpperBound  graph =
+                      (fmap fromJust $ joinUpperBound graph)
+                    ⊔ Map.fromList [ (x, Set.empty)           | x <- nodes graph]
+                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1, not $ x ∈ sinkNodes]
+                    ⊔ Map.fromList [ (x, Set.fromList [y])    | (s:sink) <- controlSinks graph, not $ null sink, (x,y) <- zip (s:sink) (sink ++ [s])]
+    where succs  x    = Set.delete x $ Set.fromList $ suc graph x
+          sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- controlSinks graph, x <- sink]
+
+joinUpperBound :: forall gr a b. DynGraph gr => gr a b -> Map Node (Maybe (Set Node))
+joinUpperBound graph = Map.delete dummyNode $ job condNodes init
+    where job :: Set Node -> Map Node (Maybe (Set Node)) -> Map Node (Maybe (Set Node))
+          job worklist jobs 
+              | Set.null worklist = jobs
+              | otherwise         = if (ubX == ubX') then
+                                      job worklist'                    jobs
+                                    else
+                                      job condNodes (Map.insert x ubX' jobs)
+            where (x, worklist')  = Set.deleteFindMin worklist
+                  successorsX = successors ! x
+                  ubX         = jobs ! x
+                  ubX'        = case foldr1 join successorsX of
+                    (ns, Nothing) -> Just ns
+                    _             -> Nothing
+                  join :: Successor -> Successor -> Successor
+                  join (ns, Nothing) (ms, Nothing) = (         ns ⊓ ms        , Nothing)
+                  join (ns, Just n)  (ms, Nothing) = case jobs ! n of
+                    Just ns' -> ((ns ⊔ ns') ⊓  ms, Nothing)
+                    Nothing  -> (              ms, Nothing)
+                  join (ns, Nothing) (ms, Just m)  = case jobs ! m of
+                    Just ms' -> (       ns  ⊓ (ms ⊔ ms'), Nothing)
+                    Nothing  -> (       ns              , Nothing)
+                  join (ns, Just n)  (ms, Just m)  = case jobs ! m of
+                    Just ms' -> case jobs ! n of
+                                 Just ns' -> ( (ns ⊔ ns') ⊓ (ms ⊔ ms'), Nothing)
+                                 Nothing  -> (              (ms ⊔ ms'), Nothing)
+                    Nothing  -> case jobs ! n of
+                                 Just ns' -> ( (ns ⊔ ns')             , Nothing)
+                                 Nothing  -> (        (ns ⊔ ms),        Just dummyNode)
+          [dummyNode] = newNodes 1 graph
+          init = Map.fromList $ [ (x, if not $ List.null deadends then
+                                        Just $ (∏) [ ns | (ns, Nothing) <- deadends] 
+                                      else
+                                        Nothing
+                                  )
+                                | x <- Set.toList $ condNodes,
+                                  not $ x ∈ sinkNodes,
+                                  let successorsX  = successors ! x,
+                                  let deadends =  [ s | s@(_,Nothing) <- successorsX ]
+                                ]
+                                ++
+                                [ (x, Just $ Set.fromList $ the (x `elem`) sinks ) | x <- Set.toList $ condNodes,
+                                                                                     x ∈ sinkNodes
+                                ]
+                                ++
+                                [ (dummyNode, Nothing) ]
+                                   
+          successors :: Map Node [Successor] 
+          successors = Map.fromList [ (x, [ (Set.fromList $ toNextCond x',
+                                             nextCond x'
+                                            ) | x' <- Set.toList $ succs x ] 
+                                      ) | x <- Set.toList $ condNodes]
+
+          
+          succs  x    = Set.delete x $ Set.fromList $ suc graph x
+          preds  x    = Set.delete x $ Set.fromList $ pre graph x
+          condNodes   = Set.fromList [ x | x <- nodes graph, (Set.size $ succs x) > 1 ]
+          joinNodes   = Set.fromList [ x | x <- nodes graph, (Set.size $ preds x) > 1 ]
+          sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+          sinks       =  controlSinks graph
+          nextCond    = nextRealCondNode graph
+          toNextCond  = toNextRealCondNode graph
+
+isinkdomOfTwoFinger6 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger6 graph = twoFinger worklist0 isinkdom0
+  where isinkdom0   = Map.fromList [ (x, Set.empty )          | x <- nodes graph]
+--                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1]
+                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1, not $ x ∈ sinkNodes]
+                    ⊔ Map.fromList [ (x, Set.fromList [y])    | (s:sink) <- controlSinks graph, not $ null sink, (x,y) <- zip (s:sink) (sink ++ [s])]
+        worklist0   = Map.keysSet $ Map.filter (\x -> x ∈ condNodes   ∧  (not $ x ∈ sinkNodes)) pon2node
+        succs  x    = Set.delete x $ Set.fromList $ suc graph x
+        condNodes   = Set.fromList [ x | x <- nodes graph, (Set.size $ succs x) > 1 ]
+        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- controlSinks graph, x <- sink]
+        nextCond    = nextRealCondNode graph
+        (node2pon, pon2node) = postorder graph
+        
+        twoFinger :: Set Integer ->  Map Node (Set Node) -> Map Node (Set Node)
+        twoFinger worklist isinkdom
+            | Set.null worklist = traceShow ("x", "mz", "zs", Set.map (pon2node !) worklist, isinkdom) $
+                                  let 
+                                      f isinkdom = isinkdom0
+                                                 ⊔ Map.fromList [ (x, Set.fromList [ z | z <- Set.toList $ isinkdom ! x,
+                                                                                         (∀) (suc graph x) (\y -> z `elem` (suc isinkdomTrc y))
+                                                                                   ]
+                                                                   )
+                                                                | x <- Set.toList $ condNodes ∖ sinkNodes ]
+                                        where isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: gr () ())
+                                  in   (𝝂) isinkdom f
+            | otherwise         = traceShow (x, mz, zs, Set.map (pon2node !) worklist, isinkdom) $
+                                  if (not $ changed) then twoFinger               worklist'                                   isinkdom
+                                                     else twoFinger (influenced ⊔ worklist')  (Map.insert x zs                isinkdom)
+          where (pon, worklist')  = Set.deleteFindMin worklist
+                x = pon2node ! pon
+                -- (x', others) = if (Set.null $ remsuccs ! x) then error $ "remsuccs ! " ++ (show x) else Set.deleteFindMin $ remsuccs ! x
+                mz
+                  | (∀) (succs x) (\x' -> nextCond x' == Just x) =  foldM1 lca (Set.toList $ succs x)
+                  | otherwise                                     = foldM1 lca [ x' | x' <- Set.toList $  succs x, nextCond x' /= Just x]
+                deadends = [ x' | x' <- Set.toList $ succs x, nextCond x' == Nothing]
+                zs
+--                 | length deadends == 1 = Set.fromList deadends
+--                 | length deadends >  1 = Set.empty -- if mz == Just z, z necessarilu lies on toNextCond x' for all x' s.t. x -> x'
+                 | otherwise        = case mz of
+                      Just z  ->  -- (if (x == (-93) ) then traceShow ("ROFL", x,z, reachable isinkdom z) else id) $
+                                  -- if (x ∈ reachable isinkdom z) then
+                                  --   -- error "rofl"
+                                  --   first     $ Map.fromList [ (n,x') | x' <- Set.toList $ succs x , Just n <- [nextCond x'], node2pon ! n < node2pon ! x ]
+                                  -- else
+                                    Set.fromList [ z ]
+                      Nothing ->  if (length deadends == 1) then Set.fromList deadends else
+                                  if (length deadends  > 1) then Set.empty             else
+                                  if Map.null $ Map.fromList [ (n,x') | x' <- Set.toList $ succs x , Just n <- [nextCond x'], node2pon ! n < node2pon ! x ] then
+                                    -- (if length deadends == (Set.size $ succs x) then id else traceShow (deadends, (x, node2pon ! x),  [ (n, node2pon ! n) | x' <- Set.toList $ succs x , Just n <- [nextCond x']]) ) $
+                                    Set.empty
+                                  else
+                                    first     $ Map.fromList [ (n,x') | x' <- Set.toList $ succs x , Just n <- [nextCond x'], node2pon ! n < node2pon ! x  ]
+                first :: Map Node Node -> Set Node
+--                first s = if Set.null s then Set.empty else Set.fromList [Set.findMin s]
+                -- first s = if Set.null s then Set.empty else Set.fromList [ (pon2node !)  $ Set.findMin $ Set.map (node2pon !) s ]
+                first s = if Map.null s then Set.empty else Set.fromList [ s ! ((pon2node !)  $ Set.findMax $ Set.map (node2pon !) $ Map.keysSet s) ]
+                changed = if (Map.member x isinkdom) then (zs /= (isinkdom ! x)) {- ∨ closedCycle  -} else True
+                influenced = {- Set.filter (\pon -> not $ Set.null $ remsuccs' ! (pon2node ! pon)) -} worklist0
+                lca  n m = lca' isinkdom (n,n, Set.fromList [n]) (m,m, Set.fromList [m])
+                lca' c (n0,n,ns) (m0,m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((c ! n) ∖ ns ) of
+                                     []   -> case Set.toList $ ((c ! m) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> {- if (m' == x) then Just n0 else -} lca' c (m0, m', Set.insert m' ms) (n0, n, ns)
+                                                _    -> error "more than one successor in isinkdom" 
+                                     [n'] -> {- if (n' == x) then Just m0 else -} lca' c (m0, m, ms) (n0, n', Set.insert n' ns)
+                                     _    -> error "more than one successor in isinkdom" 
+
+                reachable :: Map Node (Set Node) -> Node -> [Node]
+                reachable c x = reverse $ reach x []
+                  where reach :: Node -> [Node] -> [Node]
+                        reach x seen
+                          | x `elem` seen = seen
+                          | otherwise     = case Set.toList $ c ! x of
+                            []   -> (x:seen)
+                            [x'] -> reach x' (x:seen)
+                            _    -> error $ "reach " ++ (show x) ++ " " ++ (show seen) ++ " " ++ (show $ c ! x)
 
 
 
@@ -967,6 +1219,40 @@ nextCondNode graph n = nextCondSeen [n] n
             []    -> Nothing
             [ n'] -> if n' `elem` seen then Nothing else nextCondSeen (n':seen) n'
             (_:_) -> Just n
+
+
+
+toNextRealCondNode graph n = toNextCondSeen [n] n
+    where toNextCondSeen seen n = case List.delete n $ nub $ suc graph n of
+            []    -> seen
+            [ n'] -> if n' `elem` seen then seen else toNextCondSeen (n':seen) n'
+            (_:_) -> seen
+
+nextRealCondNode graph n = nextCondSeen [n] n
+    where nextCondSeen seen n = case List.delete n $ nub $ suc graph n of
+            []    -> Nothing
+            [ n'] -> if n' `elem` seen then Nothing else nextCondSeen (n':seen) n'
+            (_:_) -> Just n
+
+
+
+nextJoinNode graph n = nextJoinSeen [n] n
+    where nextJoinSeen seen n = case pre graph n of
+            (_:_) -> Just n
+            _     -> case suc graph n of
+              []     -> Nothing
+              [ n' ] -> if n' `elem` seen then Nothing else nextJoinSeen (n':seen) n'
+              (_:_)  -> Nothing
+
+nextJoinNodes graph n = nextJoinSeen [n] n []
+    where nextJoinSeen seen n joins = case suc graph n of
+              []     -> joins'
+              [ n' ] -> if n' `elem` seen then joins' else nextJoinSeen (n':seen) n' joins'
+              (_:_)  -> joins'
+            where joins' = case pre graph n of
+                     (_:_) -> n:joins
+                     _     -> joins
+
 
 
 prevCondNodes graph start = prevCondsF (pre graph start)

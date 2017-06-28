@@ -881,17 +881,17 @@ sinkdomOfJoinUpperBound  graph =
           sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- controlSinks graph, x <- sink]
 
 joinUpperBound :: forall gr a b. DynGraph gr => gr a b -> Map Node (Maybe (Set Node))
-joinUpperBound graph = Map.delete dummyNode $ job condNodes init
-    where job :: Set Node -> Map Node (Maybe (Set Node)) -> Map Node (Maybe (Set Node))
-          job worklist jobs 
-              | Set.null worklist = jobs
+joinUpperBound graph = Map.delete dummyNode $ jub condNodes init
+    where jub :: Set Node -> Map Node (Maybe (Set Node)) -> Map Node (Maybe (Set Node))
+          jub worklist jubs 
+              | Set.null worklist = jubs
               | otherwise         = if (ubX == ubX') then
-                                      job               worklist'                     jobs
+                                      jub               worklist'                     jubs
                                     else
-                                      job (influenced ⊔ worklist') (Map.insert x ubX' jobs)
+                                      jub (influenced ⊔ worklist') (Map.insert x ubX' jubs)
             where (x, worklist')  = Set.deleteFindMin worklist
                   successorsX = successors ! x
-                  ubX         = jobs ! x
+                  ubX         = jubs ! x
                   ubX'        = case foldr1 join successorsX of
                     (ns, Nothing) -> Just ns
                     _             -> Nothing
@@ -900,17 +900,17 @@ joinUpperBound graph = Map.delete dummyNode $ job condNodes init
 
                   join :: Successor -> Successor -> Successor
                   join (ns, Nothing) (ms, Nothing) = (         ns ⊓ ms        , Nothing)
-                  join (ns, Just n)  (ms, Nothing) = case jobs ! n of
+                  join (ns, Just n)  (ms, Nothing) = case jubs ! n of
                     Just ns' -> ((ns ⊔ ns') ⊓  ms, Nothing)
                     Nothing  -> (              ms, Nothing)
-                  join (ns, Nothing) (ms, Just m)  = case jobs ! m of
+                  join (ns, Nothing) (ms, Just m)  = case jubs ! m of
                     Just ms' -> (       ns  ⊓ (ms ⊔ ms'), Nothing)
                     Nothing  -> (       ns              , Nothing)
-                  join (ns, Just n)  (ms, Just m)  = case jobs ! m of
-                    Just ms' -> case jobs ! n of
+                  join (ns, Just n)  (ms, Just m)  = case jubs ! m of
+                    Just ms' -> case jubs ! n of
                                  Just ns' -> ( (ns ⊔ ns') ⊓ (ms ⊔ ms'), Nothing)
                                  Nothing  -> (              (ms ⊔ ms'), Nothing)
-                    Nothing  -> case jobs ! n of
+                    Nothing  -> case jubs ! n of
                                  Just ns' -> ( (ns ⊔ ns')             , Nothing)
                                  Nothing  -> (        (ns ⊔ ms),        Just dummyNode)
           [dummyNode] = newNodes 1 graph

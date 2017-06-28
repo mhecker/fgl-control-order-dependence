@@ -886,15 +886,18 @@ joinUpperBound graph = Map.delete dummyNode $ job condNodes init
           job worklist jobs 
               | Set.null worklist = jobs
               | otherwise         = if (ubX == ubX') then
-                                      job worklist'                    jobs
+                                      job               worklist'                     jobs
                                     else
-                                      job condNodes (Map.insert x ubX' jobs)
+                                      job (influenced ⊔ worklist') (Map.insert x ubX' jobs)
             where (x, worklist')  = Set.deleteFindMin worklist
                   successorsX = successors ! x
                   ubX         = jobs ! x
                   ubX'        = case foldr1 join successorsX of
                     (ns, Nothing) -> Just ns
                     _             -> Nothing
+
+                  influenced = Set.fromList $ prevConds x
+
                   join :: Successor -> Successor -> Successor
                   join (ns, Nothing) (ms, Nothing) = (         ns ⊓ ms        , Nothing)
                   join (ns, Just n)  (ms, Nothing) = case jobs ! n of
@@ -942,6 +945,7 @@ joinUpperBound graph = Map.delete dummyNode $ job condNodes init
           sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
           sinks       =  controlSinks graph
           nextCond    = nextRealCondNode graph
+          prevConds   = prevRealCondNodes graph
           toNextCond  = toNextRealCondNode graph
 
 isinkdomOfTwoFinger6 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
@@ -1252,6 +1256,16 @@ nextJoinNodes graph n = nextJoinSeen [n] n []
             where joins' = case pre graph n of
                      (_:_) -> n:joins
                      _     -> joins
+
+
+
+prevRealCondNodes graph start = prevCondsF (List.delete start $ nub $ pre graph start)
+    where prevCondsF front = concat $ fmap prevConds front
+          prevConds  n
+            | n == start = [n]
+            | otherwise  = case List.delete n $ nub $ suc graph n of
+                [ n'] -> prevCondsF (List.delete n $ nub $ pre graph n)
+                (_:_) -> [n]
 
 
 

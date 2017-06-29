@@ -202,45 +202,45 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
     testProperty   "joinUpperBound always computes an upper bound"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
+                    let g = generatedGraph
                         sinks = NTICD.controlSinks g
                     in (∀) (Map.assocs $ NTICD.joinUpperBound g) (\(n,maybeNs) -> maybeNs /= Nothing ∨   (∃) (sinks) (\sink -> n ∈ sink)),
     testProperty   "isinkdomOf^*          == sinkdomOfJoinUpperBound^*"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
+                    let g = generatedGraph
                     in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               NTICD.sinkdomOfJoinUpperBound g)
     -- testProperty   "isinkdomOf^*          == isinkdomOfTwoFinger6^*"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
     --                    (trc $ fromSuccMap $
     --                     NTICD.isinkdomOfTwoFinger6             g)
     -- testProperty   "isinkdomOf^*          == isinkdomOfGfp2^*"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
     --                    (trc $ fromSuccMap $
     --                     NTICD.isinkdomOfGfp2             g),
     -- testProperty   "sinkdomOf reduces, in some sense,  to a multi-rooted tree"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                     isinkdom = NTICD.isinkdomOf g :: Gr () ()
     --                 in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
     -- testProperty   "sinkdomOf             == sinkdomOfisinkdomProperty"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in NTICD.sinkdomOf                  g ==
     --                    NTICD.sinkdomOfisinkdomProperty  g,
     -- testProperty   "sinkdomOf             == sinkdomOfLfp "
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in NTICD.sinkdomOf              g ==
     --                    NTICD.sinkdomOfLfp           g,
     -- testProperty   "sinkdomOf             == sinkdomOfGfp "
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in NTICD.sinkdomOf              g ==
     --                    NTICD.sinkdomOfGfp           g,
     -- testProperty   "sinkDFUpGivenX ! (x,z) is independent of choice of x for given z"
@@ -261,22 +261,22 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     --                    NTICD.sinkDFLocalDef          g,
     -- testProperty   "sinkDFcd              == nticdF3"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in NTICD.sinkDFcd         g entry () exit ==
     --                    NTICD.nticdF3          g entry () exit,
     -- testProperty   "sinkDFFromUpLocalDefcd== nticdF3"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in NTICD.sinkDFFromUpLocalDefcd  g entry () exit ==
     --                    NTICD.nticdF3                 g entry () exit,
     -- testProperty   "sinkDFFromUpLocalcd   == nticdF3"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in NTICD.sinkDFFromUpLocalcd     g entry () exit ==
     --                    NTICD.nticdF3                 g entry () exit,
     -- testProperty   "sinkDFF2cd            == nticdF3"
     --             $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-    --                 let (exit, g) = (entry, generatedGraph)
+    --                 let g = generatedGraph
     --                 in NTICD.sinkDFF2cd       g entry () exit ==
     --                    NTICD.nticdF3          g entry () exit
   ]
@@ -307,7 +307,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 sensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
     testProperty  "mdomOf              == mdomOfLfp "
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
+                    let g = generatedGraph
                     in NTICD.mdomOf                 g ==
                        NTICD.mdomOfLfp              g
   ]
@@ -337,50 +337,50 @@ nticdProps = testGroup "(concerning nticd )" [
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
     testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.nticdFig5        g entry () exit ==
-                       NTICD.nticdF5          g entry () exit,
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let (_, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.nticdFig5        g ==
+                       NTICD.nticdF5          g,
     testProperty  "controlDependence      == nticdF3                for graphs with unique end node property"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in controlDependence      g entry () exit ==
-                       NTICD.nticdF3          g entry () exit,
+                    in controlDependence      g exit ==
+                       NTICD.nticdF3          g,
     testProperty  "nticdSinkContraction   == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.nticdSinkContraction  g entry () exit ==
-                       NTICD.nticdF3               g entry () exit,
+                    let g = generatedGraph
+                    in NTICD.nticdSinkContraction  g ==
+                       NTICD.nticdF3               g,
     testProperty  "nticdDef               == nticdF3"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.nticdDef         g entry () exit ==
-                       NTICD.nticdF3          g entry () exit,
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.nticdDef         g ==
+                       NTICD.nticdF3          g,
     testProperty  "nticdF3'               == nticdF3"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.nticdF3'         g entry () exit ==
-                       NTICD.nticdF3          g entry () exit,
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.nticdF3'         g ==
+                       NTICD.nticdF3          g,
     testProperty  "nticdF3'dual           == nticdF3"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.nticdF3'dual     g entry () exit ==
-                       NTICD.nticdF3          g entry () exit,
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.nticdF3'dual     g ==
+                       NTICD.nticdF3          g,
     testProperty  "nticdF3WorkList        == nticdF3"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.nticdF3WorkList  g entry () exit ==
-                       NTICD.nticdF3          g entry () exit,
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.nticdF3WorkList  g ==
+                       NTICD.nticdF3          g,
     testProperty  "nticdF3WorkListSymbolic== nticdF3"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.nticdF3WorkListSymbolic g entry () exit ==
-                       NTICD.nticdF3                 g entry () exit,
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.nticdF3WorkListSymbolic g ==
+                       NTICD.nticdF3                 g,
     testProperty  "nticdF3'dorkListSymbolic  == nticdF3"
-                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
-                    let (exit, g) = (entry, generatedGraph)
-                    in NTICD.nticdF3'dualWorkListSymbolic g entry () exit ==
-                       NTICD.nticdF3                      g entry () exit
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.nticdF3'dualWorkListSymbolic g ==
+                       NTICD.nticdF3                      g
   ]
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "nticdFig5GraphP           ==       nticdF5GraphP for " ++ exampleName)
@@ -437,18 +437,18 @@ ntscdProps = testGroup "(concerning ntscd )" [
     testProperty  "ntscdF4WorkList == ntscdF3"
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry
-                    in NTICD.ntscdF4WorkList g entry () exit ==
-                       NTICD.ntscdF3         g entry () exit,
+                    in NTICD.ntscdF4WorkList g ==
+                       NTICD.ntscdF3         g,
     testProperty  "ntscdF4         == ntscdF3"
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry
-                    in NTICD.ntscdF4         g entry () exit ==
-                       NTICD.ntscdF3         g entry () exit,
+                    in NTICD.ntscdF4         g ==
+                       NTICD.ntscdF3         g,
     testProperty  "ntscdDef        == ntscdF3"
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry
-                    in NTICD.ntscdDef        g entry () exit ==
-                       NTICD.ntscdF3         g entry () exit
+                    in NTICD.ntscdDef        g ==
+                       NTICD.ntscdF3         g
   ]
 
 ntscdTests = testGroup "(concerning ntscd)" $

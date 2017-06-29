@@ -11,6 +11,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Graph.Inductive.Query.Dominators (dom)
+import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
 import qualified Data.List as List
 
@@ -44,17 +45,15 @@ type SmnFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> 
 
 {- Generic utility functions -}
 
-cdepGraphP :: DynGraph gr => (gr CFGNode CFGEdge -> Node -> CFGEdge -> Node -> gr CFGNode Dependence) -> Program gr -> gr CFGNode Dependence 
+cdepGraphP :: DynGraph gr => (gr CFGNode CFGEdge -> gr CFGNode Dependence) -> Program gr -> gr CFGNode Dependence 
 cdepGraphP graphGen  p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
-    foldr mergeTwoGraphs empty [ graphGen (nfilter (\node -> staticThreadOf node == thread) tcfg)
-                                          (entryOf thread)
-                                          (false)
-                                          (exitOf thread)
-                               | thread <- Set.toList staticThreads ]
+    foldr mergeTwoGraphs empty [ insEdge (entry, exit, ControlDependence) $ 
+                                 graphGen (insEdge (entry, exit, false) $ nfilter (\node -> staticThreadOf node == thread) tcfg)
+                               | thread <- Set.toList staticThreads,  let entry = entryOf thread, let exit = exitOf thread ]
 
-cdepGraph :: DynGraph gr => (gr a b -> Node -> b -> Node -> Map Node (Set Node)) -> gr a b -> Node -> b -> Node -> gr a Dependence
-cdepGraph cdGen graph entry label exit = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
-  where dependencies = cdGen graph entry label exit
+cdepGraph :: DynGraph gr => (gr a b -> Map Node (Set Node)) -> gr a b -> gr a Dependence
+cdepGraph cdGen graph  = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
+  where dependencies = cdGen graph
 
 
 snmGfp :: DynGraph gr => gr a b -> SmnFunctionalGen gr a b -> Map (Node, Node) (Set (T Node))
@@ -76,20 +75,18 @@ snmLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCo
         toNextCond = toNextCondNode graph
         trncl = trc graph
 
-ntXcd :: DynGraph gr => (gr a b -> Map (Node, Node) (Set (T Node))) -> gr a b -> Node -> b -> Node -> Map Node (Set Node)
-ntXcd snm graph entry label exit = 
-      Map.fromList [ (n, Set.empty) | n <- nodes graph']
-    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph',
+ntXcd :: DynGraph gr => (gr a b -> Map (Node, Node) (Set (T Node))) -> gr a b -> Map Node (Set Node)
+ntXcd snm graph = 
+      Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph,
                                             m /= n,
                                             let tmn = Set.size $ s ! (m,n),
-                                            0 < tmn, tmn < (Set.size $ Set.fromList $ suc graph' n)
+                                            0 < tmn, tmn < (Set.size $ Set.fromList $ suc graph n)
                                       ]
                      ) | n <- condNodes
                   ]
-    ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
-  where graph' = insEdge (entry, exit, label) graph 
-        s = snm graph' 
-        condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+  where s = snm graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 
 
@@ -127,10 +124,10 @@ f5 graph condNodes _ _ _ s
 nticdF5GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF5GraphP = cdepGraphP nticdF5Graph
 
-nticdF5Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF5Graph :: DynGraph gr => gr a b -> gr a Dependence
 nticdF5Graph = cdepGraph nticdF5
 
-nticdF5 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF5 :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF5 = ntXcd snmF5
 
 snmF5 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -175,10 +172,10 @@ f3' graph condNodes reachable nextCond toNextCond s
 nticdF3GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF3GraphP = cdepGraphP nticdF3Graph
 
-nticdF3Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3Graph :: DynGraph gr => gr a b -> gr a Dependence
 nticdF3Graph = cdepGraph nticdF3
 
-nticdF3 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3 :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3 = ntXcd snmF3
 
 snmF3 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -188,10 +185,10 @@ snmF3 graph = snmGfp graph f3
 nticdF3'GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF3'GraphP = cdepGraphP nticdF3'Graph
 
-nticdF3'Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3'Graph :: DynGraph gr => gr a b -> gr a Dependence
 nticdF3'Graph = cdepGraph nticdF3'
 
-nticdF3' :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3' :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3' = ntXcd snmF3'
 
 snmF3' :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -215,10 +212,10 @@ f3'dual graph condNodes reachable nextCond toNextCond s
 nticdF3'dualGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF3'dualGraphP = cdepGraphP nticdF3'dualGraph
 
-nticdF3'dualGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3'dualGraph :: DynGraph gr => gr a b ->  gr a Dependence
 nticdF3'dualGraph = cdepGraph nticdF3'dual
 
-nticdF3'dual :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3'dual :: DynGraph gr => gr a b ->  Map Node (Set Node)
 nticdF3'dual = ntXcd snmF3'dual
 
 snmF3'dual :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -231,10 +228,10 @@ snmF3'dual graph = snmLfp graph f3'dual
 nticdF3'dualWorkListSymbolicGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF3'dualWorkListSymbolicGraphP = cdepGraphP nticdF3'dualWorkListSymbolicGraph
 
-nticdF3'dualWorkListSymbolicGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3'dualWorkListSymbolicGraph :: DynGraph gr => gr a b -> gr a Dependence
 nticdF3'dualWorkListSymbolicGraph = cdepGraph nticdF3'dualWorkListSymbolic
 
-nticdF3'dualWorkListSymbolic :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3'dualWorkListSymbolic :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3'dualWorkListSymbolic = ntXcd snmF3'dualWorkListSymbolicLfp
 
 snmF3'dualWorkListSymbolicLfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -266,10 +263,10 @@ snmF3'dualWorkListSymbolicLfp graph = snmWorkList (Set.fromList [ (m,n,x) | p <-
 nticdF3WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF3WorkListGraphP = cdepGraphP nticdF3WorkListGraph
 
-nticdF3WorkListGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3WorkListGraph :: DynGraph gr => gr a b -> gr a Dependence
 nticdF3WorkListGraph = cdepGraph nticdF3WorkList
 
-nticdF3WorkList :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3WorkList :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3WorkList = ntXcd snmF3WorkListGfp
 
 snmF3WorkListGfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -303,10 +300,10 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p
 nticdF3WorkListSymbolicGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdF3WorkListSymbolicGraphP = cdepGraphP nticdF3WorkListSymbolicGraph
 
-nticdF3WorkListSymbolicGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdF3WorkListSymbolicGraph :: DynGraph gr => gr a b -> gr a Dependence
 nticdF3WorkListSymbolicGraph = cdepGraph nticdF3WorkListSymbolic
 
-nticdF3WorkListSymbolic :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdF3WorkListSymbolic :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3WorkListSymbolic = ntXcd snmF3WorkListSymbolicGfp
 
 snmF3WorkListSymbolicGfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -346,10 +343,10 @@ snmF3WorkListSymbolicGfp graph = snmWorkList (Set.fromList [ (m,p) | p <- condNo
 ntscdF4GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 ntscdF4GraphP p = cdepGraphP ntscdF4Graph p
 
-ntscdF4Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdF4Graph :: DynGraph gr => gr a b -> gr a Dependence
 ntscdF4Graph = cdepGraph ntscdF4 
 
-ntscdF4 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdF4 :: DynGraph gr => gr a b -> Map Node (Set Node)
 ntscdF4 = ntXcd snmF4
 
 snmF4 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -372,10 +369,10 @@ f4 graph condNodes _ _ _ s
 ntscdF4WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 ntscdF4WorkListGraphP = cdepGraphP ntscdF4WorkListGraph
 
-ntscdF4WorkListGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdF4WorkListGraph :: DynGraph gr => gr a b ->  gr a Dependence
 ntscdF4WorkListGraph = cdepGraph ntscdF4WorkList
 
-ntscdF4WorkList :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdF4WorkList :: DynGraph gr => gr a b -> Map Node (Set Node)
 ntscdF4WorkList = ntXcd snmF4WorkListLfp
 
 snmF4WorkListLfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -405,10 +402,10 @@ snmF4WorkListLfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- su
 ntscdFig4GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 ntscdFig4GraphP = cdepGraphP ntscdFig4Graph
 
-ntscdFig4Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdFig4Graph :: DynGraph gr => gr a b ->  gr a Dependence
 ntscdFig4Graph = cdepGraph ntscdFig4
 
-ntscdFig4 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdFig4 :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntscdFig4 = ntXcd snmFig4Lfp
 
 snmFig4Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -437,10 +434,10 @@ snmFig4Lfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- suc grap
 nticdFig5GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdFig5GraphP = cdepGraphP nticdFig5Graph
 
-nticdFig5Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdFig5Graph :: DynGraph gr => gr a b ->  gr a Dependence
 nticdFig5Graph = cdepGraph nticdFig5
 
-nticdFig5 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdFig5 :: DynGraph gr => gr a b ->  Map Node (Set Node)
 nticdFig5 = ntXcd snmFig5Lfp
 
 snmFig5Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -484,10 +481,10 @@ snmFig5Lfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- suc grap
 ntscdF3GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 ntscdF3GraphP = cdepGraphP ntscdF3Graph
 
-ntscdF3Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdF3Graph :: DynGraph gr => gr a b ->  gr a Dependence
 ntscdF3Graph = cdepGraph ntscdF3
 
-ntscdF3 :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+ntscdF3 :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntscdF3 = ntXcd snmF3Lfp
 
 snmF3Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
@@ -498,21 +495,20 @@ nticdSinkContractionGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdSinkContractionGraphP p = cdepGraphP nticdSinkContractionGraph p 
   where  [endNodeLabel] = newNodes 1 $ tcfg p
 
-nticdSinkContractionGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdSinkContractionGraph :: DynGraph gr => gr a b ->  gr a Dependence
 nticdSinkContractionGraph = cdepGraph nticdSinkContraction
 
-nticdSinkContraction :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-nticdSinkContraction graph entry b exit = Map.fromList [ (n, cdepClassic ! n) | n <- nodes graph, not $ n ∈ sinkNodes ]
+nticdSinkContraction :: DynGraph gr => gr a b ->  Map Node (Set Node)
+nticdSinkContraction graph              = Map.fromList [ (n, cdepClassic ! n) | n <- nodes graph, not $ n ∈ sinkNodes ]
                                         ⊔ Map.fromList [ (n, (∐) [ Set.fromList sink | s <- Set.toList $ cdepClassic ! n,
                                                                                         s ∈ sinkNodes,
                                                                                         let sink = the (s `elem`) sinks ]
                                                          ) | n <- nodes graph, not $ n ∈ sinkNodes
                                                        ]
                                         ⊔ Map.fromList [ (n, Set.empty) | n <- Set.toList sinkNodes ]
-                                        ⊔ Map.fromList [ (entry, Set.fromList [exit]) ]
     where [endNode] = newNodes 1 graph
           sinks = controlSinks graph
-          cdepClassic = nticdF3 (sinkShrinkedGraph graph endNode) entry () exit
+          cdepClassic = controlDependence (sinkShrinkedGraph graph endNode) endNode
           sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
 
 sinkShrinkedGraph :: DynGraph gr => gr a b  -> Node -> gr () ()
@@ -534,11 +530,11 @@ sinkShrinkedGraph graph endNode   = mkGraph (  [ (s,())   | sink <- sinks, let s
 nticdIndusGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdIndusGraphP = cdepGraphP nticdIndusGraph
 
-nticdIndusGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdIndusGraph :: DynGraph gr => gr a b ->  gr a Dependence
 nticdIndusGraph = cdepGraph nticdIndus
 
-nticdIndus :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-nticdIndus graph entry b exit = go (nodes graph) [] deps
+nticdIndus :: DynGraph gr => gr a b ->  Map Node (Set Node)
+nticdIndus graph = go (nodes graph) [] deps
     where
       go []             seen newDeps = newDeps
       go (dependent:ds) seen newDeps = go ds seen newDeps'
@@ -564,7 +560,7 @@ nticdIndus graph entry b exit = go (nodes graph) [] deps
                 (Map.update (\dependents -> Just $ Set.insert dependent  dependents) dependee newDeps)
           sinkNodes = nodesOfSinksNotContainingNode dependent
       
-      deps = ntscdF4 graph entry b exit
+      deps = ntscdF4 graph
       csinks = controlSinks graph
       nodesOfSinksNotContainingNode node = [ n | sink <- csinks, not $ node `elem` sink, n <- sink]
       shouldRemoveDepBetween dependee dependent sinkNodes = run [dependee] [dependent]
@@ -580,25 +576,22 @@ nticdIndus graph entry b exit = go (nodes graph) [] deps
 nticdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdDefGraphP = cdepGraphP nticdDefGraph
 
-nticdDefGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
 nticdDefGraph  = cdepGraph nticdDef
 
-nticdDef :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-nticdDef graph entry label exit =
-        Map.fromList [ (n, Set.empty) | n <- nodes graph']
-    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph', nj /= ni,
-                                                nk <- suc graph' ni, nl <- suc graph' ni, nk /= nl,
+nticdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
+nticdDef graph =
+        Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph, nj /= ni,
+                                                nk <- suc graph ni, nl <- suc graph ni, nk /= nl,
                                                 (∀) (sinkPaths ! nk) (\path ->       nj `inPath` (nk,path)),
                                                 (∃) (sinkPaths ! nl) (\path -> not $ nj `inPath` (nl,path))
                                          ]
                        )
                      | ni <- condNodes ]
-    ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
-
-  where graph' = insEdge (entry, exit, label) graph 
-        condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
-        sinkPaths = sinkPathsFor graph'
-        inPath = inSinkPathFor graph'
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        sinkPaths = sinkPathsFor graph
+        inPath = inSinkPathFor graph
 
 inSinkPathFor graph' n (s, path) = inSinkPathFromEntries [s] path
   where 
@@ -620,29 +613,27 @@ inSinkPathFor graph' n (s, path) = inSinkPathFromEntries [s] path
 ntscdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 ntscdDefGraphP = cdepGraphP ntscdDefGraph
 
-ntscdDefGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+ntscdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
 ntscdDefGraph  = cdepGraph ntscdDef
 
-ntscdDef :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-ntscdDef graph entry label exit =
-        Map.fromList [ (n, Set.empty) | n <- nodes graph']
-    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph',
+ntscdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
+ntscdDef graph =
+        Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph,
                                                 nj /= ni,
-                                                nk <- suc graph' ni, nl <- suc graph' ni, nk /= nl,
+                                                nk <- suc graph ni, nl <- suc graph ni, nk /= nl,
                                                 (∀) (maximalPaths ! nk) (\path ->       nj `inPath` (nk,path)),
                                                 (∃) (maximalPaths ! nl) (\path -> not $ nj `inPath` (nl,path))
                                          ]
                        )
                      | ni <- condNodes ]
-    ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
 
-  where graph' = insEdge (entry, exit, label) graph
-        sccs = scc graph'
+  where sccs = scc graph
         sccOf m =  the (m `elem`) $ sccs
-        condNodes = [ n | n <- nodes graph', length (suc graph' n) > 1 ]
-        maximalPaths = maximalPathsFor graph'
-        inPath = inPathFor graph' doms
-        doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph') entry) | entry <- nodes graph' ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        maximalPaths = maximalPathsFor graph
+        inPath = inPathFor graph doms
+        doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
 
 inPathFor graph' doms n (s, path) = inPathFromEntries [s] path
           where 
@@ -1082,10 +1073,10 @@ sinkDF graph =
 sinkDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 sinkDFGraphP = cdepGraphP sinkDFGraph
 
-sinkDFGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+sinkDFGraph :: DynGraph gr => gr a b ->  gr a Dependence
 sinkDFGraph = cdepGraph sinkDFcd
 
-sinkDFcd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFcd = xDFcd sinkDF
 
 
@@ -1164,10 +1155,10 @@ sinkDFFromUpLocalDef graph =
 sinkDFFromUpLocalDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 sinkDFFromUpLocalDefGraphP = cdepGraphP sinkDFFromUpLocalDefGraph
 
-sinkDFFromUpLocalDefGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+sinkDFFromUpLocalDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
 sinkDFFromUpLocalDefGraph = cdepGraph sinkDFFromUpLocalDefcd
 
-sinkDFFromUpLocalDefcd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFFromUpLocalDefcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFFromUpLocalDefcd = xDFcd sinkDFFromUpLocalDef
 
 
@@ -1185,10 +1176,10 @@ sinkDFFromUpLocal graph =
 sinkDFFromUpLocalGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 sinkDFFromUpLocalGraphP = cdepGraphP sinkDFFromUpLocalGraph
 
-sinkDFFromUpLocalGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+sinkDFFromUpLocalGraph :: DynGraph gr => gr a b ->  gr a Dependence
 sinkDFFromUpLocalGraph = cdepGraph sinkDFFromUpLocalcd
 
-sinkDFFromUpLocalcd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFFromUpLocalcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFFromUpLocalcd = xDFcd sinkDFFromUpLocal
 
 
@@ -1216,21 +1207,19 @@ sinkDFF2 graph =
 sinkDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 sinkDFF2GraphP = cdepGraphP sinkDFF2Graph
 
-sinkDFF2Graph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+sinkDFF2Graph :: DynGraph gr => gr a b ->  gr a Dependence
 sinkDFF2Graph = cdepGraph sinkDFF2cd
 
-sinkDFF2cd :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+sinkDFF2cd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFF2cd = xDFcd sinkDFF2
 
-xDFcd :: DynGraph gr => (gr a b -> Map Node (Set Node)) -> gr a b -> Node -> b -> Node -> Map Node (Set Node)
-xDFcd xDF graph entry label exit = Map.fromList [ (n, Set.empty)       | n <- nodes graph]
+xDFcd :: DynGraph gr => (gr a b -> Map Node (Set Node)) -> gr a b ->  Map Node (Set Node)
+xDFcd xDF graph                  = Map.fromList [ (n, Set.empty)       | n <- nodes graph]
                                  ⊔ Map.fromList [ (n, Set.delete n ns) | (n,ns) <- Map.assocs $
                                                                             (fmap Set.fromList $ invert' $ fmap Set.toList df )
                                                 ]
-                                 ⊔ Map.fromList [ (entry, Set.fromList [ exit]) ]
   
-  where graph' = insEdge (entry, exit, label) graph 
-        df = xDF graph'
+  where df = xDF graph
 
 
 

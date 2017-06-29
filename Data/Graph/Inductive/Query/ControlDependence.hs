@@ -23,28 +23,26 @@ import Data.Graph.Inductive.Query.Dependence
 
 controlDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 controlDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
-    foldr mergeTwoGraphs empty [ controlDependenceGraph (nfilter (\node -> staticThreadOf node == thread) tcfg)
-                                                        (entryOf thread)
-                                                        (false)
-                                                        (exitOf thread)
-                                 | thread <- Set.toList staticThreads ]
+    foldr mergeTwoGraphs empty [ insEdge (entry,exit, ControlDependence) $
+                                 controlDependenceGraph (insEdge (entry, exit, false) $ nfilter (\node -> staticThreadOf node == thread) tcfg)
+                                                        exit
+                                 | thread <- Set.toList staticThreads, let entry = entryOf thread, let exit = exitOf thread ]
 
-controlDependenceGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
-controlDependenceGraph graph entry label exit = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
-  where dependencies = controlDependence graph entry label exit
+controlDependenceGraph :: DynGraph gr => gr a b -> Node -> gr a Dependence
+controlDependenceGraph graph exit = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
+  where dependencies = controlDependence  graph exit
 
-controlDependence :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
-controlDependence graph entry label exit =
+controlDependence :: DynGraph gr => gr a b ->  Node -> Map Node (Set Node)
+controlDependence graph exit =
     Map.fromList
     [ (n, Set.fromList $
-          (if (n==entry) then [ exit ] else [] ) ++
           [ controlledByN | controlledByN <- nodes graph,
                             n /= controlledByN,
                             n `Set.member` (postDomFronts ! controlledByN)
                             ])
      | n <- nodes graph
     ]
-  where postDomFronts = domFront (grev $ insEdge (entry, exit, label) graph) exit
+  where postDomFronts = domFront (grev graph) exit
 
 
 

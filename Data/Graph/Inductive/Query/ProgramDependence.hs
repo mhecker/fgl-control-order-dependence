@@ -24,21 +24,19 @@ programDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 programDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
     insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
     foldr mergeTwoGraphs empty $ [ ddeps ] ++ 
-                                 [ controlDependenceGraph (cfg p thread)
-                                                          (entryOf thread)
-                                                          (false)
-                                                          (exitOf thread)
-                                 | thread <- Set.toList staticThreads ]
+                                 [ insEdge (entry,exit, ControlDependence) $
+                                   controlDependenceGraph (insEdge (entry, exit, false) $ cfg p thread)
+                                                          exit
+                                 | thread <- Set.toList staticThreads, let entry = entryOf thread, let exit = exitOf thread ]
   where ddeps = dataDependenceGraphP p
 
 concurrentProgramDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 concurrentProgramDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
     insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
     foldr mergeTwoGraphs empty $ [ tdeps, ddeps] ++
-                                 [ controlDependenceGraph (cfg p thread)
-                                                          (entryOf thread)
-                                                          (false)
-                                                          (exitOf thread)
-                                 | thread <- Set.toList staticThreads ]
+                                 [ insEdge (entry,exit, ControlDependence) $
+                                   controlDependenceGraph (insEdge (entry, exit, false) $ cfg p thread)
+                                                          exit
+                                 | thread <- Set.toList staticThreads, let entry = entryOf thread, let exit = exitOf thread ]
   where tdeps = interThreadDependenceGraphP p
         ddeps = dataDependenceGraphP p

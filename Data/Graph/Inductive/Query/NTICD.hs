@@ -494,6 +494,42 @@ snmF3Lfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF3Lfp graph = snmLfp graph f3
 
 
+nticdSinkContractionGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdSinkContractionGraphP p = cdepGraphP nticdSinkContractionGraph p 
+  where  [endNodeLabel] = newNodes 1 $ tcfg p
+
+nticdSinkContractionGraph :: DynGraph gr => gr a b -> Node -> b -> Node -> gr a Dependence
+nticdSinkContractionGraph = cdepGraph nticdSinkContraction
+
+nticdSinkContraction :: DynGraph gr => gr a b -> Node -> b -> Node -> Map Node (Set Node)
+nticdSinkContraction graph entry b exit = Map.fromList [ (n, cdepClassic ! n) | n <- nodes graph, not $ n ∈ sinkNodes ]
+                                        ⊔ Map.fromList [ (n, (∐) [ Set.fromList sink | s <- Set.toList $ cdepClassic ! n,
+                                                                                        s ∈ sinkNodes,
+                                                                                        let sink = the (s `elem`) sinks ]
+                                                         ) | n <- nodes graph, not $ n ∈ sinkNodes
+                                                       ]
+                                        ⊔ Map.fromList [ (n, Set.empty) | n <- Set.toList sinkNodes ]
+                                        ⊔ Map.fromList [ (entry, Set.fromList [exit]) ]
+    where [endNode] = newNodes 1 graph
+          sinks = controlSinks graph
+          cdepClassic = nticdF3 (sinkShrinkedGraph graph endNode) entry () exit
+          sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+
+sinkShrinkedGraph :: DynGraph gr => gr a b  -> Node -> gr () ()
+sinkShrinkedGraph graph endNode   = mkGraph (  [ (s,())   | sink <- sinks, let s = head sink]
+                                            ++ [ (n,())   | n    <- nodes graph, not $ n ∈ sinkNodes ]
+                                            ++ [ (endNode, ()) ]
+                                          )
+                                          (
+                                               [ (n,s,())       | sink <- sinks, let s = head sink, s' <- sink, n <- pre graph s', not $ n ∈ sink]
+                                            ++ [ (s,endNode,()) | sink <- sinks, let s = head sink ]
+                                            ++ [ (n,m,()) | (n,m) <- edges graph, not $ n ∈ sinkNodes, not $ m ∈ sinkNodes ]
+                                          )
+    where sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+          sinks = controlSinks graph
+
+
+
 
 nticdIndusGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 nticdIndusGraphP = cdepGraphP nticdIndusGraph

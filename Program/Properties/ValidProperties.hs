@@ -33,6 +33,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     isinkdomOf, isinkdomOfGfp2, isinkdomOfTwoFinger6, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound,
+    nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
     sinkDFUp, sinkDFUpDef,
     sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
@@ -317,6 +318,9 @@ nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.nticdFig5GraphP p        == NTICD.nticdF5GraphP p,
+    testProperty  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  NTICD.nticdSinkContractionGraphP p == NTICD.nticdF3GraphP p,
     testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   controlDependenceGraphP p      == NTICD.nticdF3GraphP p,
@@ -342,6 +346,11 @@ nticdProps = testGroup "(concerning nticd )" [
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g entry () exit ==
                        NTICD.nticdF3          g entry () exit,
+    testProperty  "nticdSinkContraction   == nticdF3"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = (entry, generatedGraph)
+                    in NTICD.nticdSinkContraction  g entry () exit ==
+                       NTICD.nticdF3               g entry () exit,
     testProperty  "nticdDef               == nticdF3"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = (entry, generatedGraph)
@@ -376,6 +385,10 @@ nticdProps = testGroup "(concerning nticd )" [
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "nticdFig5GraphP           ==       nticdF5GraphP for " ++ exampleName)
             $ NTICD.nticdFig5GraphP p         == NTICD.nticdF5GraphP p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ( "nticdSinkContractionGraphP   ==       nticdF3GraphP for " ++ exampleName)
+            $ NTICD.nticdSinkContractionGraphP p == NTICD.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)

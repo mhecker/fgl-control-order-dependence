@@ -32,7 +32,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    isinkdomOf, isinkdomOfGfp2, isinkdomOfTwoFinger6, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound,
+    isinkdomOf, isinkdomOfGfp2, isinkdomOfTwoFinger6, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
     sinkDFUp, sinkDFUpDef,
@@ -200,6 +200,17 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "isinkdomOfSinkContraction is intransitive"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
+    testProperty   "isinkdomOf^*          == isinkdomOfSinkContraction^*"
+                $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
+                       (trc $ fromSuccMap $
+                              NTICD.isinkdomOfSinkContraction g),
     testProperty   "joinUpperBound always computes an upper bound"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

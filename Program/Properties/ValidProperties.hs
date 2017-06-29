@@ -34,9 +34,14 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     isinkdomOf, isinkdomOfGfp2, isinkdomOfTwoFinger6, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
-    sinkdomOf, mdomOf, sinkdomOfGfp, mdomOfLfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
+    sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
     sinkDFUp, sinkDFUpDef,
-    sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
+    sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,
+    imdomOf, imdomOfLfp,
+    mdomOf,                   mdomOfLfp,  mDFcd, mDFGraphP, mDFFromUpLocalDefcd, mDFFromUpLocalDefGraphP, mdomOfimdomProperty,
+    mDFUp, mDFUpDef,
+    mDFLocal, mDFLocalDef, mDFUpGivenX,
+    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   ) 
 
@@ -316,11 +321,47 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
-    testProperty  "mdomOf              == mdomOfLfp "
+    testProperty   "mdomOf             == mdomOfLfp "
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                    in NTICD.mdomOf                 g ==
-                       NTICD.mdomOfLfp              g
+                    in NTICD.mdomOf              g ==
+                       NTICD.mdomOfLfp           g,
+    testProperty   "mdomOfLfp reduces, in some sense,  to a multi-rooted tree"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        imdom = NTICD.imdomOfLfp g :: Gr () ()
+                    in   (∀) (nodes imdom) (\n -> length (suc imdom n) <= 1),
+    testProperty   "mdomOfLfp           == mdomOfimdomProperty"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.mdomOfLfp            g ==
+                       NTICD.mdomOfimdomProperty  g,
+    testProperty   "mDFUpGivenX ! (x,z) is independent of choice of x for given z"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                    let mDFUp = NTICD.mDFUpGivenX g
+                    in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
+                         (∀) (Map.assocs mDFUp) (\((x',z'), dfUp') ->
+                           (z == z') → (dfUp == dfUp')
+                         )
+                       ),
+    testProperty   "mDFUp              == mDFUpDef"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                       NTICD.mDFUp                g ==
+                       NTICD.mDFUpDef             g,
+    testProperty   "mDFLocal           == mDFLocalDef"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                       NTICD.mDFLocal             g ==
+                       NTICD.mDFLocalDef          g,
+    testProperty   "mDFcd              == ntscdF3"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.mDFcd            g ==
+                       NTICD.ntscdF3          g,
+    testProperty   "mDFFromUpLocalDefcd== ntscdF3"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.mDFFromUpLocalDefcd     g==
+                       NTICD.ntscdF3                 g
   ]
 
 

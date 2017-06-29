@@ -657,7 +657,8 @@ inPathFor graph' doms n (s, path) = inPathFromEntries [s] path
 
 
 mdomOf ::  DynGraph gr => gr a b -> Map Node (Set Node)
-mdomOf graph = Map.fromList [ (y, Set.fromList [ x | x <- nodes graph, x `mdom` y]) | y <- nodes graph]
+mdomOf graph = -- trace ("Sccs: " ++ (show $ length sccs) ++ "\t\tSize: " ++ (show $ length $ nodes graph)) $
+               Map.fromList [ (y, Set.fromList [ x | x <- nodes graph, x `mdom` y]) | y <- nodes graph]
   where mdom x y =  (∀) (maximalPaths ! y) (\path ->       x `inPath` (y,path))
         maximalPaths = maximalPathsForNodes graph (nodes graph)
         inPath = inPathFor graph doms
@@ -1166,6 +1167,21 @@ sinkDFFromUpLocalDef graph =
         isinkdom = immediateOf sinkdom :: gr () ()
 
 
+
+mdomOfimdomProperty :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mdomOfimdomProperty graph =
+          Map.fromList [ (y,
+                 Set.fromList [ y ]
+               ⊔ (∐) [ mdom ! z | z <- suc imdom y]
+            )
+          | y <- nodes graph]
+  where mdom = mdomOfLfp graph
+        imdom = immediateOf mdom :: gr () ()
+        imdomSccs = scc imdom
+        imdomSccOf m =   the (m `elem`) $ imdomSccs
+
+
+
 sinkDFFromUpLocalDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 sinkDFFromUpLocalDefGraphP = cdepGraphP sinkDFFromUpLocalDefGraph
 
@@ -1244,9 +1260,113 @@ isinkdomOf    graph = immediateOf $ sinkdomOf    graph
 isinkdomOfGfp graph = immediateOf $ sinkdomOfGfp graph
 
 imdomOf    graph = immediateOf $ mdomOf    graph
-imdomOfGfp graph = immediateOf $ mdomOfLfp graph
+imdomOfLfp graph = immediateOf $ mdomOfLfp graph
 
 
+
+
+
+
+mDF graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
+                                            p <- suc graph y,
+                                                   x ∈ mdom ! p,
+                                            (not $ x ∈ mdom ! y)  ∨  x == y ])
+                   | x <- nodes graph ]
+  where mdom = mdomOfLfp graph
+
+
+mDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+mDFGraphP = cdepGraphP sinkDFGraph
+
+mDFGraph :: DynGraph gr => gr a b ->  gr a Dependence
+mDFGraph = cdepGraph mDFcd
+
+mDFcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+mDFcd = xDFcd mDF
+
+
+mDFLocalDef graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            (not $ x ∈ mdom ! y)  ∨  x == y ])
+                   | x <- nodes graph ]
+  where mdom = mdomOfLfp graph
+
+
+
+
+mDFLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFLocal graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            x == y ∨
+                                            (∀) (suc imdom y) (\z -> 
+                                              (∀) (imdomSccOf z) (/= x)
+                                            )  
+                                      ]
+                     )
+                   | x <- nodes graph ]
+  where mdom = mdomOfLfp graph
+        imdom = immediateOf mdom :: gr () ()
+        imdomSccs = scc imdom
+        imdomSccOf m =   the (m `elem`) $ imdomSccs
+
+
+
+mDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFUpDef graph =
+      Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
+                                            (∀) (suc imdom z) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
+                                      ]
+                     )
+                   | z <- nodes graph, (x:_) <- [suc imdom z]]
+  where mdom  = mdomOfLfp graph
+        mdf   = mDF graph
+        imdom = immediateOf mdom :: gr () ()
+
+mDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
+mDFUpGivenX graph =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ mdf ! z,
+                                                (∀) (suc imdom y) (/= x)
+                                      ]
+                     )
+                   | z <- nodes graph, x <- suc imdom z]
+  where mdom  = mdomOfLfp graph
+        mdf   = mDF graph
+        imdom = immediateOf mdom :: gr () ()
+
+
+mDFUp :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFUp graph =
+      Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
+                                                (∀) (suc imdom y) (/= x)
+                                      ]
+                     )
+                   | z <- nodes graph, (x:_) <- [suc imdom z]]
+  where mdom  = mdomOfLfp graph
+        mdf   = mDF graph
+        imdom = immediateOf mdom :: gr () ()
+
+
+
+mDFFromUpLocalDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFFromUpLocalDef graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, (∐) [ dfup ! z  | z <- pre imdom x  ] ) | x <- nodes graph]
+  where dflocal = mDFLocalDef graph
+        dfup = mDFUpDef graph
+        mdom  = mdomOfLfp graph
+        imdom = immediateOf mdom :: gr () ()
+
+
+
+mDFFromUpLocalDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+mDFFromUpLocalDefGraphP = cdepGraphP mDFFromUpLocalDefGraph
+
+mDFFromUpLocalDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
+mDFFromUpLocalDefGraph = cdepGraph mDFFromUpLocalDefcd
+
+mDFFromUpLocalDefcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+mDFFromUpLocalDefcd = xDFcd mDFFromUpLocalDef
 
 
 

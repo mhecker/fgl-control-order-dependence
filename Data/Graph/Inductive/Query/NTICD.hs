@@ -1370,6 +1370,60 @@ mDFFromUpLocalDefcd = xDFcd mDFFromUpLocalDef
 
 
 
+
+mDFFromUpLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFFromUpLocal graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, (∐) [ dfup ! z | z <- pre imdom x  ] ) | x <- nodes graph]
+  where dflocal = mDFLocal graph
+        dfup = mDFUp graph
+        mdom  = mdomOfLfp graph
+        imdom = immediateOf mdom :: gr () ()
+
+
+mDFFromUpLocalGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+mDFFromUpLocalGraphP = cdepGraphP mDFFromUpLocalGraph
+
+mDFFromUpLocalGraph :: DynGraph gr => gr a b ->  gr a Dependence
+mDFFromUpLocalGraph = cdepGraph mDFFromUpLocalcd
+
+mDFFromUpLocalcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+mDFFromUpLocalcd = xDFcd mDFFromUpLocal
+
+
+
+mDFF2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFF2 graph =
+      (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
+  where f2 df = df ⊔ 
+           Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
+                                                         (∀) (suc imdom y) (\z -> 
+                                                           (∀) (imdomSccOf z) (/= x)
+                                                         )
+                                   ]
+                          )
+                        | x <- nodes graph]
+         ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre imdom x,
+                                                          y <- Set.toList $ df ! z,
+                                                         (∀) (suc imdom y) (/= x) ])
+                        | x <- nodes graph]
+        mdom  = mdomOfLfp graph
+        imdom = immediateOf mdom :: gr () ()
+        imdomSccs = scc imdom
+        imdomSccOf m =   the (m `elem`) $ imdomSccs
+
+
+mDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+mDFF2GraphP = cdepGraphP mDFF2Graph
+
+mDFF2Graph :: DynGraph gr => gr a b ->  gr a Dependence
+mDFF2Graph = cdepGraph mDFF2cd
+
+mDFF2cd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+mDFF2cd = xDFcd mDFF2
+
+
+
 {- Utility functions -}
 toNextCondNode graph n = toNextCondSeen [n] n
     where toNextCondSeen seen n = case suc graph n of

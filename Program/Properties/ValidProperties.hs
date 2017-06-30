@@ -38,9 +38,9 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkDFUp, sinkDFUpDef,
     sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,
     imdomOf, imdomOfLfp,
-    mdomOf,                   mdomOfLfp,  mDFcd, mDFGraphP, mDFFromUpLocalDefcd, mDFFromUpLocalDefGraphP, mdomOfimdomProperty,
+    mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty,
     mDFUp, mDFUpDef,
-    mDFLocal, mDFLocalDef, mDFUpGivenX,
+    mDFLocal, mDFLocalDef, mDFUpGivenX, 
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   ) 
@@ -360,8 +360,18 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
     testProperty   "mDFFromUpLocalDefcd== ntscdF3"
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                    in NTICD.mDFFromUpLocalDefcd     g==
-                       NTICD.ntscdF3                 g
+                    in NTICD.mDFFromUpLocalDefcd  g ==
+                       NTICD.ntscdF3              g,
+    testProperty   "mDFFromUpLocalcd   == ntisdF3"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.mDFFromUpLocalcd     g ==
+                       NTICD.ntscdF3              g,
+    testProperty   "mDFF2cd            == ntscdF3"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.mDFF2cd              g ==
+                       NTICD.ntscdF3              g
   ]
 
 

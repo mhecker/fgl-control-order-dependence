@@ -1478,6 +1478,44 @@ imdomOfTwoFinger6 graph = twoFinger worklist0 imdom0
                                      _    -> error "more than one successor in imdom" 
 
 
+
+idomToDF :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)  -> Map Node (Set Node)
+idomToDF graph idom = 
+      (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
+  where f2 df = df ⊔ 
+           Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
+                                                         (∀) (suc idomG y) (\c -> 
+                                                           (∀) (idomSccOf c) (/= x)
+                                                         )
+                                   ]
+                          )
+                        | x <- nodes graph]
+         ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre idomG x,
+                                                          y <- Set.toList $ df ! z,
+                                                         (∀) (suc idomG y) (\c ->
+                                                           (∀) (idomSccOf c) (/= x)
+                                                         )
+                                   ])
+                        | x <- nodes graph]
+        idomG = fromSuccMap idom :: gr () ()
+        idomSccs = scc idomG
+        idomSccOf m = the (m `elem`) $ idomSccs
+
+        
+mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFTwoFinger graph = idomToDF graph $ imdomOfTwoFinger6 graph
+
+imdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+imdomTwoFingerGraphP = cdepGraphP imdomTwoFingerGraph
+
+imdomTwoFingerGraph :: DynGraph gr => gr a b ->  gr a Dependence
+imdomTwoFingerGraph = cdepGraph imdomTwoFingercd
+
+imdomTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+imdomTwoFingercd = xDFcd mDFTwoFinger
+
+
+
 {- Utility functions -}
 toNextCondNode graph n = toNextCondSeen [n] n
     where toNextCondSeen seen n = case suc graph n of

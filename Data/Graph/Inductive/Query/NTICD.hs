@@ -1315,37 +1315,48 @@ mDFLocal graph =
 mDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFUpDef graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                            (∀) (suc imdom z) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
+                                            (∀) (suc imdom z) (\c -> 
+                                              (∀) (imdomSccOf c) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
+                                            )
                                       ]
                      )
                    | z <- nodes graph, (x:_) <- [suc imdom z]]
   where mdom  = mdomOfLfp graph
         mdf   = mDF graph
         imdom = immediateOf mdom :: gr () ()
+        imdomSccs = scc imdom
+        imdomSccOf m =   the (m `elem`) $ imdomSccs
 
 mDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 mDFUpGivenX graph =
       Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                                (∀) (suc imdom y) (/= x)
+                                                (∀) (suc imdom y) (\c ->
+                                                  (∀) (imdomSccOf c) (/= x)
+                                                )
                                       ]
                      )
                    | z <- nodes graph, x <- suc imdom z]
   where mdom  = mdomOfLfp graph
         mdf   = mDF graph
         imdom = immediateOf mdom :: gr () ()
+        imdomSccs = scc imdom
+        imdomSccOf m =   the (m `elem`) $ imdomSccs
 
 
 mDFUp :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFUp graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                                (∀) (suc imdom y) (/= x)
+                                                (∀) (suc imdom y) (\c ->
+                                                  (∀) (imdomSccOf c) (/= x)
+                                                )
                                       ]
                      )
                    | z <- nodes graph, (x:_) <- [suc imdom z]]
   where mdom  = mdomOfLfp graph
         mdf   = mDF graph
         imdom = immediateOf mdom :: gr () ()
-
+        imdomSccs = scc imdom
+        imdomSccOf m =   the (m `elem`) $ imdomSccs
 
 
 mDFFromUpLocalDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
@@ -1397,15 +1408,18 @@ mDFF2 graph =
       (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
   where f2 df = df ⊔ 
            Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc imdom y) (\z -> 
-                                                           (∀) (imdomSccOf z) (/= x)
+                                                         (∀) (suc imdom y) (\c -> 
+                                                           (∀) (imdomSccOf c) (/= x)
                                                          )
                                    ]
                           )
                         | x <- nodes graph]
          ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre imdom x,
                                                           y <- Set.toList $ df ! z,
-                                                         (∀) (suc imdom y) (/= x) ])
+                                                         (∀) (suc imdom y) (\c ->
+                                                           (∀) (imdomSccOf c) (/= x)
+                                                         )
+                                   ])
                         | x <- nodes graph]
         mdom  = mdomOfLfp graph
         imdom = immediateOf mdom :: gr () ()
@@ -1422,6 +1436,51 @@ mDFF2Graph = cdepGraph mDFF2cd
 mDFF2cd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 mDFF2cd = xDFcd mDFF2
 
+
+
+imdomOfTwoFinger6 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+imdomOfTwoFinger6 graph = twoFinger worklist0 isinkdom0
+  where isinkdom0   = Map.fromList [ (x, Set.empty )          | x <- nodes graph]
+                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1]
+        worklist0   = Map.keysSet $ Map.filter (\x -> x ∈ condNodes) pon2node
+        succs  x    = Set.fromList $ suc graph x
+        condNodes   = Set.fromList [ x | x <- nodes graph, (Set.size $ succs x) > 1 ]
+        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- controlSinks graph, x <- sink]
+        nextCond    = nextRealCondNode graph
+        (node2pon, pon2node) = postorder graph
+        
+        twoFinger :: Set Integer ->  Map Node (Set Node) -> Map Node (Set Node)
+        twoFinger worklist isinkdom
+            | Set.null worklist = -- traceShow ("x", "mz", "zs", Set.map (pon2node !) worklist, isinkdom) $
+                                  isinkdom
+            | otherwise         = -- traceShow (x, mz, zs, Set.map (pon2node !) worklist, isinkdom) $
+                                  if (not $ changed) then twoFinger               worklist'                                   isinkdom
+                                                     else twoFinger (influenced ⊔ worklist')  (Map.insert x zs                isinkdom)
+          where (pon, worklist')  = Set.deleteFindMin worklist
+                x = pon2node ! pon
+                mz = foldM1 lca (Set.toList $ succs x)
+                  -- | (∀) (succs x) (\x' -> nextCond x' == Just x) =  foldM1 lca (Set.toList $ succs x)
+                  -- | otherwise                                     = foldM1 lca [ x' | x' <- Set.toList $  succs x, nextCond x' /= Just x]
+                deadends = [ x' | x' <- Set.toList $ succs x, nextCond x' == Nothing]
+                zs = case mz of
+                      Just z  ->  Set.fromList [ z ]
+                      Nothing ->  Set.fromList [ ]
+                changed = if (Map.member x isinkdom) then (zs /= (isinkdom ! x)) else True
+                influenced =  worklist0
+                lca  n m = lca' isinkdom (n,n, Set.fromList [n]) (m,m, Set.fromList [m])
+                lca' c (n0,n,ns) (m0,m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((c ! n) ∖ ns ) of
+                                     []   -> case Set.toList $ ((c ! m) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' c (m0, m', Set.insert m' ms) (n0, n, ns)
+                                                _    -> error "more than one successor in isinkdom" 
+                                     [n'] -> lca' c (m0, m, ms) (n0, n', Set.insert n' ns)
+                                     _    -> error "more than one successor in isinkdom" 
 
 
 {- Utility functions -}

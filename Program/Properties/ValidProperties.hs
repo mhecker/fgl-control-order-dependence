@@ -35,7 +35,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     isinkdomOf, isinkdomOfGfp2, isinkdomOfTwoFinger6, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
-    sinkDFUp, sinkDFUpDef,
+    sinkDFUp,   sinkDFUpDef,    imdomOfTwoFinger6,
     sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,
     imdomOf, imdomOfLfp,
     mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty,
@@ -321,6 +321,12 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
+                       (trc $ fromSuccMap $
+                        NTICD.imdomOfTwoFinger6            g),
     testProperty   "mdomOf             == mdomOfLfp "
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

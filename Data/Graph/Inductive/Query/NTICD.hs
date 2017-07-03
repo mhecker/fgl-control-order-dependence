@@ -1214,24 +1214,9 @@ sinkDFFromUpLocalcd = xDFcd sinkDFFromUpLocal
 
 
 sinkDFF2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-sinkDFF2 graph =
-      (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
-  where f2 df = df ⊔ 
-           Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc isinkdom y) (\z -> 
-                                                           (∀) (isinkdomSccOf z) (/= x)
-                                                         )
-                                   ]
-                          )
-                        | x <- nodes graph]
-         ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre isinkdom x,
-                                                          y <- Set.toList $ df ! z,
-                                                         (∀) (suc isinkdom y) (/= x) ])
-                        | x <- nodes graph]
-        sinkdom  = sinkdomOf graph
+sinkDFF2 graph = idomToDF graph isinkdom
+  where sinkdom  = sinkdomOf graph
         isinkdom = immediateOf sinkdom :: gr () ()
-        isinkdomSccs = scc isinkdom
-        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
 
 
 sinkDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
@@ -1404,28 +1389,9 @@ mDFFromUpLocalcd = xDFcd mDFFromUpLocal
 
 
 mDFF2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-mDFF2 graph =
-      (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
-  where f2 df = df ⊔ 
-           Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc imdom y) (\c -> 
-                                                           (∀) (imdomSccOf c) (/= x)
-                                                         )
-                                   ]
-                          )
-                        | x <- nodes graph]
-         ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre imdom x,
-                                                          y <- Set.toList $ df ! z,
-                                                         (∀) (suc imdom y) (\c ->
-                                                           (∀) (imdomSccOf c) (/= x)
-                                                         )
-                                   ])
-                        | x <- nodes graph]
-        mdom  = mdomOfLfp graph
+mDFF2 graph = idomToDF graph imdom
+  where mdom  = mdomOfLfp graph
         imdom = immediateOf mdom :: gr () ()
-        imdomSccs = scc imdom
-        imdomSccOf m =   the (m `elem`) $ imdomSccs
-
 
 mDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 mDFF2GraphP = cdepGraphP mDFF2Graph
@@ -1479,8 +1445,8 @@ imdomOfTwoFinger6 graph = twoFinger worklist0 imdom0
 
 
 
-idomToDF :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)  -> Map Node (Set Node)
-idomToDF graph idom = 
+idomToDF :: forall gr a b. DynGraph gr => gr a b -> gr () () -> Map Node (Set Node)
+idomToDF graph idomG = 
       (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
   where f2 df = df ⊔ 
            Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
@@ -1497,13 +1463,12 @@ idomToDF graph idom =
                                                          )
                                    ])
                         | x <- nodes graph]
-        idomG = fromSuccMap idom :: gr () ()
         idomSccs = scc idomG
         idomSccOf m = the (m `elem`) $ idomSccs
 
         
 mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-mDFTwoFinger graph = idomToDF graph $ imdomOfTwoFinger6 graph
+mDFTwoFinger graph = idomToDF graph $ (fromSuccMap $ imdomOfTwoFinger6 graph :: gr () ())
 
 imdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 imdomTwoFingerGraphP = cdepGraphP imdomTwoFingerGraph

@@ -1445,8 +1445,6 @@ imdomOfTwoFinger6 graph = twoFinger worklist0 isinkdom0
         worklist0   = Map.keysSet $ Map.filter (\x -> x ∈ condNodes) pon2node
         succs  x    = Set.fromList $ suc graph x
         condNodes   = Set.fromList [ x | x <- nodes graph, (Set.size $ succs x) > 1 ]
-        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- controlSinks graph, x <- sink]
-        nextCond    = nextRealCondNode graph
         (node2pon, pon2node) = postorder graph
         
         twoFinger :: Set Integer ->  Map Node (Set Node) -> Map Node (Set Node)
@@ -1459,13 +1457,10 @@ imdomOfTwoFinger6 graph = twoFinger worklist0 isinkdom0
           where (pon, worklist')  = Set.deleteFindMin worklist
                 x = pon2node ! pon
                 mz = foldM1 lca (Set.toList $ succs x)
-                  -- | (∀) (succs x) (\x' -> nextCond x' == Just x) =  foldM1 lca (Set.toList $ succs x)
-                  -- | otherwise                                     = foldM1 lca [ x' | x' <- Set.toList $  succs x, nextCond x' /= Just x]
-                deadends = [ x' | x' <- Set.toList $ succs x, nextCond x' == Nothing]
                 zs = case mz of
                       Just z  ->  Set.fromList [ z ]
                       Nothing ->  Set.fromList [ ]
-                changed = if (Map.member x isinkdom) then (zs /= (isinkdom ! x)) else True
+                changed = zs /= (isinkdom ! x)
                 influenced =  worklist0
                 lca  n m = lca' isinkdom (n,n, Set.fromList [n]) (m,m, Set.fromList [m])
                 lca' c (n0,n,ns) (m0,m,ms)

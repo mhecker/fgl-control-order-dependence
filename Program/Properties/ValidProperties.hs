@@ -227,12 +227,6 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               NTICD.sinkdomOfJoinUpperBound g),
-    -- testProperty   "isinkdomOf^*          == isinkdomOfTwoFinger6^*"
-    --             $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
-    --                 let g = generatedGraph
-    --                 in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
-    --                    (trc $ fromSuccMap $
-    --                     NTICD.isinkdomOfTwoFinger6             g),
     testProperty   "isinkdomOf^*          == isinkdomOfGfp2^*"
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

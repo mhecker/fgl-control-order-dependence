@@ -1462,8 +1462,8 @@ imdomOfTwoFinger6 graph = twoFinger worklist0 imdom0
                       Nothing ->  Set.fromList [ ]
                 changed = zs /= (imdom ! x)
                 influenced =  worklist0
-                lca  n m = lca' imdom (n,n, Set.fromList [n]) (m,m, Set.fromList [m])
-                lca' c (n0,n,ns) (m0,m,ms)
+                lca  n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m])
+                lca' c (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                                Just m
                     | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
@@ -1472,9 +1472,9 @@ imdomOfTwoFinger6 graph = twoFinger worklist0 imdom0
                                   case Set.toList $ ((c ! n) ∖ ns ) of
                                      []   -> case Set.toList $ ((c ! m) ∖ ms ) of
                                                 []   -> Nothing
-                                                [m'] -> lca' c (m0, m', Set.insert m' ms) (n0, n, ns)
+                                                [m'] -> lca' c ( m', Set.insert m' ms) (n, ns)
                                                 _    -> error "more than one successor in imdom" 
-                                     [n'] -> lca' c (m0, m, ms) (n0, n', Set.insert n' ns)
+                                     [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
                                      _    -> error "more than one successor in imdom" 
 
 

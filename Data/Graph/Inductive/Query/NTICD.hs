@@ -1439,30 +1439,30 @@ mDFF2cd = xDFcd mDFF2
 
 
 imdomOfTwoFinger6 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-imdomOfTwoFinger6 graph = twoFinger worklist0 isinkdom0
-  where isinkdom0   = Map.fromList [ (x, Set.empty )          | x <- nodes graph]
-                    ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1]
+imdomOfTwoFinger6 graph = twoFinger worklist0 imdom0
+  where imdom0   = Map.fromList [ (x, Set.empty )          | x <- nodes graph]
+                 ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1]
         worklist0   = Map.keysSet $ Map.filter (\x -> x ∈ condNodes) pon2node
         succs  x    = Set.fromList $ suc graph x
         condNodes   = Set.fromList [ x | x <- nodes graph, (Set.size $ succs x) > 1 ]
         (node2pon, pon2node) = postorder graph
         
         twoFinger :: Set Integer ->  Map Node (Set Node) -> Map Node (Set Node)
-        twoFinger worklist isinkdom
-            | Set.null worklist = -- traceShow ("x", "mz", "zs", Set.map (pon2node !) worklist, isinkdom) $
-                                  isinkdom
-            | otherwise         = -- traceShow (x, mz, zs, Set.map (pon2node !) worklist, isinkdom) $
-                                  if (not $ changed) then twoFinger               worklist'                                   isinkdom
-                                                     else twoFinger (influenced ⊔ worklist')  (Map.insert x zs                isinkdom)
+        twoFinger worklist imdom
+            | Set.null worklist = -- traceShow ("x", "mz", "zs", Set.map (pon2node !) worklist, imdom) $
+                                  imdom
+            | otherwise         = -- traceShow (x, mz, zs, Set.map (pon2node !) worklist, imdom) $
+                                  if (not $ changed) then twoFinger               worklist'                                   imdom
+                                                     else twoFinger (influenced ⊔ worklist')  (Map.insert x zs                imdom)
           where (pon, worklist')  = Set.deleteFindMin worklist
                 x = pon2node ! pon
                 mz = foldM1 lca (Set.toList $ succs x)
                 zs = case mz of
                       Just z  ->  Set.fromList [ z ]
                       Nothing ->  Set.fromList [ ]
-                changed = zs /= (isinkdom ! x)
+                changed = zs /= (imdom ! x)
                 influenced =  worklist0
-                lca  n m = lca' isinkdom (n,n, Set.fromList [n]) (m,m, Set.fromList [m])
+                lca  n m = lca' imdom (n,n, Set.fromList [n]) (m,m, Set.fromList [m])
                 lca' c (n0,n,ns) (m0,m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                                Just m
@@ -1473,9 +1473,9 @@ imdomOfTwoFinger6 graph = twoFinger worklist0 isinkdom0
                                      []   -> case Set.toList $ ((c ! m) ∖ ms ) of
                                                 []   -> Nothing
                                                 [m'] -> lca' c (m0, m', Set.insert m' ms) (n0, n, ns)
-                                                _    -> error "more than one successor in isinkdom" 
+                                                _    -> error "more than one successor in imdom" 
                                      [n'] -> lca' c (m0, m, ms) (n0, n', Set.insert n' ns)
-                                     _    -> error "more than one successor in isinkdom" 
+                                     _    -> error "more than one successor in imdom" 
 
 
 {- Utility functions -}

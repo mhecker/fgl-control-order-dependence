@@ -901,6 +901,11 @@ sinkDFLocal graph =
 sinkDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFUpDef graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
+                                            assert (
+                                            (∀) (suc isinkdom z)                                (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
+                                            ↔
+                                            (∀) (suc isinkdom z) (\c ->  (∀) (isinkdomSccOf c)  (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y))
+                                            ) True,
                                             (∀) (suc isinkdom z) (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
                                       ]
                      )
@@ -909,9 +914,17 @@ sinkDFUpDef graph =
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
 
+        isinkdomSccs = scc isinkdom
+        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
+
 sinkDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 sinkDFUpGivenX graph =
       Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
+                                                assert (
+                                                (∀) (suc isinkdom y)                                (/=x)
+                                                ↔
+                                                (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
+                                                ) True,
                                                 (∀) (suc isinkdom y) (/= x)
                                       ]
                      )
@@ -920,10 +933,18 @@ sinkDFUpGivenX graph =
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
 
+        isinkdomSccs = scc isinkdom
+        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
+
 
 sinkDFUp :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFUp graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
+                                                assert (
+                                                (∀) (suc isinkdom y)                                (/=x)
+                                                ↔
+                                                (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
+                                                ) True,
                                                 (∀) (suc isinkdom y) (/= x)
                                       ]
                      )
@@ -931,6 +952,10 @@ sinkDFUp graph =
   where sinkdom  = sinkdomOf graph
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
+
+        isinkdomSccs = scc isinkdom
+        isinkdomSccOf m =   the (m `elem`) $ isinkdomSccs
+
 
 
 

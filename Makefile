@@ -12,6 +12,7 @@ COLOR=--color always
 ROFL = Data/Graph/Inductive/Query/BalancedSCC
 CABAL_PREFIX=cabal exec --
 PATTERN=
+GHC_FLAGS=-rtsopts -O -fno-ignore-asserts
 
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE
@@ -19,28 +20,28 @@ PATTERN=
 all : all.test all.fail rofl
 
 %.test.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 endif
 
 %.fail.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
 endif
 
 
 %.test-xml.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
 endif
 
 %.fail-xml.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) -rtsopts -O --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
 endif
 
 

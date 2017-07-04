@@ -1247,6 +1247,7 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
                                      [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
                                      _    -> error "more than one successor in imdom" 
 
+-- TODO: limit this to starts of linear section
 predsSeenFor :: Map Node [Node] -> [Node] -> [Node] -> [Node]
 predsSeenFor imdomRev = predsSeenF where
       predsSeenF :: [Node] -> [Node] -> [Node]

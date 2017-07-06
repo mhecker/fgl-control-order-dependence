@@ -32,6 +32,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    ntacdDef, ntacdDefGraphP,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
@@ -85,6 +86,9 @@ nticd      = defaultMain                               $ testGroup "nticd"     [
 nticdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
 ntscd      = defaultMain                               $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 ntscdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
+newcd      = defaultMain                               $ testGroup "newcd"     [ mkTest [newcdTests], mkProp [newcdProps]]
+newcdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "newcd"     [ mkTest [newcdTests], mkProp [newcdProps]]
+
 
 insensitiveDom    = defaultMain                               $ testGroup "insensitiveDom"   [ {- mkTest [insensitiveDomTests], -} mkProp [insensitiveDomProps]]
 insensitiveDomX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "insensitiveDom"   [ {- mkTest [insensitiveDomTests], -} mkProp [insensitiveDomProps]]
@@ -379,6 +383,20 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
                        NTICD.ntscdF3              g
   ]
 
+newcdProps = testGroup "(concerning new control dependence definitions)" [
+    testProperty  "ntacdDef               == nticdF3                for graphs with unique end node property"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.ntacdDef         g ==
+                       NTICD.nticdF3          g
+  ]
+newcdTests = testGroup "(concerning new control dependence definitions)" $
+  [  testCase    ( "ntnacdDefGraphP       ==  nticdF3GraphP for " ++ exampleName)
+                  $ NTICD.ntacdDefGraphP      p ==
+                    NTICD.nticdF3GraphP       p        @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  []
 
 
 nticdProps = testGroup "(concerning nticd )" [

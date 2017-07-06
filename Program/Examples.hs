@@ -154,9 +154,9 @@ exampleSimpleNoUniqueEndNode = Program {
      /     \      |
  -->3->     6<--  |
  |  4 |     7  |  |
- ---5 |     |\8-  |
-      |     |  |  |
-      \     11-|  |
+ -5/| |     |\8-  |
+ |  | |     |  |  |
+ |-12 \     11-|  |
        \          |
         9         |
        10<--------|
@@ -172,17 +172,59 @@ exampleSimpleNoUniqueEndNodeWithChoice = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..11] = 1 
+         | n `elem` [1..12] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 10
-        tcfg = mkGraph [(n,n) | n <- [1..11]]  $
+        tcfg = mkGraph [(n,n) | n <- [1..12]]  $
                        [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
-                   ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
-                   ++  [(6,7,false),(7,8,true),(8,6,true)]
+                   ++  [(6,7,true), (7,8,true),(8,6,true)]
                    ++  [            (7,11,false),(11,8,nop)]
+                   ++  [(3,4,false),(4,5,true),(5,3,true)]
+                   ++  [            (4,12,false),(12,5,nop)] ++ [(3,9,true)]
                    ++  [(9,10,nop)]
 
+
+{-    
+        1---------|
+        |         |
+        2         |
+       / \        |
+      /   \       |
+     /     \      |
+ -->3->     6<--   |
+ |  4 |     7  |   |
+ -5/| |     |\8-<- |
+ |  | |     |  | | |
+ |-12 \     11-| | |
+       \    |    | |
+        9   13---| |
+       10<--------|
+-}
+exampleSimpleNoUniqueEndNodeWithChoice2 :: Program Gr
+exampleSimpleNoUniqueEndNodeWithChoice2 = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..13] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = 10
+        tcfg = mkGraph [(n,n) | n <- [1..13]] $
+                       [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
+                   ++  [(6,7,true), (7,8,true),(8,6,true)]
+                   ++  [            (7,11,false),(11,8,true)]
+                   ++  [(11,13,false), (13,8,nop) ]
+                   ++  [(3,4,false),(4,5,true),(5,3,true)]
+                   ++  [            (4,12,false),(12,5,nop)] ++ [(3,9,true)]
+                   ++  [(9,10,nop)]
+                   -- ++  [(11,10,nop)]
 
 
 

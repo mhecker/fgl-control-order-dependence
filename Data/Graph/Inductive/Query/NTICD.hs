@@ -656,6 +656,110 @@ inPathFor graph' doms n (s, path) = inPathFromEntries [s] path
                 get assocs key = fromJust $ List.lookup key assocs
 
 
+
+
+{- The definition of ntacd -}
+ntacdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntacdDefGraphP = cdepGraphP ntacdDefGraph
+
+ntacdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
+ntacdDefGraph  = cdepGraph ntacdDef
+
+ntacdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
+ntacdDef graph =
+        Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph,
+                                                nj /= ni,
+                                                nk <- suc graph ni, nl <- suc graph ni, nk /= nl,
+                                                (∀) (sinkPaths ! nk) (\path ->       nj `inSinkPathAfter` (ni,nk,path)),
+                                                (∃) (sinkPaths ! nl) (\path -> not $ nj `inSinkPathAfter` (ni,nl,path))
+                                         ]
+                       )
+                     | ni <- condNodes ]
+
+  where 
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        sinkPaths = sinkPathsFor graph
+        inSinkPathAfter = inSinkPathAfterFor graph
+
+
+inSinkPathAfterFor :: DynGraph gr => gr a b -> Node -> (Node, Node, SinkPath) -> Bool
+inSinkPathAfterFor graph' n (cond, s, path) = inSinkPathFromEntries [s] path
+  where 
+    inSinkPathFromEntries _       (SinkPath []           controlSink) = n `elem` controlSink ∧ (
+                          (  (not $ cond `elem` controlSink) ∧
+                             ((∀) (cyclesInScc  controlSink graph') (\cycle -> n ∈ cycle))
+                          )
+                        ∨ (  (cond `elem` controlSink) ∧
+                             (s == cond ∨ n `elem` (suc (trc $ delNode cond graph') s))
+                          )
+                      )
+    -- inSinkPathFromEntries entries       (SinkPath []           controlSink) = n `elem` controlSink ∧ ((∀) (entries) (\e ->
+    --                       (not $ cond `elem` controlSink) ∨ (n `elem` (suc (trc $ delNode cond graph') e))
+    --                      ))
+    inSinkPathFromEntries entries (SinkPath (scc:prefix) controlSink)
+        | n `elem` scc = -- traceShow (s, n, cond, entries, scc, controlSink) $ 
+                         (True) ∧ (
+--                         (not (cond ∈ scc) ∨ (n `elem` (suc (trc $ delNode cond graph') s)  )  ∨ (s == cond) ) ∧ (
+                           (∀) entries (\entry -> let doms = (dom graph' entry) in
+                            (∀) exits (\exit -> let domsexit = doms `get` exit in
+                                   (entry /= exit || n == entry) && n `elem` domsexit)
+                           )
+                         )
+        | otherwise    =  inSinkPathFromEntries [ n' | (_,n') <- borderEdges ] (SinkPath prefix controlSink)
+      where next = if (null prefix) then controlSink else head prefix
+            borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
+            exits = [ n | (n,_) <- borderEdges ]
+            get assocs key = fromJust $ List.lookup key assocs
+
+
+
+{- The definition of ntnrcd -}
+ntnrcdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntnrcdDefGraphP = cdepGraphP ntnrcdDefGraph
+
+ntnrcdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
+ntnrcdDefGraph  = cdepGraph ntnrcdDef
+
+ntnrcdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
+ntnrcdDef graph =
+        Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph, nj /= ni,
+                                                nk <- suc graph ni, nl <- suc graph ni, nk /= nl,
+                                                (∀) (nrPaths ! (ni,nk)) (\path ->       nj `inPath` path),
+                                                (∃) (nrPaths ! (ni,nl)) (\path -> not $ nj `inPath` path)
+                                         ]
+                       )
+                     | ni <- condNodes ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        nrPaths = nrPathsFor graph
+        inPath n (NrPath { path }) = n ∈ path
+
+data NrPath = NrPath { path :: [Node] } deriving Show
+
+nrPathsFor :: DynGraph gr => gr a b -> Map (Node,Node) [NrPath]
+nrPathsFor graph = Map.fromList [ ((n,m), fmap (\p -> NrPath { path = p }) $ nrPathsFor (n,m)) | n <- nodes graph, m <- suc graph n ]
+    where
+      nrPathsFor :: (Node,Node) -> [[Node]]
+      nrPathsFor (n,m) = nrPaths (forbidden (n,m)) (initial (n,m)) m
+      initial (n,m)   = Map.fromList [(n, Set.empty) | n <- nodes graph]
+--                  ⊔ Map.fromList [(n, Set.fromList $ [ (n,m) ]) ]
+      forbidden (n,m) = Set.fromList $ [ (n,m) ] 
+--      forbidden (n,m) = Map.fromList [(x, Set.fromList $ [ (x,n) ]) |  x <- pre graph n ]
+--      nrPathsF taken ns = concat $ fmap (nrPaths taken) ns
+      nrPaths :: Set (Node, Node) -> Map Node (Set (Node,Node)) -> Node -> [[Node]]
+      nrPaths forbidden taken n
+--       | Set.null allowedEdges  ∧  (not $ Set.null $ (Set.fromList  [(n,m) | m <- suc graph n]) ⊓ forbidden)  = []
+       | Set.null allowedEdges  ∧  (not $ Set.null $ (Set.fromList  [(n,m) | m <- suc graph n]) ⊓ (forbidden ∖ (taken ! n)))  = []
+       | Set.null allowedEdges                                                                                                = [[n]]
+       | otherwise                  = -- traceShow taken $
+                                      [ n:p | m <- Set.toList $ Set.map snd $ allowedEdges,
+                                              p <- nrPaths forbidden (Map.adjust (\taken -> Set.insert (n,m) taken ) n taken) m  ]
+        where allowedEdges = (Set.fromList $ [(n,m) | m <- suc graph n]) ∖ (taken ! n)
+
+
+
+
 mdomOf ::  DynGraph gr => gr a b -> Map Node (Set Node)
 mdomOf graph = -- trace ("Sccs: " ++ (show $ length sccs) ++ "\t\tSize: " ++ (show $ length $ nodes graph)) $
                Map.fromList [ (y, Set.fromList [ x | x <- nodes graph, x `mdom` y]) | y <- nodes graph]

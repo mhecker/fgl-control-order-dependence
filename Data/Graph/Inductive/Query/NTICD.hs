@@ -683,20 +683,43 @@ ntacdDef graph =
         inSinkPathAfter = inSinkPathAfterFor graph
 
 
+{- The definition of ntbcd -}
+ntbcdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+ntbcdDefGraphP = cdepGraphP ntbcdDefGraph
+
+ntbcdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
+ntbcdDefGraph  = cdepGraph ntbcdDef
+
+ntbcdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
+ntbcdDef graph =
+        Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔   Map.fromList [ (ni, Set.fromList [ nj | nj <- nodes graph,
+                                                nj /= ni,
+                                                nk <- suc graph ni, nl <- suc graph ni, nk /= nl,
+                                                (∀) (sinkPaths ! nk) (\path ->       nj `inSinkPathAfter'` (ni,nk,path)),
+                                                (∃) (sinkPaths ! nl) (\path -> not $ nj `inSinkPathAfter'` (ni,nl,path))
+                                         ]
+                       )
+                     | ni <- condNodes ]
+
+  where 
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        sinkPaths = sinkPathsFor graph
+        inSinkPathAfter' = inSinkPathAfterFor' graph
+
+
 inSinkPathAfterFor :: DynGraph gr => gr a b -> Node -> (Node, Node, SinkPath) -> Bool
 inSinkPathAfterFor graph' n (cond, s, path) = inSinkPathFromEntries [s] path
   where 
     inSinkPathFromEntries _       (SinkPath []           controlSink) = n `elem` controlSink ∧ (
-                          (  (not $ cond `elem` controlSink) ∧
-                             ((∀) (cyclesInScc  controlSink graph') (\cycle -> n ∈ cycle))
+                          (  (not $ cond `elem` controlSink) -- ∧
+                             -- ((∀) (cyclesInScc  controlSink graph') (\cycle -> n ∈ cycle))
                           )
                         ∨ (  (cond `elem` controlSink) ∧
-                             (s == cond ∨ n `elem` (suc (trc $ delNode cond graph') s))
+                             (s == cond ∨ n `elem` (suc withoutCondTrc s))
                           )
                       )
-    -- inSinkPathFromEntries entries       (SinkPath []           controlSink) = n `elem` controlSink ∧ ((∀) (entries) (\e ->
-    --                       (not $ cond `elem` controlSink) ∨ (n `elem` (suc (trc $ delNode cond graph') e))
-    --                      ))
+      where withoutCondTrc = trc $ delNode cond graph'
     inSinkPathFromEntries entries (SinkPath (scc:prefix) controlSink)
         | n `elem` scc = -- traceShow (s, n, cond, entries, scc, controlSink) $ 
                          (True) ∧ (
@@ -711,6 +734,90 @@ inSinkPathAfterFor graph' n (cond, s, path) = inSinkPathFromEntries [s] path
             borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
             exits = [ n | (n,_) <- borderEdges ]
             get assocs key = fromJust $ List.lookup key assocs
+
+
+
+inSinkPathAfterFor' :: DynGraph gr => gr a b -> Node -> (Node, Node, SinkPath) -> Bool
+inSinkPathAfterFor' graph' n (cond, s, path) = inSinkPathFromEntries [s] path
+  where
+    get assocs key = fromJust $ List.lookup key assocs
+    inSinkPathFromEntries entries (SinkPath []           controlSink) = n `elem` controlSink ∧ (
+                          (  (not $ cond `elem` controlSink) ∧ (
+                              ((∀) entries (\entry -> let doms = dom graph' entry in
+                                (∀) cycles  (\cycle -> let c = head cycle in
+                                  (n ∈ cycle) ∨ (n `elem` (doms `get` c))
+                                )
+                               )
+                              )
+                             )
+                          )
+                        ∨ (  (cond `elem` controlSink) ∧ (∀) entries (\entry -> 
+                             (entry == cond ∨ n `elem` (suc withoutCondTrc entry))
+                          ))
+                      )
+      where withoutCondTrc = trc $ delNode cond graph'
+            cycles = (cyclesInScc  controlSink graph')
+--     inSinkPathFromEntries entries (SinkPath []           controlSink) =
+--                              (∀) entries (\entry -> 
+--                                (∀) (nrPaths (initial entry) entry ) (\path ->  (n ∈ path))
+--                              )
+-- -- (Set.fromList path == Set.fromList controlSink) →
+--       where cycles = (cyclesInScc  controlSink graph')
+--             initial entry = Map.fromList [ (m, Set.empty) | m <- controlSink ]
+--                           ⊔ Map.fromList [ (x, Set.fromList [(x,entry)]) | x <- controlSink, x ∈ pre graph' entry ]
+--             nrPaths :: Map Node (Set (Node,Node)) -> Node -> [[Node]]
+--             nrPaths taken n
+--              | Set.null allowedEdges      = [[n]]
+--              | otherwise                  = -- traceShow taken $
+--                                             [ n:p | m <- Set.toList $ Set.map snd $ allowedEdges,
+--                                                     p <- nrPaths (Map.adjust (\taken -> Set.insert (n,m) taken ) n taken) m  ]
+--                where allowedEdges = (Set.fromList $ [(n,m) | m <- suc graph' n]) ∖ (taken ! n)
+
+            
+    -- inSinkPathFromEntries entries (SinkPath []           controlSink) =
+    --                          (∀) entries (\entry -> (entry == cond) ∨
+    --                            n ∈ (suc (trc $ delEdges ([(cond, x) | x <- suc graph' cond]) graph') entry)
+    --                          )
+    --   where cycles = (cyclesInScc  controlSink graph')
+    -- inSinkPathFromEntries entries  (SinkPath []           controlSink) = n `elem` controlSink ∧ (
+    --                          ((∀) entries (\entry -> let doms = dom graph' entry in
+    --                            (∀) cycles  (\cycle -> let c = head cycle in
+    --                              (s ∈ cycle) ∨ (n ∈ cycle) ∨ (n `elem` (doms `get` c))
+    --                            )
+    --                           )
+    --                          )
+    --                         )
+    --   where cycles = (cyclesInScc  controlSink graph')
+    -- inSinkPathFromEntries entries  (SinkPath []           controlSink) = n `elem` controlSink ∧ (
+    --                          ((∀) entries (\entry -> let doms = dom graph' entry in
+    --                            (∀) cycles  (\cycle -> let c = head cycle in
+    --                               (s == cond) ∨ ((cond ∈ cycle) → (n ∈ cycle) ∨ (n `elem` (doms `get` c)))
+    --                            )
+    --                           )
+    --                          )
+    --                         )
+    --  where cycles = (cyclesInScc  controlSink graph')
+    -- inSinkPathFromEntries _       (SinkPath []           controlSink) = n `elem` controlSink ∧ (
+    --                          ((∀) (cyclesInScc  controlSink graph') (\cycle -> (s ∈ cycle) ∨ (n ∈ cycle)))
+    --                       )
+    -- inSinkPathFromEntries entries       (SinkPath []           controlSink) = n `elem` controlSink ∧ (
+    --                          ((∀) (cyclesInScc  controlSink graph') (\cycle ->
+    --                            ((∃) entries (∈ cycle)) → (s ∈ cycle) ∨ (n ∈ cycle)))
+    --                       )
+    inSinkPathFromEntries entries (SinkPath (scc:prefix) controlSink)
+        | n `elem` scc = -- traceShow (s, n, cond, entries, scc, controlSink) $ 
+                         (True) ∧ (
+--                         (not (cond ∈ scc) ∨ (n `elem` (suc (trc $ delNode cond graph') s)  )  ∨ (s == cond) ) ∧ (
+                           (∀) entries (\entry -> let doms = (dom graph' entry) in
+                            (∀) exits (\exit -> let domsexit = doms `get` exit in
+                                   (entry /= exit || n == entry) && n `elem` domsexit)
+                           )
+                         )
+        | otherwise    =  inSinkPathFromEntries [ n' | (_,n') <- borderEdges ] (SinkPath prefix controlSink)
+      where next = if (null prefix) then controlSink else head prefix
+            borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
+            exits = [ n | (n,_) <- borderEdges ]
+
 
 
 
@@ -1396,6 +1503,106 @@ imdomTwoFingerGraph = cdepGraph imdomTwoFingercd
 
 imdomTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 imdomTwoFingercd = xDFcd mDFTwoFinger
+
+
+
+type SmmnFunctional = Map (Node,Node,Node) (Set (T Node)) -> Map (Node,Node,Node) (Set (T Node))
+type SmmnFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> SmmnFunctional
+
+
+fWOMust :: DynGraph gr => SmmnFunctionalGen gr a b
+fWOMust graph condNodes reachable nextCond toNextCond s = 
+                   Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- suc graph p,
+                                                                      let toNxtCondX = toNextCond x,
+                                                                      m1 `elem` toNxtCondX,
+                                                                      not $ m2 `elem` (m1 : (takeWhile (/= m1) $ reverse toNxtCondX))
+                                                          ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes]
+                ⊔ Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- (suc graph p),
+                                                                     let toNxtCondX = toNextCond x,
+                                                                     m1 `elem` (reachable x),
+                                                                     not $ m2 `elem` toNxtCondX,
+                                                                     Just n <- [nextCond x], 
+--                                                                     (Set.size $ s ! (m1,m2,n)) > 0
+                                                                     (Set.size $ s ! (m1,m2,n)) == (Set.size $ Set.fromList $ suc graph n)
+                                               ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
+
+
+
+
+fWOMay :: DynGraph gr => SmmnFunctionalGen gr a b
+fWOMay graph condNodes reachable nextCond toNextCond s = 
+                   Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- suc graph p,
+                                                                      let toNxtCondX = toNextCond x,
+                                                                      m1 `elem` toNxtCondX,
+                                                                      not $ m2 `elem` (m1 : (takeWhile (/= m1) $ reverse toNxtCondX))
+                                                          ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes]
+                ⊔ Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- (suc graph p),
+                                                                     let toNxtCondX = toNextCond x,
+                                                                     m1 `elem` (reachable x),
+                                                                     not $ m2 `elem` toNxtCondX,
+                                                                     Just n <- [nextCond x], 
+                                                                     (Set.size $ s ! (m1,m2,n)) > 0
+                                               ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
+
+
+
+
+wod :: DynGraph gr => gr a b -> Map Node (Set (Node,Node))
+wod = xod smmnFWOMust smmnFWOMay
+
+smmnFWOMust :: DynGraph gr => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFWOMust graph = smmnGfp graph fWOMust
+
+
+smmnFWOMay :: DynGraph gr => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFWOMay graph = smmnLfp graph fWOMay
+
+
+
+smmnGfp :: DynGraph gr => gr a b -> SmmnFunctionalGen gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnGfp graph f = (𝝂) smnInit (f graph condNodes reachable nextCond toNextCond)
+  where smnInit =  Map.fromList [ ((m1,m2,p), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
+                 ⊔ Map.fromList [ ((m1,m2,p), Set.fromList [ (p,x) | x <- suc graph p]) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+smmnLfp :: DynGraph gr => gr a b -> SmmnFunctionalGen gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnLfp graph f = (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCond)
+  where smnInit =  Map.fromList [ ((m1,m2,p), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+xod:: DynGraph gr => (gr a b -> Map (Node, Node, Node ) (Set (T Node))) ->
+                     (gr a b -> Map (Node, Node, Node ) (Set (T Node))) ->
+                      gr a b ->
+                      Map Node (Set (Node,Node))
+xod smmnMust smmnMay graph = 
+      Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔ Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph,
+                                                  m2 <- nodes graph,
+                                                  Set.size (sMay ! (m1,m2,n)) > 0,
+                                                  Set.size (sMay ! (m2,m1,n)) > 0,
+                                                  let s12n = sMust ! (m1,m2,n),
+                                                  let s21n = sMust ! (m2,m1,n),
+                                                  Set.size s12n + Set.size s21n > 0
+                                      ]
+                     ) | n <- condNodes
+                  ]
+  where sMust = smmnMust graph
+        sMay  = smmnMay  graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
 
 
 

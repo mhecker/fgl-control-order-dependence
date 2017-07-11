@@ -32,7 +32,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    ntacdDef, ntacdDefGraphP,
+    ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
@@ -384,6 +384,11 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
   ]
 
 newcdProps = testGroup "(concerning new control dependence definitions)" [
+    testProperty  "ntacdDef^*             == ntbcd^*"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in (trc $ fromSuccMap $ NTICD.ntacdDef         g :: Gr () ()) ==
+                       (trc $ fromSuccMap $ NTICD.ntbcdDef         g :: Gr () ()),
     testProperty  "ntacdDef               == nticdF3                for graphs with unique end node property"
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph

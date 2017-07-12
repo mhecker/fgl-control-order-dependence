@@ -1606,8 +1606,8 @@ xod smmnMust smmnMay graph =
 dod graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
-                                                  Set.size (s3 ! (m1,n)) == length (suc graph n),
-                                                  Set.size (s3 ! (m2,n)) == length (suc graph n),
+                                                  Set.size (s3 ! (m1,n)) == (Set.size $ Set.fromList $ suc graph n),
+                                                  Set.size (s3 ! (m2,n)) == (Set.size $ Set.fromList $ suc graph n),
                                                   let s12n = sMust ! (m1,m2,n),
                                                   let s21n = sMust ! (m2,m1,n),
                                                   Set.size s12n > 0,

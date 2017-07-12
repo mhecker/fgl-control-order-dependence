@@ -27,6 +27,33 @@ import Data.Set.Unicode
 
 
 {-    
+        1
+       / \
+     2     3
+     ^     ^
+      \---/
+-}
+exampleIrreducible :: Program Gr
+exampleIrreducible = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..3] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = undefined
+        tcfg = mkGraph [(n,n) | n <- [1..3]] $
+                       [(1,2,true), (1,3,false), (2,3,nop), (3,2,nop)]
+
+
+
+{-    
         1---------|
         |         |
         2         |

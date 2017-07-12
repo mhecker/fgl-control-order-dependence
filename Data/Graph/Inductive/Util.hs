@@ -114,6 +114,12 @@ toPredMap ::  Graph gr => gr a b -> Map Node (Set Node)
 toPredMap gr = Map.fromList [(n, Set.fromList $ pre gr n ) | n <- nodes gr]
 
 
+
+fromSuccPairMap :: DynGraph gr => Map Node (Set (Node,Node)) -> gr () () 
+fromSuccPairMap succ = mkGraph [(n,()) | n <- Map.keys succ]
+                               [(n,m,()) | (n,ps) <- Map.assocs succ, m <- (fmap fst $ Set.toList ps) ++ (fmap snd $ Set.toList ps)]
+
+
 trrAcyclicPredMap :: Map Node (Set Node) -> Map Node (Set Node)
 trrAcyclicPredMap pred = toPredMap $ trrAcyclic $ (fromPredMap pred :: Gr () ())
 

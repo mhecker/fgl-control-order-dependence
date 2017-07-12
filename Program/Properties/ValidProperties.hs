@@ -32,6 +32,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    smmnGfp, smmnLfp, fWOMust, dod, dodDef,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
@@ -88,6 +89,8 @@ ntscd      = defaultMain                               $ testGroup "ntscd"     [
 ntscdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 newcd      = defaultMain                               $ testGroup "newcd"     [ mkTest [newcdTests], mkProp [newcdProps]]
 newcdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "newcd"     [ mkTest [newcdTests], mkProp [newcdProps]]
+dod        = defaultMain                               $ testGroup "dod"       [ mkTest [dodTests], mkProp [dodProps]]
+dodX       = defaultMainWithIngredients [antXMLRunner] $ testGroup "dod"       [ mkTest [dodTests], mkProp [dodProps]]
 
 
 insensitiveDom    = defaultMain                               $ testGroup "insensitiveDom"   [ {- mkTest [insensitiveDomTests], -} mkProp [insensitiveDomProps]]
@@ -402,6 +405,19 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+
+dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "dod                       == dodDef"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.dod    g ==
+                       NTICD.dodDef g
+  ]
+dodTests = testGroup "(concerning decisive order dependence)" $
+  []
+
+
 
 
 nticdProps = testGroup "(concerning nticd )" [

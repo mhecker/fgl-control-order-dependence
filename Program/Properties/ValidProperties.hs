@@ -24,6 +24,7 @@ import Data.Ord
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
@@ -32,8 +33,9 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    smmnGfp, smmnLfp, fWOMust, dod, dodDef,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
+    snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
@@ -408,11 +410,33 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "snmF3Lfp reachable          == imdom reachable "
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let graph     = generatedGraph
+                        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+                        s3        = NTICD.snmF3Lfp graph
+                        imdom     = NTICD.imdomOfTwoFinger6 graph
+                        imdomTrc  = trc $ (fromSuccMap imdom :: Gr () ())
+                    in (∀) (nodes graph) (\m ->
+                         (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
+                                               ↔ (m `elem` (suc imdomTrc n))
+                         )
+                       ),
     testProperty  "dod                       == dodDef"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.dod           g ==
+                       NTICD.dodDef        g,
+    testProperty  "dodFast                   == dodDef"
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                    in NTICD.dod    g ==
-                       NTICD.dodDef g
+                    in NTICD.dodFast       g ==
+                       NTICD.dodDef        g,
+    testProperty  "lfp fWOMustNoReachCheck      == lfp fWOMust"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.smmnLfp g NTICD.fMustNoReachCheck        ==
+                       NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
   []

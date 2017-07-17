@@ -60,7 +60,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, precisionCounterExamples)
+import Program.Examples (testsuite, precisionCounterExamples, interestingDodWod)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -430,6 +430,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        NTICD.wod           g
   ]
 wodTests = testGroup "(concerning weak order dependence)" $
+  [  testCase    ( "wodFast                   == wod for " ++ exampleName)
+            $ NTICD.wodFast g                 == NTICD.wod g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   []
 
 
@@ -469,6 +473,10 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "dodSuperFast              == dodDef for " ++ exampleName)
+            $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   []
 
 

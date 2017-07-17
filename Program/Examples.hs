@@ -2429,6 +2429,13 @@ simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) }
           )
          ]
 
+
+
+-- This example demonstrated an error in a former version of dodFast.
+dodSuperFastCounterExample :: DynGraph gr => gr () ()
+dodSuperFastCounterExample = mkGraph [(-82,()),(-81,()),(-74,()),(-28,()),(-6,()),(15,()),(23,()),(47,()),(66,())] [(-82,23,()),(-81,-74,()),(-81,15,()),(-74,-82,()),(-74,47,()),(-28,-81,()),(-28,47,()),(-6,15,()),(15,47,()),(15,47,()),(23,15,()),(47,-82,()),(47,-6,()),(66,-82,()),(66,-81,()),(66,-74,()),(66,-28,()),(66,-6,()),(66,15,()),(66,23,()),(66,47,())]
+
+
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
               $(withName 'example2'),
@@ -2550,4 +2557,7 @@ failingSnmF3F5 = [
             ]
 
 
-
+interestingDodWod :: [(String, Gr () ())]
+interestingDodWod = [
+              $(withName 'dodSuperFastCounterExample)
+            ]

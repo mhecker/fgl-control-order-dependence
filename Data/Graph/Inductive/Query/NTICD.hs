@@ -1480,7 +1480,16 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                 zs = case mz of
                       Just (z,_,pis) ->  Set.fromList [ (z, Set.delete z $ Set.fromList pis) ]
                       Nothing        ->  Set.fromList [ ]
-                changed = (Set.map fst zs) /= (Set.map fst $ imdom ! x)
+                changed =
+                          if (Set.null zs0) then
+                            (not $ Set.null zs)
+                          else
+                            let [ (z,  pis)  ] = Set.toList zs
+                                [ (z0, pis0) ] = Set.toList zs0
+                            in assert ( pis ⊒ (Set.delete z pis0)) $
+                                 z /= z0
+                               ∨ pis /= pis0
+                  where zs0 = imdom ! x
                 influenced = let imdomRev = invert' $ fmap (Set.toList . (Set.map fst)) imdom
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $ 
@@ -1488,9 +1497,11 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                 lca' :: (Node, [Node], [Node]) -> (Node, [Node], [Node]) -> Maybe (Node, [Node], [Node])
                 lca' (n,ns,nis) (m,ms,mis)
                     | m ∈ ns = -- traceShow ((n,ns,nis), (m,ms,mis)) $
-                               Just (m, [m], (dropWhile (/= m) nis) ++ mis) -- TODO: why does this appear to be enough? why don't we need to include "Set.map snd $ imdom ! x" for any such x, as well?
+                               Just (m, [m], Set.toList $ 
+                                             (∐) [ Set.fromList [ y ]  ⊔  s | y <- (dropWhile (/= m) nis) ++ mis, [(_,s)] <- [Set.toList $ imdom ! y] ])
                     | n ∈ ms = -- traceShow ((n,ns,nis), (m,ms,mis)) $
-                               Just (n, [n], nis ++ (dropWhile (/= n) mis)) -- TODO: as above
+                               Just (n, [n], Set.toList $ 
+                                             (∐) [ Set.fromList [ y ]  ⊔  s | y <- nis ++ (dropWhile (/= n) mis), [(_,s)] <- [Set.toList $ imdom ! y] ])
                     | otherwise = -- traceShow ((n,ns,nis), (m,ms,mis)) $
                                   case Set.toList $ ((Set.map fst $ imdom ! n) ∖ (Set.fromList ns) ) of
                                      []   -> case Set.toList $ ((Set.map fst $ imdom ! m) ∖ (Set.fromList ms) ) of
@@ -1500,6 +1511,10 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                                      [n'] -> lca' (m, ms, mis) (n', n':ns, n':nis)
                                      _    -> error "more than one successor in imdom" 
 
+
+-- This example demonstrated an error in a former version of dodFast.
+dodSuperFastCounterExample :: DynGraph gr => gr () ()
+dodSuperFastCounterExample = mkGraph [(-82,()),(-81,()),(-74,()),(-28,()),(-6,()),(15,()),(23,()),(47,()),(66,())] [(-82,23,()),(-81,-74,()),(-81,15,()),(-74,-82,()),(-74,47,()),(-28,-81,()),(-28,47,()),(-6,15,()),(15,47,()),(15,47,()),(23,15,()),(47,-82,()),(47,-6,()),(66,-82,()),(66,-81,()),(66,-74,()),(66,-28,()),(66,-6,()),(66,15,()),(66,23,()),(66,47,())]
 
 -- TODO: limit this to starts of linear section
 predsSeenFor :: Map Node [Node] -> [Node] -> [Node] -> [Node]

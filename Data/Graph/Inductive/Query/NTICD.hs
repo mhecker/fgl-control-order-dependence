@@ -1458,6 +1458,49 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
                                      [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
                                      _    -> error "more than one successor in imdom" 
 
+
+imdomOfTwoFinger6WithPossibleIntermediateNodes :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Set Node))
+imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imdom0
+  where imdom0   = Map.fromList [ (x, Set.empty                      ) | x <- nodes graph]
+                 ⊔ Map.fromList [ (x, Set.fromList [(x', Set.empty)] ) | x <- nodes graph, [x'] <- [suc graph x]]
+        worklist0   = condNodes
+        condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
+        prevConds   = prevCondNodes graph
+
+        twoFinger :: Integer -> Set Node ->  Map Node (Set (Node, Set Node)) -> Map Node (Set (Node, Set Node))
+        twoFinger i worklist imdom
+            | Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+                                  -- traceShow (Set.size worklist0, i) $ 
+                                  imdom
+            | otherwise         = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
+                                  if (not $ changed) then twoFinger (i+1)               worklist'                             imdom
+                                                     else twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs          imdom)
+          where (x, worklist')  = Set.deleteFindMin worklist
+                mz = foldM1 lca' (fmap (\n -> (n, [n], [n])) $ suc graph x)
+                zs = case mz of
+                      Just (z,_,pis) ->  Set.fromList [ (z, Set.delete z $ Set.fromList pis) ]
+                      Nothing        ->  Set.fromList [ ]
+                changed = (Set.map fst zs) /= (Set.map fst $ imdom ! x)
+                influenced = let imdomRev = invert' $ fmap (Set.toList . (Set.map fst)) imdom
+                                 preds = predsSeenFor imdomRev [x] [x]
+                             in  -- traceShow (preds, imdomRev) $ 
+                                 Set.fromList $ foldMap prevConds preds
+                lca' :: (Node, [Node], [Node]) -> (Node, [Node], [Node]) -> Maybe (Node, [Node], [Node])
+                lca' (n,ns,nis) (m,ms,mis)
+                    | m ∈ ns = -- traceShow ((n,ns,nis), (m,ms,mis)) $
+                               Just (m, [m], (dropWhile (/= m) nis) ++ mis) -- TODO: why does this appear to be enough? why don't we need to include "Set.map snd $ imdom ! x" for any such x, as well?
+                    | n ∈ ms = -- traceShow ((n,ns,nis), (m,ms,mis)) $
+                               Just (n, [n], nis ++ (dropWhile (/= n) mis)) -- TODO: as above
+                    | otherwise = -- traceShow ((n,ns,nis), (m,ms,mis)) $
+                                  case Set.toList $ ((Set.map fst $ imdom ! n) ∖ (Set.fromList ns) ) of
+                                     []   -> case Set.toList $ ((Set.map fst $ imdom ! m) ∖ (Set.fromList ms) ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' ( m', m':ms, m':mis) (n, ns, nis)
+                                                _    -> error "more than one successor in imdom" 
+                                     [n'] -> lca' (m, ms, mis) (n', n':ns, n':nis)
+                                     _    -> error "more than one successor in imdom" 
+
+
 -- TODO: limit this to starts of linear section
 predsSeenFor :: Map Node [Node] -> [Node] -> [Node] -> [Node]
 predsSeenFor imdomRev = predsSeenF where
@@ -1679,6 +1722,43 @@ dodFast graph =
         --            [n'] = Set.toList next
         imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+
+dodSuperFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+dodSuperFast graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
+                                                  n /= m1, n /= m2,
+                                                  m1 `elem` (suc imdomTrc n),
+                                                  m2 `elem` (suc imdomTrc n),
+                                                  -- allImdomReachable (Set.fromList [n]) n (Set.fromList [m1,m2]),
+                                                  (∃) (suc graph n) (\x -> mustBeforeAny (m1,m2,x)),
+                                                  (∃) (suc graph n) (\x -> mustBeforeAny (m2,m1,x))
+                                      ]
+                     ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
+                  ]
+  where imdom = imdomOfTwoFinger6WithPossibleIntermediateNodes graph
+        -- allImdomReachable seen n ms
+        --   | Set.null ms   = True
+        --   | n ∈ ms        = allImdomReachable               seen  n (Set.delete n ms)
+        --   | Set.null next = False
+        --   | n' ∈ seen     = False
+        --   | otherwise     = allImdomReachable (Set.insert n seen) n' ms
+        --      where next = imdom ! n
+        --            [n'] = Set.toList next
+        imdomTrc = trc $ (fromSuccMapWithEdgeAnnotation imdom :: gr () (Set Node))
+        mustBeforeAny (m1,m2,n) = mustBeforeAnySeen (Set.fromList [n]) n
+          where mustBeforeAnySeen seen n
+                  | n == m2 = False
+                  | n == m1 = True
+                  | Set.null next = False
+                  | m2 ∈ toNext = False
+                  | otherwise = mustBeforeAnySeen (Set.insert n seen) n'
+                      where next = imdom ! n
+                            [(n',toNext)] = Set.toList next
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
 
 
 

@@ -33,7 +33,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -422,6 +422,11 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                                ↔ (m `elem` (suc imdomTrc n))
                          )
                        ),
+    testProperty  "dodSuperFast              == dodDef"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.dodSuperFast  g ==
+                       NTICD.dodDef        g,
     testProperty  "dod                       == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

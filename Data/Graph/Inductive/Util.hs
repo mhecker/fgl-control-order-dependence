@@ -114,6 +114,11 @@ toPredMap ::  Graph gr => gr a b -> Map Node (Set Node)
 toPredMap gr = Map.fromList [(n, Set.fromList $ pre gr n ) | n <- nodes gr]
 
 
+fromSuccMapWithEdgeAnnotation :: DynGraph gr => Map Node (Set (Node,b)) -> gr () b
+fromSuccMapWithEdgeAnnotation succ = mkGraph [(n,()) | n <- Map.keys succ]
+                                             [(n,m,b) | (n,ps) <- Map.assocs succ, (m,b) <- Set.toList ps]
+
+
 
 fromSuccPairMap :: DynGraph gr => Map Node (Set (Node,Node)) -> gr () () 
 fromSuccPairMap succ = mkGraph [(n,()) | n <- Map.keys succ]

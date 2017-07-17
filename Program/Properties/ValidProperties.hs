@@ -35,7 +35,7 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
-    snmF3Lfp,
+    snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
@@ -93,6 +93,8 @@ newcd      = defaultMain                               $ testGroup "newcd"     [
 newcdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "newcd"     [ mkTest [newcdTests], mkProp [newcdProps]]
 dod        = defaultMain                               $ testGroup "dod"       [ mkTest [dodTests], mkProp [dodProps]]
 dodX       = defaultMainWithIngredients [antXMLRunner] $ testGroup "dod"       [ mkTest [dodTests], mkProp [dodProps]]
+wod        = defaultMain                               $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
+wodX       = defaultMainWithIngredients [antXMLRunner] $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 
 
 insensitiveDom    = defaultMain                               $ testGroup "insensitiveDom"   [ {- mkTest [insensitiveDomTests], -} mkProp [insensitiveDomProps]]
@@ -407,6 +409,24 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty  "snmF3Gfp reachable          == isinkdom reachable "
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let graph     = generatedGraph
+                        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+                        s3        = NTICD.snmF3 graph
+                        isinkdom     = NTICD.isinkdomOfSinkContraction graph
+                        isinkdomTrc  = trc $ (fromSuccMap isinkdom :: Gr () ())
+                    in (∀) (nodes graph) (\m ->
+                         (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
+                                               ↔ (m `elem` (suc isinkdomTrc n))
+                         )
+                       )
+  ]
+wodTests = testGroup "(concerning weak order dependence)" $
+  []
+
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [

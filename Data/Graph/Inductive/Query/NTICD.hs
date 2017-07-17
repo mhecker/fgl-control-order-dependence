@@ -1612,8 +1612,8 @@ fMay graph condNodes reachable nextCond toNextCond s =
 
 
 
-wod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node,Node))
-wod = xod smmnFMustWod smmnFMayWod
+wodTEIL :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node,Node))
+wodTEIL  = xodTEIL smmnFMustWod smmnFMayWod
 
 smmnFMustWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustWod graph = smmnGfp graph fMust
@@ -1657,11 +1657,17 @@ smmnLfp graph f = -- traceShow graph $
         toNextCond = toNextCondNode graph
         trncl = trc graph
 
-xod:: DynGraph gr => (gr a b -> Map (Node, Node, Node ) (Set (T Node))) ->
+{- a combinator to generate order dependencies in the style of [2]
+
+  [2] Slicing for modern program structures: a theory for eliminating irrelevant loops
+      TorbenAmtoft
+      https://doi.org/10.1016/j.ipl.2007.10.002
+-}
+xodTEIL:: DynGraph gr => (gr a b -> Map (Node, Node, Node ) (Set (T Node))) ->
                      (gr a b -> Map (Node, Node, Node ) (Set (T Node))) ->
                       gr a b ->
                       Map Node (Set (Node,Node))
-xod smmnMust smmnMay graph = 
+xodTEIL smmnMust smmnMay graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph,
                                                   m2 <- nodes graph,
@@ -1677,23 +1683,25 @@ xod smmnMust smmnMay graph =
         sMay  = smmnMay  graph
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
-
-dod graph =
+{- a combinator to generate order dependencies in the style of [1] -}
+xod smmnMust s graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
                                                   n /= m1, n /= m2,
-                                                  Set.size (s3 ! (m1,n)) == (Set.size $ Set.fromList $ suc graph n),
-                                                  Set.size (s3 ! (m2,n)) == (Set.size $ Set.fromList $ suc graph n),
-                                                  let s12n = sMust ! (m1,m2,n),
-                                                  let s21n = sMust ! (m2,m1,n),
+                                                  Set.size (s ! (m1,n)) == (Set.size $ Set.fromList $ suc graph n),
+                                                  Set.size (s ! (m2,n)) == (Set.size $ Set.fromList $ suc graph n),
+                                                  let s12n = smmnMust ! (m1,m2,n),
+                                                  let s21n = smmnMust ! (m2,m1,n),
                                                   Set.size s12n > 0,
                                                   Set.size s21n > 0
                                       ]
                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 
                   ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+dod graph = xod sMust s3 graph
   where sMust = smmnFMustDod graph
         s3    = snmF3Lfp graph
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 dodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 dodFast graph =

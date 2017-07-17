@@ -1613,7 +1613,9 @@ fMay graph condNodes reachable nextCond toNextCond s =
 
 
 wodTEIL :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node,Node))
-wodTEIL  = xodTEIL smmnFMustWod smmnFMayWod
+wodTEIL graph = xodTEIL smmnMust smmnMay graph
+  where smmnMust = smmnFMustWod graph
+        smmnMay  = smmnFMayWod graph
 
 smmnFMustWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustWod graph = smmnGfp graph fMust
@@ -1663,25 +1665,23 @@ smmnLfp graph f = -- traceShow graph $
       TorbenAmtoft
       https://doi.org/10.1016/j.ipl.2007.10.002
 -}
-xodTEIL:: DynGraph gr => (gr a b -> Map (Node, Node, Node ) (Set (T Node))) ->
-                     (gr a b -> Map (Node, Node, Node ) (Set (T Node))) ->
-                      gr a b ->
-                      Map Node (Set (Node,Node))
+xodTEIL:: DynGraph gr => (Map (Node, Node, Node ) (Set (T Node))) ->
+                         (Map (Node, Node, Node ) (Set (T Node))) ->
+                         gr a b ->
+                         Map Node (Set (Node,Node))
 xodTEIL smmnMust smmnMay graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph,
                                                   m2 <- nodes graph,
-                                                  Set.size (sMay ! (m1,m2,n)) > 0,
-                                                  Set.size (sMay ! (m2,m1,n)) > 0,
-                                                  let s12n = sMust ! (m1,m2,n),
-                                                  let s21n = sMust ! (m2,m1,n),
+                                                  Set.size (smmnMay ! (m1,m2,n)) > 0,
+                                                  Set.size (smmnMay ! (m2,m1,n)) > 0,
+                                                  let s12n = smmnMust ! (m1,m2,n),
+                                                  let s21n = smmnMust ! (m2,m1,n),
                                                   Set.size s12n + Set.size s21n > 0
                                       ]
                      ) | n <- condNodes
                   ]
-  where sMust = smmnMust graph
-        sMay  = smmnMay  graph
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 {- a combinator to generate order dependencies in the style of [1] -}
 xod smmnMust s graph =
@@ -1698,6 +1698,10 @@ xod smmnMust s graph =
                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 
                   ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+wod graph = xod sMust s3 graph
+  where sMust = smmnFMustWod graph
+        s3    = snmF3 graph
 
 dod graph = xod sMust s3 graph
   where sMust = smmnFMustDod graph

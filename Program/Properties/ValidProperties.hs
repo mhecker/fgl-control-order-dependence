@@ -33,7 +33,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -422,7 +422,12 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
                                                ↔ (m `elem` (suc isinkdomTrc n))
                          )
-                       )
+                       ),
+    testProperty  "wodFast                   == wod"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.wodFast       g ==
+                       NTICD.wod           g
   ]
 wodTests = testGroup "(concerning weak order dependence)" $
   []

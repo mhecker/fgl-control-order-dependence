@@ -1703,6 +1703,27 @@ wod graph = xod sMust s3 graph
   where sMust = smmnFMustWod graph
         s3    = snmF3 graph
 
+wodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+wodFast graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
+                                                  n /= m1, n /= m2,
+                                                  m1 `elem` (suc isinkdomTrc n),
+                                                  m2 `elem` (suc isinkdomTrc n),
+                                                  let s12n = sMust ! (m1,m2,n),
+                                                  let s21n = sMust ! (m2,m1,n),
+                                                  Set.size s12n > 0,
+                                                  Set.size s21n > 0
+                                      ]
+                     ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
+                  ]
+  where sMust = smmnFMustWod graph
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomTrc = trc $ (fromSuccMap isinkdom :: gr () ())
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+
 dod graph = xod sMust s3 graph
   where sMust = smmnFMustDod graph
         s3    = snmF3Lfp graph
@@ -1744,21 +1765,12 @@ dodSuperFast graph =
                                                   n /= m1, n /= m2,
                                                   m1 `elem` (suc imdomTrc n),
                                                   m2 `elem` (suc imdomTrc n),
-                                                  -- allImdomReachable (Set.fromList [n]) n (Set.fromList [m1,m2]),
                                                   (∃) (suc graph n) (\x -> mustBeforeAny (m1,m2,x)),
                                                   (∃) (suc graph n) (\x -> mustBeforeAny (m2,m1,x))
                                       ]
                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
                   ]
   where imdom = imdomOfTwoFinger6WithPossibleIntermediateNodes graph
-        -- allImdomReachable seen n ms
-        --   | Set.null ms   = True
-        --   | n ∈ ms        = allImdomReachable               seen  n (Set.delete n ms)
-        --   | Set.null next = False
-        --   | n' ∈ seen     = False
-        --   | otherwise     = allImdomReachable (Set.insert n seen) n' ms
-        --      where next = imdom ! n
-        --            [n'] = Set.toList next
         imdomTrc = trc $ (fromSuccMapWithEdgeAnnotation imdom :: gr () (Set Node))
         mustBeforeAny (m1,m2,n) = mustBeforeAnySeen (Set.fromList [n]) n
           where mustBeforeAnySeen seen n

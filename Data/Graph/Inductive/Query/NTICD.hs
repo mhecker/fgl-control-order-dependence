@@ -1486,8 +1486,7 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                           else
                             let [ (z,  pis)  ] = Set.toList zs
                                 [ (z0, pis0) ] = Set.toList zs0
-                            in assert ( pis ⊒ (Set.delete z pis0)) $
-                                 z /= z0
+                            in   z /= z0
                                ∨ pis /= pis0
                   where zs0 = imdom ! x
                 influenced = let imdomRev = invert' $ fmap (Set.toList . (Set.map fst)) imdom

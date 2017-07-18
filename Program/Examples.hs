@@ -2440,6 +2440,9 @@ dodSuperFastCounterExample2:: DynGraph gr => gr () ()
 dodSuperFastCounterExample2 = mkGraph [(-24,()),(-21,()),(8,()),(13,()),(14,())] [(-24,-21,()),(-24,8,()),(-24,8,()),(-21,8,()),(8,-21,()),(13,-24,()),(13,-24,()),(13,-21,()),(14,-24,()),(14,-21,()),(14,8,()),(14,13,())]
 
 
+dodSuperFastCounterExample3:: DynGraph gr => gr () ()
+dodSuperFastCounterExample3 = mkGraph [(-37,()),(-17,()),(-15,()),(-8,()),(-1,()),(6,()),(10,()),(20,()),(37,())] [(-37,-1,()),(-17,6,()),(-15,20,()),(-8,-17,()),(-8,10,()),(-1,-17,()),(6,10,()),(10,-15,()),(10,-1,()),(20,-37,()),(37,-37,()),(37,-17,()),(37,-15,()),(37,-8,()),(37,-1,()),(37,6,()),(37,10,()),(37,20,())]
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
@@ -2565,5 +2568,6 @@ failingSnmF3F5 = [
 interestingDodWod :: [(String, Gr () ())]
 interestingDodWod = [
               $(withName 'dodSuperFastCounterExample),
-              $(withName 'dodSuperFastCounterExample2)
+              $(withName 'dodSuperFastCounterExample2),
+              $(withName 'dodSuperFastCounterExample3)
             ]

@@ -1500,19 +1500,19 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                                Just (m, [m], Set.toList $
                                                Set.fromList mis
                                              ⊔ Set.fromList nis
-                                             ⊔ (∐) [ Set.fromList [ y ]  ⊔  s | y <- (dropWhile (/= m) ns) ++ ms, [(_,s)] <- [Set.toList $ imdom ! y] ])
+                                             ⊔ (∐) [ Set.fromList [ y ]  ⊔  s | y <- (tail $ dropWhile (/= m) ns) ++ (tail ms), [(_,s)] <- [Set.toList $ imdom ! y] ])
                     | n ∈ ms = -- traceShow ("done", (n,ns,nis), (m,ms,mis)) $
                                Just (n, [n], Set.toList $ 
                                                Set.fromList mis
                                              ⊔ Set.fromList nis
-                                             ⊔ (∐) [ Set.fromList [ y ]  ⊔  s | y <- ns ++ (dropWhile (/= n) ms), [(_,s)] <- [Set.toList $ imdom ! y] ])
+                                             ⊔ (∐) [ Set.fromList [ y ]  ⊔  s | y <- (tail ns) ++ (tail $ dropWhile (/= n) ms), [(_,s)] <- [Set.toList $ imdom ! y] ])
                     | otherwise = -- traceShow ((n,ns,nis), (m,ms,mis)) $
                                   case Set.toList $ ((Set.map fst $ imdom ! n) ∖ (Set.fromList ns) ) of
                                      []   -> case Set.toList $ ((Set.map fst $ imdom ! m) ∖ (Set.fromList ms) ) of
                                                 []   -> Nothing
-                                                [m'] -> lca' ( m', m':ms, m':mis) (n, ns, nis)
+                                                [m'] -> lca' ( m', m':ms, mis) (n, ns, nis)
                                                 _    -> error "more than one successor in imdom" 
-                                     [n'] -> lca' (m, ms, mis) (n', n':ns, n':nis)
+                                     [n'] -> lca' (m, ms, mis) (n', n':ns, nis)
                                      _    -> error "more than one successor in imdom" 
 
 

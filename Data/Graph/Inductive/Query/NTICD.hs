@@ -1496,12 +1496,16 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                                  Set.fromList $ foldMap prevConds preds
                 lca' :: (Node, [Node], [Node]) -> (Node, [Node], [Node]) -> Maybe (Node, [Node], [Node])
                 lca' (n,ns,nis) (m,ms,mis)
-                    | m ∈ ns = -- traceShow ((n,ns,nis), (m,ms,mis)) $
-                               Just (m, [m], Set.toList $ 
-                                             (∐) [ Set.fromList [ y ]  ⊔  s | y <- (dropWhile (/= m) nis) ++ mis, [(_,s)] <- [Set.toList $ imdom ! y] ])
-                    | n ∈ ms = -- traceShow ((n,ns,nis), (m,ms,mis)) $
+                    | m ∈ ns = -- traceShow ("done", (n,ns,nis), (m,ms,mis)) $
+                               Just (m, [m], Set.toList $
+                                               Set.fromList mis
+                                             ⊔ Set.fromList nis
+                                             ⊔ (∐) [ Set.fromList [ y ]  ⊔  s | y <- (dropWhile (/= m) ns) ++ ms, [(_,s)] <- [Set.toList $ imdom ! y] ])
+                    | n ∈ ms = -- traceShow ("done", (n,ns,nis), (m,ms,mis)) $
                                Just (n, [n], Set.toList $ 
-                                             (∐) [ Set.fromList [ y ]  ⊔  s | y <- nis ++ (dropWhile (/= n) mis), [(_,s)] <- [Set.toList $ imdom ! y] ])
+                                               Set.fromList mis
+                                             ⊔ Set.fromList nis
+                                             ⊔ (∐) [ Set.fromList [ y ]  ⊔  s | y <- ns ++ (dropWhile (/= n) ms), [(_,s)] <- [Set.toList $ imdom ! y] ])
                     | otherwise = -- traceShow ((n,ns,nis), (m,ms,mis)) $
                                   case Set.toList $ ((Set.map fst $ imdom ! n) ∖ (Set.fromList ns) ) of
                                      []   -> case Set.toList $ ((Set.map fst $ imdom ! m) ∖ (Set.fromList ms) ) of

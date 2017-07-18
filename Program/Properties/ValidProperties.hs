@@ -461,6 +461,11 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     let g = generatedGraph
                     in NTICD.dod           g ==
                        NTICD.dodDef        g,
+    testProperty  "dodSuperFast              == dod"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.dodSuperFast  g ==
+                       NTICD.dod           g
     testProperty  "dodFast                   == dodDef"
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

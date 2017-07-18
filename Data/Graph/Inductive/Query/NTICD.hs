@@ -1519,7 +1519,8 @@ possibleIntermediateNodesFromiXdom :: forall gr a b. DynGraph gr => gr a b -> Ma
 possibleIntermediateNodesFromiXdom graph ixdom = (㎲⊒) init f
   where init     = Map.fromList [ (n, Set.empty)                       | n <- Map.keys ixdom ]
         f pis    = pis
-                 ⊔ Map.fromList [ (p, (∐) [ Set.fromList [ y ]  ⊔  pis ! y | x <- suc graph p,
+                 ⊔ Map.fromList [ (p, Set.delete z $
+                                      (∐) [ Set.fromList [ y ]  ⊔  pis ! y | x <- suc graph p,
                                                                               let path = revPathFromTo ixdom x z,
                                                                               y <- path
                                       ]

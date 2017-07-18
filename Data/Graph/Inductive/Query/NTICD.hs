@@ -1476,7 +1476,7 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                                   if (not $ changed) then twoFinger (i+1)               worklist'                             imdom
                                                      else twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs          imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
-                mz = foldM1 lca' (fmap (\n -> (n, [n], [n])) $ suc graph x)
+                mz = foldM1 lca' (fmap (\n -> (n, [n], [])) $ suc graph x)
                 zs = case mz of
                       Just (z,_,pis) ->  Set.fromList [ (z, Set.delete z $ Set.fromList pis) ]
                       Nothing        ->  Set.fromList [ ]

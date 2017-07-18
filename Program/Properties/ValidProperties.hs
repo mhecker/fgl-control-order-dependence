@@ -33,6 +33,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    imdomOfTwoFinger6WithPossibleIntermediateNodes, possibleIntermediateNodesFromiXdom,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -451,6 +452,19 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                                ↔ (m `elem` (suc imdomTrc n))
                          )
                        ),
+    testProperty  "possibleIntermediateNodesFromiXdom imdom    == Map.set snd imdomOfTwoFinger6WithPossibleIntermediateNodes"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        imdomWithPossibleIntermediateNodes = NTICD.imdomOfTwoFinger6WithPossibleIntermediateNodes g
+                        possibleIntermediateNodes          = NTICD.possibleIntermediateNodesFromiXdom g imdom
+                          where imdom  = NTICD.imdomOfTwoFinger6 g
+                    in  (∀) (Map.assocs imdomWithPossibleIntermediateNodes) (\(n, zs) ->
+                               if Set.null zs then
+                                  Set.null $ possibleIntermediateNodes ! n
+                               else
+                                  let [ (_,  pis)  ] = Set.toList zs
+                                  in  pis == possibleIntermediateNodes ! n
+                        ),
     testProperty  "dodSuperFast              == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -465,7 +479,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                     in NTICD.dodSuperFast  g ==
-                       NTICD.dod           g
+                       NTICD.dod           g,
     testProperty  "dodFast                   == dodDef"
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

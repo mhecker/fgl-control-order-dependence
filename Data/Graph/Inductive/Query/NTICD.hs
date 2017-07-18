@@ -1515,6 +1515,28 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
                                      _    -> error "more than one successor in imdom" 
 
 
+possibleIntermediateNodesFromiXdom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
+possibleIntermediateNodesFromiXdom graph ixdom = (㎲⊒) init f
+  where init     = Map.fromList [ (n, Set.empty)                       | n <- Map.keys ixdom ]
+        f pis    = pis
+                 ⊔ Map.fromList [ (p, (∐) [ Set.fromList [ y ]  ⊔  pis ! y | x <- suc graph p,
+                                                                              let path = revPathFromTo ixdom x z,
+                                                                              y <- path
+                                      ]
+                                  )
+                                | p <- condNodes,
+                                  [z] <- [Set.toList $ ixdom ! p]
+                   ]
+        condNodes   = [ x | x <- nodes graph, length (suc graph x) > 1 ]
+
+        revPathFromTo ixdom x z = revPathFromToA x []
+          where revPathFromToA x ps 
+                   | x == z    = ps
+                   | otherwise = revPathFromToA next (x:ps)
+                 where [next] = Set.toList $ ixdom ! x
+
+
+
 -- TODO: limit this to starts of linear section
 predsSeenFor :: Map Node [Node] -> [Node] -> [Node] -> [Node]
 predsSeenFor imdomRev = predsSeenF where

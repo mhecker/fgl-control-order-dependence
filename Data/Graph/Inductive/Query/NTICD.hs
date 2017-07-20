@@ -1436,7 +1436,10 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
           where (x, worklist')  = Set.deleteFindMin worklist
                 mz = foldM1 lca (suc graph x)
                 zs = case mz of
-                      Just z  ->  Set.fromList [ z ]
+                      Just z  -> if z/= x then
+                                   Set.fromList [ z ]
+                                 else
+                                   Set.fromList [ ]
                       Nothing ->  Set.fromList [ ]
                 changed = zs /= (imdom ! x)
                 influenced = let imdomRev = invert' $ fmap Set.toList imdom
@@ -1478,7 +1481,10 @@ imdomOfTwoFinger6WithPossibleIntermediateNodes graph = twoFinger 0 worklist0 imd
           where (x, worklist')  = Set.deleteFindMin worklist
                 mz = foldM1 lca' (fmap (\n -> (n, [n], [])) $ suc graph x)
                 zs = case mz of
-                      Just (z,_,pis) ->  Set.fromList [ (z, Set.delete z $ Set.fromList pis) ]
+                      Just (z,_,pis) -> if z/= x then
+                                           Set.fromList [ (z, Set.delete z $ Set.fromList pis) ]
+                                        else
+                                           Set.fromList []
                       Nothing        ->  Set.fromList [ ]
                 changed =
                           if (Set.null zs0) then
@@ -1809,7 +1815,7 @@ dodSuperFast graph =
                   ]
   where imdom = imdomOfTwoFinger6WithPossibleIntermediateNodes graph
         imdomTrc = trc $ (fromSuccMapWithEdgeAnnotation imdom :: gr () (Set Node))
-        mustBeforeAny (m1,m2,n) = mustBeforeAnySeen (Set.fromList [n]) n
+        mustBeforeAny (m1,m2,x) = mustBeforeAnySeen (Set.fromList [x]) x
           where mustBeforeAnySeen seen n
                   | n == m2 = False
                   | n == m1 = True
@@ -1819,8 +1825,6 @@ dodSuperFast graph =
                       where next = imdom ! n
                             [(n',toNext)] = Set.toList next
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-
-
 
 
 

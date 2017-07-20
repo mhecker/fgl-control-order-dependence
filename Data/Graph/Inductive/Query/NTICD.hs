@@ -1857,7 +1857,8 @@ instance JoinSemiLattice Color where
 
 instance BoundedJoinSemiLattice Color where
   bottom = Undefined
-        
+
+
 dodColoredDag :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 dodColoredDag graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
@@ -1871,8 +1872,9 @@ dodColoredDag graph =
                    ]
   where trcGraph = trc graph
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        dependence = dependenceFor graph
 
-        dependence n m1 m2 = whiteChild ∧ blackChild
+dependenceFor graph n m1 m2 = whiteChild ∧ blackChild
           where color = fst $ colorFor n (init, Set.fromList [m1,m2])
                   where init =             Map.fromList [ (m1, White), (m2, Black) ]
                                `Map.union` Map.fromList [ (n, Uncolored) | n <- nodes graph]
@@ -1883,6 +1885,25 @@ dodColoredDag graph =
                   | n ∈ visited = (color, visited)
                   | otherwise   = ( Map.insert n ((∐) [ color' ! x | x <- suc graph n ]) color', visited')
                       where (color', visited') = foldr colorFor (color, Set.insert n visited) (suc graph n)
+
+
+
+dodColoredDagFixed :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+dodColoredDagFixed graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
+                                                  n /= m1, n /= m2,
+                                                  m1 `elem` (suc imdomTrc n),
+                                                  m2 `elem` (suc imdomTrc n),
+                                                  dependence n m1 m2
+                               ]
+                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
+                   ]
+  where trcGraph = trc graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        dependence = dependenceFor graph
+        imdom = imdomOfTwoFinger6 graph
+        imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
 
 dodDef :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 dodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,

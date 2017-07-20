@@ -34,7 +34,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     imdomOfTwoFinger6WithPossibleIntermediateNodes, possibleIntermediateNodesFromiXdom, possibleIntermediatesCannotReachProperty,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast, dodColoredDag,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast, dodColoredDagFixed,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -469,11 +469,11 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                   let [ (_,  pis)  ] = Set.toList zs
                                   in  pis == possibleIntermediateNodes ! n
                         ),
-    testProperty  "dodColoredDag             == dodDef"
+    testProperty  "dodColoredDagFixed         == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                    in NTICD.dodColoredDag g ==
-                       NTICD.dodDef        g,
+                    in NTICD.dodColoredDagFixed g ==
+                       NTICD.dodDef             g,
     testProperty  "dodSuperFast              == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -505,8 +505,8 @@ dodTests = testGroup "(concerning decisive order dependence)" $
             $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "dodColoredDag             == dodDef for " ++ exampleName)
-            $ NTICD.dodColoredDag g           == NTICD.dodDef g @? ""
+  [  testCase    ( "dodColoredDagFixed        == dodDef for " ++ exampleName)
+            $ NTICD.dodColoredDagFixed g      == NTICD.dodDef g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   []

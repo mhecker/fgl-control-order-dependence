@@ -33,8 +33,8 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    imdomOfTwoFinger6WithPossibleIntermediateNodes, possibleIntermediateNodesFromiXdom,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast,
+    imdomOfTwoFinger6WithPossibleIntermediateNodes, possibleIntermediateNodesFromiXdom, possibleIntermediatesCannotReachProperty,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast, dodColoredDag,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -440,6 +440,10 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    -- testProperty  "possibleIntermediatesCannotReachProperty"
+    --             $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    --                 let graph     = generatedGraph
+    --                 in NTICD.possibleIntermediatesCannotReachProperty graph
     testProperty  "snmF3Lfp reachable          == imdom reachable "
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let graph     = generatedGraph
@@ -465,6 +469,11 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                   let [ (_,  pis)  ] = Set.toList zs
                                   in  pis == possibleIntermediateNodes ! n
                         ),
+    testProperty  "dodColoredDag             == dodDef"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.dodColoredDag g ==
+                       NTICD.dodDef        g,
     testProperty  "dodSuperFast              == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -494,6 +503,10 @@ dodProps = testGroup "(concerning decisive order dependence)" [
 dodTests = testGroup "(concerning decisive order dependence)" $
   [  testCase    ( "dodSuperFast              == dodDef for " ++ exampleName)
             $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "dodColoredDag             == dodDef for " ++ exampleName)
+            $ NTICD.dodColoredDag g           == NTICD.dodDef g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   []

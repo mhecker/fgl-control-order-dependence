@@ -13,6 +13,8 @@ import qualified Data.Set as Set
 import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
+import Algebra.Lattice
+
 import qualified Data.List as List
 
 import Data.List ((\\), nub)
@@ -1827,6 +1829,60 @@ dodSuperFast graph =
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 
+possibleIntermediatesCannotReachProperty :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Bool
+possibleIntermediatesCannotReachProperty graph  = (∀) (nodes graph) (\n ->
+                                 (∀) (pis ! n) (\m -> (not $ reachable m n) )
+                               )
+  where imdom = imdomOfTwoFinger6 graph
+        pis = possibleIntermediateNodesFromiXdom graph imdom
+        reachable m1 m2 = m2 `elem` (suc trcIxdom m1)
+        trcIxdom = trc $ (fromSuccMap imdom  :: gr () ())
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+
+data Color = Undefined | White | Black | Uncolored deriving (Show, Ord, Eq, Bounded, Enum)
+
+instance JoinSemiLattice Color where
+  Undefined `join` x         = x
+  x         `join` Undefined = x
+
+  Uncolored `join` x         = Uncolored
+  x         `join` Uncolored = Uncolored
+
+  White     `join` White     = White
+  Black     `join` Black     = Black
+
+  x         `join` y         = Uncolored
+
+instance BoundedJoinSemiLattice Color where
+  bottom = Undefined
+        
+dodColoredDag :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+dodColoredDag graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
+                                                  n /= m1, n /= m2,
+                                                  m1 `elem` (suc trcGraph m2),
+                                                  m2 `elem` (suc trcGraph m1),
+                                                  dependence n m1 m2
+                               ]
+                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
+                   ]
+  where trcGraph = trc graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+        dependence n m1 m2 = whiteChild ∧ blackChild
+          where color = fst $ colorFor n (init, Set.fromList [m1,m2])
+                  where init =             Map.fromList [ (m1, White), (m2, Black) ]
+                               `Map.union` Map.fromList [ (n, Uncolored) | n <- nodes graph]
+                whiteChild = (∃) (suc graph n) (\x -> color ! x == White)
+                blackChild = (∃) (suc graph n) (\x -> color ! x == Black)
+                colorFor :: Node -> (Map Node Color, Set Node) -> (Map Node Color, Set Node)
+                colorFor n (color, visited)
+                  | n ∈ visited = (color, visited)
+                  | otherwise   = ( Map.insert n ((∐) [ color' ! x | x <- suc graph n ]) color', visited')
+                      where (color', visited') = foldr colorFor (color, Set.insert n visited) (suc graph n)
 
 dodDef :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 dodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,

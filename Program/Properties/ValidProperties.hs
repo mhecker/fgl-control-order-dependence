@@ -9,6 +9,7 @@ import Control.Monad.Random(evalRandIO)
 import Algebra.Lattice
 import Unicode
 
+import Util(the)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -24,9 +25,11 @@ import Data.Ord
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified Data.List as List
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
+import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
 import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
@@ -34,7 +37,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     imdomOfTwoFinger6WithPossibleIntermediateNodes, possibleIntermediateNodesFromiXdom, possibleIntermediatesCannotReachProperty,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast, dodColoredDagFixed,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -440,6 +443,20 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "dod is contained in imdom sccs "
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        imdom  = NTICD.imdomOfTwoFinger6 g
+                        dod = NTICD.dod g
+                        imdomSccs = scc (fromSuccMap imdom :: Gr () ())
+                        imdomCycleOf m =  the (m `elem`) $ imdomSccs
+                    in  (∀) (nodes g) (\m1 ->
+                          (∀) (List.delete m1 $ nodes g) (\m2 ->
+                            let c1 = imdomCycleOf m1
+                                c2 = imdomCycleOf m2
+                            in (not (c1 == c2 ∧ length c1 > 1) ) → (Set.null $ dod ! (m1,m2))
+                          )
+                        ),
     -- testProperty  "possibleIntermediatesCannotReachProperty"
     --             $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
     --                 let graph     = generatedGraph
@@ -456,39 +473,39 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                                ↔ (m `elem` (suc imdomTrc n))
                          )
                        ),
-    testProperty  "possibleIntermediateNodesFromiXdom imdom    == Map.set snd imdomOfTwoFinger6WithPossibleIntermediateNodes"
+    -- testProperty  "possibleIntermediateNodesFromiXdom imdom    == Map.set snd imdomOfTwoFinger6WithPossibleIntermediateNodes"
+    -- $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    --                 let g = generatedGraph
+    --                     imdomWithPossibleIntermediateNodes = NTICD.imdomOfTwoFinger6WithPossibleIntermediateNodes g
+    --                     possibleIntermediateNodes          = NTICD.possibleIntermediateNodesFromiXdom g imdom
+    --                       where imdom  = NTICD.imdomOfTwoFinger6 g
+    --                 in  (∀) (Map.assocs imdomWithPossibleIntermediateNodes) (\(n, zs) ->
+    --                            if Set.null zs then
+    --                               Set.null $ possibleIntermediateNodes ! n
+    --                            else
+    --                               let [ (_,  pis)  ] = Set.toList zs
+    --                               in  pis == possibleIntermediateNodes ! n
+    --                     ),
+    testProperty  "dodColoredDagFixedFast     == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                        imdomWithPossibleIntermediateNodes = NTICD.imdomOfTwoFinger6WithPossibleIntermediateNodes g
-                        possibleIntermediateNodes          = NTICD.possibleIntermediateNodesFromiXdom g imdom
-                          where imdom  = NTICD.imdomOfTwoFinger6 g
-                    in  (∀) (Map.assocs imdomWithPossibleIntermediateNodes) (\(n, zs) ->
-                               if Set.null zs then
-                                  Set.null $ possibleIntermediateNodes ! n
-                               else
-                                  let [ (_,  pis)  ] = Set.toList zs
-                                  in  pis == possibleIntermediateNodes ! n
-                        ),
+                    in NTICD.dodColoredDagFixedFast g ==
+                       NTICD.dodDef                 g,
     testProperty  "dodColoredDagFixed         == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                     in NTICD.dodColoredDagFixed g ==
                        NTICD.dodDef             g,
-    testProperty  "dodSuperFast              == dodDef"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
-                    let g = generatedGraph
-                    in NTICD.dodSuperFast  g ==
-                       NTICD.dodDef        g,
+    -- testProperty  "dodSuperFast              == dodDef"
+    -- $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.dodSuperFast  g ==
+    --                    NTICD.dodDef        g,
     testProperty  "dod                       == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                     in NTICD.dod           g ==
                        NTICD.dodDef        g,
-    testProperty  "dodSuperFast              == dod"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
-                    let g = generatedGraph
-                    in NTICD.dodSuperFast  g ==
-                       NTICD.dod           g,
     testProperty  "dodFast                   == dodDef"
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -501,12 +518,24 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
-  [  testCase    ( "dodSuperFast              == dodDef for " ++ exampleName)
-            $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
+  -- [  testCase    ( "dodSuperFast              == dodDef for " ++ exampleName)
+  --           $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  [  testCase    ( "dodColoredDagFixedFast        == dodDef for " ++ exampleName)
+            $ NTICD.dodColoredDagFixedFast g      == NTICD.dodDef g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "dodColoredDagFixed        == dodDef for " ++ exampleName)
             $ NTICD.dodColoredDagFixed g      == NTICD.dodDef g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "dod                       == dodDef for " ++ exampleName)
+            $ NTICD.dod                g      == NTICD.dodDef g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "dodFast                   == dodDef for " ++ exampleName)
+            $ NTICD.dodFast            g      == NTICD.dodDef g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   []

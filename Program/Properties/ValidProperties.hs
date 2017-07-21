@@ -457,7 +457,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                             in (not (c1 == c2 ∧ length c1 > 1) ) → (Set.null $ dod ! (m1,m2))
                           )
                         ),
-    testProperty  "dod is contained in imdom sccs 2"
+    testProperty  "dod is contained in imdom sccs, and only possible for immediate entries into sccs"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                         imdom  = NTICD.imdomOfTwoFinger6 g
@@ -466,6 +466,13 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
                               (m1 ∈ suc imdomTrc m2 ∧ m1 ∈ suc imdomTrc m2)
+                          )
+                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+                              (n1 ∈ suc imdomTrc n2 ∨ n2 ∈ suc imdomTrc n1) → (n1 == n2)
+                          ))
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∈ suc imdomTrc m1 ∨ n  ∈ suc imdomTrc m2)
                           )
                         ),
     -- testProperty  "possibleIntermediatesCannotReachProperty"
@@ -511,6 +518,24 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "dod is contained in imdom sccs, and only possible for immediate entries into sccs for " ++ exampleName)
+            $       let imdom  = NTICD.imdomOfTwoFinger6 g
+                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+                        dod = NTICD.dod g
+                    in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
+                          (∀) ns (\n ->
+                              (m1 ∈ suc imdomTrc m2 ∧ m1 ∈ suc imdomTrc m2)
+                          )
+                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+                              (n1 ∈ suc imdomTrc n2 ∨ n2 ∈ suc imdomTrc n1) → (n1 == n2)
+                          ))
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∈ suc imdomTrc m1 ∨ n  ∈ suc imdomTrc m2)
+                          )
+                        ) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "dodColoredDagFixedFast        == dodDef for " ++ exampleName)
             $ NTICD.dodColoredDagFixedFast g      == NTICD.dodDef g @? ""
   | (exampleName, g) <- interestingDodWod

@@ -1774,18 +1774,6 @@ dodSuperFast graph =
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 
-possibleIntermediatesCannotReachProperty :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Bool
-possibleIntermediatesCannotReachProperty graph  = (∀) (nodes graph) (\n ->
-                                 (∀) (pis ! n) (\m -> (not $ reachable m n) )
-                               )
-  where imdom = imdomOfTwoFinger6 graph
-        pis = possibleIntermediateNodesFromiXdom graph imdom
-        reachable m1 m2 = m2 `elem` (suc trcIxdom m1)
-        trcIxdom = trc $ (fromSuccMap imdom  :: gr () ())
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-
-
-
 data Color = Undefined | White | Black | Uncolored deriving (Show, Ord, Eq, Bounded, Enum)
 
 instance JoinSemiLattice Color where

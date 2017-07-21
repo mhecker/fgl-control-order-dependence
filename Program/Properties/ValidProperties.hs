@@ -36,7 +36,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    possibleIntermediateNodesFromiXdom, possibleIntermediatesCannotReachProperty,
+    possibleIntermediateNodesFromiXdom,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, wod, wodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -475,10 +475,6 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                               (n  ∈ suc imdomTrc m1 ∨ n  ∈ suc imdomTrc m2)
                           )
                         ),
-    -- testProperty  "possibleIntermediatesCannotReachProperty"
-    --             $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
-    --                 let graph     = generatedGraph
-    --                 in NTICD.possibleIntermediatesCannotReachProperty graph
     testProperty  "snmF3Lfp reachable          == imdom reachable "
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let graph     = generatedGraph

@@ -415,6 +415,17 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   []
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty  "wod is contained in isinkdom sccs"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        isinkdom  = NTICD.isinkdomOfSinkContraction g
+                        isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
+                        wod = NTICD.wod g
+                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                          (∀) ns (\n ->
+                              (m1 ∈ suc isinkdomTrc m2 ∧ m1 ∈ suc isinkdomTrc m2)
+                          )
+                        ),
     testProperty  "snmF3Gfp reachable          == isinkdom reachable "
                 $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let graph     = generatedGraph
@@ -434,6 +445,17 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        NTICD.wod           g
   ]
 wodTests = testGroup "(concerning weak order dependence)" $
+  [  testCase    ( "wod is contained in isinkdom sccs  for " ++ exampleName)
+            $       let isinkdom  = NTICD.isinkdomOfSinkContraction g
+                        isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
+                        wod = NTICD.wod g
+                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                          (∀) ns (\n ->
+                              (m1 ∈ suc isinkdomTrc m2 ∧ m1 ∈ suc isinkdomTrc m2)
+                          )
+                        ) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "wodFast                   == wod for " ++ exampleName)
             $ NTICD.wodFast g                 == NTICD.wod g @? ""
   | (exampleName, g) <- interestingDodWod

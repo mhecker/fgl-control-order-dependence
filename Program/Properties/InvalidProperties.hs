@@ -28,8 +28,9 @@ import Data.Ord
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode)
-import Data.Graph.Inductive (mkGraph, edges)
+import Data.Graph.Inductive.Query.TransClos (trc)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
+import Data.Graph.Inductive (mkGraph, edges, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 import Program (Program, tcfg)
@@ -50,6 +51,7 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    wod, isinkdomOfSinkContraction,
     dodDef, dodSuperFast,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
@@ -85,6 +87,8 @@ misc       = defaultMain                               $ expectFail $ testGroup 
 miscX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
 dod        = defaultMain                               $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
 dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
+wod        = defaultMain                               $ expectFail $ testGroup "wod"       [ mkProp [wodProps]]
+wodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "wod"       [ mkProp [wodProps]]
 
 mkTest = testGroup "Unit tests"
 mkProp = testGroup "Properties"
@@ -251,6 +255,35 @@ dodTests = testGroup "(concerning decisive order dependence)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   []
+
+
+wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty  "wod is only possible for entries into sccs"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        isinkdom  = NTICD.isinkdomOfSinkContraction g
+                        isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
+                        wod = NTICD.wod g
+                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                          (∀) ns (\n ->
+                              not $
+                              (n  ∈ suc isinkdomTrc m1 ∨ n  ∈ suc isinkdomTrc m2)
+                          )
+                        ),
+    testProperty  "wod has no comparable all-max-path-reachable pairs of controlling nodes"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        isinkdom  = NTICD.isinkdomOfSinkContraction g
+                        isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
+                        wod = NTICD.wod g
+                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                          (∀) ns (\n1 -> (∀) ns (\n2 ->
+                              (n1 ∈ suc isinkdomTrc n2 ∨ n2 ∈ suc isinkdomTrc n1) → (n1 == n2)
+                          ))
+                        )
+  ] 
+
+
 
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree

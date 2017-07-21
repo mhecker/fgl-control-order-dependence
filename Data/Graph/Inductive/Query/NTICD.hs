@@ -1857,9 +1857,9 @@ dodColoredDagFixedFast graph =
     ⊔ Map.fromList [ ((mm1,mm2), ns) | cycle <- imdomCycles,
                                        (m1,m2) <- unorderedPairsOf cycle,
                                        assert (length cycle > 1) True,
-                                       let ns = Set.fromList [ n | n <- condNodes,
-                                                                   n /= m1, n /= m2,
-                                                                   m1 `elem` (suc imdomTrc n),
+                                       let ns = Set.fromList [ n | n <- entriesFor cycle,
+                                                           assert (n /= m1 ∧ n /= m2) True,
+                                                           assert (m1 `elem` (suc imdomTrc n)) True,
                                                            assert (m2 `elem` (suc imdomTrc n)) True,
                                                                    dependence n m1 m2
                                                 ],
@@ -1871,6 +1871,7 @@ dodColoredDagFixedFast graph =
         imdomG = fromSuccMap imdom :: gr () ()
         imdomTrc = trc $ imdomG
         imdomCycles = scc imdomG
+        entriesFor cycle = [ n | n <- condNodes, [n'] <- [Set.toList $ imdom ! n], n' ∈ cycle]
 
         unorderedPairsOf []     = []
         unorderedPairsOf (x:xs) = [ (x,y) | y <- xs ] ++ unorderedPairsOf xs

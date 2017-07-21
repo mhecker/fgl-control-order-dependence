@@ -37,7 +37,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom, possibleIntermediatesCannotReachProperty,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast, dodColoredDagFixed, dodColoredDagFixedFast,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, wod, wodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -483,11 +483,6 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     let g = generatedGraph
                     in NTICD.dodColoredDagFixed g ==
                        NTICD.dodDef             g,
-    -- testProperty  "dodSuperFast              == dodDef"
-    -- $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
-    --                 let g = generatedGraph
-    --                 in NTICD.dodSuperFast  g ==
-    --                    NTICD.dodDef        g,
     testProperty  "dod                       == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -505,10 +500,6 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
-  -- [  testCase    ( "dodSuperFast              == dodDef for " ++ exampleName)
-  --           $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
-  -- | (exampleName, g) <- interestingDodWod
-  -- ] ++
   [  testCase    ( "dodColoredDagFixedFast        == dodDef for " ++ exampleName)
             $ NTICD.dodColoredDagFixedFast g      == NTICD.dodDef g @? ""
   | (exampleName, g) <- interestingDodWod

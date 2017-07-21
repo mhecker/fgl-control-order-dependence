@@ -1745,6 +1745,7 @@ dodFast graph =
 
 
 
+{- this algorithm does *not* work, see: Program.Examples.dodSuperFastCounterExample6 -}
 dodSuperFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 dodSuperFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]

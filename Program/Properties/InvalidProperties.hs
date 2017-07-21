@@ -50,6 +50,7 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    dodDef, dodSuperFast,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF3, snmF5
@@ -82,6 +83,8 @@ ntscdX     = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup 
 
 misc       = defaultMain                               $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
 miscX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
+dod        = defaultMain                               $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
+dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
 
 mkTest = testGroup "Unit tests"
 mkProp = testGroup "Properties"
@@ -151,26 +154,26 @@ nticdProps = testGroup "(concerning nticd )" [
                         selfedges = [ e | e@(n,m) <- edges g, n == m]
                     in
                        selfedges == [] &&
-                       NTICD.nticdF5      g entry () exit /=
-                       NTICD.nticdF3      g entry () exit
+                       NTICD.nticdF5      g /=
+                       NTICD.nticdF3      g 
                        ==>
                        NTICD.snmF5        g ⊑
                        NTICD.snmF3        g,
     testProperty  "controlDependence      == nticdF                for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in controlDependence      g entry () exit ==
-                       NTICD.nticdF5          g entry () exit,
+                    in controlDependence      g exit ==
+                       NTICD.nticdF5          g,
     testProperty  "controlDependence      == nticdFig5             for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in controlDependence      g entry () exit ==
-                       NTICD.nticdFig5        g entry () exit,
+                    in controlDependence      g exit ==
+                       NTICD.nticdFig5        g,
     testProperty  "controlDependence      == nticdIndus            for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in controlDependence      g entry () exit ==
-                       NTICD.nticdIndus       g entry () exit
+                    in controlDependence      g exit ==
+                       NTICD.nticdIndus       g
   ]
   
 nticdTests = testGroup "(concerning nticd)" $
@@ -211,8 +214,8 @@ ntscdProps = testGroup "(concerning ntscd )" [
     testProperty  "ntscdFig4                == ntscdF3"
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry
-                    in NTICD.ntscdFig4       g entry () exit ==
-                       NTICD.ntscdF3         g entry () exit
+                    in NTICD.ntscdFig4       g ==
+                       NTICD.ntscdF3         g
   ]
 
 
@@ -241,6 +244,13 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 miscProps = testGroup "(misc)" [
   ]
+
+dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "dodSuperFast              == dodDef for " ++ exampleName)
+            $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  []
 
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree

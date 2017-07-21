@@ -1905,6 +1905,32 @@ dodColoredDagFixed graph =
         imdom = imdomOfTwoFinger6 graph
         imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
 
+
+dodColoredDagFixedFast :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+dodColoredDagFixedFast graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((mm1,mm2), ns) | cycle <- imdomCycles,
+                                       (m1,m2) <- unorderedPairsOf cycle,
+                                       assert (length cycle > 1) True,
+                                       let ns = Set.fromList [ n | n <- condNodes,
+                                                                   n /= m1, n /= m2,
+                                                                   m1 `elem` (suc imdomTrc n),
+                                                           assert (m2 `elem` (suc imdomTrc n)) True,
+                                                                   dependence n m1 m2
+                                                ],
+                                       (mm1,mm2) <- [(m1,m2),(m2,m1)]
+                   ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        dependence = dependenceFor graph
+        imdom = imdomOfTwoFinger6 graph
+        imdomG = fromSuccMap imdom :: gr () ()
+        imdomTrc = trc $ imdomG
+        imdomCycles = scc imdomG
+
+        unorderedPairsOf []     = []
+        unorderedPairsOf (x:xs) = [ (x,y) | y <- xs ] ++ unorderedPairsOf xs
+
+
 dodDef :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 dodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
                                                            (∀) (maximalPaths ! p) (\path ->   m1 `inPath` (p,path)

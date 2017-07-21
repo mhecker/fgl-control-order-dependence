@@ -36,7 +36,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    imdomOfTwoFinger6WithPossibleIntermediateNodes, possibleIntermediateNodesFromiXdom, possibleIntermediatesCannotReachProperty,
+    possibleIntermediateNodesFromiXdom, possibleIntermediatesCannotReachProperty,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, dodSuperFast, wod, wodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -473,19 +473,6 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                                ↔ (m `elem` (suc imdomTrc n))
                          )
                        ),
-    -- testProperty  "possibleIntermediateNodesFromiXdom imdom    == Map.set snd imdomOfTwoFinger6WithPossibleIntermediateNodes"
-    -- $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
-    --                 let g = generatedGraph
-    --                     imdomWithPossibleIntermediateNodes = NTICD.imdomOfTwoFinger6WithPossibleIntermediateNodes g
-    --                     possibleIntermediateNodes          = NTICD.possibleIntermediateNodesFromiXdom g imdom
-    --                       where imdom  = NTICD.imdomOfTwoFinger6 g
-    --                 in  (∀) (Map.assocs imdomWithPossibleIntermediateNodes) (\(n, zs) ->
-    --                            if Set.null zs then
-    --                               Set.null $ possibleIntermediateNodes ! n
-    --                            else
-    --                               let [ (_,  pis)  ] = Set.toList zs
-    --                               in  pis == possibleIntermediateNodes ! n
-    --                     ),
     testProperty  "dodColoredDagFixedFast     == dodDef"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

@@ -457,6 +457,17 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                             in (not (c1 == c2 ∧ length c1 > 1) ) → (Set.null $ dod ! (m1,m2))
                           )
                         ),
+    testProperty  "dod is contained in imdom sccs 2"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        imdom  = NTICD.imdomOfTwoFinger6 g
+                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+                        dod = NTICD.dod g
+                    in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
+                          (∀) ns (\n ->
+                              (m1 ∈ suc imdomTrc m2 ∧ m1 ∈ suc imdomTrc m2)
+                          )
+                        ),
     -- testProperty  "possibleIntermediatesCannotReachProperty"
     --             $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
     --                 let graph     = generatedGraph

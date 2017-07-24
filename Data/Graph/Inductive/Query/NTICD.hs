@@ -1605,6 +1605,18 @@ combinedBackwardSlice graph cd od m1 m2 =  (㎲⊒) (Set.fromList [m1, m2]) f
         cdReversed = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
                    ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList cd )
 
+ntscdMyDodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
+  where ntscd = ntscdF3 graph
+        d     = myDod graph
+
+ntscdDodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
+  where ntscd = ntscdF3 graph
+        d     = dod graph
+
+
+        
 nticdMyWodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
 nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = nticdF3 graph

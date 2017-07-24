@@ -40,7 +40,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom,
-    nticdMyWodSlice, wodTEILSlice,
+    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, 
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -495,6 +495,27 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        myDod = NTICD.myDod g
+                        ntscd = NTICD.ntscdF3 g
+                        ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
+                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+                          (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
+                                        (∃) (ns) (\n' -> n' ∈ (suc ntscdTrc n))
+                          )
+                        ),
+    testProperty  "ntscdDodSlice == ntscdMyDodSlice"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        ntscdDodSlice     = NTICD.ntscdDodSlice g
+                        ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
+                    in  -- traceShow (length $ nodes g) $
+                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+                          ntscdDodSlice   m1 m2 ==
+                          ntscdMyDodSlice m1 m2
+                        )),
     testProperty  "dod implies myDod"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -585,6 +606,27 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property for " ++ exampleName)
+            $       let myDod = NTICD.myDod g
+                        ntscd = NTICD.ntscdF3 g
+                        ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
+                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+                          (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
+                                        (∃) (ns) (\n' -> n' ∈ (suc ntscdTrc n))
+                          )
+                        ) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice for " ++ exampleName)
+            $       let ntscdDodSlice     = NTICD.ntscdDodSlice g
+                        ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
+                    in  -- traceShow (length $ nodes g) $
+                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+                          ntscdDodSlice   m1 m2 ==
+                          ntscdMyDodSlice m1 m2
+                        )) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "dod implies myDod for " ++ exampleName)
             $       let dod = NTICD.dod g
                         myDod = NTICD.myDod g
@@ -594,7 +636,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                           )
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
-  ] ++ 
+  ] ++
   [  testCase    ( "myDod implies dod for " ++ exampleName)
             $       let dod = NTICD.dod g
                         myDod = NTICD.myDod g

@@ -1754,6 +1754,11 @@ dod graph = xod sMust s3 graph
   where sMust = smmnFMustDod graph
         s3    = snmF3Lfp graph
 
+myDod graph = myXod sMust s3 graph
+  where sMust = smmnFMustDod graph
+        s3    = snmF3Lfp graph
+
+
 dodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 dodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]

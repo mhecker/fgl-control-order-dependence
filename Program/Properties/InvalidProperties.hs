@@ -51,7 +51,7 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    wod, isinkdomOfSinkContraction,
+    myWod, isinkdomOfSinkContraction,
     dodDef, dodSuperFast,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
@@ -258,25 +258,25 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testProperty  "wod is only possible for entries into sccs"
+    testProperty  "myWod is only possible for entries into sccs"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                         isinkdom  = NTICD.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        wod = NTICD.wod g
-                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                        myWod = NTICD.myWod g
+                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
                               not $
                               (n  ∈ suc isinkdomTrc m1 ∨ n  ∈ suc isinkdomTrc m2)
                           )
                         ),
-    testProperty  "wod has no comparable all-max-path-reachable pairs of controlling nodes"
+    testProperty  "myWod has no comparable all-max-path-reachable pairs of controlling nodes"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                         isinkdom  = NTICD.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        wod = NTICD.wod g
-                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                        myWod = NTICD.myWod g
+                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∈ suc isinkdomTrc n2 ∨ n2 ∈ suc isinkdomTrc n1) → (n1 == n2)
                           ))

@@ -1605,10 +1605,10 @@ combinedBackwardSlice graph cd od m1 m2 =  (㎲⊒) (Set.fromList [m1, m2]) f
         cdReversed = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
                    ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList cd )
 
-nticdWodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
-nticdWodSlice graph =  combinedBackwardSlice graph nticd w
+nticdMyWodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = nticdF3 graph
-        w     = wod graph
+        w     = myWod graph
 
 wodTEILSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
 wodTEILSlice graph = combinedBackwardSlice graph empty w
@@ -1710,21 +1710,36 @@ xod smmnMust s graph =
                   ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
-wod graph = xod sMust s3 graph
+
+myXod smmnMust s graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
+                                                  n /= m1, n /= m2,
+                                                  Set.size (s ! (m1,n)) == (Set.size $ Set.fromList $ suc graph n),
+                                                  Set.size (s ! (m2,n)) == (Set.size $ Set.fromList $ suc graph n),
+                                                  let s12n = smmnMust ! (m1,m2,n),
+                                                  Set.size s12n > 0,
+                                                  Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
+                                      ]
+                     ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 
+                  ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+myWod graph = myXod sMust s3 graph
   where sMust = smmnFMustWod graph
         s3    = snmF3 graph
 
-wodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
-wodFast graph =
+myWodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
                                                   n /= m1, n /= m2,
                                                   m1 `elem` (suc isinkdomTrc n),
                                                   m2 `elem` (suc isinkdomTrc n),
                                                   let s12n = sMust ! (m1,m2,n),
-                                                  let s21n = sMust ! (m2,m1,n),
                                                   Set.size s12n > 0,
-                                                  Set.size s21n > 0
+                                                  Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
                                       ]
                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
                   ]

@@ -23,6 +23,9 @@ import Test.QuickCheck.Property (Property(..))
 
 import Data.Ord
 
+import Debug.Trace (traceShow)
+
+
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List as List
@@ -37,7 +40,8 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, wod, wodFast, dodColoredDagFixed, dodColoredDagFixedFast,
+    nticdMyWodSlice, wodTEILSlice,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -415,13 +419,22 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   []
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testProperty  "wod is contained in isinkdom sccs"
+    testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        nticdWodSlice   = NTICD.nticdMyWodSlice g
+                        wodTEILSlice    = NTICD.wodTEILSlice g
+                    in  -- traceShow (length $ nodes g) $
+                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+                          wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+                        )),
+    testProperty  "myWod is contained in isinkdom sccs"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                         isinkdom  = NTICD.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        wod = NTICD.wod g
-                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                        myWod = NTICD.myWod g
+                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
                               (m1 ∈ suc isinkdomTrc m2 ∧ m1 ∈ suc isinkdomTrc m2)
                           )
@@ -443,18 +456,26 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                ↔ (m `elem` (suc isinkdomTrc n))
                          )
                        ),
-    testProperty  "wodFast                   == wod"
+    testProperty  "myWodFast                 == myWod"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                    in NTICD.wodFast       g ==
-                       NTICD.wod           g
+                    in NTICD.myWodFast       g ==
+                       NTICD.myWod           g
   ]
 wodTests = testGroup "(concerning weak order dependence)" $
-  [  testCase    ( "wod is contained in isinkdom sccs  for " ++ exampleName)
+  [  testCase    ( "wodTEILSlice is contained in nticdMyWodSlice for " ++ exampleName)
+            $       let nticdWodSlice   = NTICD.nticdMyWodSlice g
+                        wodTEILSlice    = NTICD.wodTEILSlice g
+                    in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+                          wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+                        )) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "myWod is contained in isinkdom sccs  for " ++ exampleName)
             $       let isinkdom  = NTICD.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        wod = NTICD.wod g
-                    in  (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                        myWod = NTICD.myWod g
+                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
                               (m1 ∈ suc isinkdomTrc m2 ∧ m1 ∈ suc isinkdomTrc m2)
                           )
@@ -466,12 +487,11 @@ wodTests = testGroup "(concerning weak order dependence)" $
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "wodFast                   == wod for " ++ exampleName)
-            $ NTICD.wodFast g                 == NTICD.wod g @? ""
+  [  testCase    ( "myWodFast                   == myWod for " ++ exampleName)
+            $ NTICD.myWodFast g                 == NTICD.myWod g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   []
-
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [

@@ -1597,6 +1597,23 @@ fMay graph condNodes reachable nextCond toNextCond s =
                                   ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
 
 
+combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Node -> Node -> Set Node
+combinedBackwardSlice graph cd od m1 m2 =  (㎲⊒) (Set.fromList [m1, m2]) f
+  where f slice = slice
+                ⊔ Set.fromList [ n | m <- Set.toList slice, n <- Set.toList $ cdReversed ! m ]
+                ⊔ Set.fromList [ n | m1 <- Set.toList slice, m2 <- Set.toList slice, m1 /= m2, n <- Set.toList $ od ! (m1,m2) ]
+        cdReversed = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+                   ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList cd )
+
+nticdWodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+nticdWodSlice graph =  combinedBackwardSlice graph nticd w
+  where nticd = nticdF3 graph
+        w     = wod graph
+
+wodTEILSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+wodTEILSlice graph = combinedBackwardSlice graph empty w
+  where empty = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+        w     = wodTEIL' graph
 
 
 wodTEIL :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node,Node))
@@ -1604,12 +1621,19 @@ wodTEIL graph = xodTEIL smmnMust smmnMay graph
   where smmnMust = smmnFMustWod graph
         smmnMay  = smmnFMayWod graph
 
+
+wodTEIL' :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+wodTEIL' graph = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+               ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList wTEIL )
+  where wTEIL = wodTEIL graph
+
+
 smmnFMustWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustWod graph = smmnGfp graph fMust
 
 
 smmnFMayWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
-smmnFMayWod graph = smmnGfp graph fMay
+smmnFMayWod graph = smmnLfp graph fMay
 
 
 smmnFMustDod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))

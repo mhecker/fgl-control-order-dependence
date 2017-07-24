@@ -27,6 +27,7 @@ import Data.Ord
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import Data.Map ( Map, (!) )
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
@@ -51,7 +52,7 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    myWod, isinkdomOfSinkContraction,
+    myWod, isinkdomOfSinkContraction, myDod,
     dodDef, dodSuperFast,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
@@ -250,9 +251,19 @@ miscProps = testGroup "(misc)" [
   ]
 
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property strong for " ++ exampleName)
+            $       let myDod = NTICD.myDod g
+                        ntscd = NTICD.ntscdF3 g
+                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+                          (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
+                                        (∃) (ns) (\n' -> n' ∈ ntscd ! n)
+                          )
+                        ) @? ""
+  | (exampleName, g) <- [("dodSuperFastCounterExample", dodSuperFastCounterExample :: Gr () () )]
+  ] ++
   [  testCase    ( "dodSuperFast              == dodDef for " ++ exampleName)
             $ NTICD.dodSuperFast g            == NTICD.dodDef g @? ""
-  | (exampleName, g) <- interestingDodWod
+  | (exampleName, g) <- [("dodSuperFastCounterExample6", dodSuperFastCounterExample6 :: Gr () ())]
   ] ++
   []
 

@@ -1640,6 +1640,24 @@ wodTEIL' graph = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- 
   where wTEIL = wodTEIL graph
 
 
+
+
+mustBeforeMaximalDef :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node, Node))
+mustBeforeMaximalDef graph =
+                Map.fromList [ (n, Set.empty) | n <- nodes graph]
+              ⊔ Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph,
+                                                            m2 <- nodes graph,
+                                                            n /= m1, n /= m2, m1 /= m2,
+                                                            (∀) paths (\path -> (m1,m2) `inPathBefore` (n,path))
+                                                ]
+                               ) | n <- nodes graph, let paths = maximalPaths ! n ]
+  where sccs = scc graph
+        sccOf m =  the (m `elem`) $ sccs
+        maximalPaths = maximalPathsFor graph
+        inPath = inPathFor graph doms
+        inPathBefore = inPathForBefore graph doms
+        doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
+
 smmnFMustWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustWod graph = smmnGfp graph fMust
 
@@ -1771,6 +1789,31 @@ myDod graph = myXod sMust s3 graph
         s3    = snmF3Lfp graph
 
 
+myDodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myDodFast graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- imdomCycles,
+                                       m1 <- cycle,
+                                       m2 <- cycle,
+                                       m1 /= m2,
+                                       assert (length cycle > 1) True,
+                                       let ns = Set.fromList [ n | n <- entriesFor cycle,
+                                                           assert (n /= m1 ∧ n /= m2) True,
+                                                           assert (m1 `elem` (suc imdomTrc n)) True,
+                                                           assert (m2 `elem` (suc imdomTrc n)) True,
+                                                                  myDependence n m1 m2
+                                                ]
+                   ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        imdom = imdomOfTwoFinger6 graph
+        imdomG = fromSuccMap imdom :: gr () ()
+        imdomTrc = trc $ imdomG
+        imdomCycles = scc imdomG
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∈ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∈ cycle]
+        myDependence = myDependenceFor graph
+
+
+
 dodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 dodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
@@ -1863,12 +1906,23 @@ dodColoredDag graph =
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         dependence = dependenceFor graph
 
+
+myDependenceFor graph n m1 m2 = whiteChild ∧ otherChild
+          where color = colorFor graph n m1 m2
+                whiteChild = (∃) (suc graph n) (\x -> color ! x == White)
+                otherChild = (∃) (suc graph n) (\x -> assert ( color ! x /= Undefined) 
+                                                      color ! x /= White)
+
+
 dependenceFor graph n m1 m2 = whiteChild ∧ blackChild
+          where color = colorFor graph n m1 m2
+                whiteChild = (∃) (suc graph n) (\x -> color ! x == White)
+                blackChild = (∃) (suc graph n) (\x -> color ! x == Black)
+
+colorFor graph n m1 m2 = color
           where color = fst $ colorFor n (init, Set.fromList [m1,m2])
                   where init =             Map.fromList [ (m1, White), (m2, Black) ]
                                `Map.union` Map.fromList [ (n, Uncolored) | n <- nodes graph]
-                whiteChild = (∃) (suc graph n) (\x -> color ! x == White)
-                blackChild = (∃) (suc graph n) (\x -> color ! x == Black)
                 colorFor :: Node -> (Map Node Color, Set Node) -> (Map Node Color, Set Node)
                 colorFor n (color, visited)
                   | n ∈ visited = (color, visited)

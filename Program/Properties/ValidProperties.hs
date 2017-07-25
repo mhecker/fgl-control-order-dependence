@@ -41,7 +41,7 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom,
     nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, 
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -495,6 +495,29 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "myDodFast                 == myDod"
+                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                    in NTICD.myDodFast       g ==
+                       NTICD.myDod           g,
+    testProperty  "myDod is contained in imdom sccs"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        imdom  = NTICD.imdomOfTwoFinger6 g
+                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+                        myDod = NTICD.myDod g
+                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+                          (∀) ns (\n ->
+                              (m1 ∈ suc imdomTrc m2 ∧ m1 ∈ suc imdomTrc m2)
+                          )
+                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+                              (n1 ∈ suc imdomTrc n2 ∨ n2 ∈ suc imdomTrc n1) → (n1 == n2)
+                          ))
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∈ suc imdomTrc m1 ∨ n  ∈ suc imdomTrc m2)
+                          )
+                        ),
     testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -606,6 +629,28 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "myDodFast                 == myDod for " ++ exampleName)
+            $ NTICD.myDodFast          g      == NTICD.myDod g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "myDod is contained in imdom sccs  for " ++ exampleName)
+            $       let imdom  = NTICD.imdomOfTwoFinger6 g
+                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+                        myDod = NTICD.myDod g
+                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+                          (∀) ns (\n ->
+                              (m1 ∈ suc imdomTrc m2 ∧ m1 ∈ suc imdomTrc m2)
+                          )
+                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+                              (n1 ∈ suc imdomTrc n2 ∨ n2 ∈ suc imdomTrc n1) → (n1 == n2)
+                          ))
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∈ suc imdomTrc m1 ∨ n  ∈ suc imdomTrc m2)
+                          )
+                        ) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property for " ++ exampleName)
             $       let myDod = NTICD.myDod g
                         ntscd = NTICD.ntscdF3 g

@@ -1763,20 +1763,28 @@ myWod graph = myXod sMust s3 graph
 myWodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 myWodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
-    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
-                                                  n /= m1, n /= m2,
-                                                  m1 `elem` (suc isinkdomTrc n),
-                                                  m2 `elem` (suc isinkdomTrc n),
-                                                  let s12n = sMust ! (m1,m2,n),
-                                                  Set.size s12n > 0,
-                                                  Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
-                                      ]
-                     ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
+    ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
+                                       m1 <- cycle,
+                                       m2 <- cycle,
+                                       m1 /= m2,
+                                       assert (length cycle > 1) True,
+                                       let ns = Set.fromList [ n | n <- (entriesFor cycle) ++ (condsIn cycle),
+                                                                   n /= m1 ∧ n /= m2,
+                                                           assert (m1 `elem` (suc isinkdomTrc n)) True,
+                                                           assert (m2 `elem` (suc isinkdomTrc n)) True,
+                                                                  let s12n = sMust ! (m1,m2,n),
+                                                                  Set.size s12n > 0,
+                                                                  Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
+                                                ]
                   ]
   where sMust = smmnFMustWod graph
-        isinkdom = isinkdomOfSinkContraction graph
-        isinkdomTrc = trc $ (fromSuccMap isinkdom :: gr () ())
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∈ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∈ cycle]
+        condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
 
 
 

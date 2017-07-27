@@ -1768,12 +1768,13 @@ myWodFast graph =
                                        m1 <- cycle,
                                        m2 <- cycle,
                                        m1 /= m2,
+                                       let color = colorLfpFor graph m1 m2,
                                        assert (length cycle > 1) True,
                                        let ns = Set.fromList [ n | n <- (entriesFor cycle) ++ (condsIn cycle),
                                                                    n /= m1 ∧ n /= m2,
                                                            assert (m1 `elem` (suc isinkdomTrc n)) True,
                                                            assert (m2 `elem` (suc isinkdomTrc n)) True,
-                                                                   myDependence n m1 m2
+                                                                   myDependence color n
                                                                   -- let s12n = sMust ! (m1,m2,n),
                                                                   -- Set.size s12n > 0,
                                                                   -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
@@ -1806,12 +1807,13 @@ myDodFast graph =
                                        m1 <- cycle,
                                        m2 <- cycle,
                                        m1 /= m2,
+                                       let color = colorLfpFor graph m1 m2,
                                        assert (length cycle > 1) True,
                                        let ns = Set.fromList [ n | n <- entriesFor cycle,
                                                            assert (n /= m1 ∧ n /= m2) True,
                                                            assert (m1 `elem` (suc imdomTrc n)) True,
                                                            assert (m2 `elem` (suc imdomTrc n)) True,
-                                                                  myDependence n m1 m2
+                                                                  myDependence color n
                                                 ]
                    ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
@@ -1920,8 +1922,8 @@ dodColoredDag graph =
         dependence = dependenceFor graph
 
 
-myDependenceFor graph n m1 m2 = whiteChild ∧ otherChild
-          where color = colorFor graph n m1 m2
+myDependenceFor graph color n = whiteChild ∧ otherChild
+          where 
                 whiteChild = (∃) (suc graph n) (\x -> color ! x == White)
                 otherChild = (∃) (suc graph n) (\x -> assert ( color ! x /= Undefined) 
                                                       color ! x /= White)
@@ -1952,10 +1954,6 @@ colorFunctionalFor graph m1 m2 color =
 
 colorLfpFor graph m1 m2 =  (㎲⊒) (Map.fromList [ (n, Undefined) | n <- nodes graph]) f
   where f = colorFunctionalFor graph m1 m2
-
-colorGfpFor graph m1 m2 =  (𝝂)  (Map.fromList [ (n, Uncolored) | n <- nodes graph]) f
-  where f = colorFunctionalFor graph m1 m2
-
 
 dodColoredDagFixed :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 dodColoredDagFixed graph =

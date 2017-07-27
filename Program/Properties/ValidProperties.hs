@@ -735,6 +735,21 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 colorProps = testGroup "(concerning color algorithms)" [
+    testProperty  "colorLfpFor                 == smmnFMustDod graph"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        imdom = NTICD.imdomOfTwoFinger6 g
+                        imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
+                        sMust = NTICD.smmnFMustDod g
+                        condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
+                    in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
+                         let colorLfp = NTICD.colorLfpFor g   m1 m2
+                         in (∀) (condNodes) (\n ->
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∈ (suc imdomTrc n)) ∧ (m2 ∈ (suc imdomTrc n))) → (
+                                (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
+                              ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
+                              )
+                       ))),
     testProperty  "colorLfpFor                 == colorFor"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

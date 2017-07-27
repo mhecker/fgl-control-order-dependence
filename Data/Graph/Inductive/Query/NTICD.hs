@@ -1944,17 +1944,17 @@ colorFor graph n m1 m2 = color
 
 
 
-colorFunctionalFor :: forall gr a b. DynGraph gr => gr a b -> Node -> Node -> Node -> Map Node Color -> Map Node Color
-colorFunctionalFor graph n m1 m2 color =
+colorFunctionalFor :: forall gr a b. DynGraph gr => gr a b -> Node -> Node -> Map Node Color -> Map Node Color
+colorFunctionalFor graph m1 m2 color =
       color
     ⊔ Map.fromList [ (m1, White), (m2, Black) ]
     ⊔ Map.fromList [ (n, (∐) [ color ! x | x <- suc graph n ]) | n <- nodes graph, n /= m1, n /= m2 ]
 
-colorLfpFor graph n m1 m2 =  (㎲⊒) (Map.fromList [ (n, Undefined) | n <- nodes graph]) f
-  where f = colorFunctionalFor graph n m1 m2
+colorLfpFor graph m1 m2 =  (㎲⊒) (Map.fromList [ (n, Undefined) | n <- nodes graph]) f
+  where f = colorFunctionalFor graph m1 m2
 
-colorGfpFor graph n m1 m2 =  (𝝂)  (Map.fromList [ (n, Uncolored) | n <- nodes graph]) f
-  where f = colorFunctionalFor graph n m1 m2
+colorGfpFor graph m1 m2 =  (𝝂)  (Map.fromList [ (n, Uncolored) | n <- nodes graph]) f
+  where f = colorFunctionalFor graph m1 m2
 
 
 dodColoredDagFixed :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)

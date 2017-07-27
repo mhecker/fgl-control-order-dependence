@@ -740,11 +740,12 @@ colorProps = testGroup "(concerning color algorithms)" [
                     let g = generatedGraph
                         imdom = NTICD.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
-                    in (∀) (nodes g) (\n ->   (∀) (nodes g) (\m1 ->    (∀) (nodes g) (\m2 ->
-                         (n /= m1 ∧ n /= m2 ∧ (m1 ∈ (suc imdomTrc n)) ∧ (m2 ∈ (suc imdomTrc n))) → 
-                         let colorLfp = NTICD.colorLfpFor g n m1 m2
-                             color    = NTICD.colorFor    g n m1 m2
-                         in (∀) (suc g n) (\x -> colorLfp ! x == color ! x)
+                    in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
+                         let colorLfp = NTICD.colorLfpFor g   m1 m2
+                         in (∀) (nodes g) (\n ->
+                           let color  = NTICD.colorFor    g n m1 m2
+                           in (n /= m1 ∧ n /= m2 ∧ (m1 ∈ (suc imdomTrc n)) ∧ (m2 ∈ (suc imdomTrc n))) → 
+                                (∀) (suc g n) (\x -> colorLfp ! x == color ! x)
                        ))),
     testProperty  "smmnFMustDod graph          == colorFor"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
@@ -762,14 +763,14 @@ colorProps = testGroup "(concerning color algorithms)" [
   ]
 colorTests = testGroup "(concerning color algorithms)" $
   [  testCase    ( "smmnFMustDod graph          == colorFor for " ++ exampleName)
-            $          let imdom = NTICD.imdomOfTwoFinger6 g
-                           imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
-                       in
-                       (∀) (nodes g) (\n ->   (∀) (nodes g) (\m1 ->    (∀) (nodes g) (\m2 ->
-                         (n /= m1 ∧ n /= m2 ∧ (m1 ∈ (suc imdomTrc n)) ∧ (m2 ∈ (suc imdomTrc n))) → 
-                         let colorLfp = NTICD.colorLfpFor g n m1 m2
-                             color    = NTICD.colorFor    g n m1 m2
-                         in (∀) (suc g n) (\x -> colorLfp ! x == color ! x)
+            $       let imdom = NTICD.imdomOfTwoFinger6 g
+                        imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
+                    in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
+                         let colorLfp = NTICD.colorLfpFor g   m1 m2
+                         in (∀) (nodes g) (\n ->
+                           let color  = NTICD.colorFor    g n m1 m2
+                           in (n /= m1 ∧ n /= m2 ∧ (m1 ∈ (suc imdomTrc n)) ∧ (m2 ∈ (suc imdomTrc n))) → 
+                                (∀) (suc g n) (\x -> colorLfp ! x == color ! x)
                        ))) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++

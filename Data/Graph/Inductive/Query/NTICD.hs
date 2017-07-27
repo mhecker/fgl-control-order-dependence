@@ -14,6 +14,7 @@ import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
 import Algebra.Lattice
+import qualified Algebra.PartialOrd as PartialOrd
 
 import qualified Data.List as List
 
@@ -1772,9 +1773,10 @@ myWodFast graph =
                                                                    n /= m1 ∧ n /= m2,
                                                            assert (m1 `elem` (suc isinkdomTrc n)) True,
                                                            assert (m2 `elem` (suc isinkdomTrc n)) True,
-                                                                  let s12n = sMust ! (m1,m2,n),
-                                                                  Set.size s12n > 0,
-                                                                  Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
+                                                                   myDependence n m1 m2
+                                                                  -- let s12n = sMust ! (m1,m2,n),
+                                                                  -- Set.size s12n > 0,
+                                                                  -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
                                                 ]
                   ]
   where sMust = smmnFMustWod graph
@@ -1785,7 +1787,7 @@ myWodFast graph =
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∈ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∈ cycle]
         condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
-
+        myDependence = myDependenceFor graph
 
 
 dod graph = xod sMust s3 graph
@@ -1899,6 +1901,9 @@ instance BoundedJoinSemiLattice Color where
   bottom = Undefined
 
 
+instance PartialOrd.PartialOrd Color where
+  c1 `leq` c2 =  c1 ⊔ c2 == c2
+
 dodColoredDag :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 dodColoredDag graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
@@ -1937,6 +1942,19 @@ colorFor graph n m1 m2 = color
                   | otherwise   = ( Map.insert n ((∐) [ color' ! x | x <- suc graph n ]) color', visited')
                       where (color', visited') = foldr colorFor (color, Set.insert n visited) (suc graph n)
 
+
+
+colorFunctionalFor :: forall gr a b. DynGraph gr => gr a b -> Node -> Node -> Node -> Map Node Color -> Map Node Color
+colorFunctionalFor graph n m1 m2 color =
+      color
+    ⊔ Map.fromList [ (m1, White), (m2, Black) ]
+    ⊔ Map.fromList [ (n, (∐) [ color ! x | x <- suc graph n ]) | n <- nodes graph, n /= m1, n /= m2 ]
+
+colorLfpFor graph n m1 m2 =  (㎲⊒) (Map.fromList [ (n, Undefined) | n <- nodes graph]) f
+  where f = colorFunctionalFor graph n m1 m2
+
+colorGfpFor graph n m1 m2 =  (𝝂)  (Map.fromList [ (n, Uncolored) | n <- nodes graph]) f
+  where f = colorFunctionalFor graph n m1 m2
 
 
 dodColoredDagFixed :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)

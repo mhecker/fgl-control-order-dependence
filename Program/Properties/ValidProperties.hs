@@ -39,7 +39,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    Color(..), smmnFMustDod,
+    Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom,
     nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice,
@@ -735,6 +735,21 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 colorProps = testGroup "(concerning color algorithms)" [
+    testProperty  "colorLfpFor                 == smmnFMustWod graph"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        isinkdom = NTICD.isinkdomOfSinkContraction g
+                        isinkdomTrc = trc $ (fromSuccMap isinkdom :: Gr () ())
+                        sMust = NTICD.smmnFMustWod g
+                        condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
+                    in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
+                         let colorLfp = NTICD.colorLfpFor g   m1 m2
+                         in (∀) (condNodes) (\n ->
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∈ (suc isinkdomTrc n)) ∧ (m2 ∈ (suc isinkdomTrc n))) → (
+                                (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
+                              ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
+                              )
+                       ))),
     testProperty  "colorLfpFor                 == smmnFMustDod graph"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
@@ -777,6 +792,36 @@ colorProps = testGroup "(concerning color algorithms)" [
                        )))
   ]
 colorTests = testGroup "(concerning color algorithms)" $
+  [  testCase    ( "colorLfpFor                 == smmnFMustWod graph for" ++ exampleName)
+            $       let isinkdom = NTICD.isinkdomOfSinkContraction g
+                        isinkdomTrc = trc $ (fromSuccMap isinkdom :: Gr () ())
+                        sMust = NTICD.smmnFMustWod g
+                        condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
+                    in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
+                         let colorLfp = NTICD.colorLfpFor g   m1 m2
+                         in (∀) (condNodes) (\n ->
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∈ (suc isinkdomTrc n)) ∧ (m2 ∈ (suc isinkdomTrc n))) → (
+                                (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
+                              ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
+                              )
+                       ))) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "colorLfpFor                 == smmnFMustDod graph for" ++ exampleName)
+            $       let imdom = NTICD.imdomOfTwoFinger6 g
+                        imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
+                        sMust = NTICD.smmnFMustDod g
+                        condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
+                    in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
+                         let colorLfp = NTICD.colorLfpFor g   m1 m2
+                         in (∀) (condNodes) (\n ->
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∈ (suc imdomTrc n)) ∧ (m2 ∈ (suc imdomTrc n))) → (
+                                (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
+                              ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
+                              )
+                       ))) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "smmnFMustDod graph          == colorFor for " ++ exampleName)
             $       let imdom = NTICD.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())

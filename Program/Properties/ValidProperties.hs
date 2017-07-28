@@ -43,7 +43,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom,
     nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -424,7 +424,15 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   []
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
+    testProperty  "myWod ⊑ wodTEIL'"
+    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                    let g = generatedGraph
+                        myWod = NTICD.myWod g
+                        wodTEIL' = NTICD.wodTEIL' g
+                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+                          ns ⊑ (wodTEIL' ! (m1,m2))
+                        ),
+  testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                         nticdWodSlice   = NTICD.nticdMyWodSlice g
@@ -468,6 +476,14 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        NTICD.myWod           g
   ]
 wodTests = testGroup "(concerning weak order dependence)" $
+  [  testCase    ( "myWod ⊑ wodTEIL' for " ++ exampleName)
+            $       let myWod = NTICD.myWod g
+                        wodTEIL' = NTICD.wodTEIL' g
+                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+                          ns ⊑ (wodTEIL' ! (m1,m2))
+                        )@? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "wodTEILSlice is contained in nticdMyWodSlice for " ++ exampleName)
             $       let nticdWodSlice   = NTICD.nticdMyWodSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice g

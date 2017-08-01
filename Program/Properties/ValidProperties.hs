@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 
--- #define UNCONNECTED
+#define UNCONNECTED
 #ifdef UNCONNECTED
 #define ARBITRARY(g) (g) :: (Gr () ())
 #else
@@ -422,11 +422,6 @@ sensitiveDomTests = testGroup "(concerning nontermination-insensitive control de
 
 
 newcdProps = testGroup "(concerning new control dependence definitions)" [
-    testProperty  "ntacdDef^*             == ntbcd^*"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in (trc $ fromSuccMap $ NTICD.ntacdDef         g :: Gr () ()) ==
-                       (trc $ fromSuccMap $ NTICD.ntbcdDef         g :: Gr () ()),
     testProperty  "ntacdDef               == nticdF3                for graphs with unique end node property"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph

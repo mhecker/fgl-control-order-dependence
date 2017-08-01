@@ -403,7 +403,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
                        NTICD.ntscdF3              g
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )"  $
-  [  testCase    ( "ntnacdDefGraphP       ==  nticdF3GraphP for " ++ exampleName)
+  [  testCase    ( "imdomOfLfp^*          == imdomOfTwoFinger6^* for " ++ exampleName)
                   $ (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
                     (trc $ fromSuccMap $
                            NTICD.imdomOfTwoFinger6            g)  @? ""

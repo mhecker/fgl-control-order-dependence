@@ -260,7 +260,8 @@ snmF3'dualWorkListSymbolicLfp graph = snmWorkList (Set.fromList [ (m,n,x) | p <-
         representantOf = prevRepresentantNodes graph
         representants = [ m | m <- nodes graph, (length (pre graph m) /= 1) ∨ (let [n] = pre graph m in n `elem` condNodes)]
         trncl = trc graph
-        expandSymbolic s = Map.fromList [ ((m,p), s ! (representantOf m, p)) | p <- condNodes, m <- nodes graph]
+        expandSymbolic s = Map.fromList [ ((m,p), s ! (r, p)) | p <- condNodes, m <- nodes graph, Just r <- [representantOf m]]
+                         ⊔ Map.fromList [ ((m,p), Set.empty)  | p <- condNodes, m <- nodes graph, Nothing == representantOf m]
 
 {- A Worklist-Implementation of nticd, based on f3 -}
 nticdF3WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
@@ -336,7 +337,8 @@ snmF3WorkListSymbolicGfp graph = snmWorkList (Set.fromList [ (m,p) | p <- condNo
         representantOf = prevRepresentantNodes graph
         representants = [ m | m <- nodes graph, (length (pre graph m) /= 1) ∨ (let [n] = pre graph m in n `elem` condNodes)]
         trncl = trc graph
-        expandSymbolic s = Map.fromList [ ((m,p), s ! (representantOf m, p)) | p <- condNodes, m <- nodes graph]
+        expandSymbolic s = Map.fromList [ ((m,p), s ! (r, p)) | p <- condNodes, m <- nodes graph, Just r <- [representantOf m]]
+                         ⊔ Map.fromList [ ((m,p), Set.empty)  | p <- condNodes, m <- nodes graph, Nothing == representantOf m]
 
 
 
@@ -2152,19 +2154,20 @@ prevCondsWithSuccNode graph start = prevCondsF [(p, start) | p <- pre graph star
                 (_:_) -> [(n,x)]
 
 
-
 prevRepresentantNodes graph start =
-      case suc graph start of
-        (_:_:_) -> case pre graph start of
-                     [n] -> prevRepresentant n start
-                     _   -> start
-        _       -> prevRepresentant start start
-    where prevRepresentant n m =
-            case suc graph n of
-                [_] -> case pre graph n of
-                  [n'] -> prevRepresentant n' n
-                  _    -> n
-                _   -> m
+      case pre graph start of
+        (_:_:_) -> Just start
+        []      -> Just start
+        [n]     -> prevRepresentant [start] n start
+    where prevRepresentant seen n m -- invariance : n is only predecessor of m, m is no join node
+              | n ∈ seen  = Nothing
+              | otherwise = case suc graph n of
+                  (_:_:_) -> Just m
+                  [m']    -> assert (m' == m) $
+                             case pre graph n of
+                               [n']    -> prevRepresentant (n:seen) n' n
+                               _       -> Just n
+
 
 data SinkPath = SinkPath { prefix :: [[Node]], controlSink :: [Node] } deriving Show
 

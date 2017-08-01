@@ -1,4 +1,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+
+-- #define UNCONNECTED
+#ifdef UNCONNECTED
+#define ARBITRARY(g) (g) :: (Gr () ())
+#else
+#define ARBITRARY(g) (CG _ g) :: (Connected Gr () ())
+#endif
+
 module Program.Properties.ValidProperties where
 
 import Prelude hiding (all)
@@ -230,50 +239,50 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
     testProperty   "isinkdomOfSinkContraction is intransitive"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
                     in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
     testProperty   "isinkdomOf^*          == isinkdomOfSinkContraction^*"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               NTICD.isinkdomOfSinkContraction g),
     testProperty   "joinUpperBound always computes an upper bound"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         sinks = NTICD.controlSinks g
                     in (∀) (Map.assocs $ NTICD.joinUpperBound g) (\(n,maybeNs) -> maybeNs /= Nothing ∨   (∃) (sinks) (\sink -> n ∈ sink)),
     testProperty   "isinkdomOf^*          == sinkdomOfJoinUpperBound^*"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               NTICD.sinkdomOfJoinUpperBound g),
     testProperty   "isinkdomOf^*          == isinkdomOfGfp2^*"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                         NTICD.isinkdomOfGfp2             g),
     testProperty   "sinkdomOf reduces, in some sense,  to a multi-rooted tree"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom = NTICD.isinkdomOf g :: Gr () ()
                     in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
     testProperty   "sinkdomOf             == sinkdomOfisinkdomProperty"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.sinkdomOf                  g ==
                        NTICD.sinkdomOfisinkdomProperty  g,
     testProperty   "sinkdomOf             == sinkdomOfLfp "
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.sinkdomOf              g ==
                        NTICD.sinkdomOfLfp           g,
     testProperty   "sinkdomOf             == sinkdomOfGfp "
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.sinkdomOf              g ==
                        NTICD.sinkdomOfGfp           g,
@@ -294,22 +303,22 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                        NTICD.sinkDFLocal             g ==
                        NTICD.sinkDFLocalDef          g,
     testProperty   "sinkDFcd              == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.sinkDFcd         g ==
                        NTICD.nticdF3          g,
     testProperty   "sinkDFFromUpLocalDefcd== nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.sinkDFFromUpLocalDefcd  g==
                        NTICD.nticdF3                 g,
     testProperty   "sinkDFFromUpLocalcd   == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.sinkDFFromUpLocalcd     g ==
                        NTICD.nticdF3                 g,
     testProperty   "sinkDFF2cd            == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.sinkDFF2cd       g ==
                        NTICD.nticdF3          g
@@ -340,28 +349,28 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 sensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
     testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                         NTICD.imdomOfTwoFinger6            g),
     testProperty   "mdomOf             == mdomOfLfp "
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mdomOf              g ==
                        NTICD.mdomOfLfp           g,
     testProperty   "mdomOfLfp reduces, in some sense,  to a multi-rooted tree"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom = NTICD.imdomOfLfp g :: Gr () ()
                     in   (∀) (nodes imdom) (\n -> length (suc imdom n) <= 1),
     testProperty   "mdomOfLfp           == mdomOfimdomProperty"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mdomOfLfp            g ==
                        NTICD.mdomOfimdomProperty  g,
     testProperty   "mDFUpGivenX ! (x,z) is independent of choice of x for given z"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                     let mDFUp = NTICD.mDFUpGivenX g
                     in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
                          (∀) (Map.assocs mDFUp) (\((x',z'), dfUp') ->
@@ -369,35 +378,35 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
                          )
                        ),
     testProperty   "mDFUp              == mDFUpDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.mDFUp                g ==
                        NTICD.mDFUpDef             g,
     testProperty   "mDFLocal           == mDFLocalDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.mDFLocal             g ==
                        NTICD.mDFLocalDef          g,
     testProperty   "mDFcd              == ntscdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mDFcd            g ==
                        NTICD.ntscdF3          g,
     testProperty   "mDFFromUpLocalDefcd== ntscdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mDFFromUpLocalDefcd  g ==
                        NTICD.ntscdF3              g,
     testProperty   "mDFFromUpLocalcd   == ntisdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mDFFromUpLocalcd     g ==
                        NTICD.ntscdF3              g,
     testProperty   "imdomTwoFingercd     == ntscdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.imdomTwoFingercd   g ==
                        NTICD.ntscdF3          g,
     testProperty   "mDFF2cd            == ntscdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mDFF2cd              g ==
                        NTICD.ntscdF3              g
@@ -414,12 +423,12 @@ sensitiveDomTests = testGroup "(concerning nontermination-insensitive control de
 
 newcdProps = testGroup "(concerning new control dependence definitions)" [
     testProperty  "ntacdDef^*             == ntbcd^*"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ fromSuccMap $ NTICD.ntacdDef         g :: Gr () ()) ==
                        (trc $ fromSuccMap $ NTICD.ntbcdDef         g :: Gr () ()),
     testProperty  "ntacdDef               == nticdF3                for graphs with unique end node property"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in NTICD.ntacdDef         g ==
                        NTICD.nticdF3          g
@@ -434,7 +443,7 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "myWod ⊑ wodTEIL'"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         myWod = NTICD.myWod g
                         wodTEIL' = NTICD.wodTEIL' g
@@ -442,7 +451,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           ns ⊑ (wodTEIL' ! (m1,m2))
                         ),
   testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         nticdWodSlice   = NTICD.nticdMyWodSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice g
@@ -451,7 +460,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
                         )),
     testProperty  "myWod is contained in isinkdom sccs"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom  = NTICD.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
@@ -467,7 +476,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           ))
                         ),
     testProperty  "snmF3Gfp reachable          == isinkdom reachable "
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let graph     = generatedGraph
                         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
                         s3        = NTICD.snmF3 graph
@@ -479,7 +488,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          )
                        ),
     testProperty  "myWodFast                 == myWod"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.myWodFast       g ==
                        NTICD.myWod           g
@@ -526,12 +535,12 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "myDodFast                 == myDod"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.myDodFast       g ==
                        NTICD.myDod           g,
     testProperty  "myDod is contained in imdom sccs"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom  = NTICD.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
@@ -549,7 +558,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                           )
                         ),
     testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         myDod = NTICD.myDod g
                         ntscd = NTICD.ntscdF3 g
@@ -560,7 +569,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                           )
                         ),
     testProperty  "ntscdDodSlice == ntscdMyDodSlice"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         ntscdDodSlice     = NTICD.ntscdDodSlice g
                         ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
@@ -570,7 +579,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                           ntscdMyDodSlice m1 m2
                         )),
     testProperty  "dod implies myDod"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         dod = NTICD.dod g
                         myDod = NTICD.myDod g
@@ -580,7 +589,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                           )
                         ),
     testProperty  "myDod implies dod"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         dod = NTICD.dod g
                         myDod = NTICD.myDod g
@@ -589,7 +598,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                           )
                         ),
     testProperty  "dod is contained in imdom sccs "
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom  = NTICD.imdomOfTwoFinger6 g
                         dod = NTICD.dod g
@@ -603,7 +612,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                           )
                         ),
     testProperty  "dod is contained in imdom sccs, and only possible for immediate entries into sccs"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom  = NTICD.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
@@ -621,7 +630,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                           )
                         ),
     testProperty  "snmF3Lfp reachable          == imdom reachable "
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let graph     = generatedGraph
                         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
                         s3        = NTICD.snmF3Lfp graph
@@ -633,27 +642,27 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                          )
                        ),
     testProperty  "dodColoredDagFixedFast     == dodDef"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.dodColoredDagFixedFast g ==
                        NTICD.dodDef                 g,
     testProperty  "dodColoredDagFixed         == dodDef"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.dodColoredDagFixed g ==
                        NTICD.dodDef             g,
     testProperty  "dod                       == dodDef"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.dod           g ==
                        NTICD.dodDef        g,
     testProperty  "dodFast                   == dodDef"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.dodFast       g ==
                        NTICD.dodDef        g,
     testProperty  "lfp fWOMustNoReachCheck      == lfp fWOMust"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.smmnLfp g NTICD.fMustNoReachCheck        ==
                        NTICD.smmnLfp g NTICD.fMust
@@ -761,7 +770,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 colorProps = testGroup "(concerning color algorithms)" [
     testProperty  "colorLfpFor                 == smmnFMustWod graph"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom = NTICD.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap isinkdom :: Gr () ())
@@ -776,7 +785,7 @@ colorProps = testGroup "(concerning color algorithms)" [
                               )
                        ))),
     testProperty  "colorLfpFor                 == smmnFMustDod graph"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom = NTICD.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
@@ -791,7 +800,7 @@ colorProps = testGroup "(concerning color algorithms)" [
                               )
                        ))),
     testProperty  "colorLfpFor                 == colorFor"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom = NTICD.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
@@ -803,7 +812,7 @@ colorProps = testGroup "(concerning color algorithms)" [
                                 (∀) (suc g n) (\x -> colorLfp ! x == color ! x)
                        ))),
     testProperty  "smmnFMustDod graph          == colorFor"
-    $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom = NTICD.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
@@ -901,47 +910,47 @@ nticdProps = testGroup "(concerning nticd )" [
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
     testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let (_, g) = withUniqueEndNode () () generatedGraph
                     in NTICD.nticdFig5        g ==
                        NTICD.nticdF5          g,
     testProperty  "controlDependence      == nticdF3                for graphs with unique end node property"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g exit ==
                        NTICD.nticdF3          g,
     testProperty  "nticdSinkContraction   == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdSinkContraction  g ==
                        NTICD.nticdF3               g,
     testProperty  "nticdDef               == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdDef         g ==
                        NTICD.nticdF3          g,
     testProperty  "nticdF3'               == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdF3'         g ==
                        NTICD.nticdF3          g,
     testProperty  "nticdF3'dual           == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdF3'dual     g ==
                        NTICD.nticdF3          g,
     testProperty  "nticdF3WorkList        == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdF3WorkList  g ==
                        NTICD.nticdF3          g,
     testProperty  "nticdF3WorkListSymbolic== nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdF3WorkListSymbolic g ==
                        NTICD.nticdF3                 g,
     testProperty  "nticdF3'dorkListSymbolic  == nticdF3"
-                $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdF3'dualWorkListSymbolic g ==
                        NTICD.nticdF3                      g
@@ -999,15 +1008,15 @@ ntscdProps = testGroup "(concerning ntscd )" [
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.ntscdF4WorkListGraphP p == NTICD.ntscdF3GraphP p,
     testProperty  "ntscdF4WorkList == ntscdF3"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.ntscdF4WorkList g ==
                        NTICD.ntscdF3         g,
     testProperty  "ntscdF4         == ntscdF3"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.ntscdF4         g ==
                        NTICD.ntscdF3         g,
     testProperty  "ntscdDef        == ntscdF3"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.ntscdDef        g ==
                        NTICD.ntscdF3         g
   ]

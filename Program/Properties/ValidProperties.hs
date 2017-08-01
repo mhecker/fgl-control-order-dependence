@@ -112,8 +112,8 @@ colorX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "color"     [
 
 insensitiveDom    = defaultMain                               $ testGroup "insensitiveDom"   [ {- mkTest [insensitiveDomTests], -} mkProp [insensitiveDomProps]]
 insensitiveDomX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "insensitiveDom"   [ {- mkTest [insensitiveDomTests], -} mkProp [insensitiveDomProps]]
-sensitiveDom      = defaultMain                               $ testGroup "sensitiveDom"     [ {- mkTest [sensitiveDomTests], -} mkProp [sensitiveDomProps]]
-sensitiveDomX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "sensitiveDom"     [ {- mkTest [sensitiveDomTests], -} mkProp [sensitiveDomProps]]
+sensitiveDom      = defaultMain                               $ testGroup "sensitiveDom"     [ mkTest [sensitiveDomTests],  mkProp [sensitiveDomProps]]
+sensitiveDomX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "sensitiveDom"     [ mkTest [sensitiveDomTests],  mkProp [sensitiveDomProps]]
 
 
 
@@ -402,6 +402,15 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
                     in NTICD.mDFF2cd              g ==
                        NTICD.ntscdF3              g
   ]
+sensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )"  $
+  [  testCase    ( "ntnacdDefGraphP       ==  nticdF3GraphP for " ++ exampleName)
+                  $ (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
+                    (trc $ fromSuccMap $
+                           NTICD.imdomOfTwoFinger6            g)  @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  []
+
 
 newcdProps = testGroup "(concerning new control dependence definitions)" [
     testProperty  "ntacdDef^*             == ntbcd^*"

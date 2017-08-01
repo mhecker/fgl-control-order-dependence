@@ -1428,12 +1428,29 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
         prevConds   = prevCondNodes graph
 
+        solution = mdomOfLfp graph
+        invariant worklist imdom =  (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $ inv
+          where inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
+                                (m ∈ (suc imdomWorklistTrc  n))
+                        ))
+                       ∧
+                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in  (Set.size ms <= 1) ∧ (ms ⊆ solution ! n))
+                imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
+                worklistLfp = (㎲⊒) Set.empty f
+                  where f wl = worklist
+                             ⊔ Set.fromList [ p | p <- Set.toList condNodes,  w <- Set.toList wl, n <- nodes graph, w ∈ solution ! n, p ∈ prevConds n ]
+                imdomWorklist = imdom
+                              ⊔ Map.fromList [ (w, solution ! w) | w <- Set.toList $ worklistLfp ]
+                imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
+
         twoFinger :: Integer -> Set Node ->  Map Node (Set Node) -> Map Node (Set Node)
         twoFinger i worklist imdom
             | Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                   -- traceShow (Set.size worklist0, i) $ 
+                                  assert (invariant worklist imdom) $
                                   imdom
             | otherwise         = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
+                                  assert (invariant worklist imdom) $
                                   if (not $ changed) then twoFinger (i+1)               worklist'                                   imdom
                                                      else twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist

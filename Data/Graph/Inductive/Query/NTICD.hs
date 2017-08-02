@@ -1436,7 +1436,17 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
                                 (m ∈ (suc imdomWorklistTrc  n))
                         ))
                        ∧
-                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in  (Set.size ms <= 1) ∧ (ms ⊆ solution ! n))
+                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in
+                          case Set.toList ms of
+                            []  -> True
+                            [m] -> (m ∈ solution ! n) ∧ (∀) (solution ! n) (\m' -> m' == n  ∨  (m' ∈ solution ! m))
+                        )
+                       ∧
+                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in
+                          (Set.null ms  ∧  (∃) (solution ! n) (\m -> m /= n)) → (
+                            n ∈ worklistLfp
+                          )
+                        )
                 imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
                 worklistLfp = (㎲⊒) Set.empty f
                   where f wl = worklist

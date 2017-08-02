@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 
-#define UNCONNECTED
+-- #define UNCONNECTED
 #ifdef UNCONNECTED
 #define ARBITRARY(g) (g) :: (Gr () ())
 #else

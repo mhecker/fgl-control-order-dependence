@@ -1431,7 +1431,9 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
         prevConds   = prevCondNodes graph
 
         solution = mdomOfLfp graph
-        invariant worklist imdom =  (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $ inv
+        invariant worklist imdom = -- if (True) then True else
+                                   -- (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $
+                                   inv
           where inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
                                 (m ∈ (suc imdomWorklistTrc  n))
                         ))

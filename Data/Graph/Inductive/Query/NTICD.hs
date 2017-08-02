@@ -1450,9 +1450,20 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
                 imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
                 worklistLfp = (㎲⊒) Set.empty f
                   where f wl = worklist
-                             ⊔ Set.fromList [ p | p <- Set.toList condNodes,  w <- Set.toList wl, n <- nodes graph, w ∈ solution ! n, p ∈ prevConds n ]
+                             ⊔ Set.fromList [ p | p <- Set.toList condNodes,
+                                                  w <- Set.toList wl,
+                                                  n <- nodes graph,
+                                                  (∃) (solution ! n) (\m -> m /= n),
+                                                  w ∈ solution ! n,
+                                                  (∀) (solution ! n) (\m -> m == n  ∨  (m ∈ solution ! w)),
+                                                  p ∈ prevConds n
+                                            ]
                 imdomWorklist = imdom
-                              ⊔ Map.fromList [ (w, solution ! w) | w <- Set.toList $ worklistLfp ]
+                              ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ solution ! w,
+                                                                      (∀) (solution ! w) (\m' -> m' == w  ∨  (m' ∈ solution ! m))
+                                                                ]
+                                               )
+                                             | w <- Set.toList $ worklistLfp ]
                 imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
 
         twoFinger :: Integer -> Set Node ->  Map Node (Set Node) -> Map Node (Set Node)

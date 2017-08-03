@@ -1588,7 +1588,7 @@ idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes g
         
         
 mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-mDFTwoFinger graph = idomToDF graph $ (fromSuccMap $ imdomOfTwoFinger6 graph :: gr () ())
+mDFTwoFinger graph = idomToDFFast graph $ (fromSuccMap $ imdomOfTwoFinger6 graph :: gr () ())
 
 imdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 imdomTwoFingerGraphP = cdepGraphP imdomTwoFingerGraph

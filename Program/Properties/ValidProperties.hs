@@ -252,7 +252,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         df    = NTICD.idomToDF g isinkdom
                         idomSccs = scc isinkdom
                         cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))
+                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m))),
     testProperty   "isinkdomOfSinkContraction is intransitive"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -376,7 +376,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 
-sensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
     testProperty   "idomToDFFast _ imdom == idomToDF _ imdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -390,7 +390,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
                         df    = NTICD.idomToDF g imdom
                         idomSccs = scc imdom
                         cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))
+                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m))),
     testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -454,7 +454,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-insensitive control de
                     in NTICD.mDFF2cd              g ==
                        NTICD.ntscdF3              g
   ]
-sensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )"  $
+sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
   [  testCase    ( "idomToDFFast _ imdom == idomToDF _ imdom for " ++ exampleName)
             $       let imdom = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
                     in NTICD.idomToDFFast g imdom ==

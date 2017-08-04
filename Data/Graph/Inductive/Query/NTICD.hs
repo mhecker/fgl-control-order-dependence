@@ -1562,8 +1562,14 @@ idomToDF graph idomG =
                                    ])
                         | x <- nodes graph]
         idomSccs = scc idomG
-        idomSccOf m = the (m `elem`) $ idomSccs
 
+        idomSccOfMap = Map.fromList [ (c, cycle) | cycle <- idomSccs, not $ isSingleton cycle, c <- cycle ]
+        idomSccOf m = case Map.lookup m idomSccOfMap of
+          Nothing -> [m]
+          Just cycle -> cycle
+
+        isSingleton [x] = True
+        isSingleton _   = False
 
 idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> gr () () -> Map Node (Set Node)
 idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
@@ -1579,14 +1585,21 @@ idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes g
                                                            (∀) (idomSccOf c) (/= x)
                                                          )
                                    ]
-        cycleCompletion df = df
-                           ⊔ Map.fromList [ (c, allYs) | cycle <- idomSccs, length cycle > 1, let allYs = (∐) [ df ! c | c <- cycle ], c <- cycle ]
-        sorting = topsort idomG 
-        idomSccs = scc idomG -- TODO: use the fact that SCC algorithms implicitly yield a  topsort
-        idomSccOf m = the (m `elem`) $ idomSccs
+        cycleCompletion df = foldr update df [ (c, allYs) | cycle <- Map.elems idomSccOfMap, let allYs = (∐) [ df ! c | c <- cycle ], c <- cycle ]
+          where update (c, allYs) df = Map.insert c allYs df 
 
-        
-        
+        sorting = topsort idomG
+        idomSccs = scc idomG -- TODO: use the fact that SCC algorithms implicitly yield a  topsort
+
+        idomSccOfMap = Map.fromList [ (c, cycle) | cycle <- idomSccs, not $ isSingleton cycle, c <- cycle ]
+        idomSccOf m = case Map.lookup m idomSccOfMap of
+          Nothing -> [m]
+          Just cycle -> cycle
+
+        isSingleton [x] = True
+        isSingleton _   = False
+
+
 mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFTwoFinger graph = idomToDFFast graph $ (fromSuccMap $ imdomOfTwoFinger6 graph :: gr () ())
 

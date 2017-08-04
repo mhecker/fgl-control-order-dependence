@@ -1562,8 +1562,8 @@ imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0
                                     imdom
             | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
                                     assert (invariant worklist imdom) $
-                                    if (not $ new ) then twoFinger (i+1)               worklist'                                   imdom
-                                    else                 twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)
+                                    if (not $ new) then twoFinger (i+1)               worklist'                                   imdom
+                                    else                twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
                 mz = foldM1 lca (suc graph x)
                 zs = case mz of
@@ -1572,11 +1572,12 @@ imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0
                                  else
                                    Set.fromList [ ]
                       Nothing ->  Set.fromList [ ]
-                new     = (Set.null $ imdom ! x) ∧ (not $ Set.null zs)
+                new     = assert (Set.null $ imdom ! x) $
+                          (not $ Set.null zs)
                 influenced = let imdomRev = invert' $ fmap Set.toList imdom
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $ 
-                                 Set.filter (Set.null . (imdom !)) $ Set.fromList $ foldMap prevConds preds
+                                 Set.filter (\n -> (n /= x) ∧ (Set.null $ imdom ! n)) $ Set.fromList $ foldMap prevConds preds
                 lca  n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m])
                 lca' c (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $

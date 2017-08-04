@@ -380,22 +380,30 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     testProperty   "idomToDFFast _ imdom == idomToDF _ imdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                    in NTICD.idomToDFFast g imdom ==
-                       NTICD.idomToDF     g imdom,
+                        imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                    in (∀) [imdom6, imdom7] (\imdom ->
+                         NTICD.idomToDFFast g imdom ==
+                         NTICD.idomToDF     g imdom
+                       ),
     testProperty   "DF of imdom Cycles are all the same"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        df    = NTICD.idomToDF g imdom
-                        idomSccs = scc imdom
-                        cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m))),
-    testProperty   "imdomOfTwoFinger7     == imdomOfTwoFinger6"
+                        imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                    in (∀) [imdom6, imdom7] (\imdom ->
+                         let df    = NTICD.idomToDF g imdom
+                             idomSccs = scc imdom
+                             cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
+                         in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))
+                       ),
+    testProperty   "imdomOfTwoFinger7^*   == imdomOfTwoFinger6^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in  NTICD.imdomOfTwoFinger6            g ==
-                        NTICD.imdomOfTwoFinger7            g,
+                    in (trc $ fromSuccMap $
+                        NTICD.imdomOfTwoFinger7            g :: Gr () ()) ==
+                       (trc $ fromSuccMap $
+                        NTICD.imdomOfTwoFinger6            g),
     testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -461,22 +469,30 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
   [  testCase    ( "idomToDFFast _ imdom == idomToDF _ imdom for " ++ exampleName)
-            $       let imdom = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                    in NTICD.idomToDFFast g imdom ==
-                       NTICD.idomToDF     g imdom @? ""
+            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                    in (∀) [imdom6, imdom7] (\imdom ->
+                         NTICD.idomToDFFast g imdom ==
+                         NTICD.idomToDF     g imdom
+                       ) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "DF of imdom Cycles are all the same for " ++ exampleName)
-            $       let imdom = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        df    = NTICD.idomToDF g imdom
-                        idomSccs = scc imdom
-                        cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))  @? ""
+            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                    in (∀) [imdom6, imdom7] (\imdom ->
+                         let df    = NTICD.idomToDF g imdom
+                             idomSccs = scc imdom
+                             cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
+                         in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))
+                       )  @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "imdomOfTwoFinger7     == imdomOfTwoFinger6 for " ++ exampleName)
-                  $        NTICD.imdomOfTwoFinger6 g ==
-                           NTICD.imdomOfTwoFinger7 g  @? ""
+  [  testCase    ( "imdomOfTwoFinger7^*   == imdomOfTwoFinger6^* for " ++ exampleName)
+                  $ (trc $ fromSuccMap $
+                           NTICD.imdomOfTwoFinger7            g :: Gr () ()) ==
+                    (trc $ fromSuccMap $
+                           NTICD.imdomOfTwoFinger6            g)  @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "imdomOfLfp^*          == imdomOfTwoFinger6^* for " ++ exampleName)

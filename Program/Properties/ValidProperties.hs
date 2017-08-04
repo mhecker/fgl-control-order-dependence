@@ -58,7 +58,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
-    sinkDFUp,   sinkDFUpDef,    imdomOfTwoFinger6,
+    sinkDFUp,   sinkDFUpDef,    imdomOfTwoFinger6, imdomOfTwoFinger7,
     sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,
     idomToDF, idomToDFFast,
     imdomOf, imdomOfLfp,
@@ -391,6 +391,11 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                         idomSccs = scc imdom
                         cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
                     in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m))),
+    testProperty   "imdomOfTwoFinger7     == imdomOfTwoFinger6"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in  NTICD.imdomOfTwoFinger6            g ==
+                        NTICD.imdomOfTwoFinger7            g,
     testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -467,6 +472,11 @@ sensitiveDomTests = testGroup "(concerning nontermination-sensitive control depe
                         idomSccs = scc imdom
                         cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
                     in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))  @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "imdomOfTwoFinger7     == imdomOfTwoFinger6 for " ++ exampleName)
+                  $        NTICD.imdomOfTwoFinger6 g ==
+                           NTICD.imdomOfTwoFinger7 g  @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "imdomOfLfp^*          == imdomOfTwoFinger6^* for " ++ exampleName)

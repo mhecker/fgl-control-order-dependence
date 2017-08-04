@@ -1508,6 +1508,99 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
 
 
 
+imdomOfTwoFinger7 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0 (Set.empty)
+  where imdom0   = Map.fromList [ (x, Set.empty )                 | x <- nodes graph]
+                 ⊔ Map.fromList [ (x, Set.fromList $ suc graph x) | x <- nodes graph, length (suc graph x) == 1]
+        worklist0   = condNodes
+        condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
+        prevConds   = prevCondNodes graph
+
+        solution = mdomOfLfp graph
+        invariant worklist imdom = -- if (True) then True else
+                                   -- (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $
+                                   inv
+          where inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
+                                (m ∈ (suc imdomWorklistTrc  n))
+                        ))
+                       ∧
+                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in
+                          case Set.toList ms of
+                            []  -> True
+                            [m] -> (m ∈ solution ! n) ∧ (∀) (solution ! n) (\m' -> m' == n  ∨  (m' ∈ solution ! m))
+                        )
+                       ∧
+                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in
+                          (Set.null ms  ∧  (∃) (solution ! n) (\m -> m /= n)) → (
+                            n ∈ worklistLfp
+                          )
+                        )
+                imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
+                worklistLfp = (㎲⊒) Set.empty f
+                  where f wl = worklist
+                             ⊔ Set.fromList [ p | p <- Set.toList condNodes,
+                                                  w <- Set.toList wl,
+                                                  n <- nodes graph,
+                                                  (∃) (solution ! n) (\m -> m /= n),
+                                                  w ∈ solution ! n,
+                                                  (∀) (solution ! n) (\m -> m == n  ∨  (m ∈ solution ! w)),
+                                                  p ∈ prevConds n
+                                            ]
+                imdomWorklist = imdom
+                              ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ solution ! w,
+                                                                      (∀) (solution ! w) (\m' -> m' == w  ∨  (m' ∈ solution ! m))
+                                                                ]
+                                               )
+                                             | w <- Set.toList $ worklistLfp ]
+                imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
+
+        twoFinger :: Integer -> Set Node ->  Map Node (Set Node) -> (Set Node) -> Map Node (Set Node)
+        twoFinger i worklist imdom modified
+            |   Set.null worklist
+              ∧ Set.null modified = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+                                    -- traceShow (Set.size worklist0, i) $ 
+                                    assert (invariant worklist imdom) $
+                                    imdom
+            | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
+                                    assert (invariant worklist imdom) $
+                                         if (not $ changed) then twoFinger (i+1)               worklist'                                   imdom                      modified'
+                                    else if (new)           then twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)                     modified'
+                                    else                         twoFinger (i+1)               worklist'   (Map.insert x zs                imdom)  (influenced1Step ⊔ modified')
+          where (x, worklist', modified' )  = if (Set.null worklist) then
+                                                let (x, modified') = Set.deleteFindMin modified in (x, worklist,  modified')
+                                              else
+                                                let (x, worklist') = Set.deleteFindMin worklist in (x, worklist', modified)
+                mz = foldM1 lca (suc graph x)
+                zs = case mz of
+                      Just z  -> if z/= x then
+                                   Set.fromList [ z ]
+                                 else
+                                   Set.fromList [ ]
+                      Nothing ->  Set.fromList [ ]
+                new     = (Set.null $ imdom ! x) ∧ (not $ Set.null zs)
+                changed = zs /= (imdom ! x)
+                influenced1Step = Set.fromList $ foldMap prevConds [x]
+                influenced = let imdomRev = invert' $ fmap Set.toList imdom
+                                 preds = predsSeenFor imdomRev [x] [x]
+                             in  -- traceShow (preds, imdomRev) $ 
+                                 Set.fromList $ foldMap prevConds preds
+                lca  n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m])
+                lca' c (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((c ! n) ∖ ns ) of
+                                     []   -> case Set.toList $ ((c ! m) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' c ( m', Set.insert m' ms) (n, ns)
+                                                _    -> error "more than one successor in imdom" 
+                                     [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
+                                     _    -> error "more than one successor in imdom" 
+
+
+
 possibleIntermediateNodesFromiXdom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
 possibleIntermediateNodesFromiXdom graph ixdom = (㎲⊒) init f
   where init     = Map.fromList [ (n, Set.empty)                       | n <- Map.keys ixdom ]

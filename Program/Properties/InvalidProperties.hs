@@ -44,7 +44,7 @@ import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
 import Program.Examples
-import Program.Analysis
+import Program.Analysis hiding (timing)
 import Program.CDom
 import Program.Generator (toProgram, GeneratedProgram)
 
@@ -130,7 +130,15 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $
-  [ testCase ("isSecureFlexibleSchedulerIndependentChannel is at least as precise as isSecureTimingCombinedTimingClassification for " ++ exampleName)
+  [ testCase ("isSecureSimonClassification is at least as precise as isSecureFlexibleSchedulerIndependentChannel for " ++ exampleName)
+    $   isSecureFlexibleSchedulerIndependentChannelFor forProgram ⊑ isSecureSimonClassification program   @? ""
+  | (exampleName, program, forProgram) <- [("minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD", minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD, minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor) ]
+  ] ++
+  [ testCase ("isSecureMinimalClassification is at least as precise as isSecureFlexibleSchedulerIndependentChannel for " ++ exampleName)
+    $   isSecureFlexibleSchedulerIndependentChannelFor forProgram ⊑ isSecureMinimalClassification program   @? ""
+  | (exampleName, program, forProgram) <- [("minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD", minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD, minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor) ]
+  ] ++
+  [ testCase ("isSecureFlexibleSchedulerIndependentChannel is at least as precise as isSecureTimingClassificationAtUses for " ++ exampleName)
     $   isSecureTimingClassificationAtUses program ⊑ isSecureFlexibleSchedulerIndependentChannelFor forProgram @? ""
   | (exampleName, program, forProgram) <- [("figure5left", figure5left, figure5leftFor) ]
   ] ++

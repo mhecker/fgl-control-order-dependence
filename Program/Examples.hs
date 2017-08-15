@@ -239,16 +239,16 @@ exampleSimpleNoUniqueEndNodeWithChoice2 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..13] = 1 
+         | n `elem` [1..14] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 10
-        tcfg = mkGraph [(n,n) | n <- [1..13]] $
+        tcfg = mkGraph [(n,n) | n <- [1..14]] $
                        [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
                    ++  [(6,7,true), (7,8,true),(8,6,true)]
                    ++  [            (7,11,false),(11,8,true)]
                    ++  [(11,13,false), (13,8,nop) ]
-                   ++  [(3,4,false),(4,5,true),(5,3,true)]
+                   ++  [(3,4,false),(4,14,true),(14,5,nop),(5,3,true)]
                    ++  [            (4,12,false),(12,5,nop)] ++ [(3,9,true)]
                    ++  [(9,10,nop)]
                    -- ++  [(11,10,nop)]
@@ -1432,7 +1432,9 @@ ijisLSODistkaputt = p { observability = defaultObservabilityMap (tcfg p) }
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD ::  Program Gr
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
-        code = Map.fromList $ [
+        code = minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode
+
+minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
            Ass "h" (Val 0)                                                  `Seq`
@@ -1447,6 +1449,13 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = p { observability =
            PrintToChannel (Var "x") stdOut
           )
          ]
+
+minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor :: ForProgram
+minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor = ForProgram {
+    code = minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode,
+    channelTyping = defaultChannelObservability,
+    mainThreadFor = 1
+  }
 
 
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2 ::  Program Gr

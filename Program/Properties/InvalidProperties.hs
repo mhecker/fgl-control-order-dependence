@@ -140,7 +140,8 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
   ] ++
   [ testCase ("isSecureFlexibleSchedulerIndependentChannel is at least as precise as isSecureTimingClassificationAtUses for " ++ exampleName)
     $   isSecureTimingClassificationAtUses program ⊑ isSecureFlexibleSchedulerIndependentChannelFor forProgram @? ""
-  | (exampleName, program, forProgram) <- [("figure5left", figure5left, figure5leftFor) ]
+  | (exampleName, code) <- [("figure5left", figure5leftCode) ],
+    let (program, forProgram) = (code2Program code, code2ForProgram code)
   ] ++
   [ testCase ("isSecureTimingCombinedTimingClassification is at least as precise as isSecureTimingClassification for " ++ exampleName)  $   isSecureTimingCombinedTimingClassification p ⊒ isSecureTimingClassification p @? ""
   | (exampleName, p) <- [("timingSecureButNotCombinedTimingSecure", timingSecureButNotCombinedTimingSecure) ]

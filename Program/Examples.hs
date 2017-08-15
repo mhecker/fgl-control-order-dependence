@@ -1260,16 +1260,32 @@ timingDependenceExample = p { observability = defaultObservabilityMap (tcfg p) }
            )
           ]
 
-figure5left :: Program Gr
-figure5left = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram figure5leftCode
 
-figure5leftFor :: ForProgram
-figure5leftFor = ForProgram {
-    code = figure5leftCode,
+code2Program :: Map Integer For -> Program Gr
+code2Program code = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = compileAllToProgram code
+
+code2ForProgram :: Map Integer For -> ForProgram
+code2ForProgram code = ForProgram {
+    code = code,
     channelTyping = defaultChannelObservability,
     mainThreadFor = 1
   }
+
+figure1leftCode = code where
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel "h" stdIn                                        `Seq`
+           If (Leq (Var "h") (Val 1234))
+              (PrintToChannel (Val 0) stdOut)
+              (Skip)                                                        `Seq`
+           Ass "l" (Var "h")                                                `Seq`
+           PrintToChannel (Var "l") stdOut
+          )
+         ]
+
+figure5left = code2Program figure5leftCode
   
 figure5leftCode = code where
         code = Map.fromList $ [

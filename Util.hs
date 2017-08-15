@@ -42,3 +42,10 @@ meetFrom x l = Foldable.foldr (⊓) x l
 foldM1 :: (Monad m) => (a -> a -> m a) -> [a] -> m a
 foldM1 _ [] = error "foldM1" "empty list"
 foldM1 f (x:xs) = foldM f x xs
+
+
+instance JoinSemiLattice a => JoinSemiLattice (Maybe a) where
+  join Nothing Nothing   = Nothing
+  join Nothing jx        = jx
+  join jx      Nothing   = jx
+  join (Just x) (Just y) = Just $ join x y

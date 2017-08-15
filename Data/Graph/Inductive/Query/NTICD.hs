@@ -6,6 +6,7 @@ import Data.Maybe(fromJust)
 
 import Data.List(foldl', intersect,foldr1)
 
+import Data.Maybe (isNothing, maybeToList)
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -1509,9 +1510,11 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
 
 
 imdomOfTwoFinger7 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0
-  where imdom0   = Map.fromList [ (x, Set.empty )                 | x <- nodes graph]
-                 ⊔ Map.fromList [ (x, Set.fromList $ suc graph x) | x <- nodes graph, length (suc graph x) == 1]
+imdomOfTwoFinger7 graph = fmap toSet $ twoFinger 0 worklist0 imdom0
+  where toSet Nothing  = Set.empty
+        toSet (Just x) = Set.fromList [x]
+        imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x]]
+                   `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
         worklist0   = condNodes
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
         prevConds   = prevCondNodes graph
@@ -1525,17 +1528,17 @@ imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0
                         ))
                        ∧
                         (∀) (nodes graph) (\n -> let ms = imdom ! n  in
-                          case Set.toList ms of
-                            []  -> True
-                            [m] -> (m ∈ solution ! n) ∧ (∀) (solution ! n) (\m' -> m' == n  ∨  (m' ∈ solution ! m))
+                          case ms of
+                            Nothing -> True
+                            Just m  -> (m ∈ solution ! n) ∧ (∀) (solution ! n) (\m' -> m' == n  ∨  (m' ∈ solution ! m))
                         )
                        ∧
                         (∀) (nodes graph) (\n -> let ms = imdom ! n  in
-                          (Set.null ms  ∧  (∃) (solution ! n) (\m -> m /= n)) → (
+                          (isNothing ms  ∧  (∃) (solution ! n) (\m -> m /= n)) → (
                             n ∈ worklistLfp
                           )
                         )
-                imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
+                imdomTrc = trc $ (fromSuccMap (fmap toSet imdom) :: gr () ())
                 worklistLfp = (㎲⊒) Set.empty f
                   where f wl = worklist
                              ⊔ Set.fromList [ p | p <- Set.toList condNodes,
@@ -1546,7 +1549,7 @@ imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0
                                                   (∀) (solution ! n) (\m -> m == n  ∨  (m ∈ solution ! w)),
                                                   p ∈ prevConds n
                                             ]
-                imdomWorklist = imdom
+                imdomWorklist = fmap toSet imdom
                               ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ solution ! w,
                                                                       (∀) (solution ! w) (\m' -> m' == w  ∨  (m' ∈ solution ! m))
                                                                 ]
@@ -1554,7 +1557,7 @@ imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0
                                              | w <- Set.toList $ worklistLfp ]
                 imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
 
-        twoFinger :: Integer -> Set Node ->  Map Node (Set Node) -> Map Node (Set Node)
+        twoFinger :: Integer -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
         twoFinger i worklist imdom
             |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $ 
@@ -1568,30 +1571,30 @@ imdomOfTwoFinger7 graph = twoFinger 0 worklist0 imdom0
                 mz = foldM1 lca (suc graph x)
                 zs = case mz of
                       Just z  -> if z/= x then
-                                   Set.fromList [ z ]
+                                   Just z
                                  else
-                                   Set.fromList [ ]
-                      Nothing ->  Set.fromList [ ]
-                new     = assert (Set.null $ imdom ! x) $
-                          (not $ Set.null zs)
-                influenced = let imdomRev = invert' $ fmap Set.toList imdom
+                                   Nothing
+                      Nothing ->  Nothing
+                new     = assert (isNothing $ imdom ! x) $
+                          (not $ isNothing zs)
+                influenced = let imdomRev = invert' $ fmap maybeToList imdom
                                  preds = predsSeenFor imdomRev [x] [x]
-                             in  -- traceShow (preds, imdomRev) $ 
-                                 Set.filter (\n -> (n /= x) ∧ (Set.null $ imdom ! n)) $ Set.fromList $ foldMap prevConds preds
+                             in  -- traceShow (preds, imdomRev) $
+                                 Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
+                lca :: Node -> Node -> Maybe Node
                 lca  n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m])
+                lca' :: Map Node (Maybe Node) -> (Node,Set Node) -> (Node, Set Node) -> Maybe Node
                 lca' c (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                                Just m
                     | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
                                Just n
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((c ! n) ∖ ns ) of
-                                     []   -> case Set.toList $ ((c ! m) ∖ ms ) of
+                                  case Set.toList $ ((toSet (c ! n)) ∖ ns ) of
+                                     []   -> case Set.toList $ ((toSet (c ! m)) ∖ ms ) of
                                                 []   -> Nothing
                                                 [m'] -> lca' c ( m', Set.insert m' ms) (n, ns)
-                                                _    -> error "more than one successor in imdom" 
                                      [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
-                                     _    -> error "more than one successor in imdom" 
 
 
 

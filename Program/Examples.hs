@@ -1345,6 +1345,21 @@ figure5rightCode = code where
           )
          ]
 
+
+
+exampleD4 = code2Program exampleD4Code
+exampleD4Code = code where
+        code = Map.fromList $ [
+          (1, ReadFromChannel "h" stdIn                                     `Seq`
+              If ((Var "h") `Leq` (Val 0))
+                (Ass "h" (Val 1)  `Seq` Ass "h" (Val 2))
+                (Ass "h" (Val 3)                       )                    `Seq`
+              Ass "l" (Val 4)                                               `Seq`
+              PrintToChannel (Var "l") stdOut
+          )
+         ]
+
+
 {-
 192575
 1171150

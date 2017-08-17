@@ -13,6 +13,8 @@ import Control.Monad(forM_, when, forever, forM)
 import Test.QuickCheck
 
 import Program.Typing.FlexibleSchedulerIndependentChannels
+import qualified Program.Typing.ResumptionBasedSecurity as Res
+
 import Program.For
 import Program
 import Program.Defaults

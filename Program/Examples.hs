@@ -7,6 +7,7 @@ import Program.For
 import Program.Defaults
 
 import Program.Typing.FlexibleSchedulerIndependentChannels (ForProgram(..))
+import qualified Program.Typing.ResumptionBasedSecurity as Res (ForProgram(..), for2ResumptionFor) 
 
 
 import IRLSOD
@@ -1272,6 +1273,14 @@ code2ForProgram code = ForProgram {
     mainThreadFor = 1
   }
 
+
+code2ResumptionForProgram :: Map Integer For -> Res.ForProgram
+code2ResumptionForProgram code = Res.ForProgram {
+    Res.code = Res.for2ResumptionFor code 1,
+    Res.channelTyping = defaultChannelObservability
+  }
+
+
 figure1leftCode = code where
         code = Map.fromList $ [
           (1,
@@ -1304,9 +1313,10 @@ figure5leftCode = code where
           )
          ]
 
-figure5right :: Program Gr
-figure5right = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code
+
+figure5right = code2Program figure5rightCode
+
+figure5rightCode = code where
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -2617,4 +2627,10 @@ interestingDodWod = [
               $(withName 'dodSuperFastCounterExample4),
               $(withName 'dodSuperFastCounterExample5),
               $(withName 'dodSuperFastCounterExample6)
+            ]
+
+
+jcsPaperExamples = [
+              $(withName 'figure5leftCode),
+              $(withName 'figure1leftCode)
             ]

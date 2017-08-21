@@ -58,6 +58,17 @@ isInCycle graph node = length component > 1
   where component = the (node `elem`) $ scc graph
 
 
+isInCycleMap :: Graph gr => gr a b -> Map Node Bool
+isInCycleMap graph  = Map.fromList [ (n, True)  | c@(_:ns) <- sccs, not $ null ns, n <- c ]
+          `Map.union` Map.fromList [ (n, False) | [n] <- sccs]
+  where sccs = scc graph
+
+
+notInCycleSet :: Graph gr => gr a b -> Set Node
+notInCycleSet graph  = Set.fromList [ n | [n] <- sccs]
+  where sccs = scc graph
+
+
 -- | The condensation of the given graph by equivalence classes
 -- adapted from Data.Graph.Inductive.Query.DFS.condensation
 eqGraph :: Graph gr => [[Node]] -> gr a b -> gr [Node] ()

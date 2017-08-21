@@ -85,7 +85,8 @@ idomMohrEtAl p@(Program {tcfg, entryOf, mainThread} ) = Map.fromList
         dom = Map.fromList $ iDom tcfg (entryOf mainThread)
 
         inMulti = isInMultiThread p
-        inCycle = isInCycle tcfg -- TODO: ggf auf zyklen innerhalb von threads einschränken?!?!?
+        inCycleSet = notInCycleSet tcfg  -- TODO: ggf auf zyklen innerhalb von threads einschränken?!?!?
+        inCycle = not . (`Set.member` inCycleSet)
 
         leastValidFrom :: Node -> Node
         leastValidFrom c

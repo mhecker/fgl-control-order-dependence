@@ -433,7 +433,7 @@ varsToLevelVariable p = Map.fromList [
 
 principalTypingUsing :: Criterion -> Gr ConstraintNode ConstraintEdge -> Map Var LevelVariable -> ForProgram -> [(ProgramTyping, Gr ConstraintNode ConstraintEdge)]
 principalTypingUsing maximalCriterion initial var p@(ForProgram { code, channelTyping })  =
- do  (criterion, varDependencies :: Gr ConstraintNode ConstraintEdge) <- (varDependenciesOf maximalCriterion var channelTyping code initial)
+ do  (criterion, varDependencies :: Gr ConstraintNode ConstraintEdge) <- strongestProofs $ (varDependenciesOf maximalCriterion var channelTyping code initial)
 
      let deps = trc varDependencies
      let sccs = scc varDependencies
@@ -462,6 +462,14 @@ varDependenciesOfAtm  maximalCriterion var obs c deps
         cptConstraints  = [(Siso,  cpt  obs var c deps)]
 
 
+strongestProofs :: [(Criterion, Gr ConstraintNode ConstraintEdge)] -> [(Criterion, Gr ConstraintNode ConstraintEdge)]
+strongestProofs proofs
+    | null result ∧ (not $ null proofs) = traceShow proofs $ result
+    | otherwise                         =                    result
+  where result = fmap (\(c, _, deps) -> (c,deps)) $  minimalElementsFor strongerThan eq [ (criterion, Set.fromList $ edges $ trc deps, deps) | (criterion, deps) <- proofs]
+        (criterion1, depsE1, _) `strongerThan` (criterion2, depsE2, _) = (criterion1 ⊑  criterion2)  ∧  (depsE1 ⊑  depsE2)
+        (criterion1, depsE1, _) `eq`           (criterion2, depsE2, _) = (criterion1 == criterion2)  ∧  (depsE1 == depsE2)
+
 varDependenciesOf :: Criterion -> (Map Var LevelVariable) -> ChannelTyping -> For ->  Gr ConstraintNode ConstraintEdge -> [(Criterion, Gr ConstraintNode ConstraintEdge)]
 varDependenciesOf Impossible       var obs _ deps = []
 varDependenciesOf maximalCriterion var obs c@(Skip)                   deps = varDependenciesOfAtm maximalCriterion var obs c deps
@@ -475,14 +483,14 @@ varDependenciesOf Discr            var obs (If b c1 c2) deps = do
     return (Discr, deps2)
 varDependenciesOf maximalCriterion var obs (If b c1 c2) deps = do
     let deps0 = cptE var b deps
-    (criterion1, deps1) <- varDependenciesOf maximalCriterion var obs c1 deps0
-    (criterion2, deps2) <- varDependenciesOf maximalCriterion var obs c2 deps1
+    (criterion1, deps1) <- strongestProofs $ varDependenciesOf maximalCriterion var obs c1 deps0
+    (criterion2, deps2) <- strongestProofs $ varDependenciesOf maximalCriterion var obs c2 deps1
     return (criterion1 ⊔ criterion2, deps2)
 
 
 varDependenciesOf maximalCriterion var obs (Ch d c1 c2) deps = do
-    (criterion1, deps1) <- varDependenciesOf maximalCriterion var obs c1 deps
-    (criterion2, deps2) <- varDependenciesOf maximalCriterion var obs c2 deps1
+    (criterion1, deps1) <- strongestProofs $ varDependenciesOf maximalCriterion var obs c1 deps
+    (criterion2, deps2) <- strongestProofs $ varDependenciesOf maximalCriterion var obs c2 deps1
     return (criterion1 ⊔ criterion2, deps2)
 
 
@@ -536,19 +544,19 @@ varDependenciesOf Siso             var obs (Seq c1 c2) deps = do
     return (Siso, deps2)
 varDependenciesOf maximalCriterion var obs (Seq c1 c2) deps = left ++ right
   where left = do
-                  (_, deps1)          <- varDependenciesOf Siso             var obs c1 deps
-                  (criterion2, deps2) <- varDependenciesOf maximalCriterion var obs c2 deps1
+                  (_, deps1)          <-                   varDependenciesOf Siso             var obs c1 deps
+                  (criterion2, deps2) <- strongestProofs $ varDependenciesOf maximalCriterion var obs c2 deps1
                   return (Siso ⊔ criterion2 , deps2)
         right = do
-                  (criterion1, deps1) <- varDependenciesOf maximalCriterion var obs c1 deps
-                  (_, deps2)          <- varDependenciesOf Discr            var obs c2 deps1
+                  (criterion1, deps1) <-                   varDependenciesOf maximalCriterion var obs c1 deps
+                  (_, deps2)          <- strongestProofs $ varDependenciesOf Discr            var obs c2 deps1
                   return (criterion1 ⊔ Discr, deps2)
 
 varDependenciesOf maximalCriterion var obs (Par cs) deps = do
     (criterion', deps') <- foldM f (Impossible,deps) cs
     return (criterion', deps')
   where f (criterion, deps) c = do
-          (criterion', deps') <- varDependenciesOf maximalCriterion var obs c deps
+          (criterion', deps') <- strongestProofs $ varDependenciesOf maximalCriterion var obs c deps
           return (criterion ⊔ criterion', deps')
 
 
@@ -565,6 +573,6 @@ varDependenciesOf maximalCriterion   var obs (ParT cs) deps = do
         return (ZeroOneBisimilarity, deps')
       else mzero
   where f (criterion, deps) c = do
-          (criterion', deps') <- varDependenciesOf None var obs c deps
+          (criterion', deps') <- strongestProofs $ varDependenciesOf None var obs c deps
           return (criterion ⊔ criterion', deps')
 

@@ -1,6 +1,6 @@
 module Util where
 
-import Data.List (find, nub)
+import Data.List (find, nub, nubBy)
 import Data.Maybe (fromJust)
 import qualified Data.Map as Map
 import Data.Map (Map)
@@ -51,4 +51,9 @@ instance JoinSemiLattice a => JoinSemiLattice (Maybe a) where
   join (Just x) (Just y) = Just $ join x y
 
 
-minimalElements as = nub $ [ a | a <- as, (∀) as (\a' -> a ⊑ a') ]
+leastElements as            = nub      $ [ a | a <- as, (∀) as (\a' -> a ⊑ a') ]
+leastElementsFor (⊑) eq  as = nubBy eq $ [ a | a <- as, (∀) as (\a' -> a ⊑ a') ]
+
+minimalElements as            = nub      $ [ a | a <- as, (∀) as (\a' -> a ==   a'   ∨  (not $ a' ⊑ a)) ]
+minimalElementsFor (⊑) eq  as = nubBy eq $ [ a | a <- as, (∀) as (\a' -> a `eq` a'   ∨  (not $ a' ⊑ a)) ]
+

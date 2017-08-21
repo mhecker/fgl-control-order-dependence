@@ -152,8 +152,8 @@ soundnessProps =  testGroup "(concerning soundness)" [
      ("isSound  isSecureResumptionBasedSecurity")
      (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 3
-     ("allSound [ timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD, simonClassification ] ")
-     ( allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
+     ("allSound [ timingClassification, timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD, simonClassification ] ")
+     ( allSound [ isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
@@ -177,6 +177,8 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
+    testProperty  "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testProperty  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                 isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,

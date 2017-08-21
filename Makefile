@@ -1,5 +1,5 @@
 # uncomment for profiling builds
-# PROF=defined
+PROF=defined
 
 ifdef PROF
 PROF_GHC=-prof -fprof-auto -osuf p_o

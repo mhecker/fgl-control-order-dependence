@@ -11,6 +11,8 @@ import Program
 import Program.MHP
 import Program.Analysis
 
+import qualified Program.Typing.ResumptionBasedSecurity as Res
+
 import Program.Examples
 import Program.Generator
 
@@ -41,6 +43,17 @@ instance Show (Program gr) where
 isAtLeastAsPreciseAs :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> GeneratedProgram -> Bool
 isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
   where p = toProgram generated
+
+
+
+
+isAtLeastAsPreciseAsPartialGen :: (Program Gr -> Bool) -> (GeneratedProgram -> Maybe Bool) -> GeneratedProgram -> Property
+isAtLeastAsPreciseAsPartialGen a1 a2 generated =  check ==> a1 p
+  where p = toProgram generated
+        isSecureA2 = a2 generated
+        check = case isSecureA2 of
+          Just True -> True
+          _         -> False
 
 
 isSoundPartialGen :: (GeneratedProgram -> Maybe Bool) -> GeneratedProgram -> Property

@@ -1274,9 +1274,11 @@ code2ForProgram code = ForProgram {
   }
 
 
-code2ResumptionForProgram :: Map Integer For -> Res.ForProgram
-code2ResumptionForProgram code = Res.ForProgram {
-    Res.code = Res.for2ResumptionFor code 1,
+code2ResumptionForProgram :: Map Integer For -> Maybe Res.ForProgram
+code2ResumptionForProgram code = do
+  code' <- Res.for2ResumptionFor code 1
+  return $ Res.ForProgram {
+    Res.code = code',
     Res.channelTyping = defaultChannelObservability
   }
 

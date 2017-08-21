@@ -58,59 +58,81 @@ data For = If   BoolFunction For For
   deriving Show
 
 
-for2ResumptionFor :: Map ThreadId Program.For.For -> ThreadId -> For
+for2ResumptionFor :: Map ThreadId Program.For.For -> ThreadId -> Maybe For
 for2ResumptionFor code mainThread =  f2f [mainThread] False [] (code ! mainThread)
-  where f2f spawnString inLoop []     (Program.For.Skip)    = Skip
-        f2f spawnString inLoop (c:cs) (Program.For.Skip)    = Skip `Seq` (f2f spawnString inLoop cs c)
+  where f2f spawnString inLoop []     (Program.For.Skip)    = return $ Skip
+        f2f spawnString inLoop (c:cs) (Program.For.Skip)    = do
+            c' <- f2f spawnString inLoop cs c
+            return $ Skip `Seq` c'
 
-        f2f spawnString inLoop []     (Program.For.Ass x e) = (Ass x e)
-        f2f spawnString inLoop (c:cs) (Program.For.Ass x e) = (Ass x e) `Seq` (f2f spawnString inLoop cs c)
-
-
-        f2f spawnString inLoop []     (Program.For.ReadFromChannel x ch) = ReadFromChannel x ch
-        f2f spawnString inLoop (c:cs) (Program.For.ReadFromChannel x ch) = (ReadFromChannel x ch) `Seq` (f2f spawnString inLoop cs c)
-
-        f2f spawnString inLoop []     (Program.For.PrintToChannel e ch) = PrintToChannel e ch
-        f2f spawnString inLoop (c:cs) (Program.For.PrintToChannel e ch) = (PrintToChannel e ch) `Seq` (f2f spawnString inLoop cs c)
+        f2f spawnString inLoop []     (Program.For.Ass x e) = return $ Ass x e
+        f2f spawnString inLoop (c:cs) (Program.For.Ass x e) = do
+            c' <- f2f spawnString inLoop cs c
+            return $ (Ass x e) `Seq` c'
 
 
-        f2f spawnString inLoop []     (Program.For.If b c1 c2) = If b c1' c2'
-          where c1' = (f2f spawnString inLoop [] c1)
-                c2' = (f2f spawnString inLoop [] c2)
+        f2f spawnString inLoop []     (Program.For.ReadFromChannel x ch) = return $ ReadFromChannel x ch
+        f2f spawnString inLoop (c:cs) (Program.For.ReadFromChannel x ch) = do
+            c' <- f2f spawnString inLoop cs c
+            return $ (ReadFromChannel x ch) `Seq` c'
+
+        f2f spawnString inLoop []     (Program.For.PrintToChannel e ch) = return $ PrintToChannel e ch
+        f2f spawnString inLoop (c:cs) (Program.For.PrintToChannel e ch) = do
+            c' <- f2f spawnString inLoop cs c
+            return $ (PrintToChannel e ch) `Seq` c'
+
+
+        f2f spawnString inLoop []     (Program.For.If b c1 c2) = do
+            c1' <- f2f spawnString inLoop [] c1
+            c2' <- f2f spawnString inLoop [] c2
+            return $ If b c1' c2'
         f2f spawnString inLoop (c:cs) (Program.For.If b c1 c2)
-            | any (\c -> case c of
-                          (Program.For.SpawnThread _) -> True
-                          _                           -> False
-                  )
-                  (foldMap Program.For.subCommands [c1,c2])     = If b c1' c2'
-            | otherwise                                         = (If b (f2f spawnString inLoop [] c1) (f2f spawnString inLoop [] c2)) `Seq` (f2f spawnString inLoop cs c)
-          where c1' = (f2f spawnString inLoop cs c1)
-                c2' = (f2f spawnString inLoop cs c2)
-
+            | any isSpawn (foldMap Program.For.subCommands [c1,c2]) = do
+                    c1' <- f2f spawnString inLoop cs c1
+                    c2' <- f2f spawnString inLoop cs c2
+                    return $ If b c1' c2'
+            | otherwise                                             = do
+                    c1' <- f2f spawnString inLoop [] c1
+                    c2' <- f2f spawnString inLoop [] c2
+                    c'  <- f2f spawnString inLoop cs c
+                    return $ (If b c1' c2') `Seq` c'
+          where isSpawn (Program.For.SpawnThread _) = True
+                isSpawn _                           = False
         f2f spawnString inLoop []     (Program.For.ForC x c0)
-            | x > 0     = foldr1 Seq (take (fromInteger x) $ repeat c0')
-            | otherwise = Skip
-          where c0' = (f2f spawnString inLoop [] c0)
+            | x > 0     = do
+                    c0' <- f2f spawnString inLoop [] c0
+                    return $ foldr1 Seq (take (fromInteger x) $ repeat c0')
+            | otherwise = return Skip
+          where 
         f2f spawnString inLoop (c:cs) (Program.For.ForC x c0)
-            | x > 0     = foldr1 Seq (take (fromInteger x) $ repeat c0') `Seq` (f2f spawnString inLoop cs c)
-            | otherwise = (f2f spawnString inLoop cs c)
-          where c0' = (f2f spawnString inLoop [] c0)
-
-        f2f spawnString inLoop []     (Program.For.ForV x c0) = ForV x c0'
-          where c0' = (f2f spawnString True [] c0)
-        f2f spawnString inLoop (c:cs) (Program.For.ForV x c0) = ForV x c0' `Seq` (f2f spawnString inLoop cs c)
-          where c0' = (f2f spawnString True [] c0)
+            | x > 0     = do
+                    c0' <- f2f spawnString inLoop [] c0
+                    c'  <- f2f spawnString inLoop cs c
+                    return $ foldr1 Seq (take (fromInteger x) $ repeat c0') `Seq` c'
+            | otherwise = f2f spawnString inLoop cs c
+          where 
+        f2f spawnString inLoop []     (Program.For.ForV x c0) = do
+                    c0' <-f2f spawnString True [] c0
+                    return $ ForV x c0'
+        f2f spawnString inLoop (c:cs) (Program.For.ForV x c0) = do
+                    c0' <- f2f spawnString True [] c0
+                    c'  <- f2f spawnString inLoop cs c
+                    return $ ForV x c0' `Seq` c'
 
         f2f spawnString inLoop cs     (Program.For.Seq c1 c2) = f2f spawnString inLoop (c2:cs) c1
 
         f2f spawnString inLoop []     (Program.For.SpawnThread θ)
-            | (not inLoop) ∧ (not $ θ ∈ spawnString) = Par [cθ]
-            | otherwise                              = error "program cannt be translated to Par form"
-          where cθ = f2f (θ:spawnString) False [] (code ! θ)
+            | (not inLoop) ∧ (not $ θ ∈ spawnString) = do
+                    cθ <- f2f (θ:spawnString) False [] (code ! θ)
+                    return $ Par [cθ]
+            | otherwise                              = mzero
         f2f spawnString inLoop (c:cs) (Program.For.SpawnThread θ)
-            | (not inLoop) ∧ (not $ θ ∈ spawnString) = Par ([cθ, f2f spawnString inLoop cs c])
-            | otherwise                              = error "program cannt be translated to Par form"
-          where cθ = f2f (θ:spawnString) False [] (code ! θ)
+            | (not inLoop) ∧ (not $ θ ∈ spawnString) = do
+                    cθ <- f2f (θ:spawnString) False [] (code ! θ)
+                    c' <- f2f spawnString inLoop cs c
+                    return $ Par ([cθ, c'])
+            | otherwise                              = mzero
+          where 
 
 
 subCommands :: For -> [For]
@@ -361,18 +383,21 @@ data ForProgram = ForProgram {
 type ThreadId = Integer
 
 
-isSecureResumptionBasesSecurity :: Criterion -> GeneratedProgram -> Bool
-isSecureResumptionBasesSecurity maximalCriterion gen =   not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- principalTypingOfGen maximalCriterion gen, criterion ⊑ maximalCriterion]
+isSecureResumptionBasesSecurity :: Criterion -> GeneratedProgram -> Maybe Bool
+isSecureResumptionBasesSecurity maximalCriterion gen =  do
+        typings <- principalTypingOfGen maximalCriterion gen
+        return $ not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- typings , criterion ⊑ maximalCriterion]
 
 
 isSecureResumptionBasesSecurityFor ::  Criterion -> ForProgram -> Bool
 isSecureResumptionBasesSecurityFor maximalCriterion  p = not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- principalTypingOf    maximalCriterion p,   criterion ⊑ maximalCriterion]
 
 
-principalTypingOfGen :: Criterion -> GeneratedProgram -> [(ProgramTyping, Gr ConstraintNode ConstraintEdge)]
-principalTypingOfGen  maximalCriterion  gen = principalTypingOf  maximalCriterion (ForProgram { code = for2ResumptionFor code 1, channelTyping = defaultChannelObservability })
-  where code = toCode gen
-
+principalTypingOfGen :: Criterion -> GeneratedProgram -> Maybe [(ProgramTyping, Gr ConstraintNode ConstraintEdge)]
+principalTypingOfGen  maximalCriterion  gen = do
+        let code = toCode gen
+        code' <- for2ResumptionFor code 1
+        return $ principalTypingOf  maximalCriterion (ForProgram { code = code', channelTyping = defaultChannelObservability })
 
 data ConstraintNode = ConstLevel SecurityLattice | VarLevel Var deriving Show
 data ConstraintEdge = Pres For | Cpt For | CptE BoolFunction | OtherE deriving Show

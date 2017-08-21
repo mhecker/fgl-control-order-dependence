@@ -74,6 +74,7 @@ import Data.Graph.Inductive.Arbitrary
 
 
 import Program (Program)
+import Program.Tests (isSecureEmpirically)
 
 import Program.Properties.Analysis
 import Program.Properties.CDom
@@ -84,6 +85,7 @@ import Program.Examples (testsuite, precisionCounterExamples, interestingDodWod)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
+import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity)
 import Program.CDom
 import Program.Generator (toProgram, GeneratedProgram)
 
@@ -146,6 +148,9 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
+    testPropertySized 3
+     ("isSound  isSecureResumptionBasedSecurity")
+     (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 3
      ("allSound [ timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD, simonClassification ] ")
      ( allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )

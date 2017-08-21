@@ -383,14 +383,14 @@ data ForProgram = ForProgram {
 type ThreadId = Integer
 
 
-isSecureResumptionBasesSecurity :: Criterion -> GeneratedProgram -> Maybe Bool
-isSecureResumptionBasesSecurity maximalCriterion gen =  do
+isSecureResumptionBasedSecurity :: Criterion -> GeneratedProgram -> Maybe Bool
+isSecureResumptionBasedSecurity maximalCriterion gen =  do
         typings <- principalTypingOfGen maximalCriterion gen
         return $ not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- typings , criterion ⊑ maximalCriterion]
 
 
-isSecureResumptionBasesSecurityFor ::  Criterion -> ForProgram -> Bool
-isSecureResumptionBasesSecurityFor maximalCriterion  p = not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- principalTypingOf    maximalCriterion p,   criterion ⊑ maximalCriterion]
+isSecureResumptionBasedSecurityFor ::  Criterion -> ForProgram -> Bool
+isSecureResumptionBasedSecurityFor maximalCriterion  p = not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- principalTypingOf    maximalCriterion p,   criterion ⊑ maximalCriterion]
 
 
 principalTypingOfGen :: Criterion -> GeneratedProgram -> Maybe [(ProgramTyping, Gr ConstraintNode ConstraintEdge)]

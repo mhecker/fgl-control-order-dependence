@@ -43,6 +43,17 @@ isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
   where p = toProgram generated
 
 
+isSoundPartialGen :: (GeneratedProgram -> Maybe Bool) -> GeneratedProgram -> Property
+isSoundPartialGen isSecurePartial gen = 
+     let isSecure = isSecurePartial gen
+         checkEmpirically = case isSecure of
+           Just True -> True
+           _         -> False
+         p :: Program Gr
+         p = toProgram gen 
+     in checkEmpirically ==> isSecureEmpirically p
+
+
 allSound ::  [(Program Gr -> Bool)] -> GeneratedProgram -> Property
 allSound as generated = any ($ p) as  ==> isSecureEmpirically p
   where p = toProgram generated

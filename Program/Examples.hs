@@ -1283,6 +1283,17 @@ code2ResumptionForProgram code = do
   }
 
 
+simpleExample1Code = code where
+        code = Map.fromList $ [
+          (1,
+           ReadFromChannel "y" "stdIn"                                      `Seq`
+           ReadFromChannel "a" "stdIn"                                      `Seq`
+           ForV "a"
+             (ReadFromChannel "b" "lowIn1")
+          )
+         ]
+
+
 figure1leftCode = code where
         code = Map.fromList $ [
           (1,

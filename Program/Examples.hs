@@ -1283,6 +1283,64 @@ code2ResumptionForProgram code = do
   }
 
 
+timingAtUsesVsResumptionBasedBugInTranslationExample1 = code2Program timingAtUsesVsResumptionBasedBugInTranslationExample1Code
+timingAtUsesVsResumptionBasedBugInTranslationExample1Code = code where
+        code = Map.fromList $ [
+          (1, Skip `Seq`
+              (Seq
+              (Seq
+              (Seq
+              (Seq (Ass "x" (Val 1))
+                   (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))
+                   (ForV "x" (Ass "a" (Times (Var "x") (Var "x")))))
+                   (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                       (Seq Skip
+                            (ReadFromChannel "x" "lowIn1"))
+                   {- else -}
+                       (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                             (SpawnThread 2)
+                             (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))))
+                   (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                       (Seq (ForC 1 Skip)
+                            (ForC 1 (SpawnThread 3)))
+                   {- else -}
+                       (ForC 1
+                           (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                               (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
+                               (ReadFromChannel "b" "lowIn1")))))),
+          (2, Skip `Seq`
+              (ForV "x"
+                  (Seq
+                  (Seq
+                  (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
+                       (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))
+                  (Seq (Ass "c" (Times (Var "x") (Var "x")))
+                       (PrintToChannel (Times (Var "c") (Var "x")) "stdOut")))
+                  (Seq (If (Leq (Val 0) (Times (Var "c") (Var "x")))
+                           (Ass "y" (Times (Var "c") (Var "c")))
+                           Skip)
+                  (Seq Skip
+                       (ReadFromChannel "y" "lowIn1")))))),
+          (3, Skip `Seq`
+              (Seq (ForV "x"
+                       (Seq
+                       (Seq (Ass "z" (Times (Var "x") (Var "x")))
+                            (ReadFromChannel "c" "lowIn1"))
+                            (ForC 1 (PrintToChannel (Times (Var "c") (Var "z")) "stdOut"))))
+              (Seq
+              (Seq
+              (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
+                   (Ass "b" (Times (Var "x") (Var "x"))))
+                   (ForC 2
+                       (Ass "b" (Times (Var "x") (Var "b")))))
+              (Seq (ForV "x"
+                       (ReadFromChannel "z" "stdIn"))
+              (Seq (ReadFromChannel "c" "stdIn")
+                   (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))))))
+         ]
+
+
+
 simpleExample1Code = code where
         code = Map.fromList $ [
           (1,

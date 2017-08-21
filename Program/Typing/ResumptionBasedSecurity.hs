@@ -88,8 +88,8 @@ for2ResumptionFor code mainThread =  f2f [mainThread] False [] (code ! mainThrea
             return $ If b c1' c2'
         f2f spawnString inLoop (c:cs) (Program.For.If b c1 c2)
             | any isSpawn (foldMap Program.For.subCommands [c1,c2]) = do
-                    c1' <- f2f spawnString inLoop cs c1
-                    c2' <- f2f spawnString inLoop cs c2
+                    c1' <- f2f spawnString inLoop (c:cs) c1
+                    c2' <- f2f spawnString inLoop (c:cs) c2
                     return $ If b c1' c2'
             | otherwise                                             = do
                     c1' <- f2f spawnString inLoop [] c1

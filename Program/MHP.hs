@@ -50,6 +50,15 @@ simonMhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp 
         isInMulti = isInMultiThread p
         mhpDiff   = mhpDifferentSimon p
 
+
+mhpSetFor :: DynGraph gr => Program gr -> Set (Node,Node)
+mhpSetFor p@(Program { tcfg, staticThreadOf }) =
+     Set.fromList [ (n1,n2) | n1 <- nodes tcfg, n2 <- nodes tcfg, staticThreadOf n1 == staticThreadOf n2, isInMulti ! n1 ]
+   ⊔ Set.filter (\(n1,n2) -> staticThreadOf n1 /= staticThreadOf n2) mhpDiff
+  where isInMulti = isInMultiThread p
+        mhpDiff   = mhpDifferent p
+
+
 mhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
 mhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
   where mhp n1 n2

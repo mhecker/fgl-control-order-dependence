@@ -330,6 +330,10 @@ pres obs var c@(ReadFromChannel x ch) deps =
       insEdges [ (nLevel $ obs ch,                var ! x,                        Pres c) ]
     $ insEdges [ (var ! x ,                       nHigh,                          Pres c) ]
     $ insEdges [ (nHigh,                          var ! x ,                       Pres c) ]
+      -- in the LSOD-Setting, a low read is always visible.
+      -- Hence, in order to obtain "fair"(™) comparison,
+      -- we demand that low read cannot be regarded preserving by reading into a high variable
+    $ insEdges [ (var ! x,                        nLevel $ obs ch,                  Cpt c) ]
     $ deps
 pres obs var c@(PrintToChannel  e ch) deps =
       insEdges [ (var ! x,                        nLevel $ obs ch,                Pres c) | x <- Set.toList $ useV e ]
@@ -353,6 +357,10 @@ cpt _   var c@(Ass x e) deps =
     $ deps
 cpt obs var c@(ReadFromChannel x ch) deps =
       insEdges [ (nLevel $ obs ch,                var ! x,                          Cpt c) ]
+      -- in the LSOD-Setting, a low read is always visible.
+      -- Hence, in order to obtain "fair"(™) comparison,
+      -- we demand that low read cannot be regarded compatible by reading into a high variable
+    $ insEdges [ (var ! x,                        nLevel $ obs ch,                  Cpt c) ]
     $ deps
 cpt obs var c@(PrintToChannel  e ch) deps =
       insEdges [ (var ! x,                        nLevel $ obs ch,                  Cpt c) | x <- Set.toList $ useV e ]

@@ -99,18 +99,13 @@ for2ResumptionFor code mainThread =  f2f [mainThread] False [] (code ! mainThrea
           where isSpawn (Program.For.SpawnThread _) = True
                 isSpawn _                           = False
         f2f spawnString inLoop []     (Program.For.ForC x c0)
-            | x > 0     = do
-                    c0' <- f2f spawnString inLoop [] c0
-                    return $ foldr1 Seq (take (fromInteger x) $ repeat c0')
+            | x == 1    = f2f spawnString inLoop [] c0
+            | x >  1    = f2f spawnString inLoop [(Program.For.ForC (x-1) c0)] c0
             | otherwise = return Skip
-          where 
         f2f spawnString inLoop (c:cs) (Program.For.ForC x c0)
-            | x > 0     = do
-                    c0' <- f2f spawnString inLoop [] c0
-                    c'  <- f2f spawnString inLoop cs c
-                    return $ foldr1 Seq (take (fromInteger x) $ repeat c0') `Seq` c'
+            | x == 1    = f2f spawnString inLoop (c:cs) c0
+            | x >  1    = f2f spawnString inLoop ((Program.For.ForC (x-1) c0):c:cs) c0
             | otherwise = f2f spawnString inLoop cs c
-          where 
         f2f spawnString inLoop []     (Program.For.ForV x c0) = do
                     c0' <-f2f spawnString True [] c0
                     return $ ForV x c0'

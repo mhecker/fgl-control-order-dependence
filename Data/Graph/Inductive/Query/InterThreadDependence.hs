@@ -34,7 +34,7 @@ import IRLSOD
 
 interThreadDependence :: DynGraph gr => Program gr -> Map Node (Set Node)
 interThreadDependence p@(Program {tcfg}) = Map.fromList $
-    [ (n, Set.fromList [ m | x <- Set.toList $ def tcfg n,
+    [ (n, Set.fromList [ m | x@(Global _) <- Set.toList $ def tcfg n,
                              m <- nodes tcfg,
                              mhp ! (n,m),
                              x ∈ (use tcfg m)

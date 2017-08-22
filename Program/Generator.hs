@@ -60,7 +60,8 @@ programGenerator n threadsAvailable generated
 
         inChannels       = Set.fromList [stdIn,lowIn1]
         outChannels      = Set.fromList [stdOut]
-        vars             = Set.fromList ["x", "y", "z", "a", "b", "c"]
+        vars             = Set.map Global $
+                           Set.fromList ["x", "y", "z", "a", "b", "c"]
         varsForbidden    = Set.fromList []
 
 
@@ -81,7 +82,8 @@ instance Arbitrary GeneratedProgram where
       threadsAvailable = Set.fromList [2,3]
       inChannels       = Set.fromList [stdIn,lowIn1]
       outChannels      = Set.fromList [stdOut]
-      vars             = Set.fromList ["x", "y", "z", "a", "b", "c"]
+      vars             = Set.map Global $
+                         Set.fromList ["x", "y", "z", "a", "b", "c"]
       varsForbidden    = Set.fromList []
       varsAvailable    = Set.fromList []
 
@@ -101,7 +103,8 @@ instance Arbitrary SimpleProgram where
       threadsAvailable = Set.fromList []
       inChannels       = Set.fromList []
       outChannels      = Set.fromList []
-      vars             = Set.fromList ["x", "y", "z", "h"]
+      vars             = Set.map Global $
+                         Set.fromList ["x", "y", "z", "h"]
       varsForbidden    = Set.fromList []
       varsAvailable    = vars
 

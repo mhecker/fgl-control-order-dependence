@@ -57,3 +57,16 @@ leastElementsFor (⊑) eq  as = nubBy eq $ [ a | a <- as, (∀) as (\a' -> a ⊑
 minimalElements as            = nub      $ [ a | a <- as, (∀) as (\a' -> a ==   a'   ∨  (not $ a' ⊑ a)) ]
 minimalElementsFor (⊑) eq  as = nubBy eq $ [ a | a <- as, (∀) as (\a' -> a `eq` a'   ∨  (not $ a' ⊑ a)) ]
 
+
+deleteAt n [] = error "cannot delete from empty list"
+deleteAt 0 (x:xs) = xs
+deleteAt n (x:xs)
+   | n < 0     = error "invalid index: delete"
+   | otherwise = x:(deleteAt (n-1) xs)
+
+
+updateAt n y [] = error "cannot update in empty list"
+updateAt 0 y (x:xs) = y:xs
+updateAt n y (x:xs)
+   | n < 0     = error "invalid index: update"
+   | otherwise = x:(updateAt (n-1) y xs)

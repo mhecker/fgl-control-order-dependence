@@ -31,11 +31,11 @@ import Text.Printf (printf)
 -- > 0 only for finished executions.
 prob :: Graph gr => gr CFGNode CFGEdge -> ExecutionTrace -> Rational
 prob gr [] = 1
-prob gr (((control,σ,i), o, (control',σ',i')) : trace)
+prob gr (((control,globalσ,tlσs,i), o, (control',globalσ',tlσs',i')) : trace)
     | length successors /= length control   = error "nicht genau ein nachfolgezustand pro thread" -- TODO: genauer reingucken, obs wirklich für jeden Thread genau einen gibt
-    | ((o,(control',σ')) `elem` successors) = (1 / toRational (length successors) ) * prob gr trace
+    | ((o,(control',globalσ',tlσs')) `elem` successors) = (1 / toRational (length successors) ) * prob gr trace
     | otherwise                             = 0
-  where successors = [(o,(control,σ)) | (o,(control,σ,i)) <- eventStep gr (control,σ,i)]
+  where successors = [(o,(control,globalσ,tlσs)) | (o,(control,globalσ,tlσs,i)) <- eventStep gr (control,globalσ,tlσs,i)]
 
 
 {- Probabilistich Noninteference -}
@@ -223,7 +223,7 @@ showCounterExamplesPniForEquivAnnotatedSome n program@(Program { tcfg, observabi
 
 allOutcomes :: Graph gr => Program gr -> Input -> [(Rational,GlobalState)]
 allOutcomes program@(Program { tcfg }) input = [ (prob tcfg trace, σ trace) | trace <- allFinishedExecutionTraces program input ]
-   where σ trace = last $ [ σ | (_,_,(_,σ,_)) <- trace]
+   where σ    trace = last $ [ σ    | (_,_,(_,σ,_   ,_)) <- trace]
 
 
 allOutcomesGrouped :: Graph gr => Program gr -> Input -> [(Rational,GlobalState)]

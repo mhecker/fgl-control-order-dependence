@@ -97,7 +97,7 @@ cdom       = defaultMain                               $ testGroup "cdom"      [
 cdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "cdom"      [ mkTest [cdomTests, cdomCdomTests], mkProp [cdomProps, cdomCdomProps]]
 balanced   = defaultMain                               $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
 balancedX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
-timing     = defaultMain                               $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
+timing     = defaultMain                               $ testGroup "timing"    [ {- mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], -} mkProp [timingClassificationDomPathsProps] ]
 timingX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
 simon      = defaultMain                               $ testGroup "simon"     [ mkTest [simonClassificationTests],                                       mkProp [simonClassificationProps] ]
 simonX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "simon"     [ mkTest [simonClassificationTests],                                       mkProp [simonClassificationProps] ]
@@ -178,20 +178,20 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
-                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
-    testProperty  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
-    testProperty  "timingClassificationDomPaths == timingClassification"
-                  timingDDomPathsIsTimingG,
-    testProperty  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
-                $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
-    testProperty  "timingClassificationAtUses is at least as precise as minimalClassification"
-                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
-    testProperty  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
-                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
-    testProperty  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
-                $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity)
+    -- testProperty  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --             isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
+    -- testProperty  "timingClassificationDomPaths == timingClassification"
+    --               timingDDomPathsIsTimingG,
+    -- testProperty  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
+    --             $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
+    -- testProperty  "timingClassificationAtUses is at least as precise as minimalClassification"
+    --             $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
+    -- testProperty  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
+    --             $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
+    -- testProperty  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
+    --             $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $

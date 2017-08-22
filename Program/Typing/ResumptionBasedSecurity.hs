@@ -145,68 +145,80 @@ subCommands c = [c]
 
 
 exampleInitialize =
-      ClassifyGlobally "h"  High    `Seq`
-      ClassifyGlobally "h'" High    `Seq`
-      ClassifyGlobally "l"  Low     `Seq`
-      ClassifyGlobally "l'" Low
+      ClassifyGlobally (Global "h" ) High    `Seq`
+      ClassifyGlobally (Global "h'") High    `Seq`
+      ClassifyGlobally (Global "l" ) Low     `Seq`
+      ClassifyGlobally (Global "l'") Low
 
 exampleD0Body =
-    Ass "h'" (Val 0)                           `Seq`
-    While (Not $ ((Var "h") `Leq` (Val 0))) (
+    Ass h' (Val 0)                           `Seq`
+    While (Not $ ((Var h) `Leq` (Val 0))) (
         Ch 0.5
-           (Ass "h"   (Val 0))
-           (Ass "h'"  ((Var "h'") `Plus` (Val 1)))
+           (Ass h   (Val 0))
+           (Ass h'  ((Var h') `Plus` (Val 1)))
     )
+  where h' = Global "h'"
+        h  = Global "h" 
 exampleD0 = exampleInitialize `Seq` exampleD0Body
 
 exampleD1Body =
-    While (Not $ ((Var "h") `Leq` (Val 0))) (
+    While (Not $ ((Var h) `Leq` (Val 0))) (
         Ch 0.5
-           (Ass "h"   ((Var "h") `Plus` (Val (-1))))
-           (Ass "h"   ((Var "h") `Plus` (Val   1 )))
+           (Ass h   ((Var h) `Plus` (Val (-1))))
+           (Ass h   ((Var h) `Plus` (Val   1 )))
     )
+  where h  = Global "h" 
 exampleD1 = exampleInitialize `Seq` exampleD1Body
 
 exampleD2Body =
-    If ((Var "l") `Leq` (Val 0))
-        (Ass "l'" (Val 1))
+    If ((Var l) `Leq` (Val 0))
+        (Ass l' (Val 1))
         exampleD0Body
+  where l' = Global "l'"
+        l  = Global "l" 
 exampleD2 = exampleInitialize `Seq` exampleD2Body
 
 
 exampleD3Body =
-    Ass "h" (Val 5)                          `Seq`
-    ParT [ exampleD0Body, Ass "l" (Val 1) ]  
+    Ass h (Val 5)                          `Seq`
+    ParT [ exampleD0Body, Ass l (Val 1) ]  
+  where h = Global "h"
+        l = Global "l"
 exampleD3 = exampleInitialize `Seq` exampleD3Body
 
 
 exampleD3'Body =
-    Ass "h" (Val 5)                          `Seq`
-    Par [ exampleD0Body, Ass "l" (Val 1) ]  
+    Ass h (Val 5)                          `Seq`
+    Par [ exampleD0Body, Ass l (Val 1) ]  
+  where h = Global "h"
+        l = Global "l"
 exampleD3' = exampleInitialize `Seq` exampleD3'Body
 
 
 exampleD4Body =
-    If ((Var "h") `Leq` (Val 0))
-       (Ass "h" (Val 1)  `Seq` Ass "h" (Val 2))
-       (Ass "h" (Val 3)                       )   `Seq`
-    Ass "l" (Val 4)
+    If ((Var h) `Leq` (Val 0))
+       (Ass h (Val 1)  `Seq` Ass h (Val 2))
+       (Ass h (Val 3)                       )   `Seq`
+    Ass l (Val 4)
+  where h = Global "h"
+        l = Global "l"
 exampleD4 = exampleInitialize `Seq` exampleD4Body
 
 exampleD4'Body =
-    If ((Var "h") `Leq` (Val 0))
-       (Ass "h" (Val 1)  `Seq` Ass "h" (Val 2))
-       (Ass "h" (Val 3)                       )   `Seq`
-    Ass "h" (Val 4)
+    If ((Var h) `Leq` (Val 0))
+       (Ass h (Val 1)  `Seq` Ass h (Val 2))
+       (Ass h (Val 3)                       )   `Seq`
+    Ass h (Val 4)
+  where h = Global "h"
 exampleD4' = exampleInitialize `Seq` exampleD4'Body
 
 
 
-exampleD5Body = ParT [ exampleD4, Ass "l" (Val 5) ]
+exampleD5Body = ParT [ exampleD4, Ass (Global "l") (Val 5) ]
 exampleD5 = exampleInitialize `Seq` exampleD5Body
 
 
-exampleD5'Body = ParT [ exampleD4', Ass "l" (Val 5) ]
+exampleD5'Body = ParT [ exampleD4', Ass (Global "l") (Val 5) ]
 exampleD5' = exampleInitialize `Seq` exampleD5'Body
 
 
@@ -214,29 +226,29 @@ exampleD5' = exampleInitialize `Seq` exampleD5'Body
 
 example0 :: Map ThreadId For
 example0 = Map.fromList $ [
-  (1, Ass "x" (Val 1))
+  (1, Ass (Global "x") (Val 1))
  ]
 var0 "x" = High
 main0 = 1
 
 example1 :: Map ThreadId For
 example1 = Map.fromList $ [
-  (1, Ass "x" (Val 1))
+  (1, Ass (Global "x") (Val 1))
  ]
 var1 "x" = Low
 main1 = 1
 
 example2 :: Map ThreadId For
 example2 = Map.fromList $ [
-  (1, If ((Var "h") `Leq` (Val 0)) (
-        Ass "l" (Val 1)
+  (1, If ((Var (Global "h")) `Leq` (Val 0)) (
+        Ass (Global "l") (Val 1)
       ) {-else-} (
-        Ass "l" (Val 2)
+        Ass (Global "l") (Val 2)
       )
    )
  ]
-var2 "l" = Low
-var2 "h" = High
+var2 (Global "l") = Low
+var2 (Global "h") = High
 main2 = 1
 
 

@@ -20,18 +20,18 @@ import Control.Monad(forM_)
 import Data.Graph.Inductive.Graph
 
 initialConfiguration :: Graph gr => Program gr -> Input -> Configuration
-initialConfiguration (Program { mainThread, entryOf }) input = ([entryOf mainThread], Map.empty, input)
+initialConfiguration (Program { mainThread, entryOf }) input = ([entryOf mainThread], Map.empty, [Map.empty], input)
 
 
 showAllFinalStates program input = do
-  forM_ (allFinalStates program input) (\(ns,sigma) -> do
+  forM_ (allFinalStates program input) (\(ns,sigma,tlsigma) -> do
      putStrLn "-----------------"
      putStrLn $ show $ ns
-     putStrLn $ show $ sigma
+     putStrLn $ show $ tlsigma
      putStrLn "-----------------"
    )
 
-allFinalStates :: Graph gr => Program gr -> Input -> [(ControlState,GlobalState)]
+allFinalStates :: Graph gr => Program gr -> Input -> [(ControlState,GlobalState,ThreadLocalStates)]
 allFinalStates program@(Program { tcfg }) input = iter [] [initialConfiguration program input]
   where iter finals []    = fmap hide finals
         iter finals confs = iter (newfinals++finals) $ concat $ fmap (step tcfg) confs
@@ -41,9 +41,10 @@ allFinalStates program@(Program { tcfg }) input = iter [] [initialConfiguration 
 showAllFinishedTraces program input = do
   forM_ (allFinishedTraces program input) (\trace -> do
      putStrLn "-----------------"
-     forM_ trace (\(ns,σ) -> do
+     forM_ trace (\(ns,globalσ,tlσ) -> do
         putStrLn $ show ns
-        putStrLn $ show σ
+        putStrLn $ show globalσ
+        putStrLn $ show tlσ
         putStrLn $ ""
        )
     )
@@ -52,11 +53,12 @@ showAllFinishedTraces program input = do
 showAllFinishedExecutionTraces program input = do
   forM_ (allFinishedExecutionTraces program input) (\trace -> do
      putStrLn "-----------------"
-     forM_ trace (\((ns,σ,i),(n,e),(ns',σ',i')) -> do
+     forM_ trace (\((ns,globalσ,tlσ,i),(n,e,index),(ns',globalσ',tlσ',i')) -> do
         putStrLn $ show ns
-        putStrLn $ show σ
+        putStrLn $ show globalσ
+        putStrLn $ show tlσ
         putStr   $ "---"
-        putStr   $ show (n,e)
+        putStr   $ show (n,e,index)
         putStrLn $ "-->"
         putStrLn $ ""
        )
@@ -68,10 +70,10 @@ allFinishedExecutionTraces program@(Program { tcfg }) input = fmap reverse $ ite
         iter finished []     = finished
         iter finished traces = iter (newfinished++finished) $ concat $ fmap (\((c,e,c'):cs) -> fmap (appendStep (c,e,c') cs) (eventStep tcfg c') ) traces
           where newfinished = [ trace | trace@((c,e,c'):cs) <- traces, eventStep tcfg c' == []]
-                appendStep (c,e,c') cs ((n,e'),c'')  = (c',(n,e'),c''):(c,e,c'):cs
+                appendStep (c,e,c') cs ((n,e',index),c'')  = (c',(n,e',index),c''):(c,e,c'):cs
 
 
-allFinishedTraces :: Graph gr => Program gr -> Input -> [[(ControlState,GlobalState)]]
+allFinishedTraces :: Graph gr => Program gr -> Input -> [[(ControlState,GlobalState, ThreadLocalStates)]]
 allFinishedTraces program@(Program { tcfg }) input = fmap reverse $ iter [] [[initialConfiguration program input]]
   where iter finished []     = fmap (fmap hide) finished
         iter finished traces = iter (newfinished++finished) $ concat $ fmap (\(c:cs) -> fmap (:(c:cs)) (step tcfg c)) traces
@@ -94,7 +96,7 @@ allFinishedAnnotatedExecutionTraces program@(Program { tcfg }) input = iter [] [
                 appendAll (t0@((c,e,c'):cs), p0) = fmap (\s -> (appendStep s, p0 * p)) successors
                    where p          = 1 / (toRational $ length successors)
                          successors = eventStep tcfg c'
-                         appendStep ((n,e'),c'')  = (c',(n,e'),c''):t0
+                         appendStep ((n,e',index),c'')  = (c',(n,e',index),c''):t0
                 newfinished = [ annTrace | annTrace@((c,e,c'):cs,p) <- traces, eventStep tcfg c' == []]
 
 -- TODO: this is somewhat "left-biased", fix this
@@ -137,8 +139,8 @@ someFinishedReversedAnnotatedExecutionTraces n program@(Program { tcfg }) input 
         sampleTrace t0@((c,e,c'):cs)
           | finished  = return t0
           | otherwise = do
-               ((n,e'),c'') <- sample successors
-               sampleTrace ((c',(n,e'),c''):t0)
+               ((n,e',index),c'') <- sample successors
+               sampleTrace ((c',(n,e',index),c''):t0)
          where finished   = successors == []
                successors = eventStep tcfg c'
 

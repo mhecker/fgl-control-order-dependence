@@ -114,7 +114,7 @@ compile entryOf nStart (ForC val s) = do
             nJoin,
             [nStart, nJoin, nInit] ++ nodesInLoop
            )
-    where loopvar = "_loopVar" ++ (show nStart)
+    where loopvar = ThreadLocal $ "_loopVar" ++ (show nStart)
 
 compile entryOf nStart (ForV var s) = do
   nInit <- gen
@@ -131,7 +131,7 @@ compile entryOf nStart (ForV var s) = do
             nJoin,
             [nStart, nJoin, nInit] ++ nodesInLoop
            )
-    where loopvar = "_loopVar" ++ (show nStart)
+    where loopvar = ThreadLocal $ "_loopVar" ++ (show nStart)
 
 compile entryOf nStart (Seq s1 s2) = do
   (g1,nMid, nodesInS1) <- compile entryOf nStart s1

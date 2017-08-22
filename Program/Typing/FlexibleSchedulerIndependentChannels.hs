@@ -43,29 +43,29 @@ type ExpVTyping = VarFunction -> SecurityLattice
 
 example0 :: Map ThreadId For
 example0 = Map.fromList $ [
-  (1, Ass "x" (Val 1))
+  (1, Ass (Global "x") (Val 1))
  ]
 var0 "x" = High
 main0 = 1
 
 example1 :: Map ThreadId For
 example1 = Map.fromList $ [
-  (1, Ass "x" (Val 1))
+  (1, Ass (Global "x") (Val 1))
  ]
 var1 "x" = Low
 main1 = 1
 
 example2 :: Map ThreadId For
 example2 = Map.fromList $ [
-  (1, If ((Var "h") `Leq` (Val 0)) (
-        Ass "l" (Val 1)
+  (1, If ((Var (Global "h")) `Leq` (Val 0)) (
+        Ass (Global "l") (Val 1)
       ) {-else-} (
-        Ass "l" (Val 2)
+        Ass (Global "l") (Val 2)
       )
    )
  ]
-var2 "l" = Low
-var2 "h" = High
+var2 (Global "l") = Low
+var2 (Global "h") = High
 main2 = 1
 
 
@@ -139,20 +139,20 @@ main2 = 1
            | ch == networkIn = Low
            | ch == chUserPortfolio = High
 
-          stockPrices = "stockPrices"
-          fundPrices  = "fundPrices"
-          i           = "i"
-          j           = "j"
-          database    = "database"
-          k           = "k"
-          overview    = "overview"
-          title       = "title"
-          price       = "price"
-          oldPrice    = "oldPrice"
-          tendency    = "tendency"
-          userPortfolio = "userPortfolio"
+          stockPrices = Global "stockPrices"
+          fundPrices  = Global "fundPrices"
+          i           = Global "i"
+          j           = Global "j"
+          database    = Global "database"
+          k           = Global "k"
+          overview    = Global "overview"
+          title       = Global "title"
+          price       = Global "price"
+          oldPrice    = Global "oldPrice"
+          tendency    = Global "tendency"
+          userPortfolio = Global "userPortfolio"
+          var :: Var -> SecurityLattice
           var x
-           | x == networkIn   = Low
            | x == stockPrices = Low
            | x == fundPrices  = Low
            | x == i           = Low

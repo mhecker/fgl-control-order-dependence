@@ -285,8 +285,8 @@ example1 = Program {
         exitOf 1 = 12
         exitOf 2 = 6
         tcfg = mkGraph (genLNodes 1 12) $
-                        [(1,2,Assign "x" (Val 42)),(2,3,spawn),(3,4,false),(3,5,true),(4,6,Print (Var "x") stdOut),(5,6,nop)]
-                    ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,Assign "x" (Var "x"))]
+                        [(1,2,Assign (Global "x") (Val 42)),(2,3,spawn),(3,4,false),(3,5,true),(4,6,Print (Var (Global "x")) stdOut),(5,6,nop)]
+                    ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,Assign (Global "x") (Var (Global "x")))]
 
 
 {-    1
@@ -318,8 +318,8 @@ example2 = Program {
         entryOf 1 = 1
         exitOf 1 = 12
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(7,8,false),(8,9,nop),(9,7,nop),(7,10,true),(10,11,Assign "x" (Var "x")),(11,12,nop)]
+                       [(1,2,Assign (Global "x") (Val 42)), (2,3,Read (Global "h") stdIn),(3,4,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(3,5,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),(4,6,nop),(5,6,nop),(6,7,nop)]
+                   ++  [(7,8,false),(8,9,nop),(9,7,nop),(7,10,true),(10,11,Assign (Global "x") (Var (Global "x"))),(11,12,nop)]
 
 
 
@@ -351,8 +351,8 @@ example2' = Program {
         entryOf 1 = 1
         exitOf 1 = 12
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,Assign "x" (Val 42)),(2,3,true),(2,4,false),(3,5,nop),(4,5,nop),(5,6,Assign "x" (Var "x")),(6,7,nop)]
-                   ++  [(7,8,nop),(8,9,nop),(9,10,nop),(10,7,false),(10,11,true),(11,12,Assign "x" (Var "x"))]
+                       [(1,2,Assign (Global "x") (Val 42)),(2,3,true),(2,4,false),(3,5,nop),(4,5,nop),(5,6,Assign (Global "x") (Var (Global "x"))),(6,7,nop)]
+                   ++  [(7,8,nop),(8,9,nop),(9,10,nop),(10,7,false),(10,11,true),(11,12,Assign (Global "x") (Var (Global "x")))]
 
 
 
@@ -429,11 +429,11 @@ exampleNtscd = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
          (1,ForC 1 (Seq (ForC 2
-                            (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))
-                        (If (Leq (Val 0) (Times (Var "x") (Var "x")))
-                            (ReadFromChannel "a" "stdIn")
+                            (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut"))
+                        (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x"))))
+                            (ReadFromChannel (Global "a") "stdIn")
                          {-else-}
-                            (ReadFromChannel "a" "stdIn"))))
+                            (ReadFromChannel (Global "a") "stdIn"))))
          ]
 
 
@@ -481,8 +481,8 @@ example3 = Program {
         exitOf 1 = 7
         exitOf 2 = 4
         tcfg = mkGraph (genLNodes 1 7)  $
-                       [(1,2,nop),(2,3,spawn),(3,4,Assign "x" (Val 17))]
-                   ++  [(2,5,nop),(5,6,Assign "x" (Val 4)),(6,7,Print (Var "x") stdOut)]
+                       [(1,2,nop),(2,3,spawn),(3,4,Assign (Global "x") (Val 17))]
+                   ++  [(2,5,nop),(5,6,Assign (Global "x") (Val 4)),(6,7,Print (Var (Global "x")) stdOut)]
 
 
 
@@ -515,8 +515,8 @@ example4 = Program {
         exitOf 1 = 11
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 11)  $
-                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(7,8,Spawn),(7,10, NoOp), (10,11,Print (Var "x") stdOut),(8,9,Print (Var "x") stdOut)]
+                       [(1,2,Assign (Global "x") (Val 42)), (2,3,Read (Global "h") stdIn),(3,4,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(3,5,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),(4,6,nop),(5,6,nop),(6,7,nop)]
+                   ++  [(7,8,Spawn),(7,10, NoOp), (10,11,Print (Var (Global "x")) stdOut),(8,9,Print (Var (Global "x")) stdOut)]
 
 
 {-          1
@@ -547,8 +547,8 @@ example5 = Program {
         exitOf 1 = 10
         exitOf 2 = 9
         tcfg = mkGraph (genLNodes 1 11)  $
-                       [(1,2,Assign "x" (Val 42)), (2,11, NoOp), (11,3,Read "h" stdIn),(3,4,Guard True (Leq (Var "h") (Var "h"))),(3,5,Guard False (Leq (Var "h") (Var "h"))),(4,6,nop),(5,6,nop),(6,7,nop)]
-                   ++  [(2,8,Spawn),(7,10,Print (Var "x") stdOut),(8,9,Print (Var "x") stdOut)]
+                       [(1,2,Assign (Global "x") (Val 42)), (2,11, NoOp), (11,3,Read (Global "h") stdIn),(3,4,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(3,5,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),(4,6,nop),(5,6,nop),(6,7,nop)]
+                   ++  [(2,8,Spawn),(7,10,Print (Var (Global "x")) stdOut),(8,9,Print (Var (Global "x")) stdOut)]
 
 
 
@@ -585,11 +585,11 @@ example6 = Program {
         exitOf 1 = 12
         exitOf 2 = 10
         tcfg = mkGraph (genLNodes 1 12)  $
-                       [(1,2,Assign "x" (Val 42)), (2,3,Read "h" stdIn),(3,4,false),(3,11,true),(11,12,Print (Var "x") stdOut),
-                        (4,5,nop), (5,6,Guard True (Leq (Var "h") (Var "h"))),(5,7,Guard False (Leq (Var "h") (Var "h"))),
+                       [(1,2,Assign (Global "x") (Val 42)), (2,3,Read (Global "h") stdIn),(3,4,false),(3,11,true),(11,12,Print (Var (Global "x")) stdOut),
+                        (4,5,nop), (5,6,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(5,7,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),
                                    (6,8,nop),                     (7,8,nop),
                         (8,3,nop),
-                        (8,9,Spawn),(9,10,Print (Var "x") stdOut)]
+                        (8,9,Spawn),(9,10,Print (Var (Global "x")) stdOut)]
 
 
 
@@ -621,8 +621,8 @@ example7 = Program {
         exitOf 1 = 5
         exitOf 2 = 7
         tcfg = mkGraph (genLNodes 1 7)  $
-                       [(1,2,Assign "x" (Val 42)), (2,3,nop), (3,4,Read "h" stdIn),(4,5,Print (Var "x") stdOut)]
-                   ++  [(2,6,Spawn),(6,7,Print (Var "x") stdOut)]
+                       [(1,2,Assign (Global "x") (Val 42)), (2,3,nop), (3,4,Read (Global "h") stdIn),(4,5,Print (Var (Global "x")) stdOut)]
+                   ++  [(2,6,Spawn),(6,7,Print (Var (Global "x")) stdOut)]
 
 
 {-
@@ -696,30 +696,30 @@ example8 = Program {
         exitOf 3 = 302
         tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..23] ++ [201..202] ++ [301..302]]  $
                        [( 1,23,nop),
-                        (23,20,Read "h" stdIn),
-                        (20,21, Assign "zero" (Val 0)),
-                        (21,22, Assign "one" (Val 1)),
-                        (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq (Var "h") (Var "h"))),
-                                                     (2,4, Guard True  (Leq (Var "h") (Var "h"))),
-                        (4,5,Assign "tmp" (Val 50)),
+                        (23,20,Read (Global "h") stdIn),
+                        (20,21, Assign (Global "zero") (Val 0)),
+                        (21,22, Assign (Global "one") (Val 1)),
+                        (22,2,Assign (Global "tmp") (Val 1)), (2,3, Guard False (Leq (Var (Global "h")) (Var (Global "h")))),
+                                                     (2,4, Guard True  (Leq (Var (Global "h")) (Var (Global "h")))),
+                        (4,5,Assign (Global "tmp") (Val 50)),
                         (3,5,nop),
                         (5,6,nop),
                         (6,7,nop),(6,201,Spawn),
-                        (7,10, Guard False (Not $ Leq (Var "tmp") (Var "zero"))),
-                        (7, 8, Guard True  (Not $ Leq (Var "tmp") (Var "zero"))),
-                        (8, 9, Assign "tmp" (Plus (Var "tmp") (Val (-1)))),
+                        (7,10, Guard False (Not $ Leq (Var (Global "tmp")) (Var (Global "zero")))),
+                        (7, 8, Guard True  (Not $ Leq (Var (Global "tmp")) (Var (Global "zero")))),
+                        (8, 9, Assign (Global "tmp") (Plus (Var (Global "tmp")) (Val (-1)))),
                         (9, 7, nop),
                         (10,11,nop),
-                        (11,12,Assign "tmp2" (Val 1)),
+                        (11,12,Assign (Global "tmp2") (Val 1)),
                         (12,301,Spawn),
                         (12,13,nop),
-                        (13,16, Guard False (Not $ Leq (Var "tmp2") (Var "zero"))),
-                        (13,14, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
-                        (14,15, Assign "tmp2" (Plus (Var "tmp2") (Val (-1)))),
+                        (13,16, Guard False (Not $ Leq (Var (Global "tmp2")) (Var (Global "zero")))),
+                        (13,14, Guard True  (Not $ Leq (Var (Global "tmp2")) (Var (Global "zero")))),
+                        (14,15, Assign (Global "tmp2") (Plus (Var (Global "tmp2")) (Val (-1)))),
                         (15,13, nop),
                         (16,17, Print (Val 1) stdOut),
 
-                        (201,202, Assign "tmp2" (Val 50)),
+                        (201,202, Assign (Global "tmp2") (Val 50)),
 
                         (301,302, Print (Val 0) stdOut)]
 
@@ -795,26 +795,26 @@ example8' = Program {
         exitOf 3 = 302
         tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..23] ++ [201..202] ++ [301..302]]  $
                        [( 1,23,nop),
-                        (23,20,Read "h" stdIn),
-                        (20,21, Assign "zero" (Val 0)), -- TODO: entfernen
-                        (21,22, Assign "one" (Val 1)),  -- TODO: entfernen
-                        (22,2,Assign "tmp" (Val 1)), (2,3, Guard False (Leq (Var "h") (Var "h"))),
-                                                     (2,4, Guard True  (Leq (Var "h") (Var "h"))),
-                        (4,5,Assign "tmp" (Val 50)),
+                        (23,20,Read (Global "h") stdIn),
+                        (20,21, Assign (Global "zero") (Val 0)), -- TODO: entfernen
+                        (21,22, Assign (Global "one") (Val 1)),  -- TODO: entfernen
+                        (22,2,Assign (Global "tmp") (Val 1)), (2,3, Guard False (Leq (Var (Global "h")) (Var (Global "h")))),
+                                                     (2,4, Guard True  (Leq (Var (Global "h")) (Var (Global "h")))),
+                        (4,5,Assign (Global "tmp") (Val 50)),
                         (3,5,nop),
                         (5,6,nop),
                         (6,7,nop),(6,201,Spawn),
-                        (7,10, Guard False (Not $ Leq (Var "tmp2") (Var "zero"))),
-                        (7, 8, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
-                        (8, 9, Assign "tmp" (Plus (Var "tmp") (Val (-1)))),
+                        (7,10, Guard False (Not $ Leq (Var (Global "tmp2")) (Var (Global "zero")))),
+                        (7, 8, Guard True  (Not $ Leq (Var (Global "tmp2")) (Var (Global "zero")))),
+                        (8, 9, Assign (Global "tmp") (Plus (Var (Global "tmp")) (Val (-1)))),
                         (9, 7, nop),
                         (10,11,nop),
-                        (11,12,Assign "tmp2" (Val 1)),
+                        (11,12,Assign (Global "tmp2") (Val 1)),
                         (12,301,Spawn),
                         (12,13,nop),
-                        (13,16, Guard False (Not $ Leq (Var "tmp2") (Var "zero"))),
-                        (13,14, Guard True  (Not $ Leq (Var "tmp2") (Var "zero"))),
-                        (14,15, Assign "tmp2" (Plus (Var "tmp2") (Val (-1)))),
+                        (13,16, Guard False (Not $ Leq (Var (Global "tmp2")) (Var (Global "zero")))),
+                        (13,14, Guard True  (Not $ Leq (Var (Global "tmp2")) (Var (Global "zero")))),
+                        (14,15, Assign (Global "tmp2") (Plus (Var (Global "tmp2")) (Val (-1)))),
                         (15,13, nop),
                         (16,17, Print (Val 1) stdOut),
 
@@ -922,8 +922,8 @@ joachim2 = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                         `Seq` -- Notwendig, da sonst die Controlabhängigkeit vom Start-Knoten zu viel tainted.
-           ReadFromChannel "h" stdIn    `Seq`
-           If (Leq (Var "h") (Val 0))
+           ReadFromChannel (Global "h") stdIn    `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
               (SpawnThread 4)
               (Skip)                    `Seq`
            Skip                         `Seq`
@@ -950,20 +950,20 @@ joachim3 = p { observability = defaultObservabilityMap (tcfg p) }
           (1,
            SpawnThread 2                `Seq`
            SpawnThread 3                `Seq`
-           ReadFromChannel "h" stdIn    `Seq`
-           If (Leq (Var "h") (Val 0))
+           ReadFromChannel (Global "h") stdIn    `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)
           ),
           (2,
            Skip                         `Seq`
            Skip                         `Seq`
-           Ass "l" (Val 0)
+           Ass (Global "l") (Val 0)
           ),
           (3,
            Skip                         `Seq`
            Skip                         `Seq`
-           Ass "l" (Val 1)
+           Ass (Global "l") (Val 1)
           )
          ]
 
@@ -974,9 +974,9 @@ noFlow = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
-           Ass             "x" (Val 42)  `Seq`
-           PrintToChannel  (Var "x") stdOut
+           ReadFromChannel (Global "h") stdIn     `Seq`
+           Ass             (Global "x") (Val 42)  `Seq`
+           PrintToChannel  (Var (Global "x")) stdOut
           )
          ]
 
@@ -986,8 +986,8 @@ directFlow = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
-           PrintToChannel  (Var "h")  stdOut
+           ReadFromChannel (Global "h") stdIn     `Seq`
+           PrintToChannel  (Var (Global "h"))  stdOut
           )
          ]
 
@@ -997,12 +997,12 @@ directFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
-           Ass "x" (Var "h")             `Seq`
+           ReadFromChannel (Global "h") stdIn     `Seq`
+           Ass (Global "x") (Var (Global "h"))             `Seq`
            SpawnThread 2
           ),
           (2,
-           PrintToChannel (Var "x") stdOut
+           PrintToChannel (Var (Global "x")) stdOut
           )
          ]
 
@@ -1012,13 +1012,13 @@ noDirectFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
-           Ass "h" (Val 0)               `Seq`
-           Ass "x" (Var "h")             `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
+           Ass (Global "h") (Val 0)               `Seq`
+           Ass (Global "x") (Var (Global "h"))             `Seq`
+           ReadFromChannel (Global "h") stdIn     `Seq`
            SpawnThread 2
           ),
           (2,
-           PrintToChannel (Var "x") stdOut
+           PrintToChannel (Var (Global "x")) stdOut
           )
          ]
 
@@ -1029,12 +1029,12 @@ indirectFlow = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
-           Ass "x" (Val 42)              `Seq`
-           If (Leq (Var "h") (Val 0))
-              (Ass "x" (Val 17))
+           ReadFromChannel (Global "h") stdIn     `Seq`
+           Ass (Global "x") (Val 42)              `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
+              (Ass (Global "x") (Val 17))
               (Skip)                     `Seq`
-           PrintToChannel (Var "x") stdOut
+           PrintToChannel (Var (Global "x")) stdOut
           )
          ]
 
@@ -1046,8 +1046,8 @@ orderConflict = p { observability = defaultObservabilityMap (tcfg p) }
           (1,
            Skip                          `Seq`
            SpawnThread 2                 `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
-           If (Leq (Var "h") (Val 0))
+           ReadFromChannel (Global "h") stdIn     `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip)
               (Skip)                     `Seq`
            PrintToChannel (Val 17) stdOut
@@ -1066,17 +1066,17 @@ dubiousOrderConflict = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1,
-           Ass "x" (Val 42)              `Seq`
-           Ass "y" (Val 42)              `Seq`
+           Ass (Global "x") (Val 42)              `Seq`
+           Ass (Global "y") (Val 42)              `Seq`
            SpawnThread 2                 `Seq`
-           ReadFromChannel "h" stdIn     `Seq`
-           If (Leq (Var "h") (Val 0))
+           ReadFromChannel (Global "h") stdIn     `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip)
               (Skip)                     `Seq`
-           PrintToChannel (Var "x") stdOut
+           PrintToChannel (Var (Global "x")) stdOut
           ),
           (2,
-           PrintToChannel (Var "y") stdOut
+           PrintToChannel (Var (Global "y")) stdOut
           )
          ]
 
@@ -1087,18 +1087,18 @@ cdomIsBroken = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           Ass "x" (Val 42)                                                 `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           Ass (Global "x") (Val 42)                                                 `Seq`
            SpawnThread 2                                                    `Seq`
-           If (Leq (Var "h") (Val 0))
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)                                                        `Seq`
-           Ass "x" (Val 17)                                                 `Seq`
+           Ass (Global "x") (Val 17)                                                 `Seq`
            SpawnThread 2
           ),
           (2,
            Skip                                                             `Seq`
-           PrintToChannel (Var "x") stdOut
+           PrintToChannel (Var (Global "x")) stdOut
           )
          ]
 
@@ -1145,9 +1145,9 @@ cdomIsBroken' = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
            SpawnThread 2                                                    `Seq`
-           If (Leq (Var "h") (Val 0))
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)                                                        `Seq`
            SpawnThread 2
@@ -1167,9 +1167,9 @@ cdomIsBroken2 = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
            ForC 2 (
-              If (Leq (Var "h") (Val 0))
+              If (Leq (Var (Global "h")) (Val 0))
                 (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
                 (Skip)                                                      `Seq`
               PrintToChannel (Val 42) stdOut                                `Seq`
@@ -1190,10 +1190,10 @@ noninterferingSchedulers = p { observability = defaultObservabilityMap (tcfg p) 
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
            ForC 2 (
-              ReadFromChannel "l1" lowIn1                                   `Seq`
-              ReadFromChannel "l2" lowIn2                                   `Seq`
+              ReadFromChannel (Global "l1") lowIn1                                   `Seq`
+              ReadFromChannel (Global "l2") lowIn2                                   `Seq`
               SpawnThread 42                                                `Seq`
               SpawnThread 11                                                `Seq`
               SpawnThread 12
@@ -1201,20 +1201,20 @@ noninterferingSchedulers = p { observability = defaultObservabilityMap (tcfg p) 
           ),
           (42,
            Skip                                                             `Seq`
-           If (Leq (Var "h") (Val 0))
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)                                                        `Seq`
-           Ass "h" (Var "h" `Plus` Var "l1" )
+           Ass (Global "h") (Var (Global "h") `Plus` Var (Global "l1") )
           ),
           (11,
            Skip                                                             `Seq`
-           Ass "l" (Var "l1")                                               `Seq`
-           PrintToChannel (Var "l") stdOut
+           Ass (Global "l") (Var (Global "l1"))                                               `Seq`
+           PrintToChannel (Var (Global "l")) stdOut
           ),
           (12,
            Skip                                                             `Seq`
-           Ass "l" (Var "l2")                                               `Seq`
-           PrintToChannel (Var "l") stdOut
+           Ass (Global "l") (Var (Global "l2"))                                               `Seq`
+           PrintToChannel (Var (Global "l")) stdOut
           )
          ]
 
@@ -1234,11 +1234,11 @@ timingVsFSI3For = ForProgram {
 timingVsFSI3Code = code where
          code = Map.fromList $ [
            (1, Skip                                         `Seq`   -- remove this line to obtain a program that is FSI-Secure, but which timingAnalysis cannot determine!
-               ReadFromChannel "a" "stdIn"                  `Seq`
+               ReadFromChannel (Global "a") "stdIn"                  `Seq`
                SpawnThread 2
            ),
-           (2, ReadFromChannel "x" "lowIn1"                 `Seq`
-               Ass "a" (Times (Var "x") (Var "a"))
+           (2, ReadFromChannel (Global "x") "lowIn1"                 `Seq`
+               Ass (Global "a") (Times (Var (Global "x")) (Var (Global "a")))
            )
           ]
 
@@ -1250,14 +1250,14 @@ timingDependenceExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
            (1, Skip                                         `Seq`
-               ReadFromChannel "h" "stdIn"                  `Seq`
+               ReadFromChannel (Global "h") "stdIn"                  `Seq`
                SpawnThread 2                                `Seq`
-               ForV "h" (Ass "x" (Val 42))                  `Seq`
-               PrintToChannel (Var "x") stdOut
+               ForV (Global "h") (Ass (Global "x") (Val 42))                  `Seq`
+               PrintToChannel (Var (Global "x")) stdOut
            ),
-           (2, ReadFromChannel "x" "lowIn1"                 `Seq`
+           (2, ReadFromChannel (Global "x") "lowIn1"                 `Seq`
                ForC 5 Skip                                  `Seq`
-               Ass "x" (Val 17)
+               Ass (Global "x") (Val 17)
            )
           ]
 
@@ -1283,6 +1283,33 @@ code2ResumptionForProgram code = do
   }
 
 
+
+timingAtUsesVsResumptionBasedBugInTranslationExample2 = code2Program timingAtUsesVsResumptionBasedBugInTranslationExample2Code
+timingAtUsesVsResumptionBasedBugInTranslationExample2Code = code where
+        code = Map.fromList $ [
+          (1,(ForC 2
+                 (Seq
+                 (Seq
+                 (Seq (SpawnThread 2)
+                      (PrintToChannel (Val (-1)) "stdOut"))
+                      (ForC 2
+                          (Ass (Global "x") (Val 1))
+                      ))
+                      (ForV (Global "x")
+                          (Seq (Ass (Global "b") (Times (Var (Global "x")) (Var (Global "x"))))
+                               Skip))
+                      ))),
+          (2, Skip `Seq` 
+             (ForC 2
+                 (ForC 1
+                     (Seq (ForC 1
+                              (PrintToChannel (Val 17) "stdOut"))
+                     (Seq (ReadFromChannel (Global "x") "stdIn")
+                          Skip)))
+                 )
+              )
+         ]
+
 timingAtUsesVsResumptionBasedBugInTranslationExample1 = code2Program timingAtUsesVsResumptionBasedBugInTranslationExample1Code
 timingAtUsesVsResumptionBasedBugInTranslationExample1Code = code where
         code = Map.fromList $ [
@@ -1290,53 +1317,53 @@ timingAtUsesVsResumptionBasedBugInTranslationExample1Code = code where
               (Seq
               (Seq
               (Seq
-              (Seq (Ass "x" (Val 1))
-                   (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))
-                   (ForV "x" (Ass "a" (Times (Var "x") (Var "x")))))
-                   (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+              (Seq (Ass (Global "x") (Val 1))
+                   (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut"))
+                   (ForV (Global "x") (Ass (Global "a") (Times (Var (Global "x")) (Var (Global "x"))))))
+                   (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x"))))
                        (Seq Skip
-                            (ReadFromChannel "x" "lowIn1"))
+                            (ReadFromChannel (Global "x") "lowIn1"))
                    {- else -}
-                       (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                       (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x"))))
                              (SpawnThread 2)
-                             (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))))
-                   (If (Leq (Val 0) (Times (Var "x") (Var "x")))
+                             (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut"))))
+                   (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x"))))
                        (Seq (ForC 1 Skip)
                             (ForC 1 (SpawnThread 3)))
                    {- else -}
                        (ForC 1
-                           (If (Leq (Val 0) (Times (Var "x") (Var "x")))
-                               (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
-                               (ReadFromChannel "b" "lowIn1")))))),
+                           (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x"))))
+                               (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")
+                               (ReadFromChannel (Global "b") "lowIn1")))))),
           (2, Skip `Seq`
-              (ForV "x"
+              (ForV (Global "x")
                   (Seq
                   (Seq
-                  (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
-                       (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))
-                  (Seq (Ass "c" (Times (Var "x") (Var "x")))
-                       (PrintToChannel (Times (Var "c") (Var "x")) "stdOut")))
-                  (Seq (If (Leq (Val 0) (Times (Var "c") (Var "x")))
-                           (Ass "y" (Times (Var "c") (Var "c")))
+                  (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")
+                       (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut"))
+                  (Seq (Ass (Global "c") (Times (Var (Global "x")) (Var (Global "x"))))
+                       (PrintToChannel (Times (Var (Global "c")) (Var (Global "x"))) "stdOut")))
+                  (Seq (If (Leq (Val 0) (Times (Var (Global "c")) (Var (Global "x"))))
+                           (Ass (Global "y") (Times (Var (Global "c")) (Var (Global "c"))))
                            Skip)
                   (Seq Skip
-                       (ReadFromChannel "y" "lowIn1")))))),
+                       (ReadFromChannel (Global "y") "lowIn1")))))),
           (3, Skip `Seq`
-              (Seq (ForV "x"
+              (Seq (ForV (Global "x")
                        (Seq
-                       (Seq (Ass "z" (Times (Var "x") (Var "x")))
-                            (ReadFromChannel "c" "lowIn1"))
-                            (ForC 1 (PrintToChannel (Times (Var "c") (Var "z")) "stdOut"))))
+                       (Seq (Ass (Global "z") (Times (Var (Global "x")) (Var (Global "x"))))
+                            (ReadFromChannel (Global "c") "lowIn1"))
+                            (ForC 1 (PrintToChannel (Times (Var (Global "c")) (Var (Global "z"))) "stdOut"))))
               (Seq
               (Seq
-              (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
-                   (Ass "b" (Times (Var "x") (Var "x"))))
+              (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")
+                   (Ass (Global "b") (Times (Var (Global "x")) (Var (Global "x")))))
                    (ForC 2
-                       (Ass "b" (Times (Var "x") (Var "b")))))
-              (Seq (ForV "x"
-                       (ReadFromChannel "z" "stdIn"))
-              (Seq (ReadFromChannel "c" "stdIn")
-                   (PrintToChannel (Times (Var "x") (Var "x")) "stdOut"))))))
+                       (Ass (Global "b") (Times (Var (Global "x")) (Var (Global "b"))))))
+              (Seq (ForV (Global "x")
+                       (ReadFromChannel (Global "z") "stdIn"))
+              (Seq (ReadFromChannel (Global "c") "stdIn")
+                   (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut"))))))
          ]
 
 
@@ -1344,10 +1371,10 @@ timingAtUsesVsResumptionBasedBugInTranslationExample1Code = code where
 simpleExample1Code = code where
         code = Map.fromList $ [
           (1,
-           ReadFromChannel "y" "stdIn"                                      `Seq`
-           ReadFromChannel "a" "stdIn"                                      `Seq`
-           ForV "a"
-             (ReadFromChannel "b" "lowIn1")
+           ReadFromChannel (Global "y") "stdIn"                                      `Seq`
+           ReadFromChannel (Global "a") "stdIn"                                      `Seq`
+           ForV (Global "a")
+             (ReadFromChannel (Global "b") "lowIn1")
           )
          ]
 
@@ -1356,12 +1383,12 @@ figure1leftCode = code where
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           If (Leq (Var "h") (Val 1234))
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           If (Leq (Var (Global "h")) (Val 1234))
               (PrintToChannel (Val 0) stdOut)
               (Skip)                                                        `Seq`
-           Ass "l" (Var "h")                                                `Seq`
-           PrintToChannel (Var "l") stdOut
+           Ass (Global "l") (Var (Global "h"))                                                `Seq`
+           PrintToChannel (Var (Global "l")) stdOut
           )
          ]
 
@@ -1371,8 +1398,8 @@ figure5leftCode = code where
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           If (Leq (Var "h") (Val 0))
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)                                                        `Seq`
            SpawnThread 2                                                    `Seq`
@@ -1391,25 +1418,25 @@ figure5rightCode = code where
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           Ass "tmp" (Val 0)                                                `Seq`
-           If (Leq (Var "h") (Val 0))
-              (Ass "tmp" (Val 8))
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           Ass (Global "tmp") (Val 0)                                                `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
+              (Ass (Global "tmp") (Val 8))
               (Skip)                                                        `Seq`
            SpawnThread 2                                                    `Seq`
-           ForV "tmp" (
+           ForV (Global "tmp") (
              Skip
            )                                                                `Seq`
-           Ass "tmp2" (Val 0)                                               `Seq`
+           Ass (Global "tmp2") (Val 0)                                               `Seq`
            SpawnThread 3                                                    `Seq`
-           ForV "tmp2" (
+           ForV (Global "tmp2") (
              Skip
            )                                                                `Seq`
            PrintToChannel (Val 42) stdOut
           ),
           (2,
            Skip                                                             `Seq`
-           Ass "tmp2" (Val 3)
+           Ass (Global "tmp2") (Val 3)
           ),
           (3,
            PrintToChannel (Val 17) stdOut
@@ -1421,12 +1448,12 @@ figure5rightCode = code where
 exampleD4 = code2Program exampleD4Code
 exampleD4Code = code where
         code = Map.fromList $ [
-          (1, ReadFromChannel "h" stdIn                                     `Seq`
-              If ((Var "h") `Leq` (Val 0))
-                (Ass "h" (Val 1)  `Seq` Ass "h" (Val 2))
-                (Ass "h" (Val 3)                       )                    `Seq`
-              Ass "l" (Val 4)                                               `Seq`
-              PrintToChannel (Var "l") stdOut
+          (1, ReadFromChannel (Global "h") stdIn                                     `Seq`
+              If ((Var (Global "h")) `Leq` (Val 0))
+                (Ass (Global "h") (Val 1)  `Seq` Ass (Global "h") (Val 2))
+                (Ass (Global "h") (Val 3)                       )                    `Seq`
+              Ass (Global "l") (Val 4)                                               `Seq`
+              PrintToChannel (Var (Global "l")) stdOut
           )
          ]
 
@@ -1462,25 +1489,25 @@ figure5right' = p { observability = defaultObservabilityMap (tcfg p)  }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           Ass "tmp" (Val 0)                                                `Seq`
-           If (Leq (Var "h") (Val 0))
-              (Ass "tmp" (Val 5))
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           Ass (Global "tmp") (Val 0)                                                `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
+              (Ass (Global "tmp") (Val 5))
               (Skip)                                                        `Seq`
            SpawnThread 2                                                    `Seq`
-           ForV "tmp" (
+           ForV (Global "tmp") (
              Skip
            )                                                                `Seq`
-           Ass "tmp2" (Val 5)                                               `Seq`
+           Ass (Global "tmp2") (Val 5)                                               `Seq`
            SpawnThread 3                                                    `Seq`
-           ForV "tmp2" (
+           ForV (Global "tmp2") (
              Skip
            )                                                                `Seq`
            PrintToChannel (Val 42) stdOut
           ),
           (2,
            Skip                                                             `Seq`
-           Ass "tmp2" (Val 0)
+           Ass (Global "tmp2") (Val 0)
           ),
           (3,
            PrintToChannel (Val 17) stdOut
@@ -1494,26 +1521,26 @@ figure5right'' = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           Ass "tmp" (Val 0)                                                `Seq`
-           If (Leq (Var "h") (Val 0))
-              (Ass "tmp" (Val 10))
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           Ass (Global "tmp") (Val 0)                                                `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
+              (Ass (Global "tmp") (Val 10))
               (Skip)                                                        `Seq`
            SpawnThread 2                                                    `Seq`
-           ForV "tmp" (
+           ForV (Global "tmp") (
              Skip
            )                                                                `Seq`
-           Ass "tmp2" (Val 0)                                               `Seq`
+           Ass (Global "tmp2") (Val 0)                                               `Seq`
            SpawnThread 3                                                    `Seq`
-           Ass  "loop2" (Var "tmp2")                                        `Seq`
-           ForV "loop2" (
+           Ass (Global "loop2") (Var (Global "tmp2"))                                        `Seq`
+           ForV (Global "loop2") (
              Skip
            )                                                                `Seq`
            PrintToChannel (Val 42) stdOut
           ),
           (2,
            Skip                                                             `Seq`
-           Ass "tmp2" (Val 3)
+           Ass (Global "tmp2") (Val 3)
           ),
           (3,
            PrintToChannel (Val 17) stdOut
@@ -1527,17 +1554,17 @@ ijisLSODistkaputt = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
            SpawnThread 2                                                    `Seq`
-           If (Leq (Var "h") (Val 0))
+           If (Leq (Var (Global "h")) (Val 0))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)                                                        `Seq`
-           Ass "x" (Val 17)
+           Ass (Global "x") (Val 17)
           ),
           (2,
            Skip                                                             `Seq`
-           Ass "x" (Val 42)                                                 `Seq`
-           PrintToChannel (Var "x") stdOut
+           Ass (Global "x") (Val 42)                                                 `Seq`
+           PrintToChannel (Var (Global "x")) stdOut
           )
          ]
 
@@ -1549,16 +1576,16 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = p { observability =
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "h" (Val 0)                                                  `Seq`
+           Ass (Global "h") (Val 0)                                                  `Seq`
            SpawnThread 2                                                    `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
            Skip
           ),
           (2,
            Skip                                                             `Seq`
-           Ass "h2" (Var "h")                                               `Seq`
-           Ass "x" (Val 42)                                                 `Seq`
-           PrintToChannel (Var "x") stdOut
+           Ass (Global "h2") (Var (Global "h"))                                               `Seq`
+           Ass (Global "x") (Val 42)                                                 `Seq`
+           PrintToChannel (Var (Global "x")) stdOut
           )
          ]
 
@@ -1581,7 +1608,7 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2 = p { observability 
           ),
           (2,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
            PrintToChannel (Val 42) stdOut
           )
          ]
@@ -1594,7 +1621,7 @@ minimalClassificationIsLessPreciseThanSimonClassification = p { observability = 
           (1,
            Skip                                                             `Seq`
            If (Leq (Val 0) (Val 1))                                         
-               (ReadFromChannel "h" stdIn)                                  
+               (ReadFromChannel (Global "h") stdIn)                                  
                (SpawnThread 2)                                                `Seq`
            PrintToChannel (Val 42) stdOut
           ),
@@ -1612,79 +1639,79 @@ timingSecureButNotCombinedTimingSecure = p { observability = defaultObservabilit
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           Ass "tmp" (Val 0)                                                `Seq`
-           If (Leq (Var "h") (Val 0))
-              (Ass "tmp" (Val 8))
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           Ass (Global "tmp") (Val 0)                                                `Seq`
+           If (Leq (Var (Global "h")) (Val 0))
+              (Ass (Global "tmp") (Val 8))
               (Skip)                                                        `Seq`
-           ForV "tmp" (
+           ForV (Global "tmp") (
              Skip
            )                                                                `Seq`
            SpawnThread 2                                                    `Seq`
-           Ass "tmp2" (Val 0)                                               `Seq`
-           PrintToChannel (Var "tmp2") stdOut
+           Ass (Global "tmp2") (Val 0)                                               `Seq`
+           PrintToChannel (Var (Global "tmp2")) stdOut
           ),
           (2,
            Skip                                                             `Seq`
-           Ass "tmp2" (Val 3)
+           Ass (Global "tmp2") (Val 3)
           )
          ]
 
 timingSecureButNotCombinedTimingSecureGenerated :: Program Gr
 timingSecureButNotCombinedTimingSecureGenerated = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
-        code = Map.fromList [(1,Seq (If CTrue (If CFalse (Seq Skip Skip) (Seq (ReadFromChannel "x" "lowIn1") (Ass "y" (Plus (Var "x") (Var "x"))))) (Seq (Seq Skip (ReadFromChannel "x" "stdIn")) (If (Leq (Val 0) (Plus (Var "x") (Var "x"))) Skip (Ass "a" (Plus (Var "x") (Var "x")))))) (Seq (If CTrue (If CFalse (PrintToChannel (Val 42) "stdOut") (ReadFromChannel "c" "stdIn")) (ForC 1 (Ass "z" (Val 1)))) (If CFalse (Seq (PrintToChannel (Val 17) "stdOut") Skip) (Seq (Ass "z" (Val 0)) (SpawnThread 2))))),(2,ForV "z" (Seq (ForC 2 (Seq Skip (PrintToChannel (Plus (Var "z") (Var "z")) "stdOut"))) (Seq (Seq (Ass "c" (Plus (Var "z") (Var "z"))) (ReadFromChannel "y" "lowIn1")) (Seq Skip (PrintToChannel (Plus (Var "z") (Var "y")) "stdOut")))))]
+        code = Map.fromList [(1,Seq (If CTrue (If CFalse (Seq Skip Skip) (Seq (ReadFromChannel (Global "x") "lowIn1") (Ass (Global "y") (Plus (Var (Global "x")) (Var (Global "x")))))) (Seq (Seq Skip (ReadFromChannel (Global "x") "stdIn")) (If (Leq (Val 0) (Plus (Var (Global "x")) (Var (Global "x")))) Skip (Ass (Global "a") (Plus (Var (Global "x")) (Var (Global "x"))))))) (Seq (If CTrue (If CFalse (PrintToChannel (Val 42) "stdOut") (ReadFromChannel (Global "c") "stdIn")) (ForC 1 (Ass (Global "z") (Val 1)))) (If CFalse (Seq (PrintToChannel (Val 17) "stdOut") Skip) (Seq (Ass (Global "z") (Val 0)) (SpawnThread 2))))),(2,ForV (Global "z") (Seq (ForC 2 (Seq Skip (PrintToChannel (Plus (Var (Global "z")) (Var (Global "z"))) "stdOut"))) (Seq (Seq (Ass (Global "c") (Plus (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "y") "lowIn1")) (Seq Skip (PrintToChannel (Plus (Var (Global "z")) (Var (Global "y"))) "stdOut")))))]
 
 someGeneratedProgram :: Program Gr
 someGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
-        code = Map.fromList [(1,Seq (ForC 3 (If CTrue (Seq Skip Skip) (Seq (ReadFromChannel "x" "stdIn") (ReadFromChannel "y" "lowIn1")))) (Seq (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel "c" "lowIn1"))) (ForV "c" (If (Leq (Val 0) (Plus (Var "c") (Var "c"))) (SpawnThread 3) (ReadFromChannel "y" "stdIn"))))),(3,ForV "c" (If (Leq (Val 0) (Plus (Var "c") (Var "c"))) (Seq (ForC 3 (ReadFromChannel "b" "stdIn")) (If (Leq (Val 0) (Plus (Var "c") (Var "c"))) (ReadFromChannel "x" "stdIn") (PrintToChannel (Plus (Var "c") (Var "b")) "stdOut"))) (Seq (Seq (PrintToChannel (Plus (Var "c") (Var "c")) "stdOut") (PrintToChannel (Plus (Var "c") (Var "c")) "stdOut")) (Seq (Ass "a" (Plus (Var "c") (Var "c"))) (Ass "x" (Plus (Var "a") (Var "a")))))))]
+        code = Map.fromList [(1,Seq (ForC 3 (If CTrue (Seq Skip Skip) (Seq (ReadFromChannel (Global "x") "stdIn") (ReadFromChannel (Global "y") "lowIn1")))) (Seq (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel (Global "c") "lowIn1"))) (ForV (Global "c") (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (SpawnThread 3) (ReadFromChannel (Global "y") "stdIn"))))),(3,ForV (Global "c") (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (Seq (ForC 3 (ReadFromChannel (Global "b") "stdIn")) (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (ReadFromChannel (Global "x") "stdIn") (PrintToChannel (Plus (Var (Global "c")) (Var (Global "b"))) "stdOut"))) (Seq (Seq (PrintToChannel (Plus (Var (Global "c")) (Var (Global "c"))) "stdOut") (PrintToChannel (Plus (Var (Global "c")) (Var (Global "c"))) "stdOut")) (Seq (Ass (Global "a") (Plus (Var (Global "c")) (Var (Global "c")))) (Ass (Global "x") (Plus (Var (Global "a")) (Var (Global "a"))))))))]
 
 -- this one generates *very* long (inifinitely so?!?!) executions with defaultInput'
 anotherGeneratedProgram :: Program Gr
 anotherGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
-        -- code = Map.fromList [(1,Seq (Seq (ForC 2 (ForC 2 (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "a" "lowIn1")) (Seq (PrintToChannel (Times (Var "a") (Var "a")) "stdOut") (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")))) (ForC 1 (Seq (Seq (ReadFromChannel "x" "stdIn") (SpawnThread 3)) (ForV "a" (ReadFromChannel "c" "lowIn1"))))),(2,Seq (Seq (If (Leq (Val 0) (Times (Var "a") (Var "x"))) (ForV "x" (ReadFromChannel "z" "lowIn1")) (ForC 2 (ReadFromChannel "a" "stdIn"))) (Seq (Seq (ReadFromChannel "a" "lowIn1") Skip) (ForV "x" (Ass "a" (Times (Var "a") (Var "a")))))) (Seq (Seq (ForV "a" Skip) (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (PrintToChannel (Times (Var "x") (Var "a")) "stdOut"))) (ForC 2 (If (Leq (Val 0) (Times (Var "x") (Var "x"))) (Ass "x" (Times (Var "a") (Var "x"))) (ReadFromChannel "z" "lowIn1"))))),(3,ForV "a" (ForC 1 (Seq (ForV "x" (Ass "z" (Times (Var "a") (Var "x")))) (If (Leq (Val 0) (Times (Var "x") (Var "a"))) (SpawnThread 2) (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")))))]
+        -- code = Map.fromList [(1,Seq (Seq (ForC 2 (ForC 2 (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "a") "lowIn1")) (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")))) (ForC 1 (Seq (Seq (ReadFromChannel (Global "x") "stdIn") (SpawnThread 3)) (ForV (Global "a") (ReadFromChannel (Global "c") "lowIn1"))))),(2,Seq (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "x")))) (ForV (Global "x") (ReadFromChannel (Global "z") "lowIn1")) (ForC 2 (ReadFromChannel (Global "a") "stdIn"))) (Seq (Seq (ReadFromChannel (Global "a") "lowIn1") Skip) (ForV (Global "x") (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "a"))))))) (Seq (Seq (ForV (Global "a") Skip) (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (PrintToChannel (Times (Var (Global "x")) (Var (Global "a"))) "stdOut"))) (ForC 2 (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "x")))) (ReadFromChannel (Global "z") "lowIn1"))))),(3,ForV (Global "a") (ForC 1 (Seq (ForV (Global "x") (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "x"))))) (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "a")))) (SpawnThread 2) (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")))))]
         code = Map.fromList [
           (1,Seq (Seq (ForC 2
                             (ForC 2
                                   (PrintToChannel (Val 1) "stdOut")))
-            (Seq (Seq (ReadFromChannel "a" "stdIn")
-                      (ReadFromChannel "a" "lowIn1"))
-                 (Seq (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")
-                      (PrintToChannel (Times (Var "a") (Var "a")) "stdOut"))))
+            (Seq (Seq (ReadFromChannel (Global "a") "stdIn")
+                      (ReadFromChannel (Global "a") "lowIn1"))
+                 (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")
+                      (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut"))))
                       (ForC 1
-                  (Seq (Seq (ReadFromChannel "x" "stdIn")
+                  (Seq (Seq (ReadFromChannel (Global "x") "stdIn")
                             (SpawnThread 3))
-                            (ForV "a"
-                                  (ReadFromChannel "c" "lowIn1"))))),
-          (2,Seq (Seq (If (Leq (Val 0) (Times (Var "a") (Var "x")))
-                          (ForV "x" (ReadFromChannel "z" "lowIn1"))
-                          (ForC 2 (ReadFromChannel "a" "stdIn")))
-            (Seq (Seq (ReadFromChannel "a" "lowIn1")
+                            (ForV (Global "a")
+                                  (ReadFromChannel (Global "c") "lowIn1"))))),
+          (2,Seq (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "x"))))
+                          (ForV (Global "x") (ReadFromChannel (Global "z") "lowIn1"))
+                          (ForC 2 (ReadFromChannel (Global "a") "stdIn")))
+            (Seq (Seq (ReadFromChannel (Global "a") "lowIn1")
                        Skip)
-                      (ForV "x"
-                            (Ass "a" (Times (Var "a") (Var "a"))))))
-            (Seq (Seq (ForV "a" Skip)
-                 (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")
-                      (PrintToChannel (Times (Var "x") (Var "a")) "stdOut")))
-                      (ForC 2 (If (Leq (Val 0) (Times (Var "x") (Var "x")))
-                                  (Ass "x" (Times (Var "a") (Var "x")))
-                                  (ReadFromChannel "z" "lowIn1"))))),
-          (3,         ForV "a"
+                      (ForV (Global "x")
+                            (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "a")))))))
+            (Seq (Seq (ForV (Global "a") Skip)
+                 (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")
+                      (PrintToChannel (Times (Var (Global "x")) (Var (Global "a"))) "stdOut")))
+                      (ForC 2 (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x"))))
+                                  (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "x"))))
+                                  (ReadFromChannel (Global "z") "lowIn1"))))),
+          (3,         ForV (Global "a")
                            (ForC 1
-                            (Seq (ForV "x"
-                                       (Ass "z" (Times (Var "a") (Var "x"))))
-                                 (If (Leq (Val 0) (Times (Var "x") (Var "a")))
+                            (Seq (ForV (Global "x")
+                                       (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "x")))))
+                                 (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "a"))))
                                      (SpawnThread 2)
-                                     (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")))))]
+                                     (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")))))]
 
 
 -- this one appears to be secure, but cannot be proven so
 aSecureGeneratedProgram :: Program Gr
 aSecureGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
-        code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass "z" (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel "a" "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV "a" (ReadFromChannel "y" "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "b" "stdIn")) (If (Leq (Val 0) (Times (Var "b") (Var "b"))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel "c" "stdIn") (Ass "y" (Val 0))) (If CFalse (Ass "a" (Val (-1))) (ReadFromChannel "y" "lowIn1"))))]
+        code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass (Global "z") (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel (Global "a") "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV (Global "a") (ReadFromChannel (Global "y") "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "b") "stdIn")) (If (Leq (Val 0) (Times (Var (Global "b")) (Var (Global "b")))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel (Global "c") "stdIn") (Ass (Global "y") (Val 0))) (If CFalse (Ass (Global "a") (Val (-1))) (ReadFromChannel (Global "y") "lowIn1"))))]
 
 
 clientServerKeyExampleSimple ::  Program Gr
@@ -1693,10 +1720,10 @@ clientServerKeyExampleSimple = p { observability = defaultObservabilityMap (tcfg
         code = Map.fromList $ [
           (setup,
            Skip                                                             `Seq`
-           Ass "privKey" (Val 42)                                           `Seq`
+           Ass (Global "privKey") (Val 42)                                           `Seq`
            SpawnThread server                                               `Seq`
            ForC 3 (
-             ReadFromChannel "msg" "stdIn"                                  `Seq`
+             ReadFromChannel (Global "msg") "stdIn"                                  `Seq`
              SpawnThread client
            )
           ),
@@ -1705,8 +1732,8 @@ clientServerKeyExampleSimple = p { observability = defaultObservabilityMap (tcfg
           ),
           (client,
            Skip                                                             `Seq`
-           Ass "msg_enc" (Val 0)                                            `Seq`  -- not (Var "msg") `Plus` (Var "privKey")), since we do not declassify or anything here
-           PrintToChannel (Var "msg_enc") "stdOut"
+           Ass (Global "msg_enc") (Val 0)                                            `Seq`  -- not (Var (Global "msg")) `Plus` (Var (Global "privKey"))), since we do not declassify or anything here
+           PrintToChannel (Var (Global "msg_enc")) "stdOut"
           )
          ]
         setup  = 1
@@ -1720,14 +1747,14 @@ clientServerKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (setup,
            Skip                                                             `Seq`
-           Ass    "privKey" (Val 7)                                         `Seq`
-           ReadFromChannel "privKeyRndSeed" "stdIn"                         `Seq`
-           ForV "privKeyRndSeed" (
-             Ass "privKey" ((Var "privKey") `Plus` (Val 3))
+           Ass (Global "privKey") (Val 7)                                            `Seq`
+           ReadFromChannel (Global "privKeyRndSeed") "stdIn"                         `Seq`
+           ForV (Global "privKeyRndSeed") (
+             Ass (Global "privKey") ((Var (Global "privKey")) `Plus` (Val 3))
            )                                                                `Seq`  -- "initialization of the private key ... and [its] runtime may depend on HIGH information."
            SpawnThread server                                               `Seq`
            ForC 3 (
-             ReadFromChannel "msg" "stdIn"                                  `Seq`
+             ReadFromChannel (Global "msg") "stdIn"                                  `Seq`
              SpawnThread client
            )
           ),
@@ -1736,11 +1763,11 @@ clientServerKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
           ),
           (client,
            Skip                                                             `Seq`
-           ForV "privKey" (
+           ForV (Global "privKey") (
              Skip
            )                                                                `Seq`  -- "encryption .. happen before the send operation and [its] runtime may depend on HIGH information."
-           Ass "msg_enc" (Val 0)                                            `Seq`  -- "due to ideal encryption no explicit and implicit information flow occurs between the secret message and its encryption.
-           PrintToChannel (Var "msg_enc") "stdOut"
+           Ass (Global "msg_enc") (Val 0)                                            `Seq`  -- "due to ideal encryption no explicit and implicit information flow occurs between the secret message and its encryption.
+           PrintToChannel (Var (Global "msg_enc")) "stdOut"
           )
          ]
         setup  = 1
@@ -1754,19 +1781,19 @@ clientSetupKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (setup,
            Skip                                                             `Seq`
-           ReadFromChannel "secretBit" "stdIn"                              `Seq`
-           Ass    "privKey" (Val 0)                                         `Seq`
-           ReadFromChannel "privKeyRndSeed" "stdIn"                         `Seq`  --
-           ForV "privKeyRndSeed" (
-             Ass "privKey" ((Var "privKey") `Plus` (Val 3))
+           ReadFromChannel (Global "secretBit") "stdIn"                              `Seq`
+           Ass (Global "privKey") (Val 0)                                         `Seq`
+           ReadFromChannel (Global "privKeyRndSeed") "stdIn"                         `Seq`  --
+           ForV (Global "privKeyRndSeed") (
+             Ass (Global "privKey") ((Var (Global "privKey")) `Plus` (Val 3))
            )                                                                `Seq`  -- "initialization of the private key ... and [its] runtime may depend on HIGH information."
            SpawnThread server                                               `Seq`
            ForC 3 (
-             ReadFromChannel "msg1" "lowIn1"                                 `Seq`
-             ReadFromChannel "msg2" "lowIn2"                                 `Seq`
-             If ((Var "secretBit") `Leq` (Val 0))
-                 (Ass "msg" (Var "msg1"))
-                 (Ass "msg" (Var "msg2"))                                   `Seq`
+             ReadFromChannel (Global "msg1") "lowIn1"                                 `Seq`
+             ReadFromChannel (Global "msg2") "lowIn2"                                 `Seq`
+             If ((Var (Global "secretBit")) `Leq` (Val 0))
+                 (Ass (Global "msg") (Var (Global "msg1")))
+                 (Ass (Global "msg") (Var (Global "msg2")))                                   `Seq`
              SpawnThread client
            )
           ),
@@ -1775,11 +1802,11 @@ clientSetupKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
           ),
           (client,
            Skip                                                             `Seq`
-           ForV "privKey" (
+           ForV (Global "privKey") (
              Skip
            )                                                                `Seq`  -- "encryption .. happen before the send operation and [its] runtime may depend on HIGH information."
-           Ass "msg_enc" (Val 0)                                            `Seq`  -- "due to ideal encryption no explicit and implicit information flow occurs between the secret message and its encryption.
-           PrintToChannel (Var "msg_enc") "stdOut"
+           Ass (Global "msg_enc") (Val 0)                                            `Seq`  -- "due to ideal encryption no explicit and implicit information flow occurs between the secret message and its encryption.
+           PrintToChannel (Var (Global "msg_enc")) "stdOut"
           )
          ]
         setup  = 1
@@ -1793,8 +1820,8 @@ singleThreadedDelay = p { observability = defaultObservabilityMap (tcfg p) }
           (1,
            Skip                                                             `Seq`
            PrintToChannel (Val 42) "stdOut"                                 `Seq`
-           ReadFromChannel "h" "stdIn"                                      `Seq`
-           ForV "h" (
+           ReadFromChannel (Global "h") "stdIn"                                      `Seq`
+           ForV (Global "h") (
              Skip
            )                                                                `Seq`
            PrintToChannel (Val 17) "stdOut"
@@ -1810,7 +1837,7 @@ environmentTotalAssumption1 = p { observability = defaultObservabilityMap (tcfg 
           (1,
            Skip                                                             `Seq`
            ForC 100 (
-              ReadFromChannel "h" stdIn                                     `Seq`
+              ReadFromChannel (Global "h") stdIn                                     `Seq`
               PrintToChannel (Val 42) stdOut
            )
           )
@@ -1821,10 +1848,10 @@ environmentTotalAssumption2 = p { observability = defaultObservabilityMap (tcfg 
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           ReadFromChannel "h" stdIn                                        `Seq`
-           Ass "bit" (Val 1)                                                `Seq`
+           ReadFromChannel (Global "h") stdIn                                        `Seq`
+           Ass (Global "bit") (Val 1)                                                `Seq`
            ForC 16 (
-              If (Leq ((Var "h") `Times` (Var "bit")) (Val 0))
+              If (Leq ((Var (Global "h")) `Times` (Var (Global "bit"))) (Val 0))
                 (PrintToChannel (Val 1) highOut1)
                 (PrintToChannel (Val 1) highOut2)
            )
@@ -1837,10 +1864,10 @@ simple = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "x" (Var "a")                                                `Seq`
-           If (Leq (Var "x") (Val 0))
-              (Ass "z" (Val 1))
-              (Ass "z" (Val 0))
+           Ass (Global "x") (Var (Global "a"))                                                `Seq`
+           If (Leq (Var (Global "x")) (Val 0))
+              (Ass (Global "z") (Val 1))
+              (Ass (Global "z") (Val 0))
           )
          ]
 simple2 :: Program Gr
@@ -1849,11 +1876,11 @@ simple2 = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "x" (Var "a")                                                `Seq`
-           If (Leq (Var "x") (Val 0))
+           Ass (Global "x") (Var (Global "a"))                                                `Seq`
+           If (Leq (Var (Global "x")) (Val 0))
               (Skip)
               (Skip)                                                        `Seq`
-           Ass "z" (Val 0)
+           Ass (Global "z") (Val 0)
           )
 
          ]
@@ -1864,12 +1891,12 @@ simple3 = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "tmp" ((Var "z") `Plus` (Val 1))                             `Seq`
-           Ass "x" (Var "a")                                                `Seq`
-           If (Leq (Var "x") (Val 0))
+           Ass (Global "tmp") ((Var (Global "z")) `Plus` (Val 1))                             `Seq`
+           Ass (Global "x") (Var (Global "a"))                                                `Seq`
+           If (Leq (Var (Global "x")) (Val 0))
               (Skip)
               (Skip)                                                        `Seq`
-           Ass "z" (Var "tmp")
+           Ass (Global "z") (Var (Global "tmp"))
           )
 
          ]
@@ -1882,7 +1909,7 @@ twoLoops = p { observability = defaultObservabilityMap (tcfg p) }
            Skip                                                             `Seq`
            ForC 5 Skip                                                      `Seq`
            ForC 5 Skip                                                      `Seq`
-           Ass "z" (Var "tmp")
+           Ass (Global "z") (Var (Global "tmp"))
           )
 
          ]
@@ -1931,9 +1958,9 @@ forIf = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
-           Ass "x" (Val 42)                                                 `Seq`
+           Ass (Global "x") (Val 42)                                                 `Seq`
            ForC 5 (
-              If (Leq (Var "x") (Val 0)) Skip Skip
+              If (Leq (Var (Global "x")) (Val 0)) Skip Skip
            )                                                                `Seq`
            Skip
           )
@@ -1946,9 +1973,9 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleSimon = p { obs
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
-           ReadFromChannel "h" "stdIn"   `Seq`
+           ReadFromChannel (Global "h") "stdIn"   `Seq`
            SpawnThread 2                 `Seq`
-           ForV "h" (Ass "h" ((Var "h") `Plus` (Val (-1)))) `Seq`
+           ForV (Global "h") (Ass (Global "h") ((Var (Global "h")) `Plus` (Val (-1)))) `Seq`
            PrintToChannel (Val 42) "stdOut"
           ),
           (2, Skip
@@ -1962,9 +1989,9 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleMartin = p { ob
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
-           ReadFromChannel "h" "stdIn"   `Seq`
+           ReadFromChannel (Global "h") "stdIn"   `Seq`
            SpawnThread 2                 `Seq`
-           Ass "h2" (Var "h")            `Seq`
+           Ass (Global "h2") (Var (Global "h"))            `Seq`
            PrintToChannel (Val 42) "stdOut"
           ),
           (2, Skip                       `Seq`
@@ -1987,13 +2014,13 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
           ),
           (2, Skip `Seq`
               ForC 2 (
-                     (If (Leq (Val 0) (Times (Var "z") (Var "z")))
+                     (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z"))))
                          Skip
-                         (ReadFromChannel "z" "stdIn"))
+                         (ReadFromChannel (Global "z") "stdIn"))
              )
           ),
           (3, Skip `Seq`
-              ReadFromChannel "z" "lowIn1"
+              ReadFromChannel (Global "z") "lowIn1"
           )
           ]
 
@@ -2002,9 +2029,9 @@ minimalClassificationVstimingClassificationDomPathsCounterExample2 :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample2 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1, (Seq (Seq (If CFalse (Seq (SpawnThread 3) (PrintToChannel (Val 1) "stdOut")) (If CFalse (ReadFromChannel "c" "lowIn1") (SpawnThread 2))) (If CFalse (If CTrue (Ass "a" (Val (-1))) (Ass "y" (Val 17))) (ForC 1 (PrintToChannel (Val 42) "stdOut")))) (ForC 1 (Seq (If CFalse (ReadFromChannel "c" "lowIn1") (ReadFromChannel "b" "lowIn1")) (If CFalse (ReadFromChannel "x" "lowIn1") (Ass "z" (Val 0)))))) ),
-          (2, (Seq (Seq (Seq (ForC 1 (Ass "y" (Val (-1)))) (Seq (ReadFromChannel "b" "lowIn1") (Ass "b" (Times (Var "y") (Var "y"))))) (Seq (If (Leq (Val 0) (Times (Var "y") (Var "y"))) Skip (Ass "c" (Times (Var "y") (Var "b")))) (Seq (ReadFromChannel "x" "stdIn") (ReadFromChannel "b" "stdIn")))) (ForV "x" (ForV "b" (Seq (Ass "x" ((Var "x") `Plus` (Val (-1)))) (If (Leq (Val 0) (Times (Var "y") (Var "x"))) (Ass "a" (Times (Var "x") (Var "b"))) (ReadFromChannel "a" "stdIn")))))) ),
-          (3,(ForC 2 (Seq (Seq (Seq (PrintToChannel (Val 17) "stdOut") (Ass "b" (Val 42))) (ForC 2 (PrintToChannel (Times (Var "b") (Var "b")) "stdOut"))) (Seq (Seq (PrintToChannel (Times (Var "b") (Var "b")) "stdOut") (PrintToChannel (Times (Var "b") (Var "b")) "stdOut")) (Seq (PrintToChannel (Times (Var "b") (Var "b")) "stdOut") (Ass "y" (Times (Var "b") (Var "b"))))))))
+          (1, (Seq (Seq (If CFalse (Seq (SpawnThread 3) (PrintToChannel (Val 1) "stdOut")) (If CFalse (ReadFromChannel (Global "c") "lowIn1") (SpawnThread 2))) (If CFalse (If CTrue (Ass (Global "a") (Val (-1))) (Ass (Global "y") (Val 17))) (ForC 1 (PrintToChannel (Val 42) "stdOut")))) (ForC 1 (Seq (If CFalse (ReadFromChannel (Global "c") "lowIn1") (ReadFromChannel (Global "b") "lowIn1")) (If CFalse (ReadFromChannel (Global "x") "lowIn1") (Ass (Global "z") (Val 0)))))) ),
+          (2, (Seq (Seq (Seq (ForC 1 (Ass (Global "y") (Val (-1)))) (Seq (ReadFromChannel (Global "b") "lowIn1") (Ass (Global "b") (Times (Var (Global "y")) (Var (Global "y")))))) (Seq (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) Skip (Ass (Global "c") (Times (Var (Global "y")) (Var (Global "b"))))) (Seq (ReadFromChannel (Global "x") "stdIn") (ReadFromChannel (Global "b") "stdIn")))) (ForV (Global "x") (ForV (Global "b") (Seq (Ass (Global "x") ((Var (Global "x")) `Plus` (Val (-1)))) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "x")))) (Ass (Global "a") (Times (Var (Global "x")) (Var (Global "b")))) (ReadFromChannel (Global "a") "stdIn")))))) ),
+          (3,(ForC 2 (Seq (Seq (Seq (PrintToChannel (Val 17) "stdOut") (Ass (Global "b") (Val 42))) (ForC 2 (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut"))) (Seq (Seq (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut") (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut")) (Seq (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut") (Ass (Global "y") (Times (Var (Global "b")) (Var (Global "b")))))))))
           ]
 
 
@@ -2014,21 +2041,21 @@ minimalClassificationVstimingClassificationDomPathsCounterExample2Essential = p 
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1, Skip                             `Seq`
-              Ass "x" (Val 1)                  `Seq`
+              Ass (Global "x") (Val 1)                  `Seq`
               If CTrue
                 (SpawnThread 2)
                 (SpawnThread 3)                `Seq`
-              ReadFromChannel "x" "lowIn1"
+              ReadFromChannel (Global "x") "lowIn1"
           ),
           (2, Skip                             `Seq`
-              ReadFromChannel "h" "stdIn"      `Seq`
-              If (Leq (Var "h") (Val 0))
+              ReadFromChannel (Global "h") "stdIn"      `Seq`
+              If (Leq (Var (Global "h")) (Val 0))
                  (Skip `Seq` Skip)
                  (Skip)                        `Seq`
-              Ass "x" (Val 42)
+              Ass (Global "x") (Val 42)
           ),
           (3, Skip                             `Seq`
-              PrintToChannel (Var "x") "stdOut"
+              PrintToChannel (Var (Global "x")) "stdOut"
           )
           ]
 
@@ -2038,18 +2065,18 @@ minimalClassificationVstimingClassificationDomPathsCounterExample3 :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample3 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(Seq (Seq (ForC 2 (Seq (SpawnThread 3) (SpawnThread 2))) (Seq (If CTrue (ReadFromChannel "z" "lowIn1") (PrintToChannel (Val (-1)) "stdOut")) (ForC 1 (Ass "x" (Val 1))))) (ForC 2 (Seq (ForC 1 Skip) (Seq (ReadFromChannel "b" "lowIn1") (ReadFromChannel "x" "lowIn1")))))),
-         (2,(Seq (Seq (Seq (Seq Skip (ReadFromChannel "x" "lowIn1")) (ForV "x" Skip)) (If (Leq (Val 0) (Times (Var "x") (Var "x"))) (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (PrintToChannel (Times (Var "x") (Var "x")) "stdOut")) (ForC 2 (ReadFromChannel "x" "lowIn1")))) (ForV "x" (Seq (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (ReadFromChannel "z" "lowIn1")) (Seq (ReadFromChannel "z" "lowIn1") (PrintToChannel (Times (Var "x") (Var "z")) "stdOut")))))),
-         (3,(Seq (Seq (Seq (Seq (Ass "b" (Val 17)) (ReadFromChannel "b" "lowIn1")) (ForC 2 (Ass "y" (Times (Var "b") (Var "b"))))) (Seq (Seq (Ass "c" (Times (Var "y") (Var "y"))) (Ass "b" (Times (Var "y") (Var "y")))) (ForC 1 (Ass "b" (Times (Var "y") (Var "y")))))) (ForC 1 (Seq (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "c" "stdIn")) (If (Leq (Val 0) (Times (Var "y") (Var "y"))) (ReadFromChannel "b" "stdIn") (Ass "y" (Times (Var "b") (Var "c"))))))))
+          (1,(Seq (Seq (ForC 2 (Seq (SpawnThread 3) (SpawnThread 2))) (Seq (If CTrue (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Val (-1)) "stdOut")) (ForC 1 (Ass (Global "x") (Val 1))))) (ForC 2 (Seq (ForC 1 Skip) (Seq (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "x") "lowIn1")))))),
+         (2,(Seq (Seq (Seq (Seq Skip (ReadFromChannel (Global "x") "lowIn1")) (ForV (Global "x") Skip)) (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x")))) (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")) (ForC 2 (ReadFromChannel (Global "x") "lowIn1")))) (ForV (Global "x") (Seq (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (ReadFromChannel (Global "z") "lowIn1")) (Seq (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Times (Var (Global "x")) (Var (Global "z"))) "stdOut")))))),
+         (3,(Seq (Seq (Seq (Seq (Ass (Global "b") (Val 17)) (ReadFromChannel (Global "b") "lowIn1")) (ForC 2 (Ass (Global "y") (Times (Var (Global "b")) (Var (Global "b")))))) (Seq (Seq (Ass (Global "c") (Times (Var (Global "y")) (Var (Global "y")))) (Ass (Global "b") (Times (Var (Global "y")) (Var (Global "y"))))) (ForC 1 (Ass (Global "b") (Times (Var (Global "y")) (Var (Global "y"))))))) (ForC 1 (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "c") "stdIn")) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) (ReadFromChannel (Global "b") "stdIn") (Ass (Global "y") (Times (Var (Global "b")) (Var (Global "c")))))))))
          ]
 
 minimalClassificationVstimingClassificationDomPathsCounterExample4 :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample4 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(If CFalse (ForC 2 (Seq (Seq Skip (ReadFromChannel "b" "lowIn1")) (ForC 2 (SpawnThread 2)))) (If CFalse (Seq (Seq (SpawnThread 3) (ReadFromChannel "z" "lowIn1")) (Seq (ReadFromChannel "x" "lowIn1") (ReadFromChannel "y" "lowIn1"))) (If CFalse (Seq (Ass "a" (Val 1)) (ReadFromChannel "x" "lowIn1")) (Seq (PrintToChannel (Val 17) "stdOut") (ReadFromChannel "a" "stdIn"))))) ),
-          (2,(ForV "b" (Seq (Ass "b" ((Var "b") `Plus` (Val (-1)))) (Seq (ForC 2 (Seq (ReadFromChannel "a" "stdIn") (Ass "c" (Times (Var "b") (Var "a"))))) (If (Leq (Val 0) (Times (Var "c") (Var "b"))) (ForC 1 (ReadFromChannel "y" "stdIn")) (Seq Skip (Ass "x" (Times (Var "b") (Var "c")))))))) ),
-          (3,(ForC 2 (If CFalse (Seq (Seq Skip (PrintToChannel (Val 1) "stdOut")) (Seq Skip Skip)) (Seq (Seq Skip (PrintToChannel (Val (-1)) "stdOut")) (Seq (ReadFromChannel "c" "lowIn1") (Ass "x" (Times (Var "c") (Var "c"))))))))
+          (1,(If CFalse (ForC 2 (Seq (Seq Skip (ReadFromChannel (Global "b") "lowIn1")) (ForC 2 (SpawnThread 2)))) (If CFalse (Seq (Seq (SpawnThread 3) (ReadFromChannel (Global "z") "lowIn1")) (Seq (ReadFromChannel (Global "x") "lowIn1") (ReadFromChannel (Global "y") "lowIn1"))) (If CFalse (Seq (Ass (Global "a") (Val 1)) (ReadFromChannel (Global "x") "lowIn1")) (Seq (PrintToChannel (Val 17) "stdOut") (ReadFromChannel (Global "a") "stdIn"))))) ),
+          (2,(ForV (Global "b") (Seq (Ass (Global "b") ((Var (Global "b")) `Plus` (Val (-1)))) (Seq (ForC 2 (Seq (ReadFromChannel (Global "a") "stdIn") (Ass (Global "c") (Times (Var (Global "b")) (Var (Global "a")))))) (If (Leq (Val 0) (Times (Var (Global "c")) (Var (Global "b")))) (ForC 1 (ReadFromChannel (Global "y") "stdIn")) (Seq Skip (Ass (Global "x") (Times (Var (Global "b")) (Var (Global "c"))))))))) ),
+          (3,(ForC 2 (If CFalse (Seq (Seq Skip (PrintToChannel (Val 1) "stdOut")) (Seq Skip Skip)) (Seq (Seq Skip (PrintToChannel (Val (-1)) "stdOut")) (Seq (ReadFromChannel (Global "c") "lowIn1") (Ass (Global "x") (Times (Var (Global "c")) (Var (Global "c")))))))))
          ]
 
 
@@ -2058,16 +2085,16 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p {
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1, Skip                             `Seq`
-              Ass "x" (Val 0)                  `Seq`
+              Ass (Global "x") (Val 0)                  `Seq`
               SpawnThread 2                    `Seq`
-              ReadFromChannel "h" "stdIn"      `Seq`
-              If (Leq (Var "h") (Val 0))
+              ReadFromChannel (Global "h") "stdIn"      `Seq`
+              If (Leq (Var (Global "h")) (Val 0))
                  (Skip `Seq` Skip)
                  (Skip)                        `Seq`
-              Ass "x" (Val 1)
+              Ass (Global "x") (Val 1)
           ),
           (2, Skip                             `Seq`
-              ReadFromChannel "x" "lowIn1"
+              ReadFromChannel (Global "x") "lowIn1"
           )
           ]
 
@@ -2077,9 +2104,9 @@ notReallyUnsound :: Program Gr
 notReallyUnsound = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(Seq (Seq (Seq (Seq Skip (Ass "z" (Val 0))) (ForV "z" Skip)) (Seq (Seq (SpawnThread 2) (PrintToChannel (Times (Var "z") (Var "z")) "stdOut")) (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (ReadFromChannel "c" "lowIn1") (ReadFromChannel "b" "stdIn")))) (Seq (ForC 2 (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") Skip)) (ForC 2 (Seq (SpawnThread 3) Skip))))),
-          (2,(Seq (ForC 2 (ForV "z" (ForC 2 (Ass "y" (Times (Var "z") (Var "z")))))) (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Seq (ForC 1 (PrintToChannel (Times (Var "z") (Var "z")) "stdOut")) (ForC 2 (ReadFromChannel "x" "lowIn1"))) (ForV "z" (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Ass "x" (Times (Var "z") (Var "z"))) (ReadFromChannel "x" "lowIn1")))))),
-          (3,(If (Leq (Val 0) (Times (Var "z") (Var "z"))) (ForV "z" (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") (Ass "a" (Times (Var "z") (Var "z")))) (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") (Ass "a" (Times (Var "z") (Var "z")))))) (ForV "z" (ForC 2 (Seq Skip (Ass "a" (Times (Var "z") (Var "z"))))))))
+          (1,(Seq (Seq (Seq (Seq Skip (Ass (Global "z") (Val 0))) (ForV (Global "z") Skip)) (Seq (Seq (SpawnThread 2) (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")) (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "c") "lowIn1") (ReadFromChannel (Global "b") "stdIn")))) (Seq (ForC 2 (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") Skip)) (ForC 2 (Seq (SpawnThread 3) Skip))))),
+          (2,(Seq (ForC 2 (ForV (Global "z") (ForC 2 (Ass (Global "y") (Times (Var (Global "z")) (Var (Global "z"))))))) (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (Seq (ForC 1 (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")) (ForC 2 (ReadFromChannel (Global "x") "lowIn1"))) (ForV (Global "z") (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (Ass (Global "x") (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "x") "lowIn1")))))),
+          (3,(If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (ForV (Global "z") (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (Ass (Global "a") (Times (Var (Global "z")) (Var (Global "z"))))) (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (Ass (Global "a") (Times (Var (Global "z")) (Var (Global "z"))))))) (ForV (Global "z") (ForC 2 (Seq Skip (Ass (Global "a") (Times (Var (Global "z")) (Var (Global "z")))))))))
          ]
 
 
@@ -2105,9 +2132,9 @@ notReallyUnsound2 :: Program Gr
 notReallyUnsound2 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(If CFalse (If CFalse (If CFalse (Seq (PrintToChannel (Val 42) "stdOut") Skip) (Seq (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))) (Seq (If CTrue (SpawnThread 2) (Ass "x" (Val 0))) (ForC 1 (PrintToChannel (Val 17) "stdOut")))) (Seq (ForC 1 (If CFalse (PrintToChannel (Val 17) "stdOut") (SpawnThread 3))) (If CTrue (Seq Skip (PrintToChannel (Val 0) "stdOut")) (ForC 2 Skip))))),
-          (2,(ForC 2 (Seq (If CFalse (If CFalse (Ass "x" (Val 42)) (ReadFromChannel "c" "stdIn")) (Seq Skip (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (Ass "x" (Val 0)) (ReadFromChannel "b" "lowIn1")) (ForC 2 (Ass "c" (Times (Var "x") (Var "b")))))))),
-          (3,(Seq (If CFalse (If CFalse (Seq (Ass "a" (Val 17)) Skip) (Seq (Ass "z" (Val 17)) (PrintToChannel (Times (Var "z") (Var "z")) "stdOut"))) (ForC 1 (Seq (PrintToChannel (Val 1) "stdOut") Skip))) (If CFalse (Seq (Seq Skip Skip) (Seq (Ass "c" (Val 42)) (PrintToChannel (Times (Var "c") (Var "c")) "stdOut"))) (Seq (ForC 2 (PrintToChannel (Val 17) "stdOut")) (Seq (Ass "y" (Val 0)) (ReadFromChannel "y" "stdIn"))))))
+          (1,(If CFalse (If CFalse (If CFalse (Seq (PrintToChannel (Val 42) "stdOut") Skip) (Seq (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))) (Seq (If CTrue (SpawnThread 2) (Ass (Global "x") (Val 0))) (ForC 1 (PrintToChannel (Val 17) "stdOut")))) (Seq (ForC 1 (If CFalse (PrintToChannel (Val 17) "stdOut") (SpawnThread 3))) (If CTrue (Seq Skip (PrintToChannel (Val 0) "stdOut")) (ForC 2 Skip))))),
+          (2,(ForC 2 (Seq (If CFalse (If CFalse (Ass (Global "x") (Val 42)) (ReadFromChannel (Global "c") "stdIn")) (Seq Skip (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (Ass (Global "x") (Val 0)) (ReadFromChannel (Global "b") "lowIn1")) (ForC 2 (Ass (Global "c") (Times (Var (Global "x")) (Var (Global "b"))))))))),
+          (3,(Seq (If CFalse (If CFalse (Seq (Ass (Global "a") (Val 17)) Skip) (Seq (Ass (Global "z") (Val 17)) (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut"))) (ForC 1 (Seq (PrintToChannel (Val 1) "stdOut") Skip))) (If CFalse (Seq (Seq Skip Skip) (Seq (Ass (Global "c") (Val 42)) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut"))) (Seq (ForC 2 (PrintToChannel (Val 17) "stdOut")) (Seq (Ass (Global "y") (Val 0)) (ReadFromChannel (Global "y") "stdIn"))))))
           ]
 
 
@@ -2116,8 +2143,8 @@ notReallyUnsound3 :: Program Gr
 notReallyUnsound3 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1, (Seq (ForC 1 (SpawnThread 2)) (If CTrue (ReadFromChannel "y" "lowIn1") (ReadFromChannel "c" "stdIn")))),
-          (2, (Seq (Seq (Ass "a" (Val 0)) (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")) (Seq (PrintToChannel (Times (Var "a") (Var "a")) "stdOut") (PrintToChannel (Times (Var "a") (Var "a")) "stdOut"))))
+          (1, (Seq (ForC 1 (SpawnThread 2)) (If CTrue (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "c") "stdIn")))),
+          (2, (Seq (Seq (Ass (Global "a") (Val 0)) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")) (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut"))))
          ]
 
 -- see notReallyUnsound
@@ -2125,8 +2152,8 @@ notReallyUnsound4 :: Program Gr
 notReallyUnsound4 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(Seq (Seq (Ass "y" (Val 1)) (SpawnThread 3)) (If (Leq (Val 0) (Times (Var "y") (Var "y"))) (ReadFromChannel "y" "lowIn1") (Ass "y" (Times (Var "y") (Var "y")))))),
-          (3,(If (Leq (Val 0) (Times (Var "y") (Var "y"))) (Seq (Ass "c" (Times (Var "y") (Var "y"))) (ReadFromChannel "c" "lowIn1")) (Seq (PrintToChannel (Times (Var "y") (Var "y")) "stdOut") (ReadFromChannel "b" "lowIn1"))))
+          (1,(Seq (Seq (Ass (Global "y") (Val 1)) (SpawnThread 3)) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) (ReadFromChannel (Global "y") "lowIn1") (Ass (Global "y") (Times (Var (Global "y")) (Var (Global "y"))))))),
+          (3,(If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) (Seq (Ass (Global "c") (Times (Var (Global "y")) (Var (Global "y")))) (ReadFromChannel (Global "c") "lowIn1")) (Seq (PrintToChannel (Times (Var (Global "y")) (Var (Global "y"))) "stdOut") (ReadFromChannel (Global "b") "lowIn1"))))
          ]
 
 -- see notReallyUnsound
@@ -2134,8 +2161,8 @@ notReallyUnsound5 :: Program Gr
 notReallyUnsound5 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(Seq (Seq (SpawnThread 2) (Ass "c" (Val 1))) (Seq (Ass "c" (Times (Var "c") (Var "c"))) (PrintToChannel (Times (Var "c") (Var "c")) "stdOut")))),
-          (2,(Seq (Seq (Ass "y" (Val (-1))) (Ass "a" (Times (Var "y") (Var "y")))) (Seq (ReadFromChannel "b" "lowIn1") (ReadFromChannel "x" "stdIn"))) )
+          (1,(Seq (Seq (SpawnThread 2) (Ass (Global "c") (Val 1))) (Seq (Ass (Global "c") (Times (Var (Global "c")) (Var (Global "c")))) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut")))),
+          (2,(Seq (Seq (Ass (Global "y") (Val (-1))) (Ass (Global "a") (Times (Var (Global "y")) (Var (Global "y"))))) (Seq (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "x") "stdIn"))) )
          ]
 
 -- see notReallyUnsound
@@ -2143,8 +2170,8 @@ notReallyUnsound6 :: Program Gr
 notReallyUnsound6 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(Seq (Seq (SpawnThread 3) (SpawnThread 2)) (If CFalse (Ass "a" (Val 1)) (PrintToChannel (Val 0) "stdOut")))),
-           (2,(If CFalse (If CFalse (Ass "c" (Val 1)) Skip) (Seq (PrintToChannel (Val (-1)) "stdOut") Skip))),
+          (1,(Seq (Seq (SpawnThread 3) (SpawnThread 2)) (If CFalse (Ass (Global "a") (Val 1)) (PrintToChannel (Val 0) "stdOut")))),
+           (2,(If CFalse (If CFalse (Ass (Global "c") (Val 1)) Skip) (Seq (PrintToChannel (Val (-1)) "stdOut") Skip))),
            (3,(ForC 1 (Seq Skip Skip)))
          ]
 
@@ -2153,9 +2180,9 @@ notReallyUnsound7 :: Program Gr
 notReallyUnsound7 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(Seq (Seq (SpawnThread 2) (SpawnThread 3)) (If CTrue (PrintToChannel (Val (-1)) "stdOut") (ReadFromChannel "a" "stdIn")))),
-          (2,(Seq (If CTrue (ReadFromChannel "y" "lowIn1") (ReadFromChannel "c" "lowIn1")) (ForC 2 (ReadFromChannel "a" "stdIn")))),
-          (3,(If CTrue (Seq Skip (ReadFromChannel "y" "lowIn1")) (ForC 2 (ReadFromChannel "x" "lowIn1"))))
+          (1,(Seq (Seq (SpawnThread 2) (SpawnThread 3)) (If CTrue (PrintToChannel (Val (-1)) "stdOut") (ReadFromChannel (Global "a") "stdIn")))),
+          (2,(Seq (If CTrue (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "c") "lowIn1")) (ForC 2 (ReadFromChannel (Global "a") "stdIn")))),
+          (3,(If CTrue (Seq Skip (ReadFromChannel (Global "y") "lowIn1")) (ForC 2 (ReadFromChannel (Global "x") "lowIn1"))))
          ]
 
 -- see notReallyUnsound
@@ -2163,9 +2190,9 @@ notReallyUnsound8 :: Program Gr
 notReallyUnsound8 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1,(Seq (Seq (PrintToChannel (Val 0) "stdOut") (Ass "x" (Val 42))) (Seq (SpawnThread 2) (ReadFromChannel "x" "lowIn1")))),
-          (2,(Seq (Seq (PrintToChannel (Times (Var "x") (Var "x")) "stdOut") (SpawnThread 3)) (ForV "x" (ReadFromChannel "b" "lowIn1")))),
-          (3,(ForC 1 (If (Leq (Val 0) (Times (Var "x") (Var "x"))) (Ass "x" (Times (Var "x") (Var "x"))) (Ass "z" (Times (Var "x") (Var "x"))))))
+          (1,(Seq (Seq (PrintToChannel (Val 0) "stdOut") (Ass (Global "x") (Val 42))) (Seq (SpawnThread 2) (ReadFromChannel (Global "x") "lowIn1")))),
+          (2,(Seq (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (SpawnThread 3)) (ForV (Global "x") (ReadFromChannel (Global "b") "lowIn1")))),
+          (3,(ForC 1 (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "x")) (Var (Global "x")))) (Ass (Global "z") (Times (Var (Global "x")) (Var (Global "x")))))))
          ]
 
 -- see notReallyUnsound
@@ -2198,8 +2225,8 @@ notReallyUnsound9 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
           (1, (Seq (Seq Skip (PrintToChannel (Val 0) "stdOut")) (Seq (SpawnThread 2) (PrintToChannel (Val 1) "stdOut")))),
-          (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut") (SpawnThread 3)) (Seq (ReadFromChannel "y" "lowIn1") (ReadFromChannel "b" "lowIn1")))),
-          (3, (If CFalse (Seq (ReadFromChannel "x" "stdIn") (Ass "z" (Times (Var "x") (Var "x")))) (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))))
+          (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut") (SpawnThread 3)) (Seq (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "b") "lowIn1")))),
+          (3, (If CFalse (Seq (ReadFromChannel (Global "x") "stdIn") (Ass (Global "z") (Times (Var (Global "x")) (Var (Global "x"))))) (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))))
          ]
 
 
@@ -2236,8 +2263,8 @@ notReallyUnsound10 :: Program Gr
 notReallyUnsound10 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1, (Seq (Seq (SpawnThread 3) (ReadFromChannel "c" "stdIn")) (ForC 1 (ReadFromChannel "a" "lowIn1"))) ),
-          (3, (Seq (Seq (Ass "z" (Val (-1))) (ReadFromChannel "b" "lowIn1")) (Seq (PrintToChannel (Times (Var "b") (Var "z")) "stdOut") (ReadFromChannel "b" "lowIn1"))))
+          (1, (Seq (Seq (SpawnThread 3) (ReadFromChannel (Global "c") "stdIn")) (ForC 1 (ReadFromChannel (Global "a") "lowIn1"))) ),
+          (3, (Seq (Seq (Ass (Global "z") (Val (-1))) (ReadFromChannel (Global "b") "lowIn1")) (Seq (PrintToChannel (Times (Var (Global "b")) (Var (Global "z"))) "stdOut") (ReadFromChannel (Global "b") "lowIn1"))))
          ]
 
 
@@ -2261,9 +2288,9 @@ notReallyUnsound11 :: Program Gr
 notReallyUnsound11 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1, (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (ForC 2 (ReadFromChannel "c" "lowIn1")))),
-          (2, (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel "x" "stdIn")))),
-          (3, (Seq (ForC 1 (ReadFromChannel "c" "stdIn")) (ForC 2 (Ass "y" (Times (Var "c") (Var "c"))))))
+          (1, (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (ForC 2 (ReadFromChannel (Global "c") "lowIn1")))),
+          (2, (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel (Global "x") "stdIn")))),
+          (3, (Seq (ForC 1 (ReadFromChannel (Global "c") "stdIn")) (ForC 2 (Ass (Global "y") (Times (Var (Global "c")) (Var (Global "c")))))))
          ]
 
 -- see notReallyUnsound
@@ -2306,11 +2333,11 @@ notReallyUnsound12 :: Program Gr
 notReallyUnsound12 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-          (1, (ForC 2 (Seq (ReadFromChannel "z" "lowIn1") (SpawnThread 2)))),
-          (2, (Seq (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") (PrintToChannel (Times (Var "z") (Var "z")) "stdOut")) (Seq Skip (SpawnThread 3)))),
-          (3, (Seq (If (Leq (Val 0) (Times (Var "z") (Var "z")))
-                      (PrintToChannel (Times (Var "z") (Var "z")) "stdOut")
-                      (Ass "x" (Times (Var "z") (Var "z")))) (Seq (ReadFromChannel "a" "stdIn") (ReadFromChannel "x" "stdIn")))
+          (1, (ForC 2 (Seq (ReadFromChannel (Global "z") "lowIn1") (SpawnThread 2)))),
+          (2, (Seq (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")) (Seq Skip (SpawnThread 3)))),
+          (3, (Seq (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z"))))
+                      (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")
+                      (Ass (Global "x") (Times (Var (Global "z")) (Var (Global "z"))))) (Seq (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "x") "stdIn")))
           )
          ]
 
@@ -2411,9 +2438,9 @@ notReallyUnsound15 :: Program Gr
 notReallyUnsound15 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-            (1,(Seq (Seq (PrintToChannel (Val 42) "stdOut") (Ass "z" (Val 42))) (Seq (SpawnThread 3) (PrintToChannel (Times (Var "z") (Var "z")) "stdOut")))),
-            (2,(If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Seq (PrintToChannel (Times (Var "z") (Var "z")) "stdOut") (Ass "b" (Times (Var "z") (Var "z")))) (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (ReadFromChannel "a" "lowIn1") Skip))),
-            (3,(Seq (Seq (SpawnThread 2) (ReadFromChannel "c" "stdIn")) (Seq (Ass "c" (Times (Var "z") (Var "z"))) (ReadFromChannel "x" "lowIn1"))))
+            (1,(Seq (Seq (PrintToChannel (Val 42) "stdOut") (Ass (Global "z") (Val 42))) (Seq (SpawnThread 3) (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")))),
+            (2,(If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (Ass (Global "b") (Times (Var (Global "z")) (Var (Global "z"))))) (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "a") "lowIn1") Skip))),
+            (3,(Seq (Seq (SpawnThread 2) (ReadFromChannel (Global "c") "stdIn")) (Seq (Ass (Global "c") (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "x") "lowIn1"))))
          ]
 
 
@@ -2429,9 +2456,9 @@ notReallyUnsound16 :: Program Gr
 notReallyUnsound16 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-            (1,(Seq (Seq (Ass "a" (Val 17)) (SpawnThread 2)) (ForV "a" (Ass "z" (Times (Var "a") (Var "a")))))),
-            (2,(Seq (ForV "a" (SpawnThread 3)) (If (Leq (Val 0) (Times (Var "a") (Var "a"))) (PrintToChannel (Times (Var "a") (Var "a")) "stdOut") (Ass "b" (Times (Var "a") (Var "a")))))),
-            (3,(If (Leq (Val 0) (Times (Var "a") (Var "a"))) (Seq Skip (PrintToChannel (Times (Var "a") (Var "a")) "stdOut")) (ForC 1 (Ass "a" (Times (Var "a") (Var "a"))))))
+            (1,(Seq (Seq (Ass (Global "a") (Val 17)) (SpawnThread 2)) (ForV (Global "a") (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "a"))))))),
+            (2,(Seq (ForV (Global "a") (SpawnThread 3)) (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (Ass (Global "b") (Times (Var (Global "a")) (Var (Global "a"))))))),
+            (3,(If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (Seq Skip (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")) (ForC 1 (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "a")))))))
          ]
 
 
@@ -2466,9 +2493,9 @@ notReallyUnsound18 :: Program Gr
 notReallyUnsound18 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-            (1,(Seq (If CTrue Skip (ReadFromChannel "a" "lowIn1")) (Seq (PrintToChannel (Val 42) "stdOut") (SpawnThread 2)))),
-            (2,(ForC 2 (Seq (ReadFromChannel "c" "lowIn1") (SpawnThread 3))) ),
-            (3,(ForV "c" (If (Leq (Val 0) (Times (Var "c") (Var "c"))) (PrintToChannel (Times (Var "c") (Var "c")) "stdOut") (ReadFromChannel "a" "stdIn"))))
+            (1,(Seq (If CTrue Skip (ReadFromChannel (Global "a") "lowIn1")) (Seq (PrintToChannel (Val 42) "stdOut") (SpawnThread 2)))),
+            (2,(ForC 2 (Seq (ReadFromChannel (Global "c") "lowIn1") (SpawnThread 3))) ),
+            (3,(ForV (Global "c") (If (Leq (Val 0) (Times (Var (Global "c")) (Var (Global "c")))) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (ReadFromChannel (Global "a") "stdIn"))))
          ]
 
 
@@ -2487,8 +2514,8 @@ notReallyUnsound17 :: Program Gr
 notReallyUnsound17 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-            (1, (Seq (Seq (SpawnThread 2) (PrintToChannel (Val 0) "stdOut")) (Seq (PrintToChannel (Val 0) "stdOut") (ReadFromChannel "b" "lowIn1")))),
-            (2, (ForC 2 (Seq (ReadFromChannel "x" "lowIn1") (ReadFromChannel "x" "lowIn1"))))
+            (1, (Seq (Seq (SpawnThread 2) (PrintToChannel (Val 0) "stdOut")) (Seq (PrintToChannel (Val 0) "stdOut") (ReadFromChannel (Global "b") "lowIn1")))),
+            (2, (ForC 2 (Seq (ReadFromChannel (Global "x") "lowIn1") (ReadFromChannel (Global "x") "lowIn1"))))
          ]
 
 
@@ -2506,9 +2533,9 @@ notReallyUnsound19 :: Program Gr
 notReallyUnsound19 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram code
         code = Map.fromList $ [
-            (1,(Seq (Seq (Ass "y" (Val 17)) (Ass "a" (Times (Var "y") (Var "y")))) (ForC 2 (SpawnThread 3)))),
-            (2,(ForC 1 (Seq (ReadFromChannel "c" "stdIn") (ReadFromChannel "c" "stdIn")))),
-            (3,(ForV "y" (Seq (PrintToChannel (Times (Var "y") (Var "y")) "stdOut") (SpawnThread 2))))
+            (1,(Seq (Seq (Ass (Global "y") (Val 17)) (Ass (Global "a") (Times (Var (Global "y")) (Var (Global "y"))))) (ForC 2 (SpawnThread 3)))),
+            (2,(ForC 1 (Seq (ReadFromChannel (Global "c") "stdIn") (ReadFromChannel (Global "c") "stdIn")))),
+            (3,(ForV (Global "y") (Seq (PrintToChannel (Times (Var (Global "y")) (Var (Global "y"))) "stdOut") (SpawnThread 2))))
          ]
 
 
@@ -2523,10 +2550,10 @@ controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1, (ForC 1
                  (If CFalse (Seq (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut"))
-                            (ForC 1 (ReadFromChannel "c" "lowIn1"))
+                            (ForC 1 (ReadFromChannel (Global "c") "lowIn1"))
                  )
               ) `Seq`
-              (Ass "x" (Val 0))
+              (Ass (Global "x") (Val 0))
           )
          ]
 
@@ -2541,11 +2568,11 @@ simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) }
            SpawnThread 3
           ),
           (2, Skip `Seq`
-              ReadFromChannel "z" stdIn    `Seq`
+              ReadFromChannel (Global "z") stdIn    `Seq`
               PrintToChannel (Val 2) stdOut
           ),
           (3, Skip `Seq`
-              ReadFromChannel "z" stdIn2   `Seq`
+              ReadFromChannel (Global "z") stdIn2   `Seq`
               PrintToChannel (Val 1) stdOut
           )
          ]

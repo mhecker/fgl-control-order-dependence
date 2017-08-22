@@ -125,7 +125,7 @@ cdomIsBeforeViolations p@(Program {tcfg}) θ cd =
   where cdom = cd p
 
 
-occurencesOf e n = [ (i,n') | (i,(_,(n',_),_)) <- e', n' == n]
+occurencesOf e n = [ (i,n') | (i,(_,(n',_,_),_)) <- e', n' == n]
   where e' = zip [1..] e
 
 someHappensBeforeAll :: ExecutionTrace -> Node -> Node -> Bool
@@ -154,7 +154,7 @@ cdomIsTreeDomViolations p@(Program {tcfg}) θ cd =
         allOrderedBeforeAll c n path =
               (c == n ∧ length [ n' | n' <- ns, n == n'] == 1)
             ∨ (not $ (c ∈ dropWhile (/=n) ns))
-          where ns = [ n' | (n',e) <- path ] 
+          where ns = [ n' | (n',e,tlσ) <- path ] 
 
 
 

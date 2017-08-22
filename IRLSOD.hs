@@ -13,7 +13,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.List (partition,delete)
 
-type Var = String
+data Var = Global String | ThreadLocal String deriving (Show, Eq, Ord)
 type Val = Integer
 type InputChannel = String
 type OutputChannel = String
@@ -35,12 +35,13 @@ highOut1 = "highOut1"
 highOut2 = "highOut2"
 
 type GlobalState = Map Var Val
-
+type ThreadLocalState = Map Var Val
+type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
 data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction deriving (Show, Eq, Ord)
 
-evalB :: GlobalState -> BoolFunction -> Bool
+evalB :: CombinedState -> BoolFunction -> Bool
 evalB _ CTrue     = True
 evalB _ CFalse    = False
 evalB σ (Leq x y) = evalV σ x <= evalV σ y
@@ -56,7 +57,7 @@ useB (And b1 b2) = useB b1 ∪ useB b2
 useB (Or  b1 b2) = useB b1 ∪ useB b2
 useB (Not b)     = useB b
 
-evalV :: GlobalState -> VarFunction -> Val
+evalV :: CombinedState -> VarFunction -> Val
 evalV σ (Val  x)    = x
 evalV σ (Var  x)    = σ ! x
 evalV σ (Plus  x y) = evalV σ x + evalV σ y
@@ -144,13 +145,14 @@ wellformed gr =
 
 type Input = Map InputChannel [Val]
 type ControlState = [Node]
-type Configuration = (ControlState,GlobalState,Input)
+type ThreadLocalStates = [ThreadLocalState]
+type Configuration = (ControlState,GlobalState,ThreadLocalStates,Input)
 data Event = PrintEvent Val OutputChannel
            | ReadEvent  Val InputChannel
            | Tau
            deriving (Eq, Ord, Show)
 
-fromEdge :: GlobalState -> Input -> CFGEdge -> Event
+fromEdge :: CombinedState -> Input -> CFGEdge -> Event
 fromEdge σ i (Guard b bf)
   | b == evalB σ bf = Tau
   | otherwise       = undefined
@@ -178,53 +180,77 @@ instance BoundedJoinSemiLattice SecurityLattice where
 -- type ChannelClassification = (InputChannel -> SecurityLattice, OutputChannel -> SecurityLattice)
 type ObservationalSpecification = Node -> Maybe SecurityLattice
 
-type ExecutionTrace = [(Configuration, (Node,Event), Configuration)]
-type Trace          = [(GlobalState,   (Node,Event), GlobalState)]
+type ExecutionTrace = [(Configuration, (Node,Event,Int), Configuration)]
+type Trace          = [(CombinedState, (Node,Event), CombinedState)]
 
-eventStep :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [((Node,Event),Configuration)]
-eventStep icfg config@(control,σ,i) = do
-       n <- control
+eventStep :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [((Node,Event,Int),Configuration)]
+eventStep icfg config@(control,globalσ,tlσs,i) = do
+       (n,tlσ,index) <- zip3 control tlσs [0..]
+       let σ = globalσ `Map.union` tlσ
        let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc icfg n
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> ((n,fromEdge σ i cfgEdge),(n',σ',i'))) (stepFor cfgEdge (σ,i)) ) normal
+       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(globalσ',tlσ', i') -> ((n,fromEdge σ i cfgEdge),(n',globalσ',tlσ', i'))) (stepFor cfgEdge (globalσ,tlσ,i)) ) normal
 
 
-       case (spawn, configs') of (_ ,[((_,event),(n',σ', i'))]) -> return ((n,event),(n' : ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control)), σ',i'))
-                                 ([],[])                        -> return ((n,Tau),  (                                                delete n control  , σ, i ))
-                                 (_ ,[])                        -> error "spawn an exit-node"
-                                 (_ ,_)                         -> error "nichtdeterministisches Programm"
+       case (spawn, configs') of (_ ,[((_,event),(n',σ', tlσ', i'))]) -> return ((n,event,index),(n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
+                                                                                                  σ',
+                                                                                                  tlσ' : ([Map.empty | (spawned, Spawn) <- spawn] ++ (deleteAt index tlσs   )),
+                                                                                                  i'
+                                                                                ))
+                                 ([],[])                              -> return ((n,Tau,index),  (                                                    deleteAt index control,
+                                                                                                  σ,
+                                                                                                  tlσs,
+                                                                                                  i
+                                                                                ))
+                                 (_ ,[])                              -> error "spawn an exit-node"
+                                 (_ ,_)                               -> error "nichtdeterministisches Programm"
 
 
 
 step :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [Configuration]
-step icfg config@(control,σ,i) = do
-       n <- control
+step icfg config@(control,globalσ,tlσs,i) = do
+       (n,tlσ,index) <- zip3 control tlσs [0..]
+       let σ = globalσ `Map.union` tlσ
        let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc icfg n
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(σ',i') -> (n',σ',i')) (stepFor cfgEdge (σ,i)) ) normal
+       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(globalσ',tlσ', i') -> (n',globalσ', tlσ', i')) (stepFor cfgEdge (globalσ,tlσ,i)) ) normal
+       
+       -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
+       case (spawn, configs') of (_,[(n',σ', tlσ', i')]) -> return (n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
+                                                                    σ',
+                                                                    tlσ' : ([Map.empty | (spawned, Spawn) <- spawn] ++ (deleteAt index tlσs   )),
+                                                                    i'
+                                                            )
+                                 ([],[])                 -> return (                                                    deleteAt index control,
+                                                                    σ,
+                                                                    tlσs,
+                                                                    i
+                                                            )
+                                 (_,[])                  -> error "spawn an exit-node"
+                                 (_,_)                   -> error "nichtdeterministisches Programm"
 
-       case (spawn, configs') of (_,[(n',σ', i')]) -> return (n' : ([spawned | (spawned, Spawn) <- spawn] ++ (delete n control)), σ',i')
-                                 ([],[])           -> return (                                               (delete n control),  σ, i )
-                                 (_,[])            -> error "spawn an exit-node"
-                                 (_,_)             -> error "nichtdeterministisches Programm"
 
+stepFor :: CFGEdge -> (GlobalState,ThreadLocalState,Input) -> [(GlobalState,ThreadLocalState,Input)]
+stepFor e (globalσ,tlσ,i)  = step e where
+      σ = globalσ `Map.union` tlσ
+      step :: CFGEdge ->  [(GlobalState,ThreadLocalState,Input)]
+      step (Guard b bf)
+        | b == evalB σ bf                = [(                             globalσ,                              tlσ,                    i)]
+        | otherwise                      = []
+      step (Assign x@(Global _)      vf) = [(Map.insert x (evalV σ vf)    globalσ,                              tlσ,                    i)]
+      step (Assign x@(ThreadLocal _) vf) = [(                             globalσ, Map.insert x (evalV σ vf)    tlσ,                    i)]
+      step (Read   x@(Global _)      ch) = [(Map.insert x (head $ i ! ch) globalσ,                              tlσ, Map.adjust tail ch i)]
+      step (Read   x@(ThreadLocal _) ch) = [(                             globalσ, Map.insert x (head $ i ! ch) tlσ, Map.adjust tail ch i)]
+      step (Print  x ch)                 = [(                             globalσ,                              tlσ,                    i)]
+      step (Spawn      )                 = undefined
+      step (NoOp       )                 = [(                             globalσ,                              tlσ,                    i)]
 
-stepFor :: CFGEdge -> (GlobalState,Input) -> [(GlobalState,Input)]
-stepFor (Guard b bf) (σ,i)
-  | b == evalB σ bf = [(σ,i)]
-  | otherwise       = []
-stepFor (Assign x vf) (σ,i)  = [(Map.insert x (evalV σ vf)    σ, i)]
-stepFor (Read   x ch) (σ,i)  = [(Map.insert x (head $ i ! ch) σ, Map.adjust tail ch i)]
-stepFor (Print  x ch) (σ,i)  = [(σ,i)]
-stepFor (Spawn      ) (σ,i)  = undefined
-stepFor (NoOp       ) (σ,i)  = [(σ,i)]
-
-hide (a,b,c) = (a,b)
+hide (a,b,c,d) = (a,b,c)
 
 toTrace :: ExecutionTrace -> Trace
-toTrace eTrace = [ (σ, o, σ') | ((_,σ,_), o, (_,σ',_)) <- eTrace ]
+toTrace eTrace = [ (globalσ `Map.union` (tlσs !! index) , (n,e), globalσ' `Map.union` (tlσs' !! 0)) | ((_,globalσ,tlσs,_), (n,e,index), (_,globalσ',tlσs',_)) <- eTrace ]
 
 
 

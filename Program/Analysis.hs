@@ -3,6 +3,8 @@
 
 module Program.Analysis where
 
+import Debug.Trace
+
 
 import Algebra.Lattice
 
@@ -151,11 +153,11 @@ timingClassificationAtUses p@(Program { tcfg, observability }) =
   where clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ]
         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
         pc@(PrecomputedResults { mhp }) = precomputedUsing idomMohrEtAl p
-timingClassificationAtUsesNodes p@(Program { tcfg, observability }) =
-    timingClassificationAtUsesUsing pc p clInit cltInit
-  where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes tcfg ]
-        cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
-        pc@(PrecomputedResults { mhp }) = precomputedUsing idomMohrEtAl p
+-- timingClassificationAtUsesNodes p@(Program { tcfg, observability }) =
+--     timingClassificationAtUsesUsing pc p clInit cltInit
+--   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes tcfg ]
+--         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
+--         pc@(PrecomputedResults { mhp }) = precomputedUsing idomMohrEtAl p
 timingClassificationAtUsesUsing
     (PrecomputedResults { cpdg, idom, mhp, chop, timingdg })
     (Program { tcfg })
@@ -166,13 +168,15 @@ timingClassificationAtUsesUsing
                                        | n <- nodes tcfg])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
                                                                     m' <- ideps n x,
-                                                                   (m,m') ∈ mhp
+                                                                   (m,m') ∈ mhp,
+                                                                   if (n == 21 ∧ (cl ! n == Low) ∧ (clt ! (m,m') == High) ) then traceShow (n,m,m') True else True
                                                  ]
                                          )
                                        | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
                                                                     m' <- ddeps n x,
-                                                                   (m,m') ∈ mhp
+                                                                   (m,m') ∈ mhp,
+                                                                   if (n == 21 ∧ (cl ! n == Low) ∧ (clt ! (m,m') == High) ) then traceShow (n,m,m') True else True
                                                  ]
                                          )
                                        | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])

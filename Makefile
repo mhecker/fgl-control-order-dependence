@@ -9,7 +9,7 @@ endif
 THREADED=-threaded
 RTS=+RTS -N $(PROF_RTS) -RTS
 COLOR=--color always
-ROFL = Data/Graph/Inductive/Query/BalancedSCC
+ROFL = Program/Tests
 CABAL_PREFIX=cabal exec --
 PATTERN=
 GHC_FLAGS=-rtsopts -O -fno-ignore-asserts
@@ -60,7 +60,10 @@ endif
 
 
 $(ROFL) : .FORCE
-	$(CABAL_PREFIX) ghc $(THREADED) -O --make Data.Graph.Inductive.Query.BalancedSCC -main-is Data.Graph.Inductive.Query.BalancedSCC.rofl
+	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Tests -main-is Program.Tests.main -o $@
+ifdef PROF
+	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Tests -main-is Program.Tests.main -o $@
+endif
 
 rofl : $(ROFL)
 	$(ROFL) $(RTS)

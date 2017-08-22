@@ -147,3 +147,17 @@ someFinishedReversedAnnotatedExecutionTraces n program@(Program { tcfg }) input 
 someFinishedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
 someFinishedAnnotatedExecutionTraces n p i = liftM (fmap (\(t,p) -> (reverse t,p))) $  someFinishedReversedAnnotatedExecutionTraces n p i
 
+showSomeFinishedExecutionTraces program input n = do
+  traces <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program input
+  forM_ traces (\(trace,q) -> do
+     putStrLn "-----------------"
+     forM_ trace (\((ns,globalσ,tlσ,i),(n,e,index),(ns',globalσ',tlσ',i')) -> do
+        putStrLn $ show ns
+        putStrLn $ show globalσ
+        putStrLn $ show tlσ
+        putStr   $ "---"
+        putStr   $ show (n,e,index)
+        putStrLn $ "-->"
+        putStrLn $ ""
+       )
+    )

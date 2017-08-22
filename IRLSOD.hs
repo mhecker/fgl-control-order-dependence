@@ -59,7 +59,9 @@ useB (Not b)     = useB b
 
 evalV :: CombinedState -> VarFunction -> Val
 evalV σ (Val  x)    = x
-evalV σ (Var  x)    = σ ! x
+evalV σ (Var  x)
+ | Map.member x σ   = σ ! x
+ | otherwise        = error $ show σ ++ "does not contain:    " ++ (show x)
 evalV σ (Plus  x y) = evalV σ x + evalV σ y
 evalV σ (Times x y) = evalV σ x * evalV σ y
 evalV σ (Neg x)     = - evalV σ x
@@ -193,14 +195,15 @@ eventStep icfg config@(control,globalσ,tlσs,i) = do
        let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(globalσ',tlσ', i') -> ((n,fromEdge σ i cfgEdge),(n',globalσ',tlσ', i'))) (stepFor cfgEdge (globalσ,tlσ,i)) ) normal
 
 
-       case (spawn, configs') of (_ ,[((_,event),(n',σ', tlσ', i'))]) -> return ((n,event,index),(n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
-                                                                                                  σ',
+       case (spawn, configs') of (_ ,[((_,event),(n',globalσ', tlσ', i'))]) ->
+                                                                         return ((n,event,index),(n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
+                                                                                                  globalσ',
                                                                                                   tlσ' : ([Map.empty | (spawned, Spawn) <- spawn] ++ (deleteAt index tlσs   )),
                                                                                                   i'
                                                                                 ))
                                  ([],[])                              -> return ((n,Tau,index),  (                                                    deleteAt index control,
-                                                                                                  σ,
-                                                                                                  tlσs,
+                                                                                                  globalσ,
+                                                                                                                                                      deleteAt index tlσs,
                                                                                                   i
                                                                                 ))
                                  (_ ,[])                              -> error "spawn an exit-node"
@@ -218,14 +221,15 @@ step icfg config@(control,globalσ,tlσs,i) = do
        let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(globalσ',tlσ', i') -> (n',globalσ', tlσ', i')) (stepFor cfgEdge (globalσ,tlσ,i)) ) normal
        
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-       case (spawn, configs') of (_,[(n',σ', tlσ', i')]) -> return (n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
-                                                                    σ',
+       case (spawn, configs') of (_,[(n',globalσ', tlσ', i')]) ->
+                                                            return (n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
+                                                                    globalσ',
                                                                     tlσ' : ([Map.empty | (spawned, Spawn) <- spawn] ++ (deleteAt index tlσs   )),
                                                                     i'
                                                             )
                                  ([],[])                 -> return (                                                    deleteAt index control,
-                                                                    σ,
-                                                                    tlσs,
+                                                                    globalσ,
+                                                                                                                        deleteAt index tlσs,
                                                                     i
                                                             )
                                  (_,[])                  -> error "spawn an exit-node"

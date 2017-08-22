@@ -68,6 +68,9 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 
+
+main = let {  pr = timingAtUsesVsResumptionBasedBugInTranslationExample2 } in showCounterExamplesPniForEquivAnnotatedSome 7500 pr defaultInput defaultInput'
+
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 
 

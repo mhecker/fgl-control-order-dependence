@@ -2747,3 +2747,11 @@ jcsPaperExamples = [
               $(withName 'figure5leftCode),
               $(withName 'figure1leftCode)
             ]
+
+syntacticCodeExamples = jcsPaperExamples ++ [
+              $(withName 'timingVsFSI3Code),
+              $(withName 'timingAtUsesVsResumptionBasedBugInTranslationExample2Code),
+              $(withName 'timingAtUsesVsResumptionBasedBugInTranslationExample1Code),
+              $(withName 'simpleExample1Code),
+              $(withName 'exampleD4Code)
+            ]

@@ -81,11 +81,11 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, precisionCounterExamples, interestingDodWod)
+import Program.Examples (testsuite, precisionCounterExamples, interestingDodWod, syntacticCodeExamples, code2ResumptionForProgram, code2Program)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
-import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity)
+import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity, isSecureResumptionBasedSecurityFor)
 import Program.CDom
 import Program.Generator (toProgram, GeneratedProgram)
 
@@ -161,6 +161,12 @@ soundnessTests =  testGroup "(concerning soundness)" $
                   ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
   | (exampleName, example) <- testsuite
   ] ++
+  [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
+                  ( (isSecureResumptionBasedSecurityFor ZeroOneBisimilarity forExample)
+                    →
+                    (isSecureEmpirically $ code2Program example)  @? "")
+  | (exampleName, example) <- syntacticCodeExamples, Just forExample <- [code2ResumptionForProgram example]
+  ] ++
   []
 
 
@@ -178,20 +184,20 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testProperty  "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
-                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity)
-    -- testProperty  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
-    --             $ \generated -> let  p :: Program Gr = toProgram generated in
-    --             isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
-    -- testProperty  "timingClassificationDomPaths == timingClassification"
-    --               timingDDomPathsIsTimingG,
-    -- testProperty  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
-    --             $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
-    -- testProperty  "timingClassificationAtUses is at least as precise as minimalClassification"
-    --             $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
-    -- testProperty  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
-    --             $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
-    -- testProperty  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
-    --             $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
+    testProperty  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
+    testProperty  "timingClassificationDomPaths == timingClassification"
+                  timingDDomPathsIsTimingG,
+    testProperty  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
+                $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
+    testProperty  "timingClassificationAtUses is at least as precise as minimalClassification"
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
+    testProperty  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
+    testProperty  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
+                $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $

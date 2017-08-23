@@ -345,7 +345,10 @@ pres obs var c@(ReadFromChannel x ch) deps =
 pres obs var c@(PrintToChannel  e ch) deps =
       insEdges [ (var ! x,                        nLevel $ obs ch,                Pres c) | x <- Set.toList $ useV e ]
     $ insEdges [ (var ! x ,                       nHigh,                          Pres c) | x <- Set.toList $ useV e ]
-    $ insEdges [ (nHigh,                          var ! x ,                       Pres c) | x <- Set.toList $ useV e ]
+      -- in the LSOD-Setting, a low print is always visible.
+      -- Hence, in order to obtain "fair"(™) comparison,
+      -- we demand that low print cannot be regarded preserving
+    $ insEdges [ (nHigh,                          nLevel $ obs ch,                Pres c) ]
     $ deps
 pres obs var c@(ClassifyGlobally x lvl) deps =
       insEdges [ (var ! x,                        nLvl,                           Pres c) ]

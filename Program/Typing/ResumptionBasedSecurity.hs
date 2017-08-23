@@ -330,25 +330,20 @@ nLevel High = nHigh
 pres :: ChannelTyping -> Map Var LevelVariable -> For -> Gr ConstraintNode ConstraintEdge -> Gr ConstraintNode ConstraintEdge 
 pres _   _      Skip     deps = deps
 pres _   var c@(Ass x _) deps =
-      insEdges [ (var ! x ,                       nHigh,                          Pres c) ]
-    $ insEdges [ (nHigh,                          var ! x ,                       Pres c) ]
+      insEdges [ (nHigh,                          var ! x ,                       Pres c) ]
     $ deps
 pres obs var c@(ReadFromChannel x ch) deps =
-      insEdges [ (nLevel $ obs ch,                var ! x,                        Pres c) ]
-    $ insEdges [ (var ! x ,                       nHigh,                          Pres c) ]
-    $ insEdges [ (nHigh,                          var ! x ,                       Pres c) ]
+      insEdges [ (nHigh,                          var ! x ,                       Pres c) ]
       -- in the LSOD-Setting, a low read is always visible.
       -- Hence, in order to obtain "fair"(™) comparison,
-      -- we demand that low read cannot be regarded preserving by reading into a high variable
-    $ insEdges [ (var ! x,                        nLevel $ obs ch,                  Cpt c) ]
+      -- we demand that low read cannot be regarded preserving
+    $ insEdges [ (nHigh,                          nLevel $ obs ch,                Pres c) ]
     $ deps
 pres obs var c@(PrintToChannel  e ch) deps =
-      insEdges [ (var ! x,                        nLevel $ obs ch,                Pres c) | x <- Set.toList $ useV e ]
-    $ insEdges [ (var ! x ,                       nHigh,                          Pres c) | x <- Set.toList $ useV e ]
       -- in the LSOD-Setting, a low print is always visible.
       -- Hence, in order to obtain "fair"(™) comparison,
       -- we demand that low print cannot be regarded preserving
-    $ insEdges [ (nHigh,                          nLevel $ obs ch,                Pres c) ]
+      insEdges [ (nHigh,                          nLevel $ obs ch,                Pres c) ]
     $ deps
 pres obs var c@(ClassifyGlobally x lvl) deps =
       insEdges [ (var ! x,                        nLvl,                           Pres c) ]

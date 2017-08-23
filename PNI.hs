@@ -15,6 +15,7 @@ import Data.Graph.Inductive.Graph
 import Control.Monad(forM_)
 import Control.Monad.Random
 
+import Debug.Trace
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -150,12 +151,13 @@ counterExamplesPniForEquiv program@(Program { tcfg, observability }) i i' = coun
 {- Counterexamples to PNI, using pre-computed probabilities for occuring equivalence classes, and shared probability computation -}
 counterExamplesWithRegardToEquivAnnotatedIf :: Graph gr => (Rational -> Rational -> Bool) -> gr CFGNode CFGEdge -> ObservationalSpecification -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> [(Rational,Rational,Trace)]
 counterExamplesWithRegardToEquivAnnotatedIf pred graph obs θ θ' =
-      nub $ [ (p e,p' e, tLow e) | (e,_) <- (θ ++ θ'), pred (p e) (p' e)]
+      nub $ [ (pe, p'e, tLow e) | (e,_) <- (θ ++ θ'), let pe = p e, let p'e = p' e, pred pe p'e]
   where tLow e  = observable graph obs Low (toTrace e)
         p  e = Map.findWithDefault 0 (tLow e) equiv
         p' e = Map.findWithDefault 0 (tLow e) equiv'
         equiv  = equivClassesAnnotated graph obs θ
         equiv' = equivClassesAnnotated graph obs θ'
+
 
 counterExamplesWithRegardToEquivAnnotated :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> [AnnotatedExecutionTrace] -> [AnnotatedExecutionTrace] -> [(Rational,Rational,Trace)]
 counterExamplesWithRegardToEquivAnnotated = counterExamplesWithRegardToEquivAnnotatedIf (/=)
@@ -218,6 +220,37 @@ showCounterExamplesPniForEquivAnnotatedSome n program@(Program { tcfg, observabi
   showCounterExamples counterExamples
  where n' = fromInteger n
        areDifferent p p' =   abs(p-p') > 2/100
+
+
+showCounterExamplesPniForEquivAnnotatedSomeWithConfidence nI program@(Program { tcfg, observability }) i i' = do
+  showInputs i i'
+  θ  <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces nI program i
+  θ' <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces nI program i'
+  let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotatedIf areDifferent tcfg observability θ θ'
+  showCounterExamples counterExamples
+ where toString :: Rational -> String
+       toString p = (printf "%.5f" $ (fromRational p  :: Double))
+       -- True iff with (1-alpha) confidence, the observed trace has different probbability compaing input i with i'.
+       areDifferent :: Rational -> Rational -> Bool
+       areDifferent p p' = result --if result then traceShow ((n,toString p, toString p'), "   ", (printf "%.5f" c1 :: String, printf "%.5f" c2 :: String)) $ result else result
+         where result = not $ c1 <= 0 && 0 <= c2
+               n1 = n*p
+               n0 = n - n1
+               n1' = n * p'
+               n0' = n - n1'
+               s :: Double
+               s  = sqrt $ fromRational $ (n1  * (1 - p ) * (1 - p )  +  n0  * p  * p ) / (n - 1)
+               s' = sqrt $ fromRational $ (n1' * (1 - p') * (1 - p')  +  n0' * p' * p') / (n - 1)
+               sx = sqrt $ ( (s * s / nD) + (s' * s' / nD))
+               (c1,c2) = ( x - z*sx, x + z*sx)
+                 where x = fromRational $ p - p' 
+                       -- z = 0.43 -- alpha/2 = 0.33 ,   (1-alpha) = 0.33
+                       -- z = 1.29 -- alpha/2 = 0.1  ,   (1-alpha) = 0.8
+                       z    = 1.65 -- alpha/2 = 0.05,    (1-alpha) = 0.9
+                       -- z = 1.96 -- alpha/2 = 0.025,   (1-alpha) = 0.95
+                       -- z = 2.33 -- alpha/2 = 0.01 ,   (1-alpha) = 0.99
+       n  = fromInteger nI
+       nD = fromInteger nI
 
 
 

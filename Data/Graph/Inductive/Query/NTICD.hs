@@ -2418,3 +2418,92 @@ exampleLinearSimpleLong =
              (4,5,()), (4,3,()),
              (2,3,()), (3,6,()), (6,7,()), (7,2,())
             ]
+
+data Reachability  = Unreachable | FixedSteps Integer | UndeterminedSteps deriving (Show, Eq)
+instance JoinSemiLattice Reachability where
+  Unreachable   `join` x           = x
+  x             `join` Unreachable = x
+
+  FixedSteps n `join` FixedSteps m
+    | n == m    = FixedSteps n
+    | otherwise = UndeterminedSteps
+
+  x         `join` y         = UndeterminedSteps
+
+instance BoundedJoinSemiLattice Reachability where
+  bottom = Unreachable
+
+plus :: Reachability -> Integer ->  Reachability
+(FixedSteps n) `plus` m = FixedSteps (n+m)
+x              `plus` _ = x
+
+type SmnTimingFunctional = Map (Node,Node) (Map (Node,Node) Reachability) -> Map (Node,Node) (Map (Node,Node) Reachability)
+type SmnTimingFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> SmnTimingFunctional
+timingF3 :: DynGraph gr => SmnTimingFunctionalGen gr a b
+timingF3 graph condNodes reachable nextCond toNextCond s
+  | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
+        (\(m,p,n) ->   (Map.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
+  | otherwise = -- traceShow [ ((n,m), s ! (n,m), "   ") | (n,m) <- [(5,4), (3,4), (5,3) ] ] $ 
+                   Map.fromList [ ((m,p), Map.fromList  [ ((p,x), FixedSteps i) | x <- suc graph p,
+                                                                                  (i,m2) <- (zip [0..] (toNextCondInOrder x)), m2 == m ]
+                                  ) | m <- nodes graph, p <- condNodes]
+                 ⊔ Map.fromList [ ((m,p), Map.fromList  [ ((p,x), reachability) | x <- (suc graph p),
+                                                                           m `elem` reachable x,
+                                                                           Just n <- [nextCond x],
+                                                                           let toNextCondX = toNextCond x,
+                                                                           not $ m ∈ toNextCondX,
+                                                                           let stepsToN = List.genericLength toNextCondX,
+                                                                           let reachabilityFromN = (∐) [ r | let rmn = s ! (m,n), r <- Map.elems rmn ],
+                                                                           let reachability = reachabilityFromN `plus` stepsToN
+                                               ]
+                                  ) | m <- nodes graph, p <- condNodes ]
+  where toNextCondInOrder = reverse . toNextCond
+
+
+snmTimingLfp :: DynGraph gr => gr a b -> SmnTimingFunctionalGen gr a b -> Map (Node, Node) (Map (Node,Node) Reachability)
+snmTimingLfp graph f = (㎲⊒) smnTimingInit (f graph condNodes reachable nextCond toNextCond)
+  where smnTimingInit =  Map.fromList [ ((m,p), Map.empty) | m <- nodes graph, p <- condNodes ]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+snmTimingF3 :: DynGraph gr => gr a b -> Map (Node, Node) (Map (Node,Node) Reachability)
+snmTimingF3 graph = snmTimingLfp graph timingF3
+
+timingF3summary :: DynGraph gr => gr a b -> Map Node (Map Node Reachability)
+timingF3summary = timingXsummary snmTimingF3
+
+timingXsummary :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Map Node Reachability)
+timingXsummary snmTiming graph = 
+      Map.fromList [ (n, Map.empty) | n <- nodes graph]
+    ⊔ Map.fromList [ (n, Map.fromList [ (m,r `plus` 1 ) | m <- nodes graph,
+                                                          m /= n,
+                                                          let rmn = s ! (m,n),
+                                                          let r = (∐) [ r | r <- Map.elems rmn ]
+                                      ]
+                     ) | n <- condNodes
+                  ]
+  where s = snmTiming graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+timingF3dependence :: DynGraph gr => gr a b -> Map Node (Set Node)
+timingF3dependence = timingXdependence snmTimingF3
+
+timingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Set Node)
+timingXdependence snmTiming graph = 
+      Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph,
+                                            m /= n,
+                                            let rmn = s ! (m,n),
+                                            (length [ r | r <- Map.elems rmn, r /= Unreachable ]) > 1,
+                                            let r = (∐) [ r | r <- Map.elems rmn ],
+                                            r == UndeterminedSteps
+                                      ]
+                     ) | n <- condNodes
+                  ]
+  where s = snmTiming graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+

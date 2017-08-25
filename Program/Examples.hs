@@ -2579,6 +2579,22 @@ simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) }
 
 
 
+exampleTimingDep :: Program Gr 
+exampleTimingDep=  p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram code
+        code = Map.fromList $ [
+          (1,
+           Skip                            `Seq`
+           If (CTrue)
+             (If (CTrue)
+                Skip
+                Skip)
+             (Skip `Seq` Skip `Seq` Skip)
+          )
+         ]
+
+
+
 -- This example demonstrated an error in a former version of dodFast.
 dodSuperFastCounterExample :: DynGraph gr => gr () ()
 dodSuperFastCounterExample = mkGraph [(-82,()),(-81,()),(-74,()),(-28,()),(-6,()),(15,()),(23,()),(47,()),(66,())] [(-82,23,()),(-81,-74,()),(-81,15,()),(-74,-82,()),(-74,47,()),(-28,-81,()),(-28,47,()),(-6,15,()),(15,47,()),(15,47,()),(23,15,()),(47,-82,()),(47,-6,()),(66,-82,()),(66,-81,()),(66,-74,()),(66,-28,()),(66,-6,()),(66,15,()),(66,23,()),(66,47,())]

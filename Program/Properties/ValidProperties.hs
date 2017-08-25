@@ -41,13 +41,17 @@ import qualified Data.List as List
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
+import IRLSOD(CFGEdge(..))
+
 import Data.Graph.Inductive.Query.DFS (scc)
+import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, pre, suc)
+import Data.Graph.Inductive (mkGraph, nodes, pre, suc, emap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    timingSolvedF3dependence, timingF3dependence,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom,
@@ -99,6 +103,8 @@ balanced   = defaultMain                               $ testGroup "balanced"  [
 balancedX  = defaultMainWithIngredients [antXMLRunner] $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
 timing     = defaultMain                               $ testGroup "timing"    [ {- mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], -} mkProp [timingClassificationDomPathsProps] ]
 timingX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
+timingDep  = defaultMain                               $ testGroup "timingDep" [ mkTest [timingDepTests], mkProp [timingDepProps] ]
+timingDepX = defaultMainWithIngredients [antXMLRunner] $ testGroup "timingDep" [ mkTest [timingDepTests], mkProp [timingDepProps] ]
 simon      = defaultMain                               $ testGroup "simon"     [ mkTest [simonClassificationTests],                                       mkProp [simonClassificationProps] ]
 simonX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "simon"     [ mkTest [simonClassificationTests],                                       mkProp [simonClassificationProps] ]
 giffhorn   = defaultMain                               $ testGroup "giffhorn"  [ mkTest [giffhornTests], mkProp [giffhornProps] ]
@@ -141,10 +147,10 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps]
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, timingDepTests]
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
@@ -1126,6 +1132,24 @@ ntscdTests = testGroup "(concerning ntscd)" $
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+
+
+timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timingSolvedF3dependence ⊑ timingF3dependence"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.timingSolvedF3dependence g ⊑
+                       NTICD.timingF3dependence       g,
+    testProperty  "timingF3dependence       ⊑ timingDependence"
+                $ \(ARBITRARY(g)) ->
+                       let gCfg = emap (\() -> NoOp) g in
+                       NTICD.timingSolvedF3dependence g ⊑
+                             timingDependence         gCfg
+  ]
+
+timingDepTests = testGroup "(concerning timingDependence)" $
+  []
+
 
 
 

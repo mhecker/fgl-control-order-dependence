@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Data.Graph.Inductive.Util where
 
 import Util
@@ -5,9 +6,11 @@ import Unicode
 
 import Data.List(delete)
 
+import Algebra.PartialOrd (PartialOrd, leq)
+
 import Data.Maybe (fromJust)
 import qualified Data.Map as Map
-import Data.Map (Map)
+import Data.Map (Map, (!))
 import qualified Data.Set as Set
 import Data.Set (Set)
 import qualified Data.Tree as Tree
@@ -199,3 +202,13 @@ postorder g = Map.fromList $ postorderTs 0 dftree
         postorderT n (Tree.Node x ts) = (x, p+1) : (m,p) : mps
           where (m,p):mps = postorderTs n ts
 -}
+
+instance PartialOrd (Gr () ()) where
+  g1 `leq` g2   = Map.keysSet ns1 ⊑ Map.keysSet ns2
+                ∧ (∀) (Map.assocs ns1) (\(n,k) -> k <= ns2 ! n )
+                ∧ Map.keysSet es1 ⊑ Map.keysSet es2
+                ∧ (∀) (Map.assocs es1) (\(n,k) -> k <= es2 ! n )
+    where ns1 = Map.fromListWith (+) $ zip (nodes g1) [1,1..]
+          ns2 = Map.fromListWith (+) $ zip (nodes g2) [1,1..]
+          es1 = Map.fromListWith (+) $ zip (edges g1) [1,1..]
+          es2 = Map.fromListWith (+) $ zip (edges g2) [1,1..]

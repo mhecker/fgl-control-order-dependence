@@ -2419,6 +2419,9 @@ exampleLinearSimpleLong =
              (2,3,()), (3,6,()), (6,7,()), (7,2,())
             ]
 
+
+
+
 data Reachability  = Unreachable | Unknown | FixedSteps Integer | FixedStepsPlusOther Integer Node | UndeterminedSteps deriving (Show, Eq)
 instance JoinSemiLattice Reachability where
   Unreachable   `join` x           = x
@@ -2452,22 +2455,16 @@ joinPlus r y = r `plus` y where
   r                         `plus` y = r
 
 
-solveTimingEquationSystem :: DynGraph gr => gr a b -> Map (Node,Node) (Map (Node,Node) Reachability) -> Map Node (Map Node Reachability)
-solveTimingEquationSystem graph smn =   Map.fromList [ (n, Map.empty) | n <- nodes graph]
-                                      ⊔ Map.fromList [ (n, Map.fromList [ (m,r `joinPlus` 1 ) | m <- nodes graph,
-                                                                                                m /= n,
-                                                                                                let rmn = s ! (m,n),
-                                                                                                let r = (∐) [ r | r <- Map.elems rmn ]
-                                                                        ]
-                                                       )
-                                                     | n <- condNodes ]
-  where s = simp smn
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        simp s = if (s == s') then s else simp s'
-          where s' =     Map.fromList [ ((m,p), Map.fromList [ ((p,x), r) | x <- (suc graph p),
---                                                                            if (not $  then traceShow (m,p,x, s ! (m,p)) True else True,
-                                                                            Map.member (p,x) (s ! (m,p)),
-                                                                            let rpx = (s ! (m,p) ) ! (p,x),
+type SmnTimingEquationSystem =
+       Map (Node,Node) (Map (Node,Node) Reachability)
+type SmnTimingEquationSystemGen gr a b =
+       gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node])
+    -> SmnTimingEquationSystem
+
+solveTimingEquationSystem ::  SmnTimingEquationSystem -> SmnTimingEquationSystem
+solveTimingEquationSystem s = if (s == s') then s else solveTimingEquationSystem s'
+          where s' =     Map.fromList [ ((m,p), Map.fromList [ ((p,x), r) | ((p',x), rpx) <- Map.assocs smp,
+                                                                            assert (p == p') True,
                                                                             let r = case rpx of
                                                                                       FixedStepsPlusOther i q -> let smq = s ! (m,q)
                                                                                                                      rmq = (∐) [ r | r <- Map.elems smq ]
@@ -2477,12 +2474,7 @@ solveTimingEquationSystem graph smn =   Map.fromList [ (n, Map.empty) | n <- nod
                                                                                       _                       -> rpx
                                                             ]
                                         )
-                                      | m <- nodes graph, p <- condNodes ]
-type SmnTimingEquationSystem =
-       Map (Node,Node) (Map (Node,Node) Reachability)
-type SmnTimingEquationSystemGen gr a b =
-       gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node])
-    -> SmnTimingEquationSystem
+                                      | ((m,p), smp) <- Map.assocs s ]
 
 timingF3EquationSystem :: DynGraph gr => SmnTimingEquationSystemGen gr a b
 timingF3EquationSystem graph condNodes reachable nextCond toNextCond =
@@ -2512,10 +2504,17 @@ snmTimingEquationSystem graph f = f graph condNodes reachable nextCond toNextCon
         trncl = trc graph
 
 snmTimingF3 :: DynGraph gr => gr a b -> SmnTimingEquationSystem
-snmTimingF3 graph = snmTimingEquationSystem graph timingF3EquationSystem
+snmTimingF3 graph     = snmTimingEquationSystem graph timingF3EquationSystem
+
+snmTimingSolvedF3 :: DynGraph gr => gr a b -> SmnTimingEquationSystem
+snmTimingSolvedF3 graph = snmTimingEquationSystem graph timingSolvedF3EquationSystem
+  where timingSolvedF3EquationSystem graph condNodes reachable nextCond toNextCond = solveTimingEquationSystem $ timingF3EquationSystem graph condNodes reachable nextCond toNextCond
 
 timingF3summary :: DynGraph gr => gr a b -> Map Node (Map Node Reachability)
-timingF3summary = timingXsummary snmTimingF3
+timingF3summary     = timingXsummary snmTimingF3
+
+timingSolvedF3summary :: DynGraph gr => gr a b -> Map Node (Map Node Reachability)
+timingSolvedF3summary = timingXsummary snmTimingSolvedF3
 
 timingXsummary :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Map Node Reachability)
 timingXsummary snmTiming graph = 
@@ -2532,7 +2531,11 @@ timingXsummary snmTiming graph =
 
 
 timingF3dependence :: DynGraph gr => gr a b -> Map Node (Set Node)
-timingF3dependence = timingXdependence snmTimingF3
+timingF3dependence     = timingXdependence snmTimingF3
+
+timingSolvedF3dependence :: DynGraph gr => gr a b -> Map Node (Set Node)
+timingSolvedF3dependence = timingXdependence snmTimingSolvedF3
+
 
 timingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Set Node)
 timingXdependence snmTiming graph = 

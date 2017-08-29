@@ -2469,7 +2469,8 @@ solveTimingEquationSystem s = if (s == s') then s else solveTimingEquationSystem
                                                                                       FixedStepsPlusOther i q -> let smq = s ! (m,q)
                                                                                                                      rmq = (∐) [ r | r <- Map.elems smq ]
                                                                                                                  in case rmq of
-                                                                                                                      FixedSteps j -> FixedSteps (1+i+j)
+                                                                                                                      FixedSteps j             -> FixedSteps (1+i+j)
+                                                                                                                      FixedStepsPlusOther j q' -> FixedStepsPlusOther (1+i+j) q'
                                                                                                                       _            -> rpx
                                                                                       _                       -> rpx
                                                             ]
@@ -2552,3 +2553,31 @@ timingXdependence snmTiming graph =
   where s = snmTiming graph
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
+
+alternativeTimingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Set Node)
+alternativeTimingXdependence snmTiming graph = 
+      Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph,
+                                            m /= n,
+                                            let rmn = s ! (m,n),
+                                            ((_,nl), rl) <- Map.assocs rmn,
+                                            ((_,nr), rr) <- Map.assocs rmn,
+                                            if (rl == Unreachable)       then error "unsolved snmTiming" else True,
+                                            if (rr == Unreachable)       then error "unsolved snmTiming" else True,
+                                            if (rl == UndeterminedSteps) then error "unsolved snmTiming" else True,
+                                            if (rr == UndeterminedSteps) then error "unsolved snmTiming" else True,
+                                            case (rl,rr) of
+                                              (FixedSteps i, FixedSteps j)                         -> (i /= j)
+                                              (FixedStepsPlusOther i l', FixedStepsPlusOther j r') -> (i /= j) ∨ (l' /= r')
+                                              (FixedSteps i, _)                                    -> True 
+                                              (_,            FixedSteps j)                         -> True 
+                                              (_,            _)                                    -> False
+                                      ]
+                     ) | n <- condNodes
+                  ]
+  where s = snmTiming graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+alternativeTimingSolvedF3dependence :: DynGraph gr => gr a b -> Map Node (Set Node)
+alternativeTimingSolvedF3dependence = alternativeTimingXdependence snmTimingSolvedF3

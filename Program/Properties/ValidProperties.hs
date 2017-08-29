@@ -51,7 +51,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc, emap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    timingSolvedF3dependence, timingF3dependence,
+    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom,
@@ -1136,6 +1136,33 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timingF3dependence is transitive"
+                $ \(ARBITRARY(g)) ->
+                       let tdep    = NTICD.timingF3dependence g
+                       in (∀) (nodes g) (\n ->
+                            (∀) (tdep ! n) (\n' ->
+                              (∀) (tdep ! n') (\n'' ->
+                                  (n'' == n)
+                                ∨ (n'' ∈ tdep ! n)
+                              )
+                            )
+                          ),
+    testProperty  "timingSolvedF3dependence is transitive"
+                $ \(ARBITRARY(g)) ->
+                       let tdep    = NTICD.timingSolvedF3dependence g
+                       in (∀) (nodes g) (\n ->
+                            (∀) (tdep ! n) (\n' ->
+                              (∀) (tdep ! n') (\n'' ->
+                                  (n'' == n)
+                                ∨ (n'' ∈ tdep ! n)
+                              )
+                            )
+                          ),
+    testProperty  "alternativeTimingSolvedF3dependence == timingSolvedF3dependence"
+                $ \(ARBITRARY(g)) ->
+                       let tdep            = NTICD.timingSolvedF3dependence g
+                           alternativetdep = NTICD.alternativeTimingSolvedF3dependence g
+                       in  alternativetdep == tdep,
     testProperty  "timingSolvedF3dependence ⊑ timingF3dependence"
                 $ \(ARBITRARY(g)) ->
                        NTICD.timingSolvedF3dependence g ⊑
@@ -1143,7 +1170,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty  "timingF3dependence       ⊑ timingDependence"
                 $ \(ARBITRARY(g)) ->
                        let gCfg = emap (\() -> NoOp) g in
-                       NTICD.timingSolvedF3dependence g ⊑
+                       NTICD.timingF3dependence       g ⊑
                              timingDependence         gCfg
   ]
 

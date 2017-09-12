@@ -51,7 +51,7 @@ import Data.Graph.Inductive (mkGraph, nodes, pre, suc, emap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence,
+    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom,
@@ -77,7 +77,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
 import Data.Graph.Inductive.Arbitrary
 
 
-import Program (Program)
+import Program (Program, tcfg)
 import Program.Tests (isSecureEmpirically)
 
 import Program.Properties.Analysis
@@ -1136,6 +1136,11 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timingF3EquationSystem'  == timingF3EquationSystem"
+                $ \(ARBITRARY(g)) ->
+                       let timingEq        = NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
+                           timingEq'       = NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem'
+                       in  timingEq         == timingEq',
     testProperty  "timingF3dependence is transitive"
                 $ \(ARBITRARY(g)) ->
                        let tdep    = NTICD.timingF3dependence g
@@ -1163,6 +1168,31 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        let tdep            = NTICD.timingSolvedF3dependence g
                            alternativetdep = NTICD.alternativeTimingSolvedF3dependence g
                        in  alternativetdep == tdep,
+    -- testProperty  "timingSolvedF3sparseDependence is intransitive for graphs with unique end Node"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                    let (_, g) = withUniqueEndNode () () generatedGraph
+    --                        tdepsparse= NTICD.timingSolvedF3sparseDependence g
+    --                    in  (∀) (Map.assocs tdepsparse) (\(n,n's) ->
+    --                          (∀) (n's) (\n' ->
+    --                            (∀) (tdepsparse ! n') (\n'' -> not $ n'' ∈ n's)
+    --                          )
+    --                        ),
+    -- testProperty  "timingSolvedF3sparseDependence is intransitive for  For-Programs, which by construction are reducible"
+    --             $ \generated ->
+    --                    let p = toProgram generated  :: Program Gr
+    --                        g = tcfg p
+    --                        tdepsparse = NTICD.timingSolvedF3sparseDependence g
+    --                    in  (∀) (Map.assocs tdepsparse) (\(n,n's) ->
+    --                          (∀) (n's) (\n' ->
+    --                            (∀) (tdepsparse ! n') (\n'' -> not $ n'' ∈ n's)
+    --                          )
+    --                        ),
+    testProperty  "timingSolvedF3sparseDependence^*    == timingSolvedF3dependence ∪ {(n,n) | n ∈ nodes}"
+                $ \(ARBITRARY(g)) ->
+                       let tdep             = NTICD.timingSolvedF3dependence g
+                           tdepsparse       = NTICD.timingSolvedF3sparseDependence g
+                       in (trc $ fromSuccMap $ tdepsparse :: Gr () ()) ==
+                          (      fromSuccMap $ tdep ⊔ Map.fromList [(n, Set.fromList [n]) | n <- nodes g ]),
     testProperty  "timingSolvedF3dependence ⊑ timingF3dependence"
                 $ \(ARBITRARY(g)) ->
                        NTICD.timingSolvedF3dependence g ⊑

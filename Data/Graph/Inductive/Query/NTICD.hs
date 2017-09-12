@@ -2584,7 +2584,6 @@ timingXsparseDependence snmTiming graph =
                                             m /= n,
                                             let rmn = s ! (m,n),
                                             (length [ r | r <- Map.elems rmn, r /= Unreachable ]) > 1,
-                                            let r = (∐) [ r | r <- Map.elems rmn ],
                                             (∃) (Map.elems rmn) (\r ->
                                               (∃) (Map.elems rmn) (\r' ->  r ⊔ r' == UndeterminedSteps ∧ ( 
                                                                              case (r,r') of

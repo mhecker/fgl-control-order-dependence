@@ -53,7 +53,7 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     myWod, isinkdomOfSinkContraction, myDod,
-    dodDef, dodSuperFast,
+    dodDef, dodSuperFast, wodDef,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF3, snmF5
@@ -215,6 +215,17 @@ nticdTests = testGroup "(concerning nticd)" $
 
 
 ntscdTests = testGroup "(concerning ntscd)" $
+  [  testCase    ( "wod ⊆ ntscd for reducible graphs, as conjectured in [1], page 19 for" ++ exampleName)
+            $  let g = tcfg p
+                   wod = NTICD.wodDef g
+                   ntscd = NTICD.ntscdF3 g
+               in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                    (∀) (ns) (\n ->   (m1 ∈ ntscd ! n)
+                                    ∨ (m2 ∈ ntscd ! n)
+                              )
+                    ) @? ""
+  | (exampleName, p) <- failingWodNtscdReducible
+  ] ++
   [  testCase    ( "ntscdFig4GraphP         ==       ntscdF3GraphP for " ++ exampleName)
             $ NTICD.ntscdFig4GraphP p       == NTICD.ntscdF3GraphP p @? ""
   | (exampleName, p) <- failingNtscd
@@ -222,7 +233,17 @@ ntscdTests = testGroup "(concerning ntscd)" $
   []
 
 ntscdProps = testGroup "(concerning ntscd )" [
-    testProperty  "ntscdFig4GraphP          == ntscdF3GraphP"
+    testProperty  "wod ⊆ ntscd for reducible graphs, as conjectured in [1], page 19"
+                $ \generated -> let  p :: Program Gr = toProgram generated
+                                     g = tcfg p
+                                     wod = NTICD.wodDef g
+                                     ntscd = NTICD.ntscdF3 g
+                                in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                                      (∀) (ns) (\n ->   (m1 ∈ ntscd ! n)
+                                                      ∨ (m2 ∈ ntscd ! n)
+                                      )
+                                  ),
+  testProperty  "ntscdFig4GraphP          == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.ntscdFig4GraphP p   == NTICD.ntscdF3GraphP p,
     testProperty  "ntscdFig4                == ntscdF3"

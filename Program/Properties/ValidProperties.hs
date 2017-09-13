@@ -47,7 +47,7 @@ import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, pre, suc, emap)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
@@ -55,8 +55,8 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom,
-    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL',
+    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, 
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef,
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -1097,6 +1097,17 @@ nticdTests = testGroup "(concerning nticd)" $
 
 
 ntscdProps = testGroup "(concerning ntscd )" [
+    testProperty  "wod ⊆ ntscd^* for reducible graphs"
+                $ \generated -> let  p :: Program Gr = toProgram generated
+                                     g = tcfg p
+                                     wod = NTICD.wodDef g
+                                     ntscd = NTICD.ntscdF3 g
+                                     ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
+                                in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                                      (∀) (ns) (\n ->   (m1 ∈ suc ntscdTrc n)
+                                                      ∨ (m2 ∈ suc ntscdTrc n)
+                                      )
+                                   )
     testProperty  "ntscdF4GraphP          == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.ntscdF4GraphP p         == NTICD.ntscdF3GraphP p,

@@ -54,6 +54,26 @@ exampleIrreducible = Program {
 
 
 
+exampleSimonReducibleWod :: Program Gr
+exampleSimonReducibleWod = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [1..5] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 1
+        exitOf 1 = 5
+        tcfg = mkGraph [(n,n) | n <- [1..5]] $
+                       [(1,2,true), (1,3,false), (2,4,true), (2,5,false), (3,5,nop),(4,5,nop)]
+
+
+
 {-    
         1---------|
         |         |
@@ -2770,4 +2790,8 @@ syntacticCodeExamples = jcsPaperExamples ++ [
               $(withName 'timingAtUsesVsResumptionBasedBugInTranslationExample1Code),
               $(withName 'simpleExample1Code),
               $(withName 'exampleD4Code)
+            ]
+
+failingWodNtscdReducible = [
+              $(withName 'exampleSimonReducibleWod)
             ]

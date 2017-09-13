@@ -2166,6 +2166,26 @@ dodColoredDagFixedFast graph =
         unorderedPairsOf (x:xs) = [ (x,y) | y <- xs ] ++ unorderedPairsOf xs
 
 
+
+wodDef :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+wodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
+                                                           (∃) (maximalPaths ! p) (\path -> (m1,m2) `inPathBefore` (p,path)),
+                                                           (∃) (maximalPaths ! p) (\path -> (m2,m1) `inPathBefore` (p,path)),
+                                                           (∃) (suc graph p) (\x ->
+                                                             (∀) (maximalPaths ! x) (\path -> (m2,m1) `inPathBefore` (x,path))
+                                                           ∨ (∀) (maximalPaths ! x) (\path -> (m1,m2) `inPathBefore` (x,path))
+                                                           )
+                                        ]
+                                )
+                            | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+  where sccs = scc graph
+        sccOf m =  the (m `elem`) $ sccs
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        maximalPaths = maximalPathsFor graph
+        inPath = inPathFor graph doms
+        inPathBefore = inPathForBefore graph doms
+        doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're ju
+
 dodDef :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 dodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
                                                            (∀) (maximalPaths ! p) (\path ->   m1 `inPath` (p,path)

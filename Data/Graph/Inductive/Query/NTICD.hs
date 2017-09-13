@@ -2588,7 +2588,6 @@ timingXsparseDependence snmTiming graph =
                                               (∃) (Map.elems rmn) (\r' ->  r ⊔ r' == UndeterminedSteps ∧ ( 
                                                                              case (r,r') of
                                                                                (FixedStepsPlusOther _ u, FixedStepsPlusOther _ v)  -> (not $ n ∈ [u,v]) ∧ (u /= v)
-                                                                               (FixedSteps x,            FixedStepsPlusOther _ _ ) -> False
                                                                                _                                                   -> True
                                                                            )
                                               )

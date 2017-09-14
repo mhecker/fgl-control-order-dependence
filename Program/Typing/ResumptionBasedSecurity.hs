@@ -482,11 +482,14 @@ varDependenciesOf maximalCriterion var obs c@(Ass x e)                deps = var
 varDependenciesOf maximalCriterion var obs c@(ReadFromChannel x ch)   deps = varDependenciesOfAtm maximalCriterion var obs c deps
 varDependenciesOf maximalCriterion var obs c@(PrintToChannel  e ch)   deps = varDependenciesOfAtm maximalCriterion var obs c deps
 varDependenciesOf maximalCriterion var obs c@(ClassifyGlobally x lvl) deps = varDependenciesOfAtm maximalCriterion var obs c deps
-varDependenciesOf Discr            var obs (If b c1 c2) deps = do
+varDependenciesOf maximalCriterion var obs (If b c1 c2) deps
+  | Discr ⊑ maximalCriterion = others ++ do
     (_, deps1) <- varDependenciesOf Discr var obs c1 deps
     (_, deps2) <- varDependenciesOf Discr var obs c2 deps1
     return (Discr, deps2)
-varDependenciesOf maximalCriterion var obs (If b c1 c2) deps = do
+  | otherwise                = others
+ where
+   others = do
     let deps0 = cptE var b deps
     (criterion1, deps1) <- strongestProofs $ varDependenciesOf maximalCriterion var obs c1 deps0
     (criterion2, deps2) <- strongestProofs $ varDependenciesOf maximalCriterion var obs c2 deps1

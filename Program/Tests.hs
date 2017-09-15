@@ -60,7 +60,7 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Tree
 
 import Data.Graph.Inductive.Query.Dominators
-
+import Data.Graph.Inductive.Arbitrary.Reducible
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map

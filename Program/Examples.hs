@@ -74,6 +74,26 @@ exampleSimonReducibleWod = Program {
 
 
 
+exampleSimonReducibleWod2 :: Program Gr
+exampleSimonReducibleWod2 = Program {
+    tcfg = tcfg,
+    staticThreadOf = staticThreadOf,
+    staticThreads  = Set.fromList [1],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticThreadOf n 
+         | n `elem` [0..4] = 1 
+         | otherwise = error "uknown node"
+        entryOf 1 = 0
+        exitOf 1 = 4
+        tcfg = mkGraph [(n,n) | n <- [0..4]] $
+                       [(0,4,nop), (4,1,nop), (4,2,nop), (1,2,nop), (1,3,nop),(2,3,nop), (3,4,nop)]
+
+
+
 {-    
         1---------|
         |         |

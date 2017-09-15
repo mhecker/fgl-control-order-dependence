@@ -7,6 +7,8 @@
 #else
 #define ARBITRARY(g) (CG _ g) :: (Connected Gr () ())
 #endif
+#define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
+
 
 module Program.Properties.ValidProperties where
 
@@ -43,6 +45,7 @@ import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..))
 
+import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
@@ -125,6 +128,8 @@ wod        = defaultMain                               $ testGroup "wod"       [
 wodX       = defaultMainWithIngredients [antXMLRunner] $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 color      = defaultMain                               $ testGroup "color"     [ mkTest [colorTests], mkProp [colorProps]]
 colorX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "color"     [ mkTest [colorTests], mkProp [colorProps]]
+reducible  = defaultMain                               $ testGroup "reducible" [                      mkProp [reducibleProps]]
+reducibleX = defaultMainWithIngredients [antXMLRunner] $ testGroup "reducible" [                      mkProp [reducibleProps]]
 
 
 
@@ -1096,8 +1101,26 @@ nticdTests = testGroup "(concerning nticd)" $
   []
 
 
+
+reducibleProps = testGroup "(concerning the generator for reducible graphs)" [
+    testProperty  "every generated reducible graph is reducible"
+                $ \(REDUCIBLE(g)) -> isReducible g
+   ]
+
+
 ntscdProps = testGroup "(concerning ntscd )" [
     testProperty  "wod ⊆ ntscd^* for reducible graphs"
+                $ \(REDUCIBLE(g)) ->
+                                let
+                                     wod = NTICD.wodDef g
+                                     ntscd = NTICD.ntscdF3 g
+                                     ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
+                                in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                                      (∀) (ns) (\n ->   (m1 ∈ suc ntscdTrc n)
+                                                      ∨ (m2 ∈ suc ntscdTrc n)
+                                      )
+                                   ),
+    testProperty  "wod ⊆ ntscd^* for For-Programs, which by construction are reducible"
                 $ \generated -> let  p :: Program Gr = toProgram generated
                                      g = tcfg p
                                      wod = NTICD.wodDef g

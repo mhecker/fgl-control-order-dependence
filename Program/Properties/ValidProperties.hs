@@ -152,10 +152,10 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps]
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, timingDepTests]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, sensitiveDomTests, timingDepTests, dodProps, wodProps, colorProps                ]
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
@@ -544,12 +544,12 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   []
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testPropertySized 50 "lfp fMay                 == lfp fMay'"
+    testPropertySized 40 "lfp fMay                 == lfp fMay'"
     $ \(ARBITRARY(g)) ->
                     let lfp      = NTICD.smmnLfp g NTICD.fMay
                         lfp'     = NTICD.smmnLfp g NTICD.fMay'
                     in  lfp                  == lfp',
-    testPropertySized 50 "wodDef                    == wodFast"
+    testPropertySized 40 "wodDef                    == wodFast"
     $ \(ARBITRARY(g)) ->
                     let wodDef   = NTICD.wodDef  g
                         wodFast  = NTICD.wodFast g
@@ -1119,10 +1119,10 @@ reducibleProps = testGroup "(concerning the generator for reducible graphs)" [
 
 
 ntscdProps = testGroup "(concerning ntscd )" [
-    testPropertySized 50 "wod ⊆ ntscd^* for reducible graphs"
+    testPropertySized 35 "wod ⊆ ntscd^* for reducible graphs"
                 $ \(REDUCIBLE(g)) ->
                                 let
-                                     wod = NTICD.wodDef g
+                                     wod = NTICD.wodFast g
                                      ntscd = NTICD.ntscdF3 g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
@@ -1130,10 +1130,10 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                                       ∨ (m2 ∈ suc ntscdTrc n)
                                       )
                                    ),
-    testPropertySized 50 "wod ⊆ ntscd^* for For-Programs, which by construction are reducible"
+    testPropertySized 4 "wod ⊆ ntscd^* for For-Programs, which by construction are reducible"
                 $ \generated -> let  p :: Program Gr = toProgram generated
                                      g = tcfg p
-                                     wod = NTICD.wodDef g
+                                     wod = NTICD.wodFast g
                                      ntscd = NTICD.ntscdF3 g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->

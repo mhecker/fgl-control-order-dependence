@@ -1765,6 +1765,27 @@ fMay graph condNodes reachable nextCond toNextCond s =
                                   ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
 
 
+fMay' :: DynGraph gr => SmmnFunctionalGen gr a b
+fMay' graph condNodes reachable nextCond toNextCond s =
+              (∐) [ Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) ])]
+                                | p <- condNodes,
+                                  x <- suc graph p,
+                                  let toNxtCondX = toNextCond x,
+                                  m1 <- toNxtCondX,
+                                  m2 <- nodes graph,
+                                  not $ m2 `elem` (m1 : (takeWhile (/= m1) $ reverse toNxtCondX))
+                  ]
+           ⊔      Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- (suc graph p),
+                                                                     let toNxtCondX = toNextCond x,
+                                                                     not $ m2 `elem` toNxtCondX,
+                                                                     Just n <- [nextCond x], 
+                                                                     (Set.size $ s ! (m1,m2,n)) > 0
+                                             ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes
+                  ]
+
+
+
 combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Node -> Node -> Set Node
 combinedBackwardSlice graph cd od m1 m2 =  (㎲⊒) (Set.fromList [m1, m2]) f
   where f slice = slice
@@ -1831,7 +1852,7 @@ smmnFMustWod graph = smmnGfp graph fMust
 
 
 smmnFMayWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
-smmnFMayWod graph = smmnLfp graph fMay
+smmnFMayWod graph = smmnLfp graph fMay'
 
 
 smmnFMustDod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
@@ -1842,7 +1863,7 @@ smmnFMustNoReachCheckDod graph = smmnLfp graph fMustNoReachCheck
 
 
 smmnFMayDod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
-smmnFMayDod graph = smmnLfp graph fMay
+smmnFMayDod graph = smmnLfp graph fMay'
 
 
 
@@ -2166,11 +2187,31 @@ dodColoredDagFixedFast graph =
         unorderedPairsOf (x:xs) = [ (x,y) | y <- xs ] ++ unorderedPairsOf xs
 
 
+wodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+wodFast graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
+                                                  let sMay12n = sMay ! (m1,m2,n),
+                                                  let sMay21n = sMay ! (m2,m1,n),
+                                                  ((n /= m2) ∧ (Set.size sMay12n > 0))  ∨  ((n == m1) ∧ (m2 ∈ suc graphTrc n)),
+                                                  ((n /= m1) ∧ (Set.size sMay21n > 0))  ∨  ((n == m2) ∧ (m1 ∈ suc graphTrc n)),
+                                                  let sMust12n = sMust ! (m1,m2,n),
+                                                  let sMust21n = sMust ! (m2,m1,n),
+                                                  Set.size sMust12n > 0 ∨ Set.size sMust21n > 0
+                                      ]
+                     ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
+                  ]
+  where sMust = smmnFMustNoReachCheckDod graph
+        sMay  = smmnFMayWod graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        graphTrc = trc $ graph
+
+
 
 wodDef :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 wodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
-                                                           (∃) (maximalPaths ! p) (\path -> (m1,m2) `inPathBefore` (p,path)),
-                                                           (∃) (maximalPaths ! p) (\path -> (m2,m1) `inPathBefore` (p,path)),
+                                                           (∃) (maximalPaths ! p) (\path -> (m1,m2) `mayInPathBefore` (p,path)),
+                                                           (∃) (maximalPaths ! p) (\path -> (m2,m1) `mayInPathBefore` (p,path)),
                                                            (∃) (suc graph p) (\x ->
                                                              (∀) (maximalPaths ! x) (\path -> (m2,m1) `inPathBefore` (x,path))
                                                            ∨ (∀) (maximalPaths ! x) (\path -> (m1,m2) `inPathBefore` (x,path))
@@ -2182,8 +2223,8 @@ wodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
         sccOf m =  the (m `elem`) $ sccs
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         maximalPaths = maximalPathsFor graph
-        inPath = inPathFor graph doms
         inPathBefore = inPathForBefore graph doms
+        mayInPathBefore = mayInPathForBefore graph doms
         doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're ju
 
 dodDef :: DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
@@ -2236,6 +2277,43 @@ inPathForBefore graph' doms (m1,m2) (s, path) = inPathFromEntries [s] path
                                       )
                     | otherwise    =  -- traceShow (entries, thispath) $
                                       (not $ m2 `elem` scc) ∧ inPathFromEntries [ n' | (_,n') <- borderEdges ] (MaximalPath prefix endScc endNodes)
+                  where next =  if (null prefix) then endScc else head prefix
+                        borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
+                        exits = [ n | (n,_) <- borderEdges ]
+                get assocs key = case  List.lookup key assocs of
+                                   Nothing -> error $ "lookup " ++ (show key) ++ "  " ++ (show assocs)
+                                   Just v  -> v
+
+
+
+mayInPathForBefore :: DynGraph gr => gr a b -> Map Node [(Node, [Node])] -> (Node,Node) -> (Node, MaximalPath) -> Bool
+mayInPathForBefore graph' doms (m1,m2) (s, path) = inPathFromEntries [s] path
+          where 
+                inPathFromEntries entries  thispath@(MaximalPath []            endScc endNodes@(end:_))
+                    | m1 `elem` endScc ∧ m2 `elem` endScc  = -- traceShow (entries, thispath) $
+                                      (∃) entries (\entry -> let domsm1 = (doms ! entry) `get` m1 in
+                                                             not $ m2 `elem` domsm1
+                                      )
+                    | m1 `elem` endScc  = -- traceShow (entries, thispath) $
+                                          True
+                    | otherwise         = -- traceShow (entries, thispath) $
+                                          False
+                inPathFromEntries entries  thispath@(MaximalPath (scc:prefix)  endScc endNodes)
+                    | m1 `elem` scc ∧ m2 `elem` scc = -- traceShow (entries, thispath) $
+                                      (∃) entries (\entry -> let domsm1 = (doms ! entry) `get` m1 in
+                                                             not $ m2 `elem` domsm1
+                                      )
+                    | m1 `elem` scc = -- traceShow (entries, thispath) $
+                                      True
+                    | m2 `elem` scc = -- traceShow (entries, exits, thispath) $
+                                      (∃) entries (\entry ->
+                                        (∃) exits (\exit -> let domsexit = (doms ! entry) `get` exit in
+                                                                not $ m2 `elem` domsexit
+                                        )
+                                      )
+                                    ∧ inPathFromEntries [ n' | (_,n') <- borderEdges ] (MaximalPath prefix endScc endNodes)
+                    | otherwise     = -- traceShow (entries, thispath) $
+                                      inPathFromEntries [ n' | (_,n') <- borderEdges ] (MaximalPath prefix endScc endNodes)
                   where next =  if (null prefix) then endScc else head prefix
                         borderEdges = [ (n,n') | n <- scc, n' <- suc graph' n, n' `elem` next ]
                         exits = [ n | (n,_) <- borderEdges ]

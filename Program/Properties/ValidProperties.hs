@@ -59,7 +59,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom,
     nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, 
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef,
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
@@ -544,6 +544,16 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   []
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testPropertySized 50 "lfp fMay                 == lfp fMay'"
+    $ \(ARBITRARY(g)) ->
+                    let lfp      = NTICD.smmnLfp g NTICD.fMay
+                        lfp'     = NTICD.smmnLfp g NTICD.fMay'
+                    in  lfp                  == lfp',
+    testPropertySized 50 "wodDef                    == wodFast"
+    $ \(ARBITRARY(g)) ->
+                    let wodDef   = NTICD.wodDef  g
+                        wodFast  = NTICD.wodFast g
+                    in  wodDef == wodFast,
     testProperty  "myWod ⊑ wodTEIL'"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -1109,7 +1119,7 @@ reducibleProps = testGroup "(concerning the generator for reducible graphs)" [
 
 
 ntscdProps = testGroup "(concerning ntscd )" [
-    testProperty  "wod ⊆ ntscd^* for reducible graphs"
+    testPropertySized 50 "wod ⊆ ntscd^* for reducible graphs"
                 $ \(REDUCIBLE(g)) ->
                                 let
                                      wod = NTICD.wodDef g
@@ -1120,7 +1130,7 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                                       ∨ (m2 ∈ suc ntscdTrc n)
                                       )
                                    ),
-    testProperty  "wod ⊆ ntscd^* for For-Programs, which by construction are reducible"
+    testPropertySized 50 "wod ⊆ ntscd^* for For-Programs, which by construction are reducible"
                 $ \generated -> let  p :: Program Gr = toProgram generated
                                      g = tcfg p
                                      wod = NTICD.wodDef g
@@ -1130,7 +1140,7 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                       (∀) (ns) (\n ->   (m1 ∈ suc ntscdTrc n)
                                                       ∨ (m2 ∈ suc ntscdTrc n)
                                       )
-                                   )
+                                   ),
     testProperty  "ntscdF4GraphP          == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   NTICD.ntscdF4GraphP p         == NTICD.ntscdF3GraphP p,
@@ -1413,3 +1423,4 @@ miscProps = testGroup "(misc)" [
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
 testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
    where MkProperty gen = property prop
+

@@ -1163,6 +1163,18 @@ ntscdProps = testGroup "(concerning ntscd )" [
   ]
 
 ntscdTests = testGroup "(concerning ntscd)" $
+  [  testCase    ( "wod ⊆ ntscd^* for                                   " ++ exampleName)
+            $                   let  g = tcfg p
+                                     wod = NTICD.wodFast g
+                                     ntscd = NTICD.ntscdF3 g
+                                     ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
+                                in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                                      (∀) (ns) (\n ->   (m1 ∈ suc ntscdTrc n)
+                                                      ∨ (m2 ∈ suc ntscdTrc n)
+                                      )
+                                   ) @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [  testCase    ( "ntscdF4GraphP            ==       ntscdF3GraphP for " ++ exampleName)
             $ NTICD.ntscdF4GraphP p          == NTICD.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite

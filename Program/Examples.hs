@@ -2633,6 +2633,9 @@ exampleTimingDep=  p { observability = defaultObservabilityMap (tcfg p) }
           )
          ]
 
+exampleTimingDepInterestingTwoFinger :: DynGraph gr => gr () ()
+exampleTimingDepInterestingTwoFinger = mkGraph [(-36,()),(-29,()),(-19,()),(39,()),(40,())] [(-36,-29,()),(-36,39,()),(-36,39,()),(-29,-19,()),(-19,39,()),(39,-19,()),(40,-36,()),(40,-29,()),(40,-19,()),(40,39,())]
+
 
 
 -- This example demonstrated an error in a former version of dodFast.

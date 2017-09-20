@@ -2728,13 +2728,13 @@ timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                                     if (not $ new) then twoFinger (i+1)               worklist'                                   imdom
                                     else                twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
-                mz :: Maybe (Node, Integer)
-                mz = foldM1 lca [ (y, 1) | y <- suc graph x]
+                mz :: Maybe (Node, Integer, Set Node)
+                mz = foldM1 lca [ (y, 1, Set.empty) | y <- suc graph x]
                 zs = case mz of
-                      Just (z,sz)  -> if z /= x then
-                                        Just (z, sz)
-                                      else
-                                        Nothing
+                      Just (z,sz,_)  -> if z /= x then
+                                          Just (z, sz)
+                                        else
+                                          Nothing
                       Nothing ->  Nothing
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing zs)
@@ -2742,27 +2742,30 @@ timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
-                lca :: (Node, Integer) -> (Node, Integer) -> Maybe (Node, Integer)
-                lca  (n, sn) (m, sm) = lca' imdom (n, sn, Map.fromList [(n,sn)]) (m, sm, Map.fromList [(m,sm)])
-                lca' :: Map Node (Maybe (Node, Integer)) -> (Node, Integer, Map Node Integer) -> (Node, Integer, Map Node Integer) -> Maybe (Node, Integer)
-                lca' c (n, sn, ns) (m, sm, ms)
+                lca :: (Node, Integer, Set Node) -> (Node, Integer, Set Node) -> Maybe (Node, Integer, Set Node)
+                lca  (n, sn, forbiddenNs) (m, sm, forbiddenMs) = lca' imdom (n, sn, Map.fromList [(n,sn)], forbiddenNs) (m, sm, Map.fromList [(m,sm)], forbiddenMs)
+                lca' :: Map Node (Maybe (Node, Integer)) -> (Node, Integer, Map Node Integer, Set Node) -> (Node, Integer, Map Node Integer, Set Node ) -> Maybe (Node, Integer, Set Node)
+                lca' c (n, sn, ns, forbiddenNs) (m, sm, ms, forbiddenMs)
                     | m ∈ Map.keys ns ∧ ((ns ! m) == sm) = -- traceShow ((n,sn,ns), (m,sm,ms))
-                                                           Just (m, sm) 
+                                                           assert (ms ! m == sm) $
+                                                           assert (Map.keysSet ns ∩ (Map.keysSet ms ∖ Set.fromList [m]) == Set.empty) $ 
+                                                           Just (m, sm, Map.keysSet ns ∪ Map.keysSet ms) 
                     | m ∈ Map.keys ns ∧ ((ns ! m) /= sm) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
                                                            Nothing
                     | n ∈ Map.keys ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
-                                                           Just (n, sn) 
+                                                           assert (ns ! n == sn) $
+                                                           assert (Map.keysSet ms ∩ (Map.keysSet ns ∖ Set.fromList [n]) == Set.empty) $ 
+                                                           Just (n, sn, Map.keysSet ns ∪ Map.keysSet ms) 
                     | n ∈ Map.keys ms ∧ ((ms ! n) /= sn) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
                                                            Nothing
                     | otherwise = -- traceShow ((n,sn,ns), (m,sm,ms)) $
-                                  case Set.toList $ (Set.map fst $ toSet $ (c ! n)) ∖ (Map.keysSet ns) of
-                                     []   -> case Set.toList $ (Set.map fst $ toSet (c ! m)) ∖ (Map.keysSet ms) of
+                                  case Set.toList $ (Set.map fst $ toSet $ (c ! n)) ∖ (Map.keysSet ns ∪ forbiddenNs) of
+                                     []   -> case Set.toList $ (Set.map fst $ toSet (c ! m)) ∖ (Map.keysSet ms ∪ forbiddenMs) of
                                                 []   -> Nothing
                                                 [_] -> let Just (m',sm') = c ! m
-                                                       in lca' c ( m', sm + sm', Map.insert m' (sm+sm') ms) (n, sn, ns)
+                                                       in lca' c ( m', sm + sm', Map.insert m' (sm+sm') ms, forbiddenMs) (n, sn, ns, forbiddenNs)
                                      [_] -> let Just (n',sn') = c ! n
-                                            in lca' c (m, sm, ms) (n', sn + sn', Map.insert n' (sn+sn') ns)
-
+                                            in lca' c (m, sm, ms, forbiddenMs) (n', sn + sn', Map.insert n' (sn+sn') ns, forbiddenNs)
 
 
 alternativeTimingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Set Node)

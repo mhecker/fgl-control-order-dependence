@@ -20,7 +20,7 @@ import Control.Monad.Random(evalRandIO)
 import Algebra.Lattice
 import Unicode
 
-import Util(the)
+import Util(the, reachableFromIn)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -55,9 +55,10 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence,
+    solveTimingEquationSystem, timdomOfTwoFinger, Reachability(..),
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
-    possibleIntermediateNodesFromiXdom,
+    possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, 
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
@@ -1192,6 +1193,22 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timdomOfTwoFinger        relates to timingF3EquationSystem"
+                $ \(ARBITRARY(g)) ->
+                       let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
+                           timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
+                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
+                           mustReachFrom x   = suc imdomTrc x
+                             where imdom    = NTICD.imdomOfTwoFinger7 g
+                                   imdomTrc = trc $ fromSuccMap imdom :: Gr () ()
+                       in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
+                             let rmq = (∐) [ r | r <- Map.elems smp ]
+                             in ((m /= p) ∧ (∀) (suc g p) (\x -> m ∈ mustReachFrom x)) →
+                                  case rmq of
+                                     NTICD.FixedSteps s            -> Set.fromList [1+s] == mustReachFromIn p m
+                                     NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == mustReachFromIn p y
+                                     NTICD.UndeterminedSteps       -> Set.fromList []    == mustReachFromIn p m
+                           ),
     testProperty  "timingF3EquationSystem'  == timingF3EquationSystem"
                 $ \(ARBITRARY(g)) ->
                        let timingEq        = NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem

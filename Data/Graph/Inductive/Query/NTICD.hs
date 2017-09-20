@@ -3,7 +3,7 @@
 module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Maybe(fromJust)
-
+import Control.Monad (liftM)
 import Data.List(foldl', intersect,foldr1)
 
 import Data.Maybe (isNothing, maybeToList)
@@ -38,6 +38,7 @@ import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort)
 
 import Debug.Trace
 import Control.Exception.Base (assert)
+
 tr msg x = seq x $ trace msg x
 
 
@@ -1598,6 +1599,11 @@ imdomOfTwoFinger7 graph = fmap toSet $ twoFinger 0 worklist0 imdom0
 
 
 
+withPossibleIntermediateNodesFromiXdom :: forall gr a b x. (Ord x, DynGraph gr) => gr a b -> Map Node (Set (Node, x)) -> Map Node (Set (Node, (x, Set Node)))
+withPossibleIntermediateNodesFromiXdom graph ixdom = Map.fromList [ (n, Set.fromList [(m,(x,pi))])  | (n, ms) <- Map.assocs ixdom, [(m,x)] <- [Set.toList $ ms], let pi = pis ! n ]
+                                                   ⊔ Map.fromList [ (n, Set.fromList []          )  | (n, ms) <- Map.assocs ixdom, []      <- [Set.toList $ ms]                   ]
+  where pis = possibleIntermediateNodesFromiXdom graph $  fmap (Set.map fst) $ ixdom
+  
 possibleIntermediateNodesFromiXdom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
 possibleIntermediateNodesFromiXdom graph ixdom = (㎲⊒) init f
   where init     = Map.fromList [ (n, Set.empty)                       | n <- Map.keys ixdom ]
@@ -2695,6 +2701,67 @@ timingXsparseDependence snmTiming graph =
                   ]
   where s = snmTiming graph
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        trncl = trc graph
+        nextCond = nextCondNode graph
+
+
+
+timdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Integer))
+timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
+  where toMap Nothing  = Map.empty
+        toMap (Just (x, sx)) = Map.fromList [(x,sx)]
+        toSet Nothing  = Set.empty
+        toSet (Just x) = Set.fromList [x]
+        imdom0   =             Map.fromList [ (x, Just (z,1)) | x <- nodes graph, [z] <- [suc graph x]]
+                   `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes graph]
+        worklist0   = condNodes
+        condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
+        prevConds   = prevCondNodes graph
+
+        twoFinger :: Integer -> Set Node ->  Map Node (Maybe (Node, Integer)) -> Map Node (Maybe (Node, Integer))
+        twoFinger i worklist imdom
+            |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+                                    -- traceShow (Set.size worklist0, i) $ 
+                                    imdom
+            | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
+                                    if (not $ new) then twoFinger (i+1)               worklist'                                   imdom
+                                    else                twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)
+          where (x, worklist')  = Set.deleteFindMin worklist
+                mz :: Maybe (Node, Integer)
+                mz = foldM1 lca [ (y, 1) | y <- suc graph x]
+                zs = case mz of
+                      Just (z,sz)  -> if z /= x then
+                                        Just (z, sz)
+                                      else
+                                        Nothing
+                      Nothing ->  Nothing
+                new     = assert (isNothing $ imdom ! x) $
+                          (not $ isNothing zs)
+                influenced = let imdomRev = invert' $ fmap maybeToList $ fmap (liftM fst) imdom
+                                 preds = predsSeenFor imdomRev [x] [x]
+                             in  -- traceShow (preds, imdomRev) $
+                                 Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
+                lca :: (Node, Integer) -> (Node, Integer) -> Maybe (Node, Integer)
+                lca  (n, sn) (m, sm) = lca' imdom (n, sn, Map.fromList [(n,sn)]) (m, sm, Map.fromList [(m,sm)])
+                lca' :: Map Node (Maybe (Node, Integer)) -> (Node, Integer, Map Node Integer) -> (Node, Integer, Map Node Integer) -> Maybe (Node, Integer)
+                lca' c (n, sn, ns) (m, sm, ms)
+                    | m ∈ Map.keys ns ∧ ((ns ! m) == sm) = -- traceShow ((n,sn,ns), (m,sm,ms))
+                                                           Just (m, sm) 
+                    | m ∈ Map.keys ns ∧ ((ns ! m) /= sm) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
+                                                           Nothing
+                    | n ∈ Map.keys ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
+                                                           Just (n, sn) 
+                    | n ∈ Map.keys ms ∧ ((ms ! n) /= sn) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
+                                                           Nothing
+                    | otherwise = -- traceShow ((n,sn,ns), (m,sm,ms)) $
+                                  case Set.toList $ (Set.map fst $ toSet $ (c ! n)) ∖ (Map.keysSet ns) of
+                                     []   -> case Set.toList $ (Set.map fst $ toSet (c ! m)) ∖ (Map.keysSet ms) of
+                                                []   -> Nothing
+                                                [_] -> let Just (m',sm') = c ! m
+                                                       in lca' c ( m', sm + sm', Map.insert m' (sm+sm') ms) (n, sn, ns)
+                                     [_] -> let Just (n',sn') = c ! n
+                                            in lca' c (m, sm, ms) (n', sn + sn', Map.insert n' (sn+sn') ns)
 
 
 

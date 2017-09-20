@@ -3,7 +3,7 @@ module Util where
 import Data.List (find, nub, nubBy)
 import Data.Maybe (fromJust)
 import qualified Data.Map as Map
-import Data.Map (Map)
+import Data.Map (Map, (!))
 import qualified Data.Set as Set
 import Data.Set (Set)
 
@@ -70,3 +70,17 @@ updateAt 0 y (x:xs) = y:xs
 updateAt n y (x:xs)
    | n < 0     = error "invalid index: update"
    | otherwise = x:(updateAt (n-1) y xs)
+
+
+
+reachableFromIn :: Ord a => Map a (Set (a, (Integer, Set a))) -> a -> a -> Set Integer
+reachableFromIn succs x y
+    | x == y    = Set.fromList [0]
+    | otherwise = reachableVisited (Set.fromList [(x,0)]) (Set.fromList [x]) Set.empty
+  where reachableVisited xs visited found
+          | null new = found
+          | otherwise = reachableVisited (Set.fromList new) visited' (found ∪ (Set.map (fst.snd) $ Set.filter (\(y', _) -> y' == y)  nextxs))
+          where 
+                nextxs =  (∐) [ Set.map (\(x', (sx', pis)) -> (x', (sx+sx', pis))) $ succs ! x | (x,sx) <- Set.toList xs ]
+                new = [ (x', sx') | (x', (sx', pis)) <- Set.toList nextxs, not $ x' ∈ visited]
+                visited' = visited ∪ (Set.map fst nextxs) ∪ (∐) [ pis | pis <- Set.toList $ Set.map (snd . snd) nextxs]

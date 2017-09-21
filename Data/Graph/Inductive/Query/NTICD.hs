@@ -2758,7 +2758,7 @@ timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                                                            let left  = Set.fromList [ v | (v,s) <- Map.assocs ms, s <= sn ]
                                                                right = Map.keysSet ns
                                                            in
-                                                           assert (left ∩ right == Set.fromList [m]) $
+                                                           assert (left ∩ right == Set.fromList [n]) $
                                                            Just (n, sn, left ∪ right)
                     | otherwise = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                   case Set.toList $ (Set.map fst $ toSet $ (c ! n)) ∖ (Map.keysSet ns ∪ forbiddenNs) of

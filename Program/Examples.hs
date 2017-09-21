@@ -2640,6 +2640,10 @@ exampleTimingDepInterestingTwoFinger2 :: DynGraph gr => gr () ()
 exampleTimingDepInterestingTwoFinger2 = mkGraph [(-10,()),(-9,()),(-7,()),(-5,()),(13,()),(14,()),(15,()),(21,())] [(-10,15,()),(-10,15,()),(-9,-5,()),(-7,-10,()),(-7,13,()),(-7,13,()),(-7,14,()),(-5,-9,()),(13,15,()),(14,-5,()),(15,-9,()),(21,-10,()),(21,-9,()),(21,-7,()),(21,-5,()),(21,13,()),(21,14,()),(21,15,())]
 
 
+exampleTimingDepInterestingTwoFinger3 :: DynGraph gr => gr () ()
+exampleTimingDepInterestingTwoFinger3 = mkGraph [(-38,()),(-19,()),(-8,()),(24,()),(28,()),(41,()),(54,()),(58,())] [(-38,24,()),(-19,24,()),(-8,28,()),(-8,41,()),(-8,41,()),(24,54,()),(28,-19,()),(41,-38,()),(58,-38,()),(58,-19,()),(58,-8,()),(58,24,()),(58,28,()),(58,41,()),(58,54,())]
+
+
 
 -- This example demonstrated an error in a former version of dodFast.
 dodSuperFastCounterExample :: DynGraph gr => gr () ()
@@ -2808,7 +2812,8 @@ interestingDodWod = [
 interestingTimingDep :: [(String, Gr () ())]
 interestingTimingDep = [
               $(withName 'exampleTimingDepInterestingTwoFinger),
-              $(withName 'exampleTimingDepInterestingTwoFinger2)
+              $(withName 'exampleTimingDepInterestingTwoFinger2),
+              $(withName 'exampleTimingDepInterestingTwoFinger3)
             ]
 
 jcsPaperExamples = [

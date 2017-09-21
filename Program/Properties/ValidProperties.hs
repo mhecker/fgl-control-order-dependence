@@ -89,7 +89,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, precisionCounterExamples, interestingDodWod, syntacticCodeExamples, code2ResumptionForProgram, code2Program)
+import Program.Examples (testsuite, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -1278,9 +1278,25 @@ timingDepProps = testGroup "(concerning timingDependence)" [
   ]
 
 timingDepTests = testGroup "(concerning timingDependence)" $
+  [ testCase ("timdomOfTwoFinger        relates to timingF3EquationSystem for" ++ exampleName) $
+                       let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
+                           timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
+                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
+                           mustReachFrom x   = suc imdomTrc x
+                             where imdom    = NTICD.imdomOfTwoFinger7 g
+                                   imdomTrc = trc $ fromSuccMap imdom :: Gr () ()
+                       in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
+                             let rmq = (∐) [ r | r <- Map.elems smp ]
+                             in ((m /= p) ∧ (∀) (suc g p) (\x -> m ∈ mustReachFrom x)) →
+                                  case rmq of
+                                     NTICD.FixedSteps s            -> Set.fromList [1+s] == mustReachFromIn p m
+                                     NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == mustReachFromIn p y
+                                     NTICD.UndeterminedSteps       -> Set.fromList []    == mustReachFromIn p m
+                           )
+    @? ""
+  | (exampleName, g) <- interestingTimingDep
+  ] ++
   []
-
-
 
 
 

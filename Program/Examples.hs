@@ -2636,6 +2636,9 @@ exampleTimingDep=  p { observability = defaultObservabilityMap (tcfg p) }
 exampleTimingDepInterestingTwoFinger :: DynGraph gr => gr () ()
 exampleTimingDepInterestingTwoFinger = mkGraph [(-36,()),(-29,()),(-19,()),(39,()),(40,())] [(-36,-29,()),(-36,39,()),(-36,39,()),(-29,-19,()),(-19,39,()),(39,-19,()),(40,-36,()),(40,-29,()),(40,-19,()),(40,39,())]
 
+exampleTimingDepInterestingTwoFinger2 :: DynGraph gr => gr () ()
+exampleTimingDepInterestingTwoFinger2 = mkGraph [(-10,()),(-9,()),(-7,()),(-5,()),(13,()),(14,()),(15,()),(21,())] [(-10,15,()),(-10,15,()),(-9,-5,()),(-7,-10,()),(-7,13,()),(-7,13,()),(-7,14,()),(-5,-9,()),(13,15,()),(14,-5,()),(15,-9,()),(21,-10,()),(21,-9,()),(21,-7,()),(21,-5,()),(21,13,()),(21,14,()),(21,15,())]
+
 
 
 -- This example demonstrated an error in a former version of dodFast.
@@ -2801,6 +2804,12 @@ interestingDodWod = [
               $(withName 'dodSuperFastCounterExample6)
             ]
 
+
+interestingTimingDep :: [(String, Gr () ())]
+interestingTimingDep = [
+              $(withName 'exampleTimingDepInterestingTwoFinger),
+              $(withName 'exampleTimingDepInterestingTwoFinger2)
+            ]
 
 jcsPaperExamples = [
               $(withName 'figure5leftCode),

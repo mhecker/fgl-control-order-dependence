@@ -2746,19 +2746,21 @@ timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                 lca  (n, sn, forbiddenNs) (m, sm, forbiddenMs) = lca' imdom (n, sn, Map.fromList [(n,sn)], forbiddenNs) (m, sm, Map.fromList [(m,sm)], forbiddenMs)
                 lca' :: Map Node (Maybe (Node, Integer)) -> (Node, Integer, Map Node Integer, Set Node) -> (Node, Integer, Map Node Integer, Set Node ) -> Maybe (Node, Integer, Set Node)
                 lca' c (n, sn, ns, forbiddenNs) (m, sm, ms, forbiddenMs)
-                    | m ∈ Map.keys ns ∧ ((ns ! m) == sm) = -- traceShow ((n,sn,ns), (m,sm,ms))
+                    | m ∈ Map.keys ns ∧ ((ns ! m) == sm) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                                            assert (ms ! m == sm) $
-                                                           assert (Map.keysSet ns ∩ (Map.keysSet ms ∖ Set.fromList [m]) == Set.empty) $ 
-                                                           Just (m, sm, Map.keysSet ns ∪ Map.keysSet ms) 
-                    | m ∈ Map.keys ns ∧ ((ns ! m) /= sm) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
-                                                           Nothing
-                    | n ∈ Map.keys ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
+                                                           let left  = Set.fromList [ v | (v,s) <- Map.assocs ns, s <= sm ]
+                                                               right = Map.keysSet ms
+                                                           in
+                                                           assert (left ∩ right == Set.fromList [m]) $
+                                                           Just (m, sm, left ∪ right)
+                    | n ∈ Map.keys ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                                            assert (ns ! n == sn) $
-                                                           assert (Map.keysSet ms ∩ (Map.keysSet ns ∖ Set.fromList [n]) == Set.empty) $ 
-                                                           Just (n, sn, Map.keysSet ns ∪ Map.keysSet ms) 
-                    | n ∈ Map.keys ms ∧ ((ms ! n) /= sn) = -- traceShow ((n,sn,ns), (m,sm,ms)) $
-                                                           Nothing
-                    | otherwise = -- traceShow ((n,sn,ns), (m,sm,ms)) $
+                                                           let left  = Set.fromList [ v | (v,s) <- Map.assocs ms, s <= sn ]
+                                                               right = Map.keysSet ns
+                                                           in
+                                                           assert (left ∩ right == Set.fromList [m]) $
+                                                           Just (n, sn, left ∪ right)
+                    | otherwise = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                   case Set.toList $ (Set.map fst $ toSet $ (c ! n)) ∖ (Map.keysSet ns ∪ forbiddenNs) of
                                      []   -> case Set.toList $ (Set.map fst $ toSet (c ! m)) ∖ (Map.keysSet ms ∪ forbiddenMs) of
                                                 []   -> Nothing

@@ -2707,6 +2707,46 @@ timingXsparseDependence snmTiming graph =
 
 
 
+type TimeDomFunctional = Map Node (Map Node (Set Integer)) ->  Map Node (Map Node (Set Integer))
+type TimeDomFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> TimeDomFunctional
+
+
+tdomOfLfp :: DynGraph gr => gr a b -> TimeDomFunctionalGen gr a b -> Map Node (Set (Node, Integer))
+tdomOfLfp graph f = fmap (\m -> Set.fromList [ (n, steps) | (n, ss) <- Map.assocs m, steps <- Set.toList ss ]) $
+        (㎲⊒) init (f graph condNodes reachable nextCond toNextCond)
+  where init = Map.fromList [ (y, Map.empty) | y <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+fTimeDom :: DynGraph gr => TimeDomFunctionalGen gr a b
+fTimeDom graph _ _ nextCond toNextCond = f 
+  where f timeDomOf = fmap (fmap (Set.singleton . Set.findMin)) $ 
+                      Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
+                    ⊔ Map.fromList [ (y, Map.fromList [(n, Set.fromList [steps]) | (n,steps) <- zip (reverse $ toNextCond y) [0..] ])
+                                                                                   | y <- nodes graph
+                                                                                     
+                                   ]
+                    ⊔ Map.fromList [ (y,
+                                         fmap (Set.map (\s -> s + (steps + 1))) $
+                                         Map.filter (not . Set.null) $
+                                         (∏) [ timeDomOf ! x | x <- suc graph n ]
+                                     )
+                                                                                   | y <- nodes graph,
+                                                                                     Just n <- [nextCond y],
+                                                                                     let steps = (toInteger $ length $ toNextCond y) - 1
+                                   ]
+        -- (∏) sets = fold1
+        -- (⊓) s1 s2 = [ (n,steps) | (n,steps) <- s1, 
+        -- (∏)
+         
+timdomOfLfp graph = tdomOfLfp graph fTimeDom
+
+
+
+
 timdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Integer))
 timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
   where toMap Nothing  = Map.empty

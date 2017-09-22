@@ -50,12 +50,12 @@ import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence,
-    solveTimingEquationSystem, timdomOfTwoFinger, Reachability(..),
+    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, Reachability(..),
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -1193,6 +1193,18 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timdomOfTwoFinger^*       == timdomOfLfp"
+                $ \(ARBITRARY(g)) ->
+                       let timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
+                           timdomOfLfp       = NTICD.timdomOfLfp g
+                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
+                       in  -- traceShow (length $ nodes g, g) $
+                           (∀) (Map.assocs timdomOfLfp) (\(n, ms) ->
+                              (∀) (ms) (\(m,steps) -> Set.fromList [steps] == mustReachFromIn n m)
+                           )
+                         ∧ (∀) (nodes g) (\n -> (∀) (nodes g) (\m ->
+                              mustReachFromIn n m == Set.fromList [ steps | (m', steps) <- Set.toList $ timdomOfLfp ! n, m == m']
+                           )),
     testProperty  "timdomOfTwoFinger        relates to timingF3EquationSystem"
                 $ \(ARBITRARY(g)) ->
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem

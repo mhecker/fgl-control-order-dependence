@@ -88,7 +88,7 @@ eqGraph classes gr = mkGraph vs es
 
 
 -- via http://dx.doi.org/10.1016/0167-6423(89)90039-7
-trrAcyclic :: DynGraph gr => gr a () -> gr a ()
+trrAcyclic :: DynGraph gr => gr a b -> gr a ()
 trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
   where closure = delEdges [(n,n) | n <- nodes graph] $ trc graph
         trrAcyclicCurrent g []     = g
@@ -101,7 +101,7 @@ trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
                               ks
 
 
-trr :: DynGraph gr => gr a () -> gr a ()
+trr :: DynGraph gr => gr a b -> gr a ()
 trr g =
     mkGraph (labNodes g)
             (    [(n, n', ())           | (_,e) <- labNodes g1t, (n,n') <- zip e (tail e)]

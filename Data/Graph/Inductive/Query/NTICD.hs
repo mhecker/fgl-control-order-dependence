@@ -2705,11 +2705,8 @@ timingXsparseDependence snmTiming graph =
         trncl = trc graph
         nextCond = nextCondNode graph
 
-
-
 type TimeDomFunctional = Map Node (Map Node (Set Integer)) ->  Map Node (Map Node (Set Integer))
 type TimeDomFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> TimeDomFunctional
-
 
 tdomOfLfp :: DynGraph gr => gr a b -> TimeDomFunctionalGen gr a b -> Map Node (Set (Node, Integer))
 tdomOfLfp graph f = fmap (\m -> Set.fromList [ (n, steps) | (n, ss) <- Map.assocs m, steps <- Set.toList ss ]) $
@@ -2738,11 +2735,41 @@ fTimeDom graph _ _ nextCond toNextCond = f
                                                                                      Just n <- [nextCond y],
                                                                                      let steps = (toInteger $ length $ toNextCond y) - 1
                                    ]
-        -- (∏) sets = fold1
-        -- (⊓) s1 s2 = [ (n,steps) | (n,steps) <- s1, 
-        -- (∏)
-         
 timdomOfLfp graph = tdomOfLfp graph fTimeDom
+
+
+
+type TimeMayDomFunctional = Map Node (Map Node Reachability) ->  Map Node (Map Node Reachability)
+type TimeMayDomFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> TimeMayDomFunctional
+
+fTimeMayDom :: DynGraph gr => TimeMayDomFunctionalGen gr a b
+fTimeMayDom graph _ _ nextCond toNextCond = f 
+  where f timeDomOf = -- traceShow timeDomOf $
+                      Map.fromList [ (y, Map.fromList [(y, FixedSteps 0    )]) | y <- nodes graph]
+                    ⊔ Map.fromList [ (y, Map.fromList [(n, FixedSteps steps) | (n,steps) <- zip (reverse $ toNextCond y) [0..] ])
+                                                                               | y <- nodes graph
+                                                                                     
+                                   ]
+                    ⊔ Map.fromList [ (y, let all = (∐) [ Map.keysSet $ timeDomOf ! x | x <- suc graph n ] in
+                                         fmap (\s -> s `joinPlus` (steps + 1)) $
+                                         Map.fromList [ (m, (∐) [  steps  | x <- suc graph n, Just steps <- [Map.lookup m (timeDomOf ! x)]   ]) | m <- Set.toList all, not $ m ∈ toNextCond y ]
+                                     )
+                                                                                   | y <- nodes graph,
+                                                                                     Just n <- [nextCond y],
+                                                                                     let steps = (toInteger $ length $ toNextCond y) - 1
+                                   ]
+
+tmaydomOfLfp :: DynGraph gr => gr a b -> TimeMayDomFunctionalGen gr a b -> Map Node (Set (Node, Integer ))
+tmaydomOfLfp graph f = fmap (\m -> Set.fromList [ (n, steps) | (n, ss) <- Map.assocs m, FixedSteps steps <- [ss] ]) $
+        (㎲⊒) init (f graph condNodes reachable nextCond toNextCond)
+  where init = Map.fromList [ (y, Map.empty) | y <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+timmaydomOfLfp graph = tmaydomOfLfp graph fTimeMayDom
 
 
 

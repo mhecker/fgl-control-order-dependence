@@ -55,7 +55,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence,
-    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, Reachability(..),
+    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, Reachability(..), timmaydomOfLfp,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -1193,6 +1193,21 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timmaydomOfLfp            == solved timingF3EquationSystem"
+                $ \(ARBITRARY(gg)) ->
+                       let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
+                           timmaydomOfLfp    = NTICD.timmaydomOfLfp g
+                           g = mkGraph [(-3,()),(0,()),(3,()),(4,())] [(0,-3,()),(0,3,()),(3,3,()),(4,-3,()),(4,0,()),(4,3,())] :: Gr () ()
+                       in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
+                             let rmq = (∐) [ r | r <- Map.elems smp ]
+                             in (m /= p) →
+                                  case rmq of
+                                     NTICD.FixedSteps s            -> Set.fromList [1+s] == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
+                                     NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == Set.fromList [ steps | (y', steps) <- Set.toList $ timmaydomOfLfp ! p, y == y']
+                                     NTICD.UndeterminedSteps       -> Set.fromList []    == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
+                                     NTICD.Unreachable             -> smp == Map.empty ∧
+                                                                      Set.fromList []    == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
+                           ),
     testProperty  "timdomOfTwoFinger^*       == timdomOfLfp"
                 $ \(ARBITRARY(g)) ->
                        let timdomOfTwoFinger = NTICD.timdomOfTwoFinger g

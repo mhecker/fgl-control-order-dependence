@@ -2687,7 +2687,6 @@ timingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node
 timingXdependence snmTiming graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph,
---                                          m /= n,
                                             let rmn = s ! (m,n),
                                             (length [ r | r <- Map.elems rmn, r /= Unreachable ]) > 1,
                                             let r = (∐) [ r | r <- Map.elems rmn ],
@@ -2921,7 +2920,6 @@ alternativeTimingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map 
 alternativeTimingXdependence snmTiming graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph,
-                                            m /= n,
                                             let rmn = s ! (m,n),
                                             ((_,nl), rl) <- Map.assocs rmn,
                                             ((_,nr), rr) <- Map.assocs rmn,

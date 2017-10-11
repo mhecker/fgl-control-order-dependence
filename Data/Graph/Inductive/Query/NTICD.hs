@@ -2544,6 +2544,25 @@ instance JoinSemiLattice Reachability where
 instance BoundedJoinSemiLattice Reachability where
   bottom = Unreachable
 
+instance Ord Reachability where
+  Unreachable   `compare` Unreachable = EQ
+  Unreachable   `compare` x           = LT
+  x             `compare` Unreachable = GT
+
+  FixedSteps x `compare` FixedSteps y = compare x y
+  FixedStepsPlusOther x n  `compare` FixedStepsPlusOther y m = case cnm of
+      EQ -> compare x y
+      _  -> cnm
+    where cnm  = compare n m
+
+  FixedSteps _ `compare` FixedStepsPlusOther _ _ = LT
+  FixedStepsPlusOther _ _ `compare` FixedSteps _ = GT
+ 
+  UndeterminedSteps `compare` UndeterminedSteps = EQ
+  UndeterminedSteps `compare` x                 = GT
+  x                 `compare` UndeterminedSteps = LT
+  
+
 plusAt :: Node -> Reachability -> Integer ->  Reachability
 plusAt n r y = r `plus` y where
   (FixedSteps x)            `plus` y = FixedSteps (x+y)
@@ -2628,11 +2647,11 @@ snmTimingEquationSystem graph f = f graph condNodes reachable nextCond toNextCon
         trncl = trc graph
 
 snmTimingF3 :: DynGraph gr => gr a b -> SmnTimingEquationSystem
-snmTimingF3 graph     = snmTimingEquationSystem graph timingF3EquationSystem
+snmTimingF3 graph     = snmTimingEquationSystem graph timingF3EquationSystem'
 
 snmTimingSolvedF3 :: DynGraph gr => gr a b -> SmnTimingEquationSystem
 snmTimingSolvedF3 graph = snmTimingEquationSystem graph timingSolvedF3EquationSystem
-  where timingSolvedF3EquationSystem graph condNodes reachable nextCond toNextCond = solveTimingEquationSystem $ timingF3EquationSystem graph condNodes reachable nextCond toNextCond
+  where timingSolvedF3EquationSystem graph condNodes reachable nextCond toNextCond = solveTimingEquationSystem $ timingF3EquationSystem' graph condNodes reachable nextCond toNextCond
 
 timingF3summary :: DynGraph gr => gr a b -> Map Node (Map Node Reachability)
 timingF3summary     = timingXsummary snmTimingF3
@@ -2668,7 +2687,7 @@ timingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node
 timingXdependence snmTiming graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (n, Set.fromList [ m | m <- nodes graph,
-                                            m /= n,
+--                                          m /= n,
                                             let rmn = s ! (m,n),
                                             (length [ r | r <- Map.elems rmn, r /= Unreachable ]) > 1,
                                             let r = (∐) [ r | r <- Map.elems rmn ],
@@ -2748,10 +2767,10 @@ fTimeMayDom graph _ _ nextCond toNextCond = f
                       Map.fromList [ (y, Map.fromList [(y, FixedSteps 0    )]) | y <- nodes graph]
                     ⊔ Map.fromList [ (y, Map.fromList [(n, FixedSteps steps) | (n,steps) <- zip (reverse $ toNextCond y) [0..] ])
                                                                                | y <- nodes graph
-                                                                                     
                                    ]
                     ⊔ Map.fromList [ (y, let all = (∐) [ Map.keysSet $ timeDomOf ! x | x <- suc graph n ] in
-                                         fmap (\s -> s `joinPlus` (steps + 1)) $
+                                         let plus = joinPlus in
+                                         fmap (\s -> s `plus` (steps + 1)) $
                                          Map.fromList [ (m, (∐) [  steps  | x <- suc graph n, Just steps <- [Map.lookup m (timeDomOf ! x)]   ]) | m <- Set.toList all, not $ m ∈ toNextCond y ]
                                      )
                                                                                    | y <- nodes graph,
@@ -2759,8 +2778,69 @@ fTimeMayDom graph _ _ nextCond toNextCond = f
                                                                                      let steps = (toInteger $ length $ toNextCond y) - 1
                                    ]
 
+
+
+type SnTimingEquationSystem =
+       Map Node (Map Node Reachability)
+type SnTimingEquationSystemGen gr a b =
+       gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node])
+    -> SnTimingEquationSystem
+
+
+timeMayDomEquationSystemGen :: DynGraph gr => SnTimingEquationSystemGen gr a b
+timeMayDomEquationSystemGen graph condNodes _ nextCond toNextCond =
+                      -- Map.fromList [ (y, Map.fromList [(y, FixedSteps 0    )]) | y <- nodes graph]
+                      -- ⊔
+                         Map.fromList [ (y, Map.fromList [(n, FixedSteps steps) | (n,steps) <- zip (reverse $ toNextCond y) [0..] ])
+                                                                                | p <- condNodes, y <- suc graph p
+                         ]
+
+timeMayDomEquationSystem graph = timeMayDomEquationSystemGen graph condNodes reachable nextCond toNextCond
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+solveSnTimingEquationSystem ::  DynGraph gr => gr a b -> SnTimingEquationSystem -> SnTimingEquationSystem
+solveSnTimingEquationSystem graph s = solve s0
+          where nextCond = nextCondNode graph
+                toNextCond = toNextCondNode graph
+                s0 = s
+                solve s = -- traceShow (s ! 3) $ traceShow (s ! 4) $ traceShow ("") $
+                          if (s == s') then s else solve s'
+                  where s' = Map.fromList [ (y, Map.union (s0 ! y) r) | (y, sy) <- Map.assocs s,
+                                                                        let r = Map.fromList [ (m, case sxm of
+                                                                                                     FixedSteps j             -> FixedSteps (1+steps+j)
+                                                                                                     FixedStepsPlusOther j q' -> FixedStepsPlusOther (1+steps+j) q'
+                                                                                                     UndeterminedSteps        -> FixedStepsPlusOther steps n
+                                                                                               )
+                                                                                             | Just n <- [nextCond y],
+                                                                                               let steps = (toInteger $ length $ toNextCond y) - 1,
+                                                                                               let sx =  (∐) [ s ! x | x <- suc graph n ],
+                                                                                               (m, sxm) <- Map.assocs sx
+                                                                                ]
+                            ]
+
+
+timingSnSolvedDependence :: DynGraph gr => gr a b -> Map Node (Set Node)
+timingSnSolvedDependence graph = 
+      Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔ Map.fromList [ (p, Set.fromList [ m | let sx = (∐) [ s ! x  | x <- suc graph p ],
+                                            (m, sxm) <- Map.assocs sx,
+                                            sxm == UndeterminedSteps
+                                      ]
+                     ) | p <- condNodes
+                  ]
+  where s0 =  timeMayDomEquationSystem graph
+        s  =  solveSnTimingEquationSystem graph s0
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
 tmaydomOfLfp :: DynGraph gr => gr a b -> TimeMayDomFunctionalGen gr a b -> Map Node (Set (Node, Integer ))
 tmaydomOfLfp graph f = fmap (\m -> Set.fromList [ (n, steps) | (n, ss) <- Map.assocs m, FixedSteps steps <- [ss] ]) $
+-- tmaydomOfLfp :: DynGraph gr => gr a b -> TimeMayDomFunctionalGen gr a b -> Map Node (Set (Node, Reachability))
+-- tmaydomOfLfp graph f = fmap (\m ->   Set.fromList [ (n, r) | (n, rs) <- Map.assocs m, r <- [rs] ]) $
         (㎲⊒) init (f graph condNodes reachable nextCond toNextCond)
   where init = Map.fromList [ (y, Map.empty) | y <- nodes graph]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]

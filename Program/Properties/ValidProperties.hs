@@ -54,7 +54,7 @@ import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence,
+    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence,
     solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, Reachability(..), timmaydomOfLfp,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
@@ -1193,7 +1193,11 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
-    testProperty  "timmaydomOfLfp            == solved timingF3EquationSystem"
+    testProperty  "timingSolvedF3dependence == timingSnSolvedDependence"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.timingSolvedF3dependence g ==
+                       NTICD.timingSnSolvedDependence g,
+    testProperty  "timmaydomOfLfp            relates to solved timingF3EquationSystem"
                 $ \(ARBITRARY(gg)) ->
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
                            timmaydomOfLfp    = NTICD.timmaydomOfLfp g

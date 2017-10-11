@@ -54,7 +54,7 @@ import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence,
+    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist,
     solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, Reachability(..), timmaydomOfLfp,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
@@ -1193,6 +1193,10 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timingSolvedF3dependence == timingSnSolvedDependenceWorklist"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.timingSolvedF3dependence g ==
+                       NTICD.timingSnSolvedDependenceWorklist g,
     testProperty  "timingSolvedF3dependence == timingSnSolvedDependence"
                 $ \(ARBITRARY(g)) ->
                        NTICD.timingSolvedF3dependence g ==

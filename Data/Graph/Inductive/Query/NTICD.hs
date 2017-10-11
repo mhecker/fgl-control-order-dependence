@@ -2822,6 +2822,35 @@ solveSnTimingEquationSystem graph s = solve s0
                             ]
 
 
+solveSnTimingEquationSystemWorklist ::  DynGraph gr => gr a b -> SnTimingEquationSystem -> SnTimingEquationSystem
+solveSnTimingEquationSystemWorklist graph s0 = solve s0 worklist0 0 0
+          where condNodes = [ x | x <- nodes graph, length (suc graph x) > 1 ]
+                nextCond = nextCondNode graph
+                toNextCond = toNextCondNode graph
+                prevConds   = prevCondNodes graph
+                prevCondsWithSucc = prevCondsWithSuccNode graph
+                worklist0 = Set.fromList [ (y,m) | p <- condNodes, x <- suc graph p, m <- toNextCond x, (_,y) <- prevCondsWithSucc p]
+                solve s worklist iterations changes
+                   | Set.null worklist  = s
+                   | m ∈ toNextCond y   = solve s   worklist'                (iterations+1)  changes
+                   | not changed        = solve s   worklist'                (iterations+1)  changes
+                   | otherwise          = solve s' (worklist' ⊔ influenced)  (iterations+1) (changes + 1)
+                  where tr = traceShow ((y,m),n,worklist', s)
+                        ((y,m), worklist') = Set.deleteFindMin worklist
+                        Just n = nextCond y
+                        steps = (toInteger $ length $ toNextCond y) - 1
+                        msym  = Map.lookup m (s ! y)
+                        sxm  = (∐) [ sxm | x <- suc graph n, Just sxm <- [Map.lookup m (s ! x)]]
+                        sym' = case sxm of
+                                 FixedSteps j             -> FixedSteps (1+steps+j)
+                                 FixedStepsPlusOther j q' -> FixedStepsPlusOther (1+steps+j) q'
+                                 UndeterminedSteps        -> FixedStepsPlusOther steps n
+                        changed    = case msym of
+                                       Just sym -> sym /= sym'
+                                       Nothing  -> True
+                        influenced = Set.fromList [ (z,m) | p <- pre graph y, (length $ suc graph p) > 1, (_,z) <- prevCondsWithSucc p ]
+                        s'         = Map.update (\sy -> Just $ Map.insert m sym' sy) y s
+
 timingSnSolvedDependence :: DynGraph gr => gr a b -> Map Node (Set Node)
 timingSnSolvedDependence graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
@@ -2834,6 +2863,22 @@ timingSnSolvedDependence graph =
   where s0 =  timeMayDomEquationSystem graph
         s  =  solveSnTimingEquationSystem graph s0
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+timingSnSolvedDependenceWorklist :: DynGraph gr => gr a b -> Map Node (Set Node)
+timingSnSolvedDependenceWorklist graph = 
+      Map.fromList [ (n, Set.empty) | n <- nodes graph]
+    ⊔ Map.fromList [ (p, Set.fromList [ m | let sx = (∐) [ s ! x  | x <- suc graph p ],
+                                            (m, sxm) <- Map.assocs sx,
+                                            sxm == UndeterminedSteps
+                                      ]
+                     ) | p <- condNodes
+                  ]
+  where s0 =  timeMayDomEquationSystem graph
+        s  =  solveSnTimingEquationSystemWorklist graph s0
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
 
 
 tmaydomOfLfp :: DynGraph gr => gr a b -> TimeMayDomFunctionalGen gr a b -> Map Node (Set (Node, Integer ))

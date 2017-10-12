@@ -54,6 +54,7 @@ import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    prevCondsWithSuccNode, prevCondsWithSuccNode',
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist,
     solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, Reachability(..), timmaydomOfLfp,
     Color(..), smmnFMustDod, smmnFMustWod,
@@ -1193,12 +1194,21 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "prevCondsWithSuccNode  ==  prevCondsWithSuccNode'"
+                $ \(ARBITRARY(g)) -> (∀) (nodes g) (\n -> 
+                       (List.sort $ NTICD.prevCondsWithSuccNode  g n) ==
+                       (List.sort $ NTICD.prevCondsWithSuccNode' g n)
+                  ),
+    testProperty  "timingSnSolvedDependence         == timingSnSolvedDependenceWorklist"
+                $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
+                       NTICD.timingSnSolvedDependence         g ==
+                       NTICD.timingSnSolvedDependenceWorklist g,
     testProperty  "timingSolvedF3dependence == timingSnSolvedDependenceWorklist"
-                $ \(ARBITRARY(g)) ->
+                $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
                        NTICD.timingSolvedF3dependence g ==
                        NTICD.timingSnSolvedDependenceWorklist g,
     testProperty  "timingSolvedF3dependence == timingSnSolvedDependence"
-                $ \(ARBITRARY(g)) ->
+                $ \(ARBITRARY(g)) ->  traceShow (length $ nodes g) $
                        NTICD.timingSolvedF3dependence g ==
                        NTICD.timingSnSolvedDependence g,
     testProperty  "timmaydomOfLfp            relates to solved timingF3EquationSystem"

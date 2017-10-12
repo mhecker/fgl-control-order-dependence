@@ -4,7 +4,7 @@ module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Maybe(fromJust)
 import Control.Monad (liftM)
-import Data.List(foldl', intersect,foldr1)
+import Data.List(foldl', intersect,foldr1, partition)
 
 import Data.Maybe (isNothing, maybeToList)
 import Data.Map ( Map, (!) )
@@ -2406,6 +2406,18 @@ prevCondsWithSuccNode graph start = prevCondsF [(p, start) | p <- pre graph star
                 (_:_) -> [(n,x)]
 
 
+prevCondsWithSuccNode' graph start = prevCondsF [(p, start) | p <- pre graph start] []
+    where prevCondsF []    found = found
+          prevCondsF front found = prevCondsF newFront (newFound ++ found)
+            where (newFound, notFound) = partition isCond front
+                  isCond (n,x)
+                    | n == start = True
+                    | otherwise = case suc graph n of
+                        [ n'] -> False 
+                        (_:_) -> True
+                  newFront = [ (p,n) | (n,x) <- notFound, p <- pre graph n]
+
+
 prevRepresentantNodes graph start =
       case pre graph start of
         (_:_:_) -> Just start
@@ -2830,15 +2842,17 @@ solveSnTimingEquationSystemWorklist graph s0 = solve s0 worklist0 0 0
                 prevConds   = prevCondNodes graph
                 prevCondsWithSucc = prevCondsWithSuccNode graph
                 worklist0 = Set.fromList [ (y,m) | p <- condNodes, x <- suc graph p, m <- toNextCond x, (_,y) <- prevCondsWithSucc p]
+                influenced = Map.fromList [ (y, Set.fromList [ z | p <- pre graph y, (length $ suc graph p) > 1, (_,z) <- prevCondsWithSucc p ]) | y <- Map.keys s0 ]
                 solve s worklist iterations changes
                    | Set.null worklist  = s
-                   | m ∈ toNextCond y   = solve s   worklist'                (iterations+1)  changes
+                   | m ∈ toNextCondY    = solve s   worklist'                (iterations+1)  changes
                    | not changed        = solve s   worklist'                (iterations+1)  changes
-                   | otherwise          = solve s' (worklist' ⊔ influenced)  (iterations+1) (changes + 1)
+                   | otherwise          = solve s' (worklist' ⊔ influencedM) (iterations+1) (changes + 1)
                   where tr = traceShow ((y,m),n,worklist', s)
                         ((y,m), worklist') = Set.deleteFindMin worklist
-                        Just n = nextCond y
-                        steps = (toInteger $ length $ toNextCond y) - 1
+                        toNextCondY = toNextCond y
+                        n = head toNextCondY  -- assert (nextCond y == Just n)
+                        steps = (toInteger $ length $ toNextCondY) - 1
                         msym  = Map.lookup m (s ! y)
                         sxm  = (∐) [ sxm | x <- suc graph n, Just sxm <- [Map.lookup m (s ! x)]]
                         sym' = case sxm of
@@ -2848,8 +2862,8 @@ solveSnTimingEquationSystemWorklist graph s0 = solve s0 worklist0 0 0
                         changed    = case msym of
                                        Just sym -> sym /= sym'
                                        Nothing  -> True
-                        influenced = Set.fromList [ (z,m) | p <- pre graph y, (length $ suc graph p) > 1, (_,z) <- prevCondsWithSucc p ]
-                        s'         = Map.update (\sy -> Just $ Map.insert m sym' sy) y s
+                        influencedM = Set.map (\z ->(z,m)) (influenced ! y)
+                        s'          = Map.update (\sy -> Just $ Map.insert m sym' sy) y s
 
 timingSnSolvedDependence :: DynGraph gr => gr a b -> Map Node (Set Node)
 timingSnSolvedDependence graph = 

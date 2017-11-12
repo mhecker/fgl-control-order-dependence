@@ -4,7 +4,7 @@ module Data.Graph.Inductive.Util where
 import Util
 import Unicode
 
-import Data.List(delete)
+import Data.List(delete, nub)
 
 import Algebra.PartialOrd (PartialOrd, leq)
 
@@ -212,3 +212,15 @@ instance PartialOrd (Gr () ()) where
           ns2 = Map.fromListWith (+) $ zip (nodes g2) [1,1..]
           es1 = Map.fromListWith (+) $ zip (edges g1) [1,1..]
           es2 = Map.fromListWith (+) $ zip (edges g2) [1,1..]
+
+isCond :: Graph gr => gr a b -> Node -> Bool
+isCond graph n = case suc graph n of
+  [] -> False
+  (_:[]) -> False
+  _      -> True
+
+
+
+removeDuplicateEdges :: (DynGraph gr, Eq b) => gr a b -> gr a b
+removeDuplicateEdges g = mkGraph (labNodes g)
+                                 (nub $ labEdges g)

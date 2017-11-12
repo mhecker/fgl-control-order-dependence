@@ -11,7 +11,7 @@ import Algebra.PartialOrd (unsafeGfpFrom)
 
 import Unicode
 
-import Data.Maybe(fromJust)
+import Data.Maybe(fromJust, isNothing)
 
 import Data.List(union, intersect, elem, delete, sort, (\\), nub)
 
@@ -74,11 +74,12 @@ instance Arbitrary (InterGraph () String) where
 instance Arbitrary (InterCFG () String) where
     arbitrary = sized $ \size ->
                   do (s,t,p) <- genProc size
-                     addProcedures [(InterCFG s p,t)] (size `div` 5) (size `div` 2) size
+                     addProcedures [(InterCFG s p,t)] (size `div` 20) (size `div` 20) size
       where
         genProc :: Int -> Gen (Node, Node, Gr () (Annotation String))
         genProc size =
-            do (CG s p  :: Connected Gr () ()) <- resize size arbitrary
+            do (CG s p0  :: Connected Gr () ()) <- resize size arbitrary
+               let p = removeDuplicateEdges p0
                t <- elements (nodes p)
                let p' =   delEdges [(t,n) | n <- suc p t]
                         $ emap (\() -> Nothing) p
@@ -406,6 +407,44 @@ sameLevelSummaryGraph'WithBs gr =
         parenLabels = Set.toList $ parenLabelsIn gr
 
 
+
+krinkeSCC  :: forall gr a b. (DynGraph gr, Ord b) => gr a (Annotation b) -> gr [Node] (Annotation b)
+krinkeSCC g = secondPassFolded
+  where firstPassSccs   = scc $ elfilter isFirstPassEdge g
+          where isFirstPassEdge l = case l of
+                  Nothing        -> True
+                  Just (Open  _) -> True
+                  Just (Close _) -> False
+        sccOfFirst = Map.fromList [ (n0, n1) | n0 <- nodes g,
+                                             let (n1,scc0) = the (\(n1,scc0) -> n0 ∈ scc0) (zip [0..] firstPassSccs)
+                     ]
+        firstPassFolded :: gr [Node] (Annotation b) 
+        firstPassFolded = mkGraph [ (n1, scc0)  | (n1, scc0)  <- zip [0..] firstPassSccs]
+                                  [ (n1, m1, e) | (n0, m0, e) <- labEdges g,
+                                                  let n1 = sccOfFirst ! n0,
+                                                  let m1 = sccOfFirst ! m0,
+                                                  n1 /= m1
+                                  ]
+
+        secondPassSccs  = scc $ elfilter isSecondPassEdge firstPassFolded
+          where isSecondPassEdge l = case l of
+                  Nothing        -> True
+                  Just (Open  _) -> False
+                  Just (Close _) -> True
+        sccOfSecond = Map.fromList [ (n1, n2) | n1 <- nodes firstPassFolded,
+                                               let (n2,scc1) = the (\(n2,scc1) -> n1 ∈ scc1) (zip [0..] secondPassSccs)
+                     ]
+        secondPassFolded :: gr [Node] (Annotation b)
+        secondPassFolded = mkGraph [ (n2, [ n0 | n1 <- scc1, Just scc0 <- [lab firstPassFolded n1], n0 <- scc0]) | (n2, scc1) <- zip [0..] secondPassSccs ]
+                                   [ (n2,m2, e) | (n1, m1, e) <- labEdges firstPassFolded,
+                                                let n2 = sccOfSecond ! n1,
+                                                let m2 = sccOfSecond ! m1,
+                                                n2 /= m2
+                                   ]
+
+
+
+
 graphTest0 :: Gr () (Annotation String)
 graphTest0 = mkGraph [ (i,()) | i <- [0..7]]
                     [ (0,1, Just $ Open "main"),
@@ -431,6 +470,7 @@ graphTest = mkGraph [ (i,()) | i <- [0..7]]
                       (6,7, Just $ Close "main")
                     ]
 
+
 graphTest2 :: Gr () (Annotation String)
 graphTest2 =
     mkGraph [ (i,()) | i <- [0..8]]
@@ -445,6 +485,8 @@ graphTest2 =
               (2,7, Nothing),
               (5,8, Just $ Close "main")
             ]
+interCFGTest2 :: InterCFG () String
+interCFGTest2 = InterCFG 0 graphTest2
 
 
 graphTest3 :: Gr () (Annotation String)

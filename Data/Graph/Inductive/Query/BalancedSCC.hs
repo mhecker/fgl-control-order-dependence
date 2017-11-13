@@ -585,6 +585,45 @@ graphTest8 =
 graphTest9  :: Gr () (Annotation String)
 graphTest9 = mkGraph [(-4,()),(-2,()),(3,()),(18,()),(55,())] [(-4,3,Just (Close "b")),(-2,-4,Just (Close "b")),(-2,-2,Nothing),(3,-2,Nothing),(3,55,Just (Open "a")),(18,-2,Just (Close "a")),(55,18,Just (Open "a"))] 
 
+
+
+graphTest10 :: Gr () (Annotation String)
+graphTest10 =
+    mkGraph [(i,()) | i <- [0..4] ++ [10..12] ++ [20..22] ++ [30..36]]
+            [ 
+              (0,1, Nothing),
+              (1,2, Nothing),
+              (2,1, Nothing),
+              (2,3, Nothing),
+              (4,3, Nothing),
+
+              (30,31, Nothing),
+              (31,32, Nothing),
+              (32,33, Nothing),
+              (33,34, Nothing),
+              (35,36, Nothing),
+              (36,34, Nothing),
+              (36,31, Nothing),
+
+              (11,12, Nothing),
+              (21,22, Nothing),
+
+              ( 1,30, Just $ Open  "0,3"),
+              (34, 4, Just $ Close "0,3"),
+             
+
+              (32, 0, Just $ Open  "3,0"),
+              ( 3,35, Just $ Close "3,0"),
+    
+              (10,30, Just $ Open  "1,3"),
+              (34,11, Just $ Close "1,3"),
+
+              (20,30, Just $ Open  "2,3"),
+              (34,21, Just $ Close "2,3")
+            ]
+
+
+            
 funbl summary graph s = forward s s
   where forward []     found = found
         forward (n:ns) found = forward  ((new       ) ++ ns) (new ++ found)

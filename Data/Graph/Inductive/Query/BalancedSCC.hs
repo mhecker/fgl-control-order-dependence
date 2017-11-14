@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleInstances, ScopedTypeVariables #-}
 
 module Data.Graph.Inductive.Query.BalancedSCC where
@@ -6,6 +7,10 @@ import Data.Time
 import Debug.Trace
 import Util
 
+import System.Random
+import Control.Monad.Random
+
+
 import Algebra.Lattice hiding (gfpFrom)
 import Algebra.PartialOrd (unsafeGfpFrom)
 
@@ -13,7 +18,7 @@ import Unicode
 
 import Data.Maybe(fromJust, isNothing)
 
-import Data.List(union, intersect, elem, delete, sort, (\\), nub)
+import Data.List(union, intersect, elem, delete, sort, (\\), nub, null)
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -408,8 +413,8 @@ sameLevelSummaryGraph'WithBs gr =
 
 
 
-krinkeSCC  :: forall gr a b. (DynGraph gr, Ord b) => gr a (Annotation b) -> gr [Node] (Annotation b)
-krinkeSCC g = secondPassFolded
+krinkeSCC  :: forall gr a b. (DynGraph gr, Ord b) => gr a (Annotation b) -> (gr [Node] (Annotation b), Map Node Node)
+krinkeSCC g = (secondPassFolded, nodeMap)
   where firstPassSccs   = scc $ elfilter isFirstPassEdge g
           where isFirstPassEdge l = case l of
                   Nothing        -> True
@@ -441,6 +446,9 @@ krinkeSCC g = secondPassFolded
                                                 let m2 = sccOfSecond ! m1,
                                                 n2 /= m2
                                    ]
+
+        nodeMap :: Map Node Node
+        nodeMap = Map.fromList [ (n0, n2) | n0 <- nodes g, let n1 = sccOfFirst ! n0, let n2 = sccOfSecond ! n1 ]
 
 
 
@@ -980,3 +988,82 @@ sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = s
 
 sameLevelSummaryGraph'WithBsIssameLevelSummaryGraph'WithoutBs :: InterCFG () String -> Bool
 sameLevelSummaryGraph'WithBsIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = emap fst (sameLevelSummaryGraph'WithBs gr) == sameLevelSummaryGraph'WithoutBs gr
+
+type AnnotatedPath b = [LEdge (Annotation b)]
+
+
+sampleRealizablePathsFor :: (Eq b, Graph gr)             => Int -> Integer -> Integer ->  gr a (Annotation b) ->   [AnnotatedPath b]
+sampleRealizablePathsFor seed k maxlength g = fmap reverse $ evalRand (sampleRealizablePaths k maxlength g) (mkStdGen seed)
+
+sampleRealizablePaths :: (MonadRandom m, Graph gr, Eq b) =>        Integer -> Integer ->  gr a (Annotation b) -> m [AnnotatedPath b]
+sampleRealizablePaths         k maxlength g
+  | null (nodes g) = return $ take (fromInteger k) $ repeat []
+  | otherwise      = sampleSome [] 0
+     where 
+        sample :: MonadRandom m => [t] -> m t
+        sample xs = do
+          i <- getRandomR (1, length xs)
+          return $ xs !! (i-1)
+        sampleSome sampled i
+          | i >= k            = return $ sampled
+          | otherwise         = do
+              n0 <- sample $ nodes g
+              newTrace <- sampleTrace n0 [] [] 0
+              sampleSome (newTrace:sampled) (i+1)
+        sampleTrace n stack trace length
+          | length >= maxlength = return trace
+          | finished            = return trace
+          | otherwise = do
+               (m,e,newStack) <- sample successors
+               sampleTrace m newStack ((n,m,e):trace) (length + 1)
+         where finished   = null successors
+               successors = case stack of
+                 []     -> [ (m, e, newStack) | (m, e) <- lsuc g n, let (valid, newStack) = step e, valid ]
+                   where step Nothing           = (True,   stack)
+                         step (Just (Open x))   = (True, x:stack)
+                         step (Just (Close x))  = (False,  undefined)
+                 (y:ys) -> [ (m, e, newStack) | (m, e) <- lsuc g n, let (valid, newStack) = step e, valid ]
+                   where step Nothing           = (True,   stack)
+                         step (Just (Open x))   = (True, x:stack)
+                         step (Just (Close x))  = ( x == y, ys)
+
+
+αFor :: (Eq b, DynGraph gr, Ord b) => gr a (Annotation b) -> (gr [Node] (Annotation b), Map Node Node) -> AnnotatedPath b -> AnnotatedPath b
+αFor _ _ [] = []
+αFor g (folded, nodeMap) path@((n,m,e):_) = abstractPath n (nodeMap ! n) path
+  where abstractPath n sccN ((_,m,e):path)
+            | sccM == sccN =                 abstractPath m sccM path
+            | otherwise    = (sccN, sccM, e):abstractPath m sccM path
+          where sccM = nodeMap ! m
+        abstractPath n sccN [] = []
+
+α g = αFor g (krinkeSCC g)
+
+
+hasCycle :: AnnotatedPath b -> Bool
+hasCycle   []             = False
+hasCycle path@((n,_,e):_) = (Set.size $ Set.fromList $ nodes) /= (length nodes)
+  where nodes = n : [ m | (_,m,_) <- path]
+
+
+data DynamicContext b = DynamicContext { node :: Node, stack :: [b] }
+  deriving (Eq, Ord, Show)
+contextsFrom :: (Eq b, DynGraph gr, Ord b) => gr a (Annotation b) -> Node -> Set (DynamicContext b)
+contextsFrom g n =
+     (㎲⊒) (Set.fromList [ DynamicContext { node = n, stack = [] } ]) f
+  where f contexts = contexts
+                   ⊔ Set.fromList [  DynamicContext { node = m , stack = stack }
+                                           | c@(DynamicContext { node, stack })  <- Set.toList contexts,
+                                             (m, Nothing) <- lsuc g node
+                     ]
+                   ⊔ Set.fromList [  DynamicContext { node = m , stack = x:stack }
+                                           | c@(DynamicContext { node, stack })  <- Set.toList contexts,
+                                             (m, Just (Open x)) <- lsuc g node
+                     ]
+                   ⊔ Set.fromList [  DynamicContext { node = m , stack = stack0 }
+                                           | c@(DynamicContext { node, stack })  <- Set.toList contexts,
+                                             (x:stack0) <- [stack],
+                                             (m, Just (Close x')) <- lsuc g node,
+                                             x == x'
+                     ]
+                   

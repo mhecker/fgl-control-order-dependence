@@ -8,6 +8,7 @@
 #define ARBITRARY(g) (CG _ g) :: (Connected Gr () ())
 #endif
 #define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
+#define INTER(g) (InterGraph g) :: (InterGraph () String)
 
 
 module Program.Properties.ValidProperties where
@@ -1400,15 +1401,22 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
-    testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
-    testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
-    testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
-    testProperty  "simulUnblIsUnbl"                   $ simulUnblIsUnbl,
-    testProperty  "simulUnbr'IsUnbr"                  $ simulUnbrIsUnbr,
-    testProperty  "simulUnbl'IsUnbl"                  $ simulUnblIsUnbl,
-    testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
-    testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops,
-    testProperty  "sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs" $ sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs
+    testProperty  "acyclic realizable scc paths 1"      $
+      \(INTER(g)) seed ->
+                          let maxlength = 50
+                              k         = 1000
+                              paths     = sampleRealizablePathsFor seed k maxlength g
+                              sccG  = krinkeSCC g
+                          in  (∀) (paths) (\path -> not $ hasCycle (αFor g sccG path))
+    -- testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
+    -- testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
+    -- testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
+    -- testProperty  "simulUnblIsUnbl"                   $ simulUnblIsUnbl,
+    -- testProperty  "simulUnbr'IsUnbr"                  $ simulUnbrIsUnbr,
+    -- testProperty  "simulUnbl'IsUnbl"                  $ simulUnblIsUnbl,
+    -- testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
+    -- testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops,
+    -- testProperty  "sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs" $ sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs
 --    testProperty  "sameLevelSummaryGraphIssameLevelSummaryGraph'" $ sameLevelSummaryGraphIssameLevelSummaryGraph', -- this appears to hold, but takes fucking long to quickcheck, so we skip it here
   ]
 

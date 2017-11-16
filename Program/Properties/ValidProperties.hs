@@ -9,6 +9,7 @@
 #endif
 #define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
 #define INTER(g) (InterGraph g) :: (InterGraph () String)
+#define INTERCFG(g) (InterCFG _ g) :: (InterCFG () String)
 
 
 module Program.Properties.ValidProperties where
@@ -1401,13 +1402,12 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
-    testProperty  "acyclic realizable scc paths 1"      $
-      \(INTER(g)) seed ->
-                          let maxlength = 50
-                              k         = 1000
-                              paths     = sampleRealizablePathsFor seed k maxlength g
-                              sccG  = krinkeSCC g
-                          in  (∀) (paths) (\path -> not $ hasCycle (αFor g sccG path))
+    testProperty  "finite context graphs"      $
+      \(INTERCFG(g)) ->
+                     let  (folded, nodemap) = krinkeSCC g
+                     in traceShow (length $ nodes g, length $ nodes folded) $
+                        traceShow g $
+                        (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0)
     -- testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
     -- testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     -- testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,

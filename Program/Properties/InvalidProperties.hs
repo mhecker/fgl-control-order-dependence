@@ -1,5 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+
 module Program.Properties.InvalidProperties where
+
+#define INTER(g) (InterGraph g) :: (InterGraph () String)
+#define INTERCFG(g) (InterCFG _ g) :: (InterCFG () String)
+
 
 import Prelude hiding (all)
 
@@ -268,6 +274,20 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
+    testProperty  "acyclic realizable scc paths for arbitrary graphs"      $
+      \(INTER(g)) seed ->
+                          let maxlength = 50
+                              k         = 1000
+                              paths     = sampleRealizablePathsFor seed k maxlength g
+                              sccG  = krinkeSCC g
+                          in  (∀) (paths) (\path -> not $ hasCycle (αFor g sccG path)),
+    testProperty  "acyclic realizable scc paths for cfgs"      $
+      \(INTERCFG(g)) seed ->
+                          let maxlength = 50
+                              k         = 1000
+                              paths     = sampleRealizablePathsFor seed k maxlength g
+                              sccG  = krinkeSCC g
+                          in  (∀) (paths) (\path -> not $ hasCycle (αFor g sccG path))
   ]
 
 balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" $

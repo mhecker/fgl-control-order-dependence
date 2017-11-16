@@ -630,7 +630,9 @@ graphTest10 =
               (34,21, Just $ Close "2,3")
             ]
 
-
+-- This example shows that two-phase krinkeSCC may lead to graphs in which there is *not* a finite number of contexts.
+graphTest11 :: Gr () (Annotation String)
+graphTest11 = mkGraph [(-57,()),(-56,()),(-52,()),(-38,()),(-26,()),(-18,()),(-15,()),(-13,()),(-7,()),(-5,()),(3,()),(12,()),(16,()),(23,()),(28,()),(50,()),(55,()),(57,())] [(-57,-56,Just (Close "a")),(-56,-18,Just (Close "b")),(-56,-15,Just (Close "a")),(-56,28,Just (Open "a")),(-56,57,Just (Open "c")),(-52,-56,Nothing),(-52,-18,Just (Close "b")),(-52,-15,Nothing),(-52,-7,Just (Open "b")),(-52,3,Just (Open "b")),(-38,-15,Just (Close "a")),(-38,-13,Nothing),(-38,16,Just (Close "b")),(-38,57,Just (Open "b")),(-26,55,Just (Open "b")),(-18,-18,Nothing),(-18,-15,Just (Close "c")),(-18,12,Just (Close "c")),(-18,16,Just (Close "a")),(-15,55,Just (Open "b")),(-13,-56,Nothing),(-13,-52,Just (Close "a")),(-13,23,Nothing),(-7,55,Nothing),(-5,-13,Just (Open "b")),(-5,3,Just (Close "b")),(-5,57,Nothing),(3,-15,Just (Close "c")),(3,-5,Just (Open "c")),(12,3,Nothing),(16,-57,Just (Open "b")),(16,-57,Just (Open "a")),(16,-5,Just (Close "a")),(16,12,Just (Close "a")),(23,-57,Just (Open "b")),(23,-57,Just (Close "c")),(23,28,Just (Open "a")),(50,3,Just (Open "a")),(50,12,Nothing),(50,28,Just (Close "a")),(50,50,Just (Open "a")),(50,50,Just (Open "c")),(50,55,Just (Open "a")),(55,-57,Just (Open "b")),(55,-38,Nothing),(55,-26,Nothing),(55,-18,Just (Close "a")),(55,-15,Just (Open "b")),(57,-26,Just (Close "a")),(57,-26,Just (Close "c")),(57,16,Just (Open "c"))]
             
 funbl summary graph s = forward s s
   where forward []     found = found
@@ -1066,4 +1068,38 @@ contextsFrom g n =
                                              (m, Just (Close x')) <- lsuc g node,
                                              x == x'
                      ]
-                   
+
+
+contextGraphFrom :: (Eq b, DynGraph gr, Ord b) =>
+   gr a (Annotation b) ->
+   Node ->
+   Map (DynamicContext b) (Set (DynamicContext b, Annotation b))
+contextGraphFrom g n0 =
+     (㎲⊒) (Map.fromList [ (c0, Set.empty)]) f
+  where c0 = DynamicContext { node = n0, stack = [] } 
+        f successors = successors
+                -- ⊔ (∐) [ (Set.fromList [c'], Map.fromList [(c, Set.fromList [ (Nothing, c')])]) 
+                --                            | c@(DynamicContext { node, stack })  <- Set.toList contexts,
+                --                              (m, Nothing) <- lsuc g node,
+                --                              let c' = DynamicContext { node = m , stack = stack }
+                --       ]
+                ⊔  (∐) [    Map.fromList [ (c,  Set.fromList [(c', Nothing)]) ]
+                          ⊔ Map.fromList [ (c', Set.empty) ] 
+                                   | c@(DynamicContext { node, stack }) <- Map.keys successors,
+                                     (m, Nothing) <- lsuc g node,
+                                     let c' = DynamicContext { node = m , stack = stack }
+                      ]
+                ⊔ (∐) [     Map.fromList [ (c,  Set.fromList [(c', Just (Open x))]) ]
+                          ⊔ Map.fromList [ (c', Set.empty) ]
+                                   | c@(DynamicContext { node, stack })  <- Map.keys successors,
+                                     (m, Just (Open x)) <- lsuc g node,
+                                     let c' = DynamicContext { node = m , stack = x:stack }
+                      ]
+                ⊔ (∐) [     Map.fromList [ (c,  Set.fromList [(c', Just (Close x'))] ) ]
+                          ⊔ Map.fromList [ (c', Set.empty) ]
+                                   | c@(DynamicContext { node, stack })  <- Map.keys successors,
+                                     (x:stack0) <- [stack],
+                                     (m, Just (Close x')) <- lsuc g node,
+                                     x == x',
+                                     let c' = DynamicContext { node = m , stack = stack0 }
+                     ]

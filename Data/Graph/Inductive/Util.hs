@@ -134,6 +134,13 @@ fromSuccMapWithEdgeAnnotation succ = mkGraph [(n,()) | n <- Map.keys succ]
 
 
 
+fromAnnotatedSuccMapWithEdgeAnnotation :: (DynGraph gr, Ord a) => Map a (Set (a,b)) -> gr a b
+fromAnnotatedSuccMapWithEdgeAnnotation succ = mkGraph [(n,x) | (n,x) <- zip [0..] (Map.keys succ) ]
+                                             [(node ! x, node ! y, b) | (x,ys) <- Map.assocs succ, (y,b) <- Set.toList ys]
+  where node = Map.fromList $ zip (Map.keys succ) [0..]
+
+
+
 fromSuccPairMap :: DynGraph gr => Map Node (Set (Node,Node)) -> gr () () 
 fromSuccPairMap succ = mkGraph [(n,()) | n <- Map.keys succ]
                                [(n,m,()) | (n,ps) <- Map.assocs succ, m <- (fmap fst $ Set.toList ps) ++ (fmap snd $ Set.toList ps)]

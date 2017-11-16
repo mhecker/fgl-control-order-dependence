@@ -153,7 +153,7 @@ cdomIsTreeDomViolations p@(Program {tcfg}) θ cd =
   where cdom = cd p
         allOrderedBeforeAll c n path =
               (c == n ∧ length [ n' | n' <- ns, n == n'] == 1)
-            ∨ (not $ (c ∈ dropWhile (/=n) ns))
+            ∨ (not $ (c `elem` dropWhile (/=n) ns))
           where ns = [ n' | (n',e,tlσ) <- path ] 
 
 

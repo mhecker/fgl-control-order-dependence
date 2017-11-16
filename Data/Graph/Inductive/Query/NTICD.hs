@@ -524,7 +524,7 @@ sinkShrinkedGraph graph endNode   = mkGraph (  [ (s,())   | sink <- sinks, let s
                                             ++ [ (endNode, ()) ]
                                           )
                                           (
-                                               [ (n,s,())       | sink <- sinks, let s = head sink, s' <- sink, n <- pre graph s', not $ n ∈ sink]
+                                               [ (n,s,())       | sink <- sinks, let s = head sink, s' <- sink, n <- pre graph s', not $ n `elem` sink]
                                             ++ [ (s,endNode,()) | sink <- sinks, let s = head sink ]
                                             ++ [ (n,m,()) | (n,m) <- edges graph, not $ n ∈ sinkNodes, not $ m ∈ sinkNodes ]
                                           )
@@ -752,7 +752,7 @@ inSinkPathAfterFor' graph' n (cond, s, path) = inSinkPathFromEntries [s] path
                           (  (not $ cond `elem` controlSink) ∧ (
                               ((∀) entries (\entry -> let doms = dom graph' entry in
                                 (∀) cycles  (\cycle -> let c = head cycle in
-                                  (n ∈ cycle) ∨ (n `elem` (doms `get` c))
+                                  (n `elem` cycle) ∨ (n `elem` (doms `get` c))
                                 )
                                )
                               )
@@ -847,7 +847,7 @@ ntnrcdDef graph =
                      | ni <- condNodes ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         nrPaths = nrPathsFor graph
-        inPath n (NrPath { path }) = n ∈ path
+        inPath n (NrPath { path }) = n `elem` path
 
 data NrPath = NrPath { path :: [Node] } deriving Show
 
@@ -957,7 +957,7 @@ isinkdomOfGfp2 graph = -- fmap (\s -> Set.fromList [ Set.findMin s | not $ Set.n
   where base  =       Map.fromList [ (x, Set.empty )          | x <- nodes graph, (Set.size $ succs x) == 0]
                     ⊔ Map.fromList [ (x, succs x)             | x <- nodes graph, (Set.size $ succs x) == 1]
         init  =       base 
-                    ⊔ Map.fromList [ (x, Set.fromList [ y | y <- reachable x, y ∈ joinNodes ] )
+                    ⊔ Map.fromList [ (x, Set.fromList [ y | y <- reachable x, y `elem` joinNodes ] )
                                                               | x <- condNodes ]
         f :: Map Node (Set Node) -> Map Node (Set Node)
         f isinkdom = -- traceShow isinkdom $
@@ -1437,7 +1437,7 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
                                    -- (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $
                                    inv
           where inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
-                                (m ∈ (suc imdomWorklistTrc  n))
+                                (m `elem` (suc imdomWorklistTrc  n))
                         ))
                        ∧
                         (∀) (nodes graph) (\n -> let ms = imdom ! n  in
@@ -1460,7 +1460,7 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
                                                   (∃) (solution ! n) (\m -> m /= n),
                                                   w ∈ solution ! n,
                                                   (∀) (solution ! n) (\m -> m == n  ∨  (m ∈ solution ! w)),
-                                                  p ∈ prevConds n
+                                                  p `elem` prevConds n
                                             ]
                 imdomWorklist = imdom
                               ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ solution ! w,
@@ -1525,7 +1525,7 @@ imdomOfTwoFinger7 graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                                    -- (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $
                                    inv
           where inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
-                                (m ∈ (suc imdomWorklistTrc  n))
+                                (m `elem` (suc imdomWorklistTrc  n))
                         ))
                        ∧
                         (∀) (nodes graph) (\n -> let ms = imdom ! n  in
@@ -1548,7 +1548,7 @@ imdomOfTwoFinger7 graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                                                   (∃) (solution ! n) (\m -> m /= n),
                                                   w ∈ solution ! n,
                                                   (∀) (solution ! n) (\m -> m == n  ∨  (m ∈ solution ! w)),
-                                                  p ∈ prevConds n
+                                                  p `elem` prevConds n
                                             ]
                 imdomWorklist = fmap toSet imdom
                               ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ solution ! w,
@@ -1635,7 +1635,7 @@ predsSeenFor imdomRev = predsSeenF where
       predsSeen  :: [Node] -> Node -> [Node]
       predsSeen seen x = case Map.lookup x imdomRev of 
         Nothing  -> seen
-        Just ys  -> let new = (filter (not . (∈ seen)) ys) in predsSeenF (new ++ seen) new
+        Just ys  -> let new = (filter (not . (`elem` seen)) ys) in predsSeenF (new ++ seen) new
 
 
 
@@ -1980,7 +1980,7 @@ myWodFast graph =
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
-        entriesFor cycle = [ n | n <- condNodes, not $ n ∈ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∈ cycle]
+        entriesFor cycle = [ n | n <- condNodes, not $ n `elem` cycle, [n'] <- [Set.toList $ isinkdom ! n], n' `elem` cycle]
         condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
         myDependence = myDependenceFor graph
 
@@ -2015,7 +2015,7 @@ myDodFast graph =
         imdomG = fromSuccMap imdom :: gr () ()
         imdomTrc = trc $ imdomG
         imdomCycles = scc imdomG
-        entriesFor cycle = [ n | n <- condNodes, not $ n ∈ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∈ cycle]
+        entriesFor cycle = [ n | n <- condNodes, not $ n `elem` cycle, [n'] <- [Set.toList $ imdom ! n], n' `elem` cycle]
         myDependence = myDependenceFor graph
 
 
@@ -2187,7 +2187,7 @@ dodColoredDagFixedFast graph =
         imdomG = fromSuccMap imdom :: gr () ()
         imdomTrc = trc $ imdomG
         imdomCycles = scc imdomG
-        entriesFor cycle = [ n | n <- condNodes, not $ n ∈ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∈ cycle]
+        entriesFor cycle = [ n | n <- condNodes, not $ n `elem` cycle, [n'] <- [Set.toList $ imdom ! n], n' `elem` cycle]
 
         unorderedPairsOf []     = []
         unorderedPairsOf (x:xs) = [ (x,y) | y <- xs ] ++ unorderedPairsOf xs
@@ -2199,8 +2199,8 @@ wodFast graph =
     ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
                                                   let sMay12n = sMay ! (m1,m2,n),
                                                   let sMay21n = sMay ! (m2,m1,n),
-                                                  ((n /= m2) ∧ (Set.size sMay12n > 0))  ∨  ((n == m1) ∧ (m2 ∈ suc graphTrc n)),
-                                                  ((n /= m1) ∧ (Set.size sMay21n > 0))  ∨  ((n == m2) ∧ (m1 ∈ suc graphTrc n)),
+                                                  ((n /= m2) ∧ (Set.size sMay12n > 0))  ∨  ((n == m1) ∧ (m2 `elem` suc graphTrc n)),
+                                                  ((n /= m1) ∧ (Set.size sMay21n > 0))  ∨  ((n == m2) ∧ (m1 `elem` suc graphTrc n)),
                                                   let sMust12n = sMust ! (m1,m2,n),
                                                   let sMust21n = sMust ! (m2,m1,n),
                                                   Set.size sMust12n > 0 ∨ Set.size sMust21n > 0
@@ -2424,7 +2424,7 @@ prevRepresentantNodes graph start =
         []      -> Just start
         [n]     -> prevRepresentant [start] n start
     where prevRepresentant seen n m -- invariance : n is only predecessor of m, m is no join node
-              | n ∈ seen  = Nothing
+              | n `elem` seen  = Nothing
               | otherwise = case suc graph n of
                   (_:_:_) -> Just m
                   [m']    -> assert (m' == m) $
@@ -2623,7 +2623,7 @@ timingF3EquationSystem graph condNodes reachable nextCond toNextCond =
                                                                            Just n <- [nextCond x],
                                                                            let plus = plusAt n,
                                                                            let toNextCondX = toNextCond x,
-                                                                           not $ m ∈ toNextCondX,
+                                                                           not $ m `elem` toNextCondX,
                                                                            let stepsToN = List.genericLength toNextCondX - 1,
                                                                            let reachabilityFromN = FixedStepsPlusOther 0 n,
                                                                            let reachability = reachabilityFromN `plus` stepsToN
@@ -2642,7 +2642,7 @@ timingF3EquationSystem' graph condNodes reachable nextCond toNextCond =
                                                                            m <- reachable x,
                                                                            let plus = plusAt n,
                                                                            let toNextCondX = toNextCond x,
-                                                                           not $ m ∈ toNextCondX,
+                                                                           not $ m `elem` toNextCondX,
                                                                            let stepsToN = List.genericLength toNextCondX - 1,
                                                                            let reachabilityFromN = FixedStepsPlusOther 0 n,
                                                                            let reachability = reachabilityFromN `plus` stepsToN
@@ -2721,7 +2721,7 @@ timingXsparseDependence snmTiming graph =
                                             (∃) (Map.elems rmn) (\r ->
                                               (∃) (Map.elems rmn) (\r' ->  r ⊔ r' == UndeterminedSteps ∧ ( 
                                                                              case (r,r') of
-                                                                               (FixedStepsPlusOther _ u, FixedStepsPlusOther _ v)  -> (not $ n ∈ [u,v]) ∧ (u /= v)
+                                                                               (FixedStepsPlusOther _ u, FixedStepsPlusOther _ v)  -> (not $ n `elem` [u,v]) ∧ (u /= v)
                                                                                _                                                   -> True
                                                                            )
                                               )
@@ -2782,7 +2782,7 @@ fTimeMayDom graph _ _ nextCond toNextCond = f
                     ⊔ Map.fromList [ (y, let all = (∐) [ Map.keysSet $ timeDomOf ! x | x <- suc graph n ] in
                                          let plus = joinPlus in
                                          fmap (\s -> s `plus` (steps + 1)) $
-                                         Map.fromList [ (m, (∐) [  steps  | x <- suc graph n, Just steps <- [Map.lookup m (timeDomOf ! x)]   ]) | m <- Set.toList all, not $ m ∈ toNextCond y ]
+                                         Map.fromList [ (m, (∐) [  steps  | x <- suc graph n, Just steps <- [Map.lookup m (timeDomOf ! x)]   ]) | m <- Set.toList all, not $ m `elem` toNextCond y ]
                                      )
                                                                                    | y <- nodes graph,
                                                                                      Just n <- [nextCond y],
@@ -2953,9 +2953,9 @@ solveSnTimingEquationSystemWorklist2 graph s0 = -- traceShow (s0, worklist0, fin
                 toNextCond = toNextCondNode graph
                 prevConds   = prevCondNodes graph
                 influenced = Map.fromList [ (y, Set.fromList [ (node2index ! z, steps, p) | p <- pre graph y, (length $ suc graph p) > 1,
-                                                                                            assert ((not $ Map.member p prevCondsWithSucc) → (prevCondsWithSuccNode graph p == [])) True,
-                                                                                            assert (       Map.member p prevCondsWithSucc  → (   (Set.map (\(p,x,_) -> (p,x)) $ prevCondsWithSucc ! p)
-                                                                                                                                               == (Set.fromList $  prevCondsWithSuccNode graph p)) ) True,
+                                                                                            -- assert ((not $ Map.member p prevCondsWithSucc) → (prevCondsWithSuccNode graph p == [])) True,
+                                                                                            -- assert (       Map.member p prevCondsWithSucc  → (   (Set.map (\(p,x,_) -> (p,x)) $ prevCondsWithSucc ! p)
+                                                                                            --                                                    == (Set.fromList $  prevCondsWithSuccNode graph p)) ) True,
                                                                                             Just prevConds <- [Map.lookup p prevCondsWithSucc],
                                                                                             (_,z,steps) <- Set.toList $ prevConds
                                                              ]
@@ -3107,14 +3107,14 @@ timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                 lca  (n, sn, forbiddenNs) (m, sm, forbiddenMs) = lca' imdom (n, sn, Map.fromList [(n,sn)], forbiddenNs) (m, sm, Map.fromList [(m,sm)], forbiddenMs)
                 lca' :: Map Node (Maybe (Node, Integer)) -> (Node, Integer, Map Node Integer, Set Node) -> (Node, Integer, Map Node Integer, Set Node ) -> Maybe (Node, Integer, Set Node)
                 lca' c (n, sn, ns, forbiddenNs) (m, sm, ms, forbiddenMs)
-                    | m ∈ Map.keys ns ∧ ((ns ! m) == sm) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
+                    | m ∈ Map.keysSet ns ∧ ((ns ! m) == sm) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                                            assert (ms ! m == sm) $
                                                            let left  = Set.fromList [ v | (v,s) <- Map.assocs ns, s <= sm ]
                                                                right = Map.keysSet ms
                                                            in
                                                            assert (left ∩ right == Set.fromList [m]) $
                                                            Just (m, sm, left ∪ right)
-                    | n ∈ Map.keys ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
+                    | n ∈ Map.keysSet ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                                            assert (ns ! n == sn) $
                                                            let left  = Set.fromList [ v | (v,s) <- Map.assocs ms, s <= sn ]
                                                                right = Map.keysSet ns

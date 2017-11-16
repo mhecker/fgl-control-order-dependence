@@ -285,7 +285,7 @@ principalTypingUsing initial var p@(ForProgram { code, channelTyping, mainThread
      let deps = trc varDependencies
      let sccs = scc varDependencies
      let sccOf node = the (node `elem`) $ sccs
-     let solvable = all (\component -> not $ (nHigh ∈ component ∧ nLow ∈ component)) sccs
+     let solvable = all (\component -> not $ (nHigh `elem` component ∧ nLow `elem` component)) sccs
 
      if (solvable) then return $
       (

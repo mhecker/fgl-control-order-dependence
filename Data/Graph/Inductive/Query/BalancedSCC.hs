@@ -246,7 +246,7 @@ sameLvlNodes gr =
            Map.fromList [ ((n,m,b),Set.empty) | (_,n,Just (Open  b )) <- labEdges gr, m <- nodes gr ]
           )
           (\(sameLevel, onLevel) -> (
-            sameLevel ⊔ (onLevel `restrict` (Map.keys sameLevel)),
+            sameLevel ⊔ (onLevel `restrict` (Map.keysSet sameLevel)),
             onLevel   ⊔ Map.fromList [ ((n,n,b),  Set.fromList [n]) | (_,n,Just (Open  b )) <- labEdges gr]
                       ⊔ Map.fromList [ ((n,n',b), (∐) [ Set.fromList [n'] ⊔  onLevel ! (n,m,b) | m <- [ m | (m, Nothing) <- lpre gr n'], not $ Set.null $ onLevel ! (n,m,b)])
                                      |  (n,n',b) <- Map.keys onLevel
@@ -421,7 +421,7 @@ krinkeSCC g = (secondPassFolded, nodeMap)
                   Just (Open  _) -> True
                   Just (Close _) -> False
         sccOfFirst = Map.fromList [ (n0, n1) | n0 <- nodes g,
-                                             let (n1,scc0) = the (\(n1,scc0) -> n0 ∈ scc0) (zip [0..] firstPassSccs)
+                                             let (n1,scc0) = the (\(n1,scc0) -> n0 `elem` scc0) (zip [0..] firstPassSccs)
                      ]
         firstPassFolded :: gr [Node] (Annotation b) 
         firstPassFolded = mkGraph [ (n1, scc0)  | (n1, scc0)  <- zip [0..] firstPassSccs]
@@ -437,7 +437,7 @@ krinkeSCC g = (secondPassFolded, nodeMap)
                   Just (Open  _) -> False
                   Just (Close _) -> True
         sccOfSecond = Map.fromList [ (n1, n2) | n1 <- nodes firstPassFolded,
-                                               let (n2,scc1) = the (\(n2,scc1) -> n1 ∈ scc1) (zip [0..] secondPassSccs)
+                                               let (n2,scc1) = the (\(n2,scc1) -> n1 `elem` scc1) (zip [0..] secondPassSccs)
                      ]
         secondPassFolded :: gr [Node] (Annotation b)
         secondPassFolded = mkGraph [ (n2, [ n0 | n1 <- scc1, Just scc0 <- [lab firstPassFolded n1], n0 <- scc0]) | (n2, scc1) <- zip [0..] secondPassSccs ]

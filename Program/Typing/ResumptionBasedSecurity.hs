@@ -117,12 +117,12 @@ for2ResumptionFor code mainThread =  f2f [mainThread] False [] (code ! mainThrea
         f2f spawnString inLoop cs     (Program.For.Seq c1 c2) = f2f spawnString inLoop (c2:cs) c1
 
         f2f spawnString inLoop []     (Program.For.SpawnThread θ)
-            | (not inLoop) ∧ (not $ θ ∈ spawnString) = do
+            | (not inLoop) ∧ (not $ θ `elem` spawnString) = do
                     cθ <- f2f (θ:spawnString) False [] (code ! θ)
                     return $ Par [cθ]
             | otherwise                              = mzero
         f2f spawnString inLoop (c:cs) (Program.For.SpawnThread θ)
-            | (not inLoop) ∧ (not $ θ ∈ spawnString) = do
+            | (not inLoop) ∧ (not $ θ `elem` spawnString) = do
                     cθ <- f2f (θ:spawnString) False [] (code ! θ)
                     c' <- f2f spawnString inLoop cs c
                     return $ Par ([cθ, c'])
@@ -443,7 +443,7 @@ principalTypingUsing maximalCriterion initial var p@(ForProgram { code, channelT
      let deps = trc varDependencies
      let sccs = scc varDependencies
      let sccOf node = the (node `elem`) $ sccs
-     let solvable = all (\component -> not $ (nHigh ∈ component ∧ nLow ∈ component)) sccs
+     let solvable = all (\component -> not $ (nHigh `elem` component ∧ nLow `elem` component)) sccs
 
      if (solvable) then
        return (

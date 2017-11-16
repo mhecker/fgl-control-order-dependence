@@ -8,7 +8,7 @@ import Prelude hiding (elem)
 import Algebra.Lattice
 import Data.Foldable
 import Data.List (filter)
-import Data.Set.Unicode as Set hiding ((∈))
+import Data.Set.Unicode as Set
 import Data.Bool.Unicode as Bool
 
 
@@ -56,9 +56,11 @@ infixl 7 ⊓
 (∃) :: (Foldable t) => t a -> (a -> Bool) -> Bool
 (∃) a pred = (not.null) $ filter pred $ toList a
 
-infix 4 ∈
-(∈) :: (Eq a, Foldable t) => a -> t a -> Bool
-(∈) = elem
+-- We used to do this:
+--  infix 4 ∈
+--  (∈) :: (Eq a, Foldable t) => a -> t a -> Bool
+--  (∈) = elem
+--, but the `elem` instantion for Set does not (cannot?) use the Ord constraint, and hence makes a linaer (!) search!
 
 
 infix 4 ↔

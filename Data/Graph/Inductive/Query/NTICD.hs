@@ -2920,7 +2920,7 @@ solveSnTimingEquationSystemWorklist graph s0 = solve s0 worklist0 (Map.fromList 
                 influenced = fmap (Set.map (node2index !)) influencedNodes
                 solve :: Map Node (Map Node Reachability) -> Set Node -> Map Node Integer -> Map Node Integer -> Map Node (Map Node Reachability)
                 solve s worklist iterations changes
-                   | Set.null worklist  = traceShow ("SnTimingWorklist: ", iterations, changes, "Graph:\n", if ((length $ nodes graph) < 50 ∧ (Map.fold (+) 0 iterations) > 200) then graph else mkGraph [] [])
+                   | Set.null worklist  = -- traceShow ("SnTimingWorklist: ", iterations, changes, "Graph:\n", if ((length $ nodes graph) < 50 ∧ (Map.fold (+) 0 iterations) > 200) then graph else mkGraph [] [])
                                           s
                    | not changed        =      solve s   worklist'                (Map.update (\i -> Just $ i+1) y iterations)                                  changes
                    | otherwise          =      solve s' (worklist' ⊔ influencedY) (Map.update (\i -> Just $ i+1) y iterations) (Map.update (\i -> Just $ i+1) y changes)
@@ -2947,34 +2947,35 @@ solveSnTimingEquationSystemWorklist graph s0 = solve s0 worklist0 (Map.fromList 
 
 solveSnTimingEquationSystemWorklist2 ::  DynGraph gr => gr a b -> SnTimingEquationSystem -> SnTimingEquationSystem
 solveSnTimingEquationSystemWorklist2 graph s0 = traceShow (s0, worklist0, finished0, influenced) $
+                                                assert (worklist1 == worklist2) $
                                                  solve s0 worklist0 finished0 0 0
           where condNodes = [ x | x <- nodes graph, length (suc graph x) > 1 ]
                 nextCond = nextCondNode graph
                 toNextCond = toNextCondNode graph
                 prevConds   = prevCondNodes graph
                 -- prevCondsWithSucc = prevCondsWithSuccNode graph
-                influenced = Map.fromList [ (y, Set.fromList [ (node2index ! z, steps, p) | p <- pre graph y, (length $ suc graph p) > 1, (_,z,steps) <- Set.toList $ prevCondsWithSucc ! p ]) | y <- Map.keys s0 ]
+
+                --           Map.fromList [ (y, Set.fromList [               z            | p <- pre graph y, (length $ suc graph p) > 1, (_,z) <- prevCondsWithSucc p ]) | y <- Map.keys s0 ]
+                influenced = Map.fromList [ (y, Set.fromList [ (node2index ! z, steps, p) | p <- pre graph y, (length $ suc graph p) > 1,
+                                                                                             if  ( (not $ Map.member p prevCondsWithSucc)
+                                                                                                && (prevCondsWithSuccNode graph p /= []) ) then (error (show p)) else True,
+                                                                                             if  ( (Map.member p prevCondsWithSucc)
+                                                                                                   && ((Set.map (\(p,x,_) -> (p,x)) $ prevCondsWithSucc ! p) /= (Set.fromList $  prevCondsWithSuccNode graph p)) ) then (error $ "rofl" ++ (show p)) else True,
+                                                                                             Just prevConds <- [Map.lookup p prevCondsWithSucc],
+                                                                                             (_,z,steps) <- Set.toList $ prevConds]) | y <- Map.keys s0 ]
                 prevCondsWithSucc = (∐) [ Map.fromList [ (m, Set.fromList [(p,x,steps) ]) ] | p <- condNodes,
                                                                                        x <- suc graph p,
                                                                                        let toNextCondX = toNextCond x,
                                                                                        let m = head toNextCondX,
                                                                                        let steps = (toInteger $ length $ toNextCondX) - 1
                                 ]
-                -- influenced = (∐) [ Map.fromList [ (y, Set.fromList [(node2index ! z,steps,n) | z <- suc graph n ]) ] | p <- condNodes,
-                --                                                                                           y <- suc graph p,
-                --                                                                                           let toNextCondY = toNextCond y,
-                --                                                                                           let n = head toNextCondY,
-                --                                                                                           let steps = (toInteger $ length $ toNextCondY) - 1
-                --                  ] 
-                
-                -- (node2index, index2node) = ( Map.fromList [ (n, i) | (i,n) <- zip [0..] topsorted ],
-                --                              Map.fromList [ (i, n) | (i,n) <- zip [0..] topsorted ]
-                --                            )
-                --   where topsorted = reverse $ topsort graph
                 (node2index, index2node) = ( Map.fromList [ (n, toInteger n) | n <- nodes graph],
                                              Map.fromList [ (toInteger n, n) | n <- nodes graph]
                                            )
-                worklist0 =  Map.fromList [ ((i,m), (steps,n)) | p <- condNodes, x <- suc graph p, m <- toNextCond x,  (i,steps,n) <- Set.toList $ influenced ! x]
+              --worklist0 =  Set.fromList [ node2index ! y     | p <- condNodes, x <- suc graph p, (_,y) <- prevCondsWithSucc p]
+                worklist0 =  Map.fromList [ ((i,m), (steps,n)) | p <- condNodes, x <- suc graph p, m <- toNextCond x,  (i,steps,n) <- Set.toList $ influenced ! x, not $ (i,m) ∈ finished0]
+                worklist1 =  Map.fromList [ ((i,m), (steps,n)) | p <- condNodes, x <- suc graph p, m <- toNextCond x,  (i,steps,n) <- Set.toList $ influenced ! x]
+                worklist2 =  Map.fromList [ ((i,m), (steps,n)) | (y,syms) <- Map.assocs s0, (m,sym) <- Map.assocs syms, (i,steps,n) <- Set.toList $ influenced ! y]
                 finished0 :: Set (Integer, Node)
                 finished0 =        Set.fromList [  (i,m)                | p <- condNodes, y <- suc graph p, m <- toNextCond y,  let i = node2index ! y ]
                 solve ::  SnTimingEquationSystem ->  Map (Integer, Node) (Integer, Node) -> Set (Integer, Node) -> Integer -> Integer ->  SnTimingEquationSystem
@@ -2982,14 +2983,16 @@ solveSnTimingEquationSystemWorklist2 graph s0 = traceShow (s0, worklist0, finish
                    | Map.null worklist  = s
                    | not changed        =      solve s   worklist'                                   finished (iterations+1)  changes
                    | otherwise          =      solve s' (worklist' `Map.union` influencedM)       newFinished (iterations+1) (changes + 1)
-                  where tr = traceShow ((y,m),n, changed, Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (steps,n)) <- Map.assocs worklist'],
-                                                          Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (steps,n)) <- Map.assocs influencedM]
+                  where tr = assert (n0 == n) $
+                             assert (steps0 == steps)
+                             traceShow ((y,m),n, changed, sym', Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (steps,n)) <- Map.assocs worklist'],
+                                                                Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (steps,n)) <- Map.assocs influencedM]
                                        )
                         (((i,m),(steps,n)), worklist') = Map.deleteFindMin worklist
                         y = index2node ! i
---                        toNextCondY = toNextCond y
---                        n = head toNextCondY  -- assert (nextCond y == Just n)
---                        steps = (toInteger $ length $ toNextCondY) - 1
+                        toNextCondY0 = toNextCond y
+                        n0 = head toNextCondY0  -- assert (nextCond y == Just n)
+                        steps0 = (toInteger $ length $ toNextCondY0) - 1
                         msym  = Map.lookup m (s ! y)
                         sxm   = case Map.lookup m (s0 ! y) of
                                    Nothing ->  (∐) [ sxm | x <- suc graph n, Just sxm <- [Map.lookup m (s ! x)]]
@@ -3000,12 +3003,12 @@ solveSnTimingEquationSystemWorklist2 graph s0 = traceShow (s0, worklist0, finish
                                              UndeterminedSteps        -> (True,  FixedStepsPlusOther steps n)
                                              Unreachable              -> error (show $ (y,m,n))
                         newFinished
-                          | finishedY = Set.insert (node2index ! y, m) finished
-                          | otherwise =                                finished
+                          | finishedY = Set.insert (i, m) finished
+                          | otherwise =                   finished
                         changed    = case msym of
                                        Just sym -> sym /= sym'
                                        Nothing  -> True
-                        influencedM = Map.fromList [ ((iz,m), (steps,n)) | (iz, steps, n) <- Set.toList $ influenced ! y, not $ (iz,m) ∈ newFinished ]
+                        influencedM = Map.fromList [ ((iz,m), (steps,n)) | (iz, steps, n) <- Set.toList $ influenced ! y,  not $ (iz,m) ∈ newFinished ]
                         s'          = Map.update (\sy -> Just $ Map.insert m sym' sy) y s
 
 timingSnSolvedDependence :: DynGraph gr => gr a b -> Map Node (Set Node)

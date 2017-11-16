@@ -3,6 +3,7 @@
 module Program.Tests where
 
 import System.Process
+
 import Data.Graph.Inductive.Dot
 
 import Data.List

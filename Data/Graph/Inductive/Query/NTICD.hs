@@ -2888,7 +2888,7 @@ solveSnTimingEquationSystem graph s = solve s0 0
                 toNextCond = toNextCondNode graph
                 s0 = s
                 solve s iterations = -- traceShow (s ! 3) $ traceShow (s ! 4) $ traceShow ("") $
-                          if (s == s') then traceShow ("SnTiming: ", iterations) s else solve s' (iterations + 1)
+                          if (s == s') then s else solve s' (iterations + 1)
                   where s' = Map.fromList [ (y, Map.union (s0 ! y) r) | (y, sy) <- Map.assocs s,
                                                                         let r = Map.fromList [ (m, case sxm of
                                                                                                      FixedSteps j             -> FixedSteps (1+steps+j)
@@ -2946,7 +2946,7 @@ solveSnTimingEquationSystemWorklist graph s0 = solve s0 worklist0 (Map.fromList 
 
 
 solveSnTimingEquationSystemWorklist2 ::  DynGraph gr => gr a b -> SnTimingEquationSystem -> SnTimingEquationSystem
-solveSnTimingEquationSystemWorklist2 graph s0 = traceShow (s0, worklist0, finished0, influenced) $
+solveSnTimingEquationSystemWorklist2 graph s0 = -- traceShow (s0, worklist0, finished0, influenced) $
                                                 solve s0 worklist0 finished0 0 0
           where condNodes = [ x | x <- nodes graph, length (suc graph x) > 1 ]
                 nextCond = nextCondNode graph
@@ -2957,7 +2957,10 @@ solveSnTimingEquationSystemWorklist2 graph s0 = traceShow (s0, worklist0, finish
                                                                                             assert (       Map.member p prevCondsWithSucc  → (   (Set.map (\(p,x,_) -> (p,x)) $ prevCondsWithSucc ! p)
                                                                                                                                                == (Set.fromList $  prevCondsWithSuccNode graph p)) ) True,
                                                                                             Just prevConds <- [Map.lookup p prevCondsWithSucc],
-                                                                                            (_,z,steps) <- Set.toList $ prevConds]) | y <- Map.keys s0 ]
+                                                                                            (_,z,steps) <- Set.toList $ prevConds
+                                                             ]
+                                            )
+                                          | y <- Map.keys s0 ]
                 prevCondsWithSucc = (∐) [ Map.fromList [ (m, Set.fromList [(p,x,steps) ]) ] | p <- condNodes,
                                                                                        x <- suc graph p,
                                                                                        let toNextCondX = toNextCond x,
@@ -2982,11 +2985,11 @@ solveSnTimingEquationSystemWorklist2 graph s0 = traceShow (s0, worklist0, finish
                              traceShow ((y,m),n, changed, sym', Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (steps,n)) <- Map.assocs worklist'],
                                                                 Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (steps,n)) <- Map.assocs influencedM]
                                        )
+                          where toNextCondY0 = toNextCond y
+                                n0 = head toNextCondY0  -- assert (nextCond y == Just n)
+                                steps0 = (toInteger $ length $ toNextCondY0) - 1
                         (((i,m),(steps,n)), worklist') = Map.deleteFindMin worklist
                         y = index2node ! i
-                        toNextCondY0 = toNextCond y
-                        n0 = head toNextCondY0  -- assert (nextCond y == Just n)
-                        steps0 = (toInteger $ length $ toNextCondY0) - 1
                         msym  = Map.lookup m (s ! y)
                         sxm   = case Map.lookup m (s0 ! y) of
                                    Nothing ->  (∐) [ sxm | x <- suc graph n, Just sxm <- [Map.lookup m (s ! x)]]

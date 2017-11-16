@@ -6,6 +6,7 @@ import Program
 import Control.Monad.Gen
 import Control.Monad
 
+import Unicode((∊))
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -204,7 +205,7 @@ compileAllToProgram code = Program {
     observability = error "observability noch nicht definiert"
    }
   where staticThreadOf n = fromJust $
-          find (\t -> let (_,_,_,nodes) = compiledCode ! t in n `elem` nodes)
+          find (\t -> let (_,_,_,nodes) = compiledCode ! t in n ∊ nodes)
                staticThreads
         staticThreads = Map.keys code
         entryOf = (!) (fmap (\(entryNode,_  ,_       ,_) -> entryNode) compiledCode)

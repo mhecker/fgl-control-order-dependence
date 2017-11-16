@@ -153,7 +153,7 @@ cdomIsTreeDomViolations p@(Program {tcfg}) θ cd =
   where cdom = cd p
         allOrderedBeforeAll c n path =
               (c == n ∧ length [ n' | n' <- ns, n == n'] == 1)
-            ∨ (not $ (c `elem` dropWhile (/=n) ns))
+            ∨ (not $ (c ∊ dropWhile (/=n) ns))
           where ns = [ n' | (n',e,tlσ) <- path ] 
 
 
@@ -355,4 +355,4 @@ selfChopsSCC p =
              (Set.fromList $ (exclChop $ tcfg p) s s) ==  (Set.fromList $ sccOf s)                 -- == (chop $ tcfg p) s s via inclChopIsChop
     )
   where sccs    = scc $ tcfg p
-        sccOf s =  the (s `elem`) $ sccs
+        sccOf s =  the (s ∊) $ sccs

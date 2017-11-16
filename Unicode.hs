@@ -60,9 +60,13 @@ infixl 7 ⊓
 --  infix 4 ∈
 --  (∈) :: (Eq a, Foldable t) => a -> t a -> Bool
 --  (∈) = elem
---, but the `elem` instantion for Set does not (cannot?) use the Ord constraint, and hence makes a linaer (!) search!
+--, but the ∊ instantion for Set does not (cannot?) use the Ord constraint, and hence makes a linaer (!) search!
 
 
+infix 4 ∊
+(∊) :: (Eq a) => a -> [a] -> Bool
+(∊) = elem
+ 
 infix 4 ↔
 (↔) :: Bool -> Bool -> Bool
 (↔) = (==)

@@ -34,7 +34,7 @@ prob :: Graph gr => gr CFGNode CFGEdge -> ExecutionTrace -> Rational
 prob gr [] = 1
 prob gr (((control,globalσ,tlσs,i), o, (control',globalσ',tlσs',i')) : trace)
     | length successors /= length control   = error "nicht genau ein nachfolgezustand pro thread" -- TODO: genauer reingucken, obs wirklich für jeden Thread genau einen gibt
-    | ((o,(control',globalσ',tlσs')) `elem` successors) = (1 / toRational (length successors) ) * prob gr trace
+    | ((o,(control',globalσ',tlσs')) ∊ successors) = (1 / toRational (length successors) ) * prob gr trace
     | otherwise                             = 0
   where successors = [(o,(control,globalσ,tlσs)) | (o,(control,globalσ,tlσs,i)) <- eventStep gr (control,globalσ,tlσs,i)]
 

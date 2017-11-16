@@ -208,18 +208,18 @@ principalTypingOf var p θ =
 
      let deps = trc varDependencies
      let sccs = scc varDependencies
-     let sccOf node = the (node `elem`) $ sccs
+     let sccOf node = the (node ∊) $ sccs
      let solvable = all (\component -> not $ (nHigh ∈ component ∧ nLow ∈ component)) sccs
 
      if (solvable) then return $
 --      (
        Just $ ProgramTyping {
-          pc =      if (      nHigh `elem` pre deps nPc ) then High
-               else if (      nPc   `elem` pre deps nLow) then Low
-               else if (not $ nPc   `elem` pre deps nStp) then High
+          pc =      if (      nHigh ∊ pre deps nPc ) then High
+               else if (      nPc   ∊ pre deps nLow) then Low
+               else if (not $ nPc   ∊ pre deps nStp) then High
                else                                            Low,
-          stp =     if (      nHigh `elem` pre deps nStp) then High
-               else if (      nStp  `elem` pre deps nLow) then Low
+          stp =     if (      nHigh ∊ pre deps nStp) then High
+               else if (      nStp  ∊ pre deps nLow) then Low
                else Low
          }
 --       , varDependencies )

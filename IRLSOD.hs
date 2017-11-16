@@ -130,7 +130,7 @@ spawn = Spawn
 wellformed :: Graph gr => gr CFGNode CFGEdge -> Bool
 wellformed gr =
      and [  length [ n'  | (n', Assign _ _) <- lsuc gr n ] <= 1           | n <- nodes gr]
-  && and [  length [ n'  | (n', Guard  _ _) <- lsuc gr n ] `elem` [0,1,2] | n <- nodes gr]
+  && and [  length [ n'  | (n', Guard  _ _) <- lsuc gr n ] ∊ [0,1,2] | n <- nodes gr]
   && and [ (length [ n'  | (n', Assign _ _) <- lsuc gr n ] == 1)
             →   (  length [ n'  | (n', Guard _ _)  <- lsuc gr n ] == 0
                  && length [ n'  | (n', Spawn)      <- lsuc gr n ] == 0 ) | n <- nodes gr]

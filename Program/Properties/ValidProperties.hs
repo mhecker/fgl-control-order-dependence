@@ -296,7 +296,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         sinks = NTICD.controlSinks g
-                    in (∀) (Map.assocs $ NTICD.joinUpperBound g) (\(n,maybeNs) -> maybeNs /= Nothing ∨   (∃) (sinks) (\sink -> n `elem` sink)),
+                    in (∀) (Map.assocs $ NTICD.joinUpperBound g) (\(n,maybeNs) -> maybeNs /= Nothing ∨   (∃) (sinks) (\sink -> n ∊ sink)),
     testProperty   "isinkdomOf^*          == sinkdomOfJoinUpperBound^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -583,11 +583,11 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myWod = NTICD.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
-                              (m1 `elem` suc isinkdomTrc m2 ∧ m1 `elem` suc isinkdomTrc m2)
+                              (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2)
                           )
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 `elem` suc isinkdomTrc n2) → (
-                                   (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 `elem` suc isinkdomTrc n1'
+                              (n1 ∊ suc isinkdomTrc n2) → (
+                                   (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
                               )
                           ))
                         ),
@@ -600,7 +600,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         isinkdomTrc  = trc $ (fromSuccMap isinkdom :: Gr () ())
                     in (∀) (nodes graph) (\m ->
                          (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
-                                               ↔ (m `elem` (suc isinkdomTrc n))
+                                               ↔ (m ∊ (suc isinkdomTrc n))
                          )
                        ),
     testProperty  "myWodFast                 == myWod"
@@ -632,11 +632,11 @@ wodTests = testGroup "(concerning weak order dependence)" $
                         myWod = NTICD.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
-                              (m1 `elem` suc isinkdomTrc m2 ∧ m1 `elem` suc isinkdomTrc m2)
+                              (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2)
                           )
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 `elem` suc isinkdomTrc n2) → (
-                                   (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 `elem` suc isinkdomTrc n1'
+                              (n1 ∊ suc isinkdomTrc n2) → (
+                                   (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
                               )
                           ))
                         ) @? ""
@@ -663,14 +663,14 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         myDod = NTICD.myDod g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
-                              (m1 `elem` suc imdomTrc m2 ∧ m1 `elem` suc imdomTrc m2)
+                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
                           )
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 `elem` suc imdomTrc n2 ∨ n2 `elem` suc imdomTrc n1) → (n1 == n2)
+                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
                         ∧ (∀) ns (\n ->
                               not $
-                              (n  `elem` suc imdomTrc m1 ∨ n  `elem` suc imdomTrc m2)
+                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
                           )
                         ),
     testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
@@ -681,7 +681,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
-                                        (∃) (ns) (\n' -> n' `elem` (suc ntscdTrc n))
+                                        (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
                           )
                         ),
     testProperty  "ntscdDodSlice == ntscdMyDodSlice"
@@ -719,7 +719,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         imdom  = NTICD.imdomOfTwoFinger6 g
                         dod = NTICD.dod g
                         imdomSccs = scc (fromSuccMap imdom :: Gr () ())
-                        imdomCycleOf m =  the (m `elem`) $ imdomSccs
+                        imdomCycleOf m =  the (m ∊) $ imdomSccs
                     in  (∀) (nodes g) (\m1 ->
                           (∀) (List.delete m1 $ nodes g) (\m2 ->
                             let c1 = imdomCycleOf m1
@@ -735,14 +735,14 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         dod = NTICD.dod g
                     in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
-                              (m1 `elem` suc imdomTrc m2 ∧ m1 `elem` suc imdomTrc m2)
+                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
                           )
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 `elem` suc imdomTrc n2 ∨ n2 `elem` suc imdomTrc n1) → (n1 == n2)
+                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
                         ∧ (∀) ns (\n ->
                               not $
-                              (n  `elem` suc imdomTrc m1 ∨ n  `elem` suc imdomTrc m2)
+                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
                           )
                         ),
     testProperty  "snmF3Lfp reachable          == imdom reachable "
@@ -754,7 +754,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         imdomTrc  = trc $ (fromSuccMap imdom :: Gr () ())
                     in (∀) (nodes graph) (\m ->
                          (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
-                                               ↔ (m `elem` (suc imdomTrc n))
+                                               ↔ (m ∊ (suc imdomTrc n))
                          )
                        ),
     testProperty  "dodColoredDagFixedFast     == dodDef"
@@ -794,14 +794,14 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         myDod = NTICD.myDod g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
-                              (m1 `elem` suc imdomTrc m2 ∧ m1 `elem` suc imdomTrc m2)
+                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
                           )
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 `elem` suc imdomTrc n2 ∨ n2 `elem` suc imdomTrc n1) → (n1 == n2)
+                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
                         ∧ (∀) ns (\n ->
                               not $
-                              (n  `elem` suc imdomTrc m1 ∨ n  `elem` suc imdomTrc m2)
+                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
                           )
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
@@ -812,7 +812,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
-                                        (∃) (ns) (\n' -> n' `elem` (suc ntscdTrc n))
+                                        (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
                           )
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
@@ -852,14 +852,14 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         dod = NTICD.dod g
                     in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
-                              (m1 `elem` suc imdomTrc m2 ∧ m1 `elem` suc imdomTrc m2)
+                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
                           )
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 `elem` suc imdomTrc n2 ∨ n2 `elem` suc imdomTrc n1) → (n1 == n2)
+                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
                         ∧ (∀) ns (\n ->
                               not $
-                              (n  `elem` suc imdomTrc m1 ∨ n  `elem` suc imdomTrc m2)
+                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
                           )
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
@@ -895,7 +895,7 @@ colorProps = testGroup "(concerning color algorithms)" [
                     in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
                          in (∀) (condNodes) (\n ->
-                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 `elem` (suc isinkdomTrc n)) ∧ (m2 `elem` (suc isinkdomTrc n))) → (
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∊ (suc isinkdomTrc n)) ∧ (m2 ∊ (suc isinkdomTrc n))) → (
                                 (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
                               ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
                               )
@@ -910,7 +910,7 @@ colorProps = testGroup "(concerning color algorithms)" [
                     in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
                          in (∀) (condNodes) (\n ->
-                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 `elem` (suc imdomTrc n)) ∧ (m2 `elem` (suc imdomTrc n))) → (
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∊ (suc imdomTrc n)) ∧ (m2 ∊ (suc imdomTrc n))) → (
                                 (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
                               ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
                               )
@@ -924,7 +924,7 @@ colorProps = testGroup "(concerning color algorithms)" [
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
                          in (∀) (nodes g) (\n ->
                            let color  = NTICD.colorFor    g n m1 m2
-                           in (n /= m1 ∧ n /= m2 ∧ (m1 `elem` (suc imdomTrc n)) ∧ (m2 `elem` (suc imdomTrc n))) → 
+                           in (n /= m1 ∧ n /= m2 ∧ (m1 ∊ (suc imdomTrc n)) ∧ (m2 ∊ (suc imdomTrc n))) → 
                                 (∀) (suc g n) (\x -> colorLfp ! x == color ! x)
                        ))),
     testProperty  "smmnFMustDod graph          == colorFor"
@@ -935,7 +935,7 @@ colorProps = testGroup "(concerning color algorithms)" [
                         sMust = NTICD.smmnFMustDod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
                     in (∀) (condNodes) (\n ->   (∀) (nodes g) (\m1 ->    (∀) (nodes g) (\m2 ->
-                         (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 `elem` (suc imdomTrc n)) ∧ (m2 `elem` (suc imdomTrc n))) → 
+                         (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∊ (suc imdomTrc n)) ∧ (m2 ∊ (suc imdomTrc n))) → 
                          let color    = NTICD.colorFor    g n m1 m2
                          in   (∀) (suc g n) (\x -> (color ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n)))
                             ∧ (∀) (suc g n) (\x -> (color ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n)))
@@ -950,7 +950,7 @@ colorTests = testGroup "(concerning color algorithms)" $
                     in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
                          in (∀) (condNodes) (\n ->
-                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 `elem` (suc isinkdomTrc n)) ∧ (m2 `elem` (suc isinkdomTrc n))) → (
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∊ (suc isinkdomTrc n)) ∧ (m2 ∊ (suc isinkdomTrc n))) → (
                                 (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
                               ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
                               )
@@ -965,7 +965,7 @@ colorTests = testGroup "(concerning color algorithms)" $
                     in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
                          in (∀) (condNodes) (\n ->
-                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 `elem` (suc imdomTrc n)) ∧ (m2 `elem` (suc imdomTrc n))) → (
+                              (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∊ (suc imdomTrc n)) ∧ (m2 ∊ (suc imdomTrc n))) → (
                                 (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n))))
                               ∧ (∀) (suc g n) (\x -> (n /= x) → ((colorLfp ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n))))
                               )
@@ -979,7 +979,7 @@ colorTests = testGroup "(concerning color algorithms)" $
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
                          in (∀) (nodes g) (\n ->
                            let color  = NTICD.colorFor    g n m1 m2
-                           in (n /= m1 ∧ n /= m2 ∧ (m1 `elem` (suc imdomTrc n)) ∧ (m2 `elem` (suc imdomTrc n))) → 
+                           in (n /= m1 ∧ n /= m2 ∧ (m1 ∊ (suc imdomTrc n)) ∧ (m2 ∊ (suc imdomTrc n))) → 
                                 (∀) (suc g n) (\x -> colorLfp ! x == color ! x)
                        ))) @? ""
   | (exampleName, g) <- interestingDodWod
@@ -990,7 +990,7 @@ colorTests = testGroup "(concerning color algorithms)" $
                         sMust = NTICD.smmnFMustDod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
                     in (∀) (condNodes) (\n ->   (∀) (nodes g) (\m1 ->    (∀) (nodes g) (\m2 ->
-                         (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 `elem` (suc imdomTrc n)) ∧ (m2 `elem` (suc imdomTrc n))) → 
+                         (n /= m1 ∧ n /= m2 ∧ m1 /= m2 ∧ (m1 ∊ (suc imdomTrc n)) ∧ (m2 ∊ (suc imdomTrc n))) → 
                          let color    = NTICD.colorFor    g n m1 m2
                          in   (∀) (suc g n) (\x -> (color ! x == NTICD.White)  ↔ ((n,x) ∈ sMust ! (m1,m2, n)))
                             ∧ (∀) (suc g n) (\x -> (color ! x == NTICD.Black)  ↔ ((n,x) ∈ sMust ! (m2,m1, n)))
@@ -1130,8 +1130,8 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                      ntscd = NTICD.ntscdF3 g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
-                                      (∀) (ns) (\n ->   (m1 `elem` suc ntscdTrc n)
-                                                      ∨ (m2 `elem` suc ntscdTrc n)
+                                      (∀) (ns) (\n ->   (m1 ∊ suc ntscdTrc n)
+                                                      ∨ (m2 ∊ suc ntscdTrc n)
                                       )
                                    ),
     testPropertySized 4 "wod ⊆ ntscd^* for For-Programs, which by construction are reducible"
@@ -1141,8 +1141,8 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                      ntscd = NTICD.ntscdF3 g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
-                                      (∀) (ns) (\n ->   (m1 `elem` suc ntscdTrc n)
-                                                      ∨ (m2 `elem` suc ntscdTrc n)
+                                      (∀) (ns) (\n ->   (m1 ∊ suc ntscdTrc n)
+                                                      ∨ (m2 ∊ suc ntscdTrc n)
                                       )
                                    ),
     testProperty  "ntscdF4GraphP          == ntscdF3GraphP"
@@ -1173,8 +1173,8 @@ ntscdTests = testGroup "(concerning ntscd)" $
                                      ntscd = NTICD.ntscdF3 g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
-                                      (∀) (ns) (\n ->   (m1 `elem` suc ntscdTrc n)
-                                                      ∨ (m2 `elem` suc ntscdTrc n)
+                                      (∀) (ns) (\n ->   (m1 ∊ suc ntscdTrc n)
+                                                      ∨ (m2 ∊ suc ntscdTrc n)
                                       )
                                    ) @? ""
   | (exampleName, p) <- testsuite
@@ -1342,7 +1342,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                                    imdomTrc = trc $ fromSuccMap imdom :: Gr () ()
                        in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
-                             in ((m /= p) ∧ (∀) (suc g p) (\x -> m `elem` mustReachFrom x)) →
+                             in ((m /= p) ∧ (∀) (suc g p) (\x -> m ∊ mustReachFrom x)) →
                                   case rmq of
                                      NTICD.FixedSteps s            -> Set.fromList [1+s] == mustReachFromIn p m
                                      NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == mustReachFromIn p y

@@ -132,7 +132,7 @@ chop graph s t =   (Set.fromList $ suc trnsclos s)
 --     | tFound    = bwd
 --     | otherwise = []
 --   where forward []     found tFound = (tFound, found)
---         forward (n:ns) found tFound = forward  ((successors \\ found) ++ ns ) (n:found) (tFound || n == t || t `elem` successors )
+--         forward (n:ns) found tFound = forward  ((successors \\ found) ++ ns ) (n:found) (tFound || n == t || t ∊ successors )
 --            where successors = suc graph n
 
 --         backward []     found = found
@@ -147,7 +147,7 @@ chop graph s t =   (Set.fromList $ suc trnsclos s)
 --     | tFound    = bwd
 --     | otherwise = []
 --   where forward []     found tFound = (tFound, found)
---         forward (n:ns) found tFound = forward  (((successors \\ found) \\ [t]) ++ ns ) (n:found) (tFound || n == t || t `elem` successors )
+--         forward (n:ns) found tFound = forward  (((successors \\ found) \\ [t]) ++ ns ) (n:found) (tFound || n == t || t ∊ successors )
 --            where successors = suc graph n 
 
 --         backward []     found = found
@@ -162,7 +162,7 @@ exclChop graph s t
     | tFound    = bwd
     | otherwise = []
   where forward []     found tFound = (tFound, found)
-        forward (n:ns) found tFound = forward  ((new \\ [t]) ++ ns) (new ++ found) (tFound || n == t || t `elem` successors )
+        forward (n:ns) found tFound = forward  ((new \\ [t]) ++ ns) (new ++ found) (tFound || n == t || t ∊ successors )
            where successors = suc graph n
                  new        = successors \\ found
 
@@ -179,7 +179,7 @@ inclChop graph s t
     | tFound    = bwd
     | otherwise = []
   where forward []     found tFound = (tFound, found)
-        forward (n:ns) found tFound = forward  ((new       ) ++ ns) (new ++ found) (tFound || n == t || t `elem` successors )
+        forward (n:ns) found tFound = forward  ((new       ) ++ ns) (new ++ found) (tFound || n == t || t ∊ successors )
            where successors = suc graph n
                  new        = successors \\ found
 

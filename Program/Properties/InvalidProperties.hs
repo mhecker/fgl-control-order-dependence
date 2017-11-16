@@ -328,7 +328,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
                               not $
-                              (n  `elem` suc isinkdomTrc m1 ∨ n  `elem` suc isinkdomTrc m2)
+                              (n  ∊ suc isinkdomTrc m1 ∨ n  ∊ suc isinkdomTrc m2)
                           )
                         ),
     testProperty  "myWod has no comparable all-max-path-reachable pairs of controlling nodes"
@@ -339,7 +339,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myWod = NTICD.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
                           (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 `elem` suc isinkdomTrc n2 ∨ n2 `elem` suc isinkdomTrc n1) → (n1 == n2)
+                              (n1 ∊ suc isinkdomTrc n2 ∨ n2 ∊ suc isinkdomTrc n1) → (n1 == n2)
                           ))
                         )
   ] 

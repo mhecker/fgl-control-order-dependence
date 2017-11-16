@@ -212,7 +212,7 @@ observablePartOfTwoValueDefUseSimple  vars entry exit low system = nmap lowOnly 
   where closure = trc system
 
         initial  = [ (i,n) | (i,n@(σ,_)) <- labNodes system,
-                             σ `elem` (initialTwoValueStates vars)
+                             σ ∊ (initialTwoValueStates vars)
                    ]
         final    = [ (i,n) | (i,n) <- labNodes system,
                              at exit n
@@ -321,7 +321,7 @@ observablePartOfOneValueDefUseSimple  vars entry exit low system = nmap lowOnly 
   where closure = trc system
 
         initial  = [ (i,n) | (i,n@(σ,_)) <- labNodes system,
-                             σ `elem` (initialOneValueStates vars)
+                             σ ∊ (initialOneValueStates vars)
                    ]
         final    = [ (i,n) | (i,n) <- labNodes system,
                              at exit n
@@ -445,7 +445,7 @@ observablePartOfConcrete vars entry exit low system = nmap lowOnly $ eqGraph (ob
   where closure = system
 
         initial  = [ (i,n) | (i,n@(σ,_)) <- labNodes system,
-                             σ `elem` (initialConcreteStates vars),
+                             σ ∊ (initialConcreteStates vars),
                              at entry n
                    ]
         final    = [ (i,n) | (i,n) <- labNodes system,
@@ -458,8 +458,8 @@ observablePartOfConcrete vars entry exit low system = nmap lowOnly $ eqGraph (ob
 
         collectEqClasses lnodes = foldr (\(i,(σ,nCfg)) eqClasses -> Map.insertWith (\i is -> i ++ is) (restrict σ low) [i] eqClasses) Map.empty lnodes
         lowOnly (i:_)
-          | i `elem` (fmap fst initial) ∨
-            i `elem` (fmap fst final  ) = (restrict σ low, nCfg)
+          | i ∊ (fmap fst initial) ∨
+            i ∊ (fmap fst final  ) = (restrict σ low, nCfg)
           | otherwise           = (σ,nCfg)
           where (σ,nCfg) = fromJust $ lab system i
         lowOnly []    = (Map.empty, -1)

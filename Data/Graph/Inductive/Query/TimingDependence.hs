@@ -11,6 +11,8 @@ import Data.Maybe(fromJust)
 
 import Data.List(foldl')
 
+import Unicode((∊))
+
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -45,7 +47,7 @@ timingDependence graph = Map.fromList $
                                                       n' /= n''],
 --                              m <- postDom ! n,
                               m  <-    (suc trnsclos n'),
-                              m `elem` (suc trnsclos n'')
+                              m ∊ (suc trnsclos n'')
                        ]
       )
      | n <- nodes graph

@@ -414,7 +414,7 @@ giffhornLSOD :: SecurityAnalysis gr
 giffhornLSOD p@(Program{ tcfg, observability }) =
     ((∀) [ (n,n')     | n   <- nodes tcfg, observability n  == Just Low,
                         n'  <- nodes tcfg, observability n' == Just High ] (\(n,n') ->
-         (¬) (n' `elem` pre bs n)
+         (¬) (n' ∊ pre bs n)
     ))
     ∧
     ((∀) [ (n,n',n'') | n   <- nodes tcfg,
@@ -423,8 +423,8 @@ giffhornLSOD p@(Program{ tcfg, observability }) =
                         n'' <- nodes tcfg, observability n'' == Just Low   ] (\(n,n',n'') ->
          ((∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')))
          →
-         (((¬) (n' `elem` pre bs n'')) ∧
-          ((¬) (n  `elem` pre bs n''))
+         (((¬) (n' ∊ pre bs n'')) ∧
+          ((¬) (n  ∊ pre bs n''))
          )
     ))
     ∧
@@ -447,7 +447,7 @@ unsoundIRLSODAttempt :: SecurityAnalysis gr
 unsoundIRLSODAttempt p@(Program{ tcfg, observability }) =
     ((∀) [ (n,n')     | n   <- nodes tcfg, observability n  == Just Low,
                         n'  <- nodes tcfg, observability n' == Just High ] (\(n,n') ->
-         (¬) (n' `elem` pre bs n)
+         (¬) (n' ∊ pre bs n)
     ))
     ∧
     ((∀) [ (n,n',n'') | n   <- nodes tcfg,
@@ -456,8 +456,8 @@ unsoundIRLSODAttempt p@(Program{ tcfg, observability }) =
                         n'' <- nodes tcfg, observability n'' == Just Low   ] (\(n,n',n'') ->
          ((∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')))
          →
-         (((¬) (n' `elem` pre bs n'')) ∧
-          ((¬) (n  `elem` pre bs n''))
+         (((¬) (n' ∊ pre bs n'')) ∧
+          ((¬) (n  ∊ pre bs n''))
          )
     ))
     ∧

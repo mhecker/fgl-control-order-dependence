@@ -100,7 +100,7 @@ instance Arbitrary (InterCFG () String) where
                                                                    gr' = p' `mergeTwoGraphs` gr
                                                                    (n,m) = (head $ nodes p', last $ nodes p') -- TODO: choose random
                                                                    (ssuc,tsuc) = head sts
-                                                                   gr'' = if (not $ all (`elem` nodes gr') [n,ssuc,tsuc,m]) then error (show ([n,ssuc,tsuc,t], gr', p')) else
+                                                                   gr'' = if (not $ all (∊ nodes gr') [n,ssuc,tsuc,m]) then error (show ([n,ssuc,tsuc,t], gr', p')) else
                                                                             insEdge (n,ssuc, Just $ Open (show (n,ssuc)))
                                                                           $ insEdge (tsuc,m, Just $ Close (show (n,ssuc)))
                                                                           $ gr'
@@ -125,8 +125,8 @@ instance Arbitrary (InterCFG () String) where
                                        $ delLEdge e
                                        $ gr
                              addCalls (nrCalls-1) gr' sts
-          where candidates = [(n,m,Nothing) | (n,m,Nothing) <- labEdges gr, not $ n `elem` ((fmap fst sts) ++ (fmap snd sts)),
-                                                                            not $ m `elem` ((fmap fst sts) ++ (fmap snd sts))
+          where candidates = [(n,m,Nothing) | (n,m,Nothing) <- labEdges gr, not $ n ∊ ((fmap fst sts) ++ (fmap snd sts)),
+                                                                            not $ m ∊ ((fmap fst sts) ++ (fmap snd sts))
                              ]
         
         
@@ -152,13 +152,13 @@ sccNaive gr = scc (edges gr) [[n] | n <- nodes gr] []
         scc uedges            sccs path@(n:ns) = -- trace ((show path) ++ "\t\t" ++ (show sccs)) $
          case es of
           []          -> scc uedges sccs ns
-          ((n',m):_) -> if (any (m `elem`) (fmap sccOf path)) then
+          ((n',m):_) -> if (any (m ∊) (fmap sccOf path)) then
                            scc (delete (n',m) uedges) (merge sccs (m:cycle)) prefix
                          else
                            scc (delete (n',m) uedges)  sccs                  (m:path)
-            where (cycle, prefix) = span (\n -> not $ m `elem` (sccOf n)) path
-         where es = [ (n',m) | n' <- sccOf n, m <- suc gr n', (n',m) `elem` uedges ]
-               sccOf m =  the (m `elem`) $ sccs
+            where (cycle, prefix) = span (\n -> not $ m ∊ (sccOf n)) path
+         where es = [ (n',m) | n' <- sccOf n, m <- suc gr n', (n',m) ∊ uedges ]
+               sccOf m =  the (m ∊) $ sccs
 
 
 
@@ -177,7 +177,7 @@ sameLevelScc gr = scc (labEdges gr) (Map.fromList $ [(n,Set.fromList [n]) | n <-
                                  scc (delete (n',m,summ) uedges)  sccs                         ((summ,m):path)
             where (cycle, prefix) = span (\(summ,n) -> not $ (m ∈) (sccs ! n)) path
          where es :: [(Node,Node,Set Node)]
-               es = [ (n',m,summ) | n' <- Set.toList $ sccs ! n, (m,summ) <- lsuc gr n', (n',m,summ) `elem` uedges ]
+               es = [ (n',m,summ) | n' <- Set.toList $ sccs ! n, (m,summ) <- lsuc gr n', (n',m,summ) ∊ uedges ]
                merge sccs cycle = -- trace ("Merge: " ++ ((show cycle) ++ "\t\t" ++ (show sccs))) $
                                   sccs ⊔ (Map.fromList [ (n, (∐) [ sccs ! n' | (summ,c) <- cycle, n' <- c : (Set.toList summ) ])
                                                        | (summ,c) <- cycle,  n <- Set.toList (sccs ! c)
@@ -214,7 +214,7 @@ sameLevelScc gr = scc (labEdges gr) (Map.fromList $ [(n,Set.fromList [n]) | n <-
 --                                else
 --                      where (cycle,prefix) = span (\(_,n) -> not $ ∈ summ) path
 --          where es :: [(Node,Node,Set Node)]
---                es = [ (n',m,summ) | n' <- Set.toList $ sameLevelSccs ! n, (m,summ) <- lsuc gr n', (n',m,summ) `elem` uedges ]
+--                es = [ (n',m,summ) | n' <- Set.toList $ sameLevelSccs ! n, (m,summ) <- lsuc gr n', (n',m,summ) ∊ uedges ]
 
 
 
@@ -421,7 +421,7 @@ krinkeSCC g = (secondPassFolded, nodeMap)
                   Just (Open  _) -> True
                   Just (Close _) -> False
         sccOfFirst = Map.fromList [ (n0, n1) | n0 <- nodes g,
-                                             let (n1,scc0) = the (\(n1,scc0) -> n0 `elem` scc0) (zip [0..] firstPassSccs)
+                                             let (n1,scc0) = the (\(n1,scc0) -> n0 ∊ scc0) (zip [0..] firstPassSccs)
                      ]
         firstPassFolded :: gr [Node] (Annotation b) 
         firstPassFolded = mkGraph [ (n1, scc0)  | (n1, scc0)  <- zip [0..] firstPassSccs]
@@ -437,7 +437,7 @@ krinkeSCC g = (secondPassFolded, nodeMap)
                   Just (Open  _) -> False
                   Just (Close _) -> True
         sccOfSecond = Map.fromList [ (n1, n2) | n1 <- nodes firstPassFolded,
-                                               let (n2,scc1) = the (\(n2,scc1) -> n1 `elem` scc1) (zip [0..] secondPassSccs)
+                                               let (n2,scc1) = the (\(n2,scc1) -> n1 ∊ scc1) (zip [0..] secondPassSccs)
                      ]
         secondPassFolded :: gr [Node] (Annotation b)
         secondPassFolded = mkGraph [ (n2, [ n0 | n1 <- scc1, Just scc0 <- [lab firstPassFolded n1], n0 <- scc0]) | (n2, scc1) <- zip [0..] secondPassSccs ]
@@ -673,7 +673,7 @@ bunbl summary graph t = backward t t
 
 
 balancedChop summary graph s t = -- trace ((show $ Set.fromList w) ++ "   " ++ (show $ Set.fromList vr) ++ "   " ++ (show $ Set.fromList vl) ++ "\n")  $
- Set.fromList vr ∪ Set.fromList vl ∪ (∐) [ ms | (n,n',ms) <- labEdges summary, not $ Set.null ms, (n `elem` vr && n' `elem` vr) || (n `elem` vl && n' `elem`vl)]
+ Set.fromList vr ∪ Set.fromList vl ∪ (∐) [ ms | (n,n',ms) <- labEdges summary, not $ Set.null ms, (n ∊ vr && n' ∊ vr) || (n ∊ vl && n' ∊vl)]
     where w  = (funbr summary graph [s]) `intersect` (bunbl summary graph [t])
           vr = (funbr summary graph [s]) `intersect` (bunbr summary graph w  )
           vl = (funbl summary graph w  ) `intersect` (bunbl summary graph [t])

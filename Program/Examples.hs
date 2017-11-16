@@ -45,7 +45,7 @@ exampleIrreducible = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..3] = 1 
+         | n ∊ [1..3] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = undefined
@@ -65,7 +65,7 @@ exampleSimonReducibleWod = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..5] = 1 
+         | n ∊ [1..5] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 5
@@ -85,7 +85,7 @@ exampleSimonReducibleWod2 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [0..4] = 1 
+         | n ∊ [0..4] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 0
         exitOf 1 = 4
@@ -121,7 +121,7 @@ exampleSimpleClassic = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..10] = 1 
+         | n ∊ [1..10] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 10
@@ -161,7 +161,7 @@ exampleSimpleArtificialEndNode = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..10] = 1 
+         | n ∊ [1..10] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 10
@@ -201,7 +201,7 @@ exampleSimpleNoUniqueEndNode = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..10] = 1 
+         | n ∊ [1..10] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 10
@@ -240,7 +240,7 @@ exampleSimpleNoUniqueEndNodeWithChoice = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..12] = 1 
+         | n ∊ [1..12] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 10
@@ -280,7 +280,7 @@ exampleSimpleNoUniqueEndNodeWithChoice2 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..14] = 1 
+         | n ∊ [1..14] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 10
@@ -317,8 +317,8 @@ example1 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1,2,7,8,9,10,11,12] = 1 
-         | n `elem` [3,4,5,6] = 2
+         | n ∊ [1,2,7,8,9,10,11,12] = 1 
+         | n ∊ [3,4,5,6] = 2
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 3
@@ -353,7 +353,7 @@ example2 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..12] = 1 
+         | n ∊ [1..12] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 12
@@ -386,7 +386,7 @@ example2' = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..12] = 1 
+         | n ∊ [1..12] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 12
@@ -420,7 +420,7 @@ exampleNticd = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [3, 1, 6, 10, 15, 42] = 1
+         | n ∊ [3, 1, 6, 10, 15, 42] = 1
          | otherwise = error "uknown node"
         entryOf 1 = 15
         exitOf 1 = 42
@@ -439,7 +439,7 @@ exampleSmnF5 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` [8, 5, 1, 12, 2] = 1
+         | n ∊ [8, 5, 1, 12, 2] = 1
          | otherwise = error "uknown node"
         entryOf 1 = 12
         exitOf 1 = 5
@@ -457,7 +457,7 @@ exampleNticd2SmnF5 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` [17, 1, 2, 3, 7, 8] = 1
+         | n ∊ [17, 1, 2, 3, 7, 8] = 1
          | otherwise = error "uknown node"
         entryOf 1 = 8
         exitOf 1 = 7
@@ -488,7 +488,7 @@ exampleNtscd2 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [-20,15,18,22,27] = 1
+         | n ∊ [-20,15,18,22,27] = 1
          | otherwise = error "uknown node"
         entryOf 1 = 27
         exitOf 1 = 18
@@ -513,8 +513,8 @@ example3 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` [1,2,5,6,7] = 1
-         | n `elem` [3,4]      = 2
+         | n ∊ [1,2,5,6,7] = 1
+         | n ∊ [3,4]      = 2
          | otherwise = error "unknown node"
         entryOf 1 = 1
         entryOf 2 = 3
@@ -547,8 +547,8 @@ example4 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..7] ++ [10,11]) = 1
-         | n `elem` ([8..9])           = 2
+         | n ∊ ([1..7] ++ [10,11]) = 1
+         | n ∊ ([8..9])           = 2
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 8
@@ -579,8 +579,8 @@ example5 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..7] ++ [10,11]) = 1
-         | n `elem` ([8..9])         = 2
+         | n ∊ ([1..7] ++ [10,11]) = 1
+         | n ∊ ([8..9])         = 2
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 8
@@ -617,8 +617,8 @@ example6 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..8]   ++ [11,12]) = 1
-         | n `elem` ([9..10])             = 2
+         | n ∊ ([1..8]   ++ [11,12]) = 1
+         | n ∊ ([9..10])             = 2
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 9
@@ -653,8 +653,8 @@ example7 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..5]) = 1
-         | n `elem` ([6..7]) = 2
+         | n ∊ ([1..5]) = 1
+         | n ∊ ([6..7]) = 2
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 6
@@ -724,9 +724,9 @@ example8 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..17] ++ [20..23]) = 1
-         | n `elem` ([201..202]) = 2
-         | n `elem` ([301..302]) = 3
+         | n ∊ ([1..17] ++ [20..23]) = 1
+         | n ∊ ([201..202]) = 2
+         | n ∊ ([301..302]) = 3
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 201
@@ -823,9 +823,9 @@ example8' = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` ([1..17] ++ [20..23]) = 1
-         | n `elem` ([201..202]) = 2
-         | n `elem` ([301..302]) = 3
+         | n ∊ ([1..17] ++ [20..23]) = 1
+         | n ∊ ([201..202]) = 2
+         | n ∊ ([301..302]) = 3
          | otherwise = error "uknown node"
         entryOf 1 = 1
         entryOf 2 = 201
@@ -886,9 +886,9 @@ threadSpawn1 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` [1,2,3,7] = 1
-         | n `elem` [4,5,8]   = 4
-         | n `elem` [6,9]     = 6
+         | n ∊ [1,2,3,7] = 1
+         | n ∊ [4,5,8]   = 4
+         | n ∊ [6,9]     = 6
          | otherwise = error "unknown node"
         entryOf 1 = 1
         entryOf 4 = 4
@@ -926,9 +926,9 @@ threadSpawn2 = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n
-         | n `elem` [1,2,3,4] = 1
-         | n `elem` [5,6,7]   = 5
-         | n `elem` [8,9]     = 8
+         | n ∊ [1,2,3,4] = 1
+         | n ∊ [5,6,7]   = 5
+         | n ∊ [8,9]     = 8
          | otherwise = error "unknown node"
         entryOf 1 = 1
         entryOf 5 = 5
@@ -1984,7 +1984,7 @@ twoLoops' = Program {
     observability = defaultObservabilityMap tcfg
    }
   where staticThreadOf n 
-         | n `elem` [1..8] = 1 
+         | n ∊ [1..8] = 1 
          | otherwise = error "uknown node"
         entryOf 1 = 1
         exitOf 1 = 5

@@ -284,20 +284,20 @@ principalTypingUsing initial var p@(ForProgram { code, channelTyping, mainThread
 
      let deps = trc varDependencies
      let sccs = scc varDependencies
-     let sccOf node = the (node `elem`) $ sccs
-     let solvable = all (\component -> not $ (nHigh `elem` component ∧ nLow `elem` component)) sccs
+     let sccOf node = the (node ∊) $ sccs
+     let solvable = all (\component -> not $ (nHigh ∊ component ∧ nLow ∊ component)) sccs
 
      if (solvable) then return $
       (
        Just $ ProgramTyping {
-          pc =      if (      nHigh `elem` pre deps nPc ) then High
-               else if (      nPc   `elem` pre deps nLow) then Low
-               else if (not $ nPc   `elem` pre deps nStp) then High
+          pc =      if (      nHigh ∊ pre deps nPc ) then High
+               else if (      nPc   ∊ pre deps nLow) then Low
+               else if (not $ nPc   ∊ pre deps nStp) then High
                else                                            Low,
-          stp =     if (      nHigh `elem` pre deps nStp) then High
-               else if (      nStp  `elem` pre deps nLow) then Low
+          stp =     if (      nHigh ∊ pre deps nStp) then High
+               else if (      nStp  ∊ pre deps nLow) then Low
                else Low,
-          var = Map.fromList [ (x, if (nHigh `elem` pre deps nX) then High else Low ) | (x,nX) <- Map.assocs var]
+          var = Map.fromList [ (x, if (nHigh ∊ pre deps nX) then High else Low ) | (x,nX) <- Map.assocs var]
          }
        , varDependencies )
       else return (Nothing, varDependencies)

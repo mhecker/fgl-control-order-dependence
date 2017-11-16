@@ -58,7 +58,7 @@ labnfilter p gr = delNodes (map fst . filter (not . p) $ labNodes gr) gr
 
 isInCycle :: Graph gr => gr a b -> Node -> Bool
 isInCycle graph node = length component > 1
-  where component = the (node `elem`) $ scc graph
+  where component = the (node ∊) $ scc graph
 
 
 isInCycleMap :: Graph gr => gr a b -> Map Node Bool
@@ -158,11 +158,11 @@ enumCycles gr = do
 
 cycles :: (Graph gr) => gr a b -> [Node] -> [Node] -> Node -> [[Node]]
 cycles gr (p:path) [] end = do
-      guard $ end `elem` (pre gr p)
+      guard $ end ∊ (pre gr p)
       return (p:path)
 cycles gr (p:path) ns end = do
         n <- ns
-        guard $ n `elem` (pre gr p)
+        guard $ n ∊ (pre gr p)
         if (n == end) then
           return (n:p:path)
         else do
@@ -176,11 +176,11 @@ addUniqueEndNode endLabel endEdgeLabel gr = (end,
       )
     where sccs = scc gr
           [end] = newNodes 1 gr
-          isEndScc scc = (∀) scc (\n -> (∀) (suc gr n) (\n' -> n' `elem` scc))
+          isEndScc scc = (∀) scc (\n -> (∀) (suc gr n) (\n' -> n' ∊ scc))
 
 
 uniqueEndNodes :: DynGraph gr => gr a b -> [Node]
-uniqueEndNodes gr = [ n | n <- nodes gr, (∀) (nodes gr) (\m -> n `elem` suc trncl m), suc gr n == []]
+uniqueEndNodes gr = [ n | n <- nodes gr, (∀) (nodes gr) (\m -> n ∊ suc trncl m), suc gr n == []]
     where trncl = trc gr
 
 withUniqueEndNode :: DynGraph gr => a -> b -> gr a b -> (Node, gr a b)

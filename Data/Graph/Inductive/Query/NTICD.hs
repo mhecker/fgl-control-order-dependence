@@ -2983,10 +2983,13 @@ solveSnTimingEquationSystemWorklist2 graph s0 = -- traceShow (s0, worklist0, fin
                    | not changed        =      solve s   worklist'                                   finished (iterations+1)  changes
                    | otherwise          =      solve s' (worklist' `Map.union` influencedM)       newFinished (iterations+1) (changes + 1)
                   where tr = assert (n0 == n) $
-                             assert (steps0 == steps)
-                             traceShow ((y,m),n, changed, sym', Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (_,steps,n)) <- Map.assocs worklist'],
-                                                                Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (_,steps,n)) <- Map.assocs influencedM]
+                             assert (steps0 == steps) $
+                             if (y == 180 ∧ m ∊ [-36, -22, 253]) then (
+                             traceShow ((y,m),n, steps, changed, finishedY, sym', [ (x,sxm) | x <- suc graph n, Just sxm <- [Map.lookup m (s ! x)]], 
+                                                                           Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (_,steps,n)) <- Map.assocs worklist'],
+                                                                           Map.fromList [ ((index2node ! i, m), (steps, n)) | ((i,m), (_,steps,n)) <- Map.assocs influencedM]
                                        )
+                             ) else id 
                           where toNextCondY0 = toNextCond y
                                 n0 = head toNextCondY0  -- assert (nextCond y == Just n)
                                 steps0 = (toInteger $ length $ toNextCondY0) - 1
@@ -2997,7 +3000,7 @@ solveSnTimingEquationSystemWorklist2 graph s0 = -- traceShow (s0, worklist0, fin
                         (finishedY, sym') = case sxm of
                                              FixedSteps j             -> (False, FixedSteps (1+steps+j))
                                              FixedStepsPlusOther j q' -> (False, FixedStepsPlusOther (1+steps+j) q')
-                                             UndeterminedSteps        -> (True,  FixedStepsPlusOther steps n)
+                                             UndeterminedSteps        -> ((∀) (suc graph n) (\x -> case Map.lookup m (s ! x) of { Just (FixedSteps _) -> True ; _ -> False }),  FixedStepsPlusOther steps n)
                                              Unreachable              -> error (show $ (y,m,n))
                         newFinished
                           | finishedY = Set.insert (i, m) finished

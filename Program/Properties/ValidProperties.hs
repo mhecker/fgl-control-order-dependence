@@ -18,6 +18,7 @@ import Prelude hiding (all)
 
 import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random(evalRandIO)
+import Control.Exception.Base (assert)
 
 import Algebra.Lattice
 import Unicode
@@ -26,7 +27,7 @@ import Util(the, reachableFromIn)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
-import Test.Tasty.HUnit
+import Test.Tasty.HUnit hiding (assert)
 
 import Test.Tasty.Runners.AntXML
 import Test.Tasty.Ingredients.Basic
@@ -56,6 +57,8 @@ import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    pathsBetweenBFS, pathsBetweenUpToBFS,
+    pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence,
     solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, Reachability(..), timmaydomOfLfp,
@@ -1196,6 +1199,29 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timmaydomOfLfp            relates to solved timingF3EquationSystem"
+                $ \(ARBITRARY(g)) ->
+                       let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
+                           trcG = trc g
+                           pathsBetween     = NTICD.pathsBetween        g trcG
+                           pathsBetweenUpTo = NTICD.pathsBetweenUpTo    g trcG
+                       in  traceShow g $
+                           (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
+                             let rmq = (∐) [ r | r <- Map.elems smp ]
+                             in (m /= p) →
+                                  let paths = pathsBetween p m in
+                                  traceShow (m,p, rmq) $
+                                  case rmq of
+                                     NTICD.FixedStepsPlusOther s y ->
+                                                                      let paths = pathsBetweenUpTo p m y in
+                                                                      (∀) paths (\(hasLoop,  path ) -> y `elem` path ∧ (toInteger (length $ takeWhile (/= y) path)) == s + 1)
+                                     NTICD.FixedSteps s            -> (∀) paths (\(hasLoop,  path ) -> (not hasLoop) ∧ (toInteger (length                    path)) == s + 2)
+                                     NTICD.UndeterminedSteps       -> (∃) paths (\(hasLoop,  path ) -> hasLoop)
+                                                                    ∨ (∃) paths (\(hasLoop1, path1) -> (not hasLoop1) ∧
+                                                                          (∃) paths (\(hasLoop2, path2) -> (not hasLoop2) ∧ length (path1) /= (length path2))
+                                                                      )
+                                     NTICD.Unreachable             -> paths == []
+                           ),
     -- testProperty  "prevCondsWithSuccNode  ==  prevCondsWithSuccNode'"
     --             $ \(ARBITRARY(g)) -> (∀) (nodes g) (\n -> 
     --                    (List.sort $ NTICD.prevCondsWithSuccNode  g n) ==

@@ -1155,13 +1155,13 @@ loopsIn path@((n,_,_):_) = fmap reverse $ loopsInSeen (Set.fromList [n]) [(n,n,N
          prefixes :: (LEdge (Annotation b)) -> AnnotatedPath b -> [AnnotatedPath b]
          prefixes le@(_,x,_)       [] = []
          prefixes le@(_,x,_) finished = case span (\(n,m,_) -> m /= x) finished of
-             (left, (_,x',_):right) -> assert (x==x') $
+             (left, (le'@(_,x',_)):right) -> assert (x==x') $
                                        (case (le : left) of
                                           [(1,4,_),(4,5,_),(5,6,_),(0,1,_),(1,2,_),(2,0,_),(0,1,_)] ->
                                                traceShow (le, finished)
                                           _ -> id
                                        ) $ 
-                                       (le : left) : (fmap (\r' -> (le:left) ++ r') (prefixes le right))
+                                       (le : left) : (fmap (\r' -> (le:left) ++ r') (prefixes le' right))
              (left, [])             -> []
 
 

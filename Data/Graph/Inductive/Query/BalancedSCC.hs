@@ -9,14 +9,14 @@ import Util
 
 import System.Random
 import Control.Monad.Random
-
+import Control.Exception.Base (assert)
 
 import Algebra.Lattice hiding (gfpFrom)
 import Algebra.PartialOrd (unsafeGfpFrom)
 
 import Unicode
 
-import Data.Maybe(fromJust, isNothing)
+import Data.Maybe(fromJust, isNothing, isJust)
 
 import Data.List(union, intersect, elem, delete, sort, (\\), nub, null)
 
@@ -630,10 +630,33 @@ graphTest10 =
               (34,21, Just $ Close "2,3")
             ]
 
+
+
 -- This example shows that two-phase krinkeSCC may lead to graphs in which there is *not* a finite number of contexts.
 graphTest11 :: Gr () (Annotation String)
 graphTest11 = mkGraph [(-57,()),(-56,()),(-52,()),(-38,()),(-26,()),(-18,()),(-15,()),(-13,()),(-7,()),(-5,()),(3,()),(12,()),(16,()),(23,()),(28,()),(50,()),(55,()),(57,())] [(-57,-56,Just (Close "a")),(-56,-18,Just (Close "b")),(-56,-15,Just (Close "a")),(-56,28,Just (Open "a")),(-56,57,Just (Open "c")),(-52,-56,Nothing),(-52,-18,Just (Close "b")),(-52,-15,Nothing),(-52,-7,Just (Open "b")),(-52,3,Just (Open "b")),(-38,-15,Just (Close "a")),(-38,-13,Nothing),(-38,16,Just (Close "b")),(-38,57,Just (Open "b")),(-26,55,Just (Open "b")),(-18,-18,Nothing),(-18,-15,Just (Close "c")),(-18,12,Just (Close "c")),(-18,16,Just (Close "a")),(-15,55,Just (Open "b")),(-13,-56,Nothing),(-13,-52,Just (Close "a")),(-13,23,Nothing),(-7,55,Nothing),(-5,-13,Just (Open "b")),(-5,3,Just (Close "b")),(-5,57,Nothing),(3,-15,Just (Close "c")),(3,-5,Just (Open "c")),(12,3,Nothing),(16,-57,Just (Open "b")),(16,-57,Just (Open "a")),(16,-5,Just (Close "a")),(16,12,Just (Close "a")),(23,-57,Just (Open "b")),(23,-57,Just (Close "c")),(23,28,Just (Open "a")),(50,3,Just (Open "a")),(50,12,Nothing),(50,28,Just (Close "a")),(50,50,Just (Open "a")),(50,50,Just (Open "c")),(50,55,Just (Open "a")),(55,-57,Just (Open "b")),(55,-38,Nothing),(55,-26,Nothing),(55,-18,Just (Close "a")),(55,-15,Just (Open "b")),(57,-26,Just (Close "a")),(57,-26,Just (Close "c")),(57,16,Just (Open "c"))]
-            
+
+graphTest12 :: Gr () (Annotation String)
+graphTest12 =
+    mkGraph [(i,()) | i <- [0..5]]
+            [ 
+              (1,2, Nothing),
+              (3,4, Nothing),
+
+              ( 0, 1, Just $ Open  "0,1"),
+              ( 2, 3, Just $ Close "0,1"),
+
+              ( 4, 1, Just $ Open  "4,1"),
+              ( 2, 5, Just $ Close "4,1")
+            ]
+
+graphTest13  :: Gr () (Annotation String)
+graphTest13 =  mkGraph [(0,()),(1,()),(2,()),(3,())] [(0,1,Just (Open "(0,1)")),(0,3,Just (Close "(2,0)")),(1,0,Just (Close "(0,1)")),(2,0,Just (Open "(2,0)"))]
+
+
+graphTest14  :: Gr () (Annotation String)
+graphTest14 = mkGraph [(1,()),(2,()),(27,()),(35,()),(36,()),(37,()),(63,()),(64,()),(65,())] [(1,2,Just (Close "(27,1)")),(1,36,Just (Close "(2,1)")),(2,1,Just (Open "(2,1)")),(2,35,Nothing),(27,1,Just (Open "(27,1)")),(27,27,Nothing),(27,35,Nothing),(35,63,Just (Close "(37,36)")),(36,2,Nothing),(36,27,Nothing),(36,35,Nothing),(37,36,Just (Open "(37,36)")),(37,65,Just (Close "(64,63)")),(63,37,Nothing),(64,63,Just (Open "(64,63)"))]
+
 funbl summary graph s = forward s s
   where forward []     found = found
         forward (n:ns) found = forward  ((new       ) ++ ns) (new ++ found)
@@ -994,6 +1017,34 @@ sameLevelSummaryGraph'WithBsIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = 
 type AnnotatedPath b = [LEdge (Annotation b)]
 
 
+samplePathsFor :: (Eq b, Graph gr)             => Int -> Integer -> Integer ->  gr a (Annotation b) ->   [AnnotatedPath b]
+samplePathsFor seed k maxlength g = fmap reverse $ evalRand (samplePaths k maxlength g) (mkStdGen seed)
+
+samplePaths :: (MonadRandom m, Graph gr, Eq b) =>        Integer -> Integer ->  gr a (Annotation b) -> m [AnnotatedPath b]
+samplePaths         k maxlength g
+  | null (nodes g) = return $ take (fromInteger k) $ repeat []
+  | otherwise      = sampleSome [] 0
+     where 
+        sample :: MonadRandom m => [t] -> m t
+        sample xs = do
+          i <- getRandomR (1, length xs)
+          return $ xs !! (i-1)
+        sampleSome sampled i
+          | i >= k            = return $ sampled
+          | otherwise         = do
+              n0 <- sample $ nodes g
+              newTrace <- sampleTrace n0 [] 0
+              sampleSome (newTrace:sampled) (i+1)
+        sampleTrace n trace length
+          | length >= maxlength = return trace
+          | finished            = return trace
+          | otherwise = do
+               (m,e) <- sample successors
+               sampleTrace m ((n,m,e):trace) (length + 1)
+         where finished   = null successors
+               successors = lsuc g n
+
+
 sampleRealizablePathsFor :: (Eq b, Graph gr)             => Int -> Integer -> Integer ->  gr a (Annotation b) ->   [AnnotatedPath b]
 sampleRealizablePathsFor seed k maxlength g = fmap reverse $ evalRand (sampleRealizablePaths k maxlength g) (mkStdGen seed)
 
@@ -1047,6 +1098,75 @@ hasCycle   []             = False
 hasCycle path@((n,_,e):_) = (Set.size $ Set.fromList $ nodes) /= (length nodes)
   where nodes = n : [ m | (_,m,_) <- path]
 
+
+
+traceFrom :: Eq b => [b] -> AnnotatedPath b -> Maybe [b]
+traceFrom stack     []                   = Just stack
+traceFrom stack     ((n,m,Nothing):path) = traceFrom stack path
+traceFrom []        ((n,m,Just (Close y)):path) = Nothing
+traceFrom (x:stack) ((n,m,Just (Close y)):path)
+  | x == y    = traceFrom stack path
+  | otherwise = Nothing
+traceFrom stack ((n,m,Just (Open x)):path) = traceFrom (x:stack) path
+
+traceArbitrary :: Eq b => [b] -> [b] -> AnnotatedPath b -> Maybe ([b],  [b])
+traceArbitrary    stack     stack'                         []   = Just             (stack,   stack')
+traceArbitrary    stack     stack'  ((n,m,Nothing)       :path) = traceArbitrary    stack    stack'  path
+traceArbitrary       []     stack'  ((n,m,Just (Close y)):path) = traceArbitrary       [] (y:stack') path
+traceArbitrary (x:stack)    stack'  ((n,m,Just (Close y)):path)
+  | x == y                                                      = traceArbitrary    stack    stack'  path
+  | otherwise                                                   = Nothing
+traceArbitrary    stack         []  ((n,m,Just (Open  y)):path) = traceArbitrary (y:stack)      []   path
+traceArbitrary    stack  (x:stack') ((n,m,Just (Open  y)):path)
+  | x == y                                                      = traceArbitrary    stack    stack'  path
+  | otherwise                                                   = Nothing
+
+
+
+realizableFrom :: Eq b => [b] -> AnnotatedPath b -> Bool
+realizableFrom stack path = isJust $ traceFrom stack path
+
+
+realizableArtbitrary :: Eq b => AnnotatedPath b -> Bool
+realizableArtbitrary path = isJust $ traceArbitrary [] [] path
+
+
+sameLevelFrom :: Eq b => [b] -> AnnotatedPath b -> Bool
+sameLevelFrom stack path = case traceFrom stack path of
+  Just newStack -> stack == newStack
+  _             -> False
+
+
+sameLevelArbitrary :: Eq b => AnnotatedPath b -> Bool
+sameLevelArbitrary path = case traceArbitrary [] [] path of
+  Just ([], []) -> True
+  _             -> False
+
+
+loopsIn :: forall b. (Eq b, Show b) =>  AnnotatedPath b -> [AnnotatedPath b ]
+loopsIn               [] = []
+loopsIn path@((n,_,_):_) = fmap reverse $ loopsInSeen (Set.fromList [n]) [(n,n,Nothing)] path
+  where  loopsInSeen :: Set Node -> AnnotatedPath b -> AnnotatedPath b -> [AnnotatedPath b]
+         loopsInSeen seen finished []                  = []
+         loopsInSeen seen finished ((le@(n,m,_)):path)
+            | m ∈ seen  = prefixes le finished ++ (loopsInSeen               seen  (le:finished) path)
+            | otherwise =                          loopsInSeen (Set.insert m seen) (le:finished) path
+
+         prefixes :: (LEdge (Annotation b)) -> AnnotatedPath b -> [AnnotatedPath b]
+         prefixes le@(_,x,_)       [] = []
+         prefixes le@(_,x,_) finished = case span (\(n,m,_) -> m /= x) finished of
+             (left, (_,x',_):right) -> assert (x==x') $
+                                       (case (le : left) of
+                                          [(1,4,_),(4,5,_),(5,6,_),(0,1,_),(1,2,_),(2,0,_),(0,1,_)] ->
+                                               traceShow (le, finished)
+                                          _ -> id
+                                       ) $ 
+                                       (le : left) : (fmap (\r' -> (le:left) ++ r') (prefixes le right))
+             (left, [])             -> []
+
+
+sameLevelAlignable :: Eq b =>  AnnotatedPath b -> Bool
+sameLevelAlignable path = (∃) (rotations path) (\path -> sameLevelFrom [] path)
 
 data DynamicContext b = DynamicContext { node :: Node, stack :: [b] }
   deriving (Eq, Ord, Show)

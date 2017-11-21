@@ -1199,18 +1199,18 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
-    testProperty  "timmaydomOfLfp            relates to solved timingF3EquationSystem"
+    testProperty  "the  solved timingF3EquationSystem is correct"
                 $ \(ARBITRARY(g)) ->
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
                            trcG = trc g
                            pathsBetween     = NTICD.pathsBetween        g trcG
                            pathsBetweenUpTo = NTICD.pathsBetweenUpTo    g trcG
-                       in  traceShow g $
+                       in  -- traceShow g $
                            (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
                              in (m /= p) →
                                   let paths = pathsBetween p m in
-                                  traceShow (m,p, rmq) $
+                                  -- traceShow (m,p, rmq) $
                                   case rmq of
                                      NTICD.FixedStepsPlusOther s y ->
                                                                       let paths = pathsBetweenUpTo p m y in
@@ -1221,7 +1221,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                                                           (∃) paths (\(hasLoop2, path2) -> (not hasLoop2) ∧ length (path1) /= (length path2))
                                                                       )
                                      NTICD.Unreachable             -> paths == []
-                           ),
+                           )
     -- testProperty  "prevCondsWithSuccNode  ==  prevCondsWithSuccNode'"
     --             $ \(ARBITRARY(g)) -> (∀) (nodes g) (\n -> 
     --                    (List.sort $ NTICD.prevCondsWithSuccNode  g n) ==
@@ -1235,10 +1235,10 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     --             $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
     --                    NTICD.timingSnSolvedDependence          g ==
     --                    NTICD.timingSnSolvedDependenceWorklist  g,
-    testProperty  "timingSnSolvedDependence         == timingSnSolvedDependenceWorklist2"
-                $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
-                       NTICD.timingSnSolvedDependence          g ==
-                       NTICD.timingSnSolvedDependenceWorklist2 g
+    -- testProperty  "timingSnSolvedDependence         == timingSnSolvedDependenceWorklist2"
+    --             $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
+    --                    NTICD.timingSnSolvedDependence          g ==
+    --                    NTICD.timingSnSolvedDependenceWorklist2 g
     -- testProperty  "timingSolvedF3dependence == timingSnSolvedDependenceWorklist"
     --             $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
     --                    NTICD.timingSolvedF3dependence g ==
@@ -1432,8 +1432,17 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
       \(INTERCFG(g)) ->
                      let  (folded, nodemap) = krinkeSCC g
                      in traceShow (length $ nodes g, length $ nodes folded) $
-                        traceShow g $
-                        (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0)
+                        (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0),
+    testProperty  "classification loops in krinkeSCC graphs"      $
+      \(INTERCFG(g)) seed ->
+                     let  (folded, nodemap) = krinkeSCC g
+                          maxlength = 50
+                          k         = 1000
+                          paths     = samplePathsFor seed k maxlength folded
+                     in traceShow (length $ nodes g, length $ nodes folded) $
+                        (∀) paths (\path ->
+                          (∀) (loopsIn path) (\loop -> (sameLevelArbitrary loop) ∨ (not $ realizableArtbitrary loop))
+                        )
     -- testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
     -- testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     -- testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,

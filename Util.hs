@@ -84,3 +84,12 @@ reachableFromIn succs x y
                 nextxs =  (∐) [ Set.map (\(x', (sx', pis)) -> (x', (sx+sx', pis))) $ succs ! x | (x,sx) <- Set.toList xs ]
                 new = [ (x', sx') | (x', (sx', pis)) <- Set.toList nextxs, not $ x' ∈ visited]
                 visited' = visited ∪ (Set.map fst nextxs) ∪ (∐) [ pis | pis <- Set.toList $ Set.map (snd . snd) nextxs]
+
+
+rotations :: [a] -> [[a]]
+rotations xs = rots l double
+  where rots 0 ds     = []
+        rots 1 ds     = [take l ds]
+        rots n (d:ds) = (take l (d:ds)):(rots (n-1) ds)
+        double = take (2*l) $ cycle xs
+        l = length xs

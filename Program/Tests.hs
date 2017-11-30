@@ -12,6 +12,9 @@ import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random
 import Control.Monad(forM_, when, forever, forM)
 import Test.QuickCheck
+import Test.QuickCheck.Random (mkQCGen)
+import Test.QuickCheck.Gen (Gen(MkGen))
+
 
 import Program.Typing.FlexibleSchedulerIndependentChannels
 import qualified Program.Typing.ResumptionBasedSecurity as Res
@@ -41,6 +44,7 @@ import Util
 
 import Algebra.Lattice
 
+import qualified Data.Graph.Inductive.FA as FA
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Basic

@@ -56,6 +56,11 @@ labnfilter :: Graph gr => (LNode a -> Bool) -> gr a b -> gr a b
 labnfilter p gr = delNodes (map fst . filter (not . p) $ labNodes gr) gr
 
 
+-- | Returns the subgraph only containing the labelled edges which
+-- satisfy the given predicate.
+labefilter :: (Eq b, DynGraph gr) => (LEdge b -> Bool) -> gr a b -> gr a b
+labefilter p gr = foldr delAllLEdge gr (filter (not . p) $ labEdges gr)
+
 isInCycle :: Graph gr => gr a b -> Node -> Bool
 isInCycle graph node = length component > 1
   where component = the (node ∊) $ scc graph

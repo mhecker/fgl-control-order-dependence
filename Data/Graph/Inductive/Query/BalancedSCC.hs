@@ -33,6 +33,11 @@ import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 
+
+import Data.Graph.Inductive.FA (FA(..), Transition(..))
+import qualified Data.Graph.Inductive.FA as FA
+
+
 import Program.CDom (inclChop)
 
 import Test.QuickCheck
@@ -75,53 +80,70 @@ instance Arbitrary (InterGraph () String) where
 --                      ) (labEdges g)
 --                     return $ InterCFG s $ mkGraph (labNodes g) edges
 
-
-instance Arbitrary (InterCFG () String) where
+-- A node
+--   (n,s) :: LNode Node
+-- is a node n of a procedure with start node s.
+--
+-- An edge
+--   (n,m, Nothing)
+-- is an intraprocedural edge.
+--
+-- An edge
+--   (n,s, Open  (n, s))
+-- is a call at site n to the procedure starting in s.
+--
+-- An edge
+--   (t,m, Close (n, s))
+-- is a return from the call made call at site n to the procedure starting in s.
+-- t is the exit node of the procedure staring in s.
+instance Arbitrary (InterCFG Node (Node, Node)) where
     arbitrary = sized $ \size ->
                   do (s,t,p) <- genProc size
                      addProcedures [(InterCFG s p,t)] (size `div` 20) (size `div` 20) size
       where
-        genProc :: Int -> Gen (Node, Node, Gr () (Annotation String))
+        genProc :: Int -> Gen (Node, Node, Gr Node (Annotation (Node, Node)))
         genProc size =
             do (CG s p0  :: Connected Gr () ()) <- resize size arbitrary
                let p = removeDuplicateEdges p0
                t <- elements (nodes p)
                let p' =   delEdges [(t,n) | n <- suc p t]
+                        $ nmap (\() -> s)
                         $ emap (\() -> Nothing) p
                return (s,t, subgraph (inclChop p' s t) p')
         
-        addProcedures :: [(InterCFG () String,Node)] -> Int -> Int -> Int -> Gen (InterCFG () String)
+        addProcedures :: [(InterCFG Node (Node, Node),Node)] -> Int -> Int -> Int -> Gen (InterCFG Node (Node, Node))
         addProcedures ps 0 nrCalls size = addCalls nrCalls  merged sts
                  where (merged, sts) =
                                 foldr (\(InterCFG s p,t) (gr,sts) ->
                                                                let relabeling = p `relabelingWrt` gr
                                                                    (s',t') = (relabeling s, relabeling t)
-                                                                   p' = p `relabeledWrt` gr
+                                                                   p' =  nmap relabeling $
+                                                                         p `relabeledWrt` gr
                                                                    gr' = p' `mergeTwoGraphs` gr
                                                                    (n,m) = (head $ nodes p', last $ nodes p') -- TODO: choose random
                                                                    (ssuc,tsuc) = head sts
                                                                    gr'' = if (not $ all (∊ nodes gr') [n,ssuc,tsuc,m]) then error (show ([n,ssuc,tsuc,t], gr', p')) else
-                                                                            insEdge (n,ssuc, Just $ Open (show (n,ssuc)))
-                                                                          $ insEdge (tsuc,m, Just $ Close (show (n,ssuc)))
+                                                                            insEdge (n,ssuc, Just $ Open  (n,ssuc))
+                                                                          $ insEdge (tsuc,m, Just $ Close (n,ssuc))
                                                                           $ gr'
                                                                in (gr'', (s',t'):sts)
                                       )
-                                      (mkGraph [(1,())] [] :: Gr () (Annotation String),
+                                      (mkGraph [(1,(1))] [] :: Gr Node (Annotation (Node, Node)),
                                        [(1,1)]
                                       )
                                       ps
         addProcedures ps nrProcs nrCalls size = do (s,t,p) <- genProc size
                                                    addProcedures ((InterCFG s p,t):ps) (nrProcs-1)  nrCalls size
         
-        addCalls :: Int -> (Gr () (Annotation String)) -> [(Node,Node)] ->  Gen (InterCFG () String)
+        addCalls :: Int -> (Gr Node (Annotation (Node, Node))) -> [(Node,Node)] ->  Gen (InterCFG Node (Node, Node))
         addCalls 0       gr sts = addMain gr s t 
           where (s,t):_ = sts
         addCalls nrCalls gr sts
             | null candidates = addCalls 0 gr sts
             | otherwise = do e@(n,m,Nothing) <- elements candidates
                              (s,t) <- elements sts
-                             let gr' =   insEdge (n,s, Just $ Open (show (n,s)))
-                                       $ insEdge (t,m, Just $ Close (show (n,s)))
+                             let gr' =   insEdge (n,s, Just $ Open  (n,s))
+                                       $ insEdge (t,m, Just $ Close (n,s))
                                        $ delLEdge e
                                        $ gr
                              addCalls (nrCalls-1) gr' sts
@@ -131,9 +153,9 @@ instance Arbitrary (InterCFG () String) where
         
         
         addMain gr s t =  return $ InterCFG ms $
-                            insEdge (ms,s,  Just $ Open (show (ms,s)))
-                          $ insEdge (t,mt, Just $ Close (show (ms,s)))
-                          $ insNodes [(ms,()), (mt,())]
+                            insEdge (ms,s,  Just $ Open (ms,s))
+                          $ insEdge (t,mt, Just $ Close (ms,s))
+                          $ insNodes [(ms,ms), (mt,ms)]
                           $ gr
           where [ms,mt] = newNodes 2 gr
 
@@ -657,6 +679,38 @@ graphTest13 =  mkGraph [(0,()),(1,()),(2,()),(3,())] [(0,1,Just (Open "(0,1)")),
 graphTest14  :: Gr () (Annotation String)
 graphTest14 = mkGraph [(1,()),(2,()),(27,()),(35,()),(36,()),(37,()),(63,()),(64,()),(65,())] [(1,2,Just (Close "(27,1)")),(1,36,Just (Close "(2,1)")),(2,1,Just (Open "(2,1)")),(2,35,Nothing),(27,1,Just (Open "(27,1)")),(27,27,Nothing),(27,35,Nothing),(35,63,Just (Close "(37,36)")),(36,2,Nothing),(36,27,Nothing),(36,35,Nothing),(37,36,Just (Open "(37,36)")),(37,65,Just (Close "(64,63)")),(63,37,Nothing),(64,63,Just (Open "(64,63)"))]
 
+graphTest15  :: Gr () (Annotation String)
+graphTest15 = mkGraph [(1,()),(2,()),(71,()),(102,()),(103,()),(104,()),(180,()),(181,()),(195,()),(196,()),(211,()),(214,()),(217,()),(225,()),(234,()),(236,()),(246,()),(247,()),(250,()),(280,()),(304,()),(315,()),(334,()),(344,()),(345,()),(480,()),(481,()),(482,())] [(1,103,Just (Close "(2,1)")),(1,304,Just (Close "(247,1)")),(2,1,Just (Open "(2,1)")),(2,71,Nothing),(71,180,Just (Close "(104,103)")),(71,236,Just (Close "(304,103)")),(102,71,Nothing),(103,2,Nothing),(103,71,Nothing),(103,102,Nothing),(104,103,Just (Open "(104,103)")),(104,195,Just (Close "(181,180)")),(180,104,Nothing),(181,180,Just (Open "(181,180)")),(181,344,Just (Close "(196,195)")),(195,181,Nothing),(196,195,Just (Open "(196,195)")),(196,217,Nothing),(211,334,Nothing),(214,304,Nothing),(217,334,Nothing),(225,217,Just (Close "(236,344)")),(225,480,Just (Close "(345,344)")),(234,247,Nothing),(236,334,Nothing),(236,344,Just (Open "(236,344)")),(246,480,Just (Open "(246,480)")),(247,1,Just (Open "(247,1)")),(250,246,Nothing),(280,315,Nothing),(304,103,Just (Open "(304,103)")),(315,234,Nothing),(334,225,Nothing),(344,196,Nothing),(344,211,Nothing),(344,214,Nothing),(344,217,Nothing),(344,225,Nothing),(344,234,Nothing),(344,236,Nothing),(344,246,Nothing),(344,247,Nothing),(344,250,Nothing),(344,280,Nothing),(344,304,Nothing),(344,315,Nothing),(344,334,Nothing),(345,315,Just (Close "(246,480)")),(345,344,Just (Open "(345,344)")),(345,482,Just (Close "(481,480)")),(480,345,Nothing),(481,480,Just (Open "(481,480)"))]
+
+graphTest16  :: Gr () (Annotation String)
+graphTest16 = mkGraph [(0,()),(1,()),(2,()),(63,()),(64,()),(79,()),(82,()),(109,()),(120,()),(121,()),(122,())] [(0,63,Just (Open "(0,63)")),(0,120,Just (Close "(64,0)")),(1,63,Just (Close "(2,1)")),(1,109,Just (Close "(64,1)")),(2,0,Just (Close "(0,63)")),(2,1,Just (Open "(2,1)")),(63,2,Nothing),(64,0,Just (Open "(64,0)")),(64,1,Just (Open "(64,1)")),(79,120,Just (Open "(79,120)")),(82,64,Just (Close "(79,120)")),(82,122,Just (Close "(121,120)")),(109,82,Nothing),(120,64,Nothing),(120,79,Nothing),(120,82,Nothing),(120,109,Nothing),(121,120,Just (Open "(121,120)"))]
+
+
+graphTest16'  :: Gr Node (Annotation (Node, Node))
+graphTest16' = mkGraph [(0,0),(1,1),(2,63),(63,63),(64,120),(79,120),(82,120),(109,120),(120,120),(121,121),(122,121)] [(0,63,Just (Open (0,63))),(0,120,Just (Close (64,0))),(1,63,Just (Close (2,1))),(1,109,Just (Close (64,1))),(2,0,Just (Close (0,63))),(2,1,Just (Open (2,1))),(63,2,Nothing),(64,0,Just (Open (64,0))),(64,1,Just (Open (64,1))),(79,120,Just (Open (79,120))),(82,64,Just (Close (79,120))),(82,122,Just (Close (121,120))),(109,82,Nothing),(120,64,Nothing),(120,79,Nothing),(120,82,Nothing),(120,109,Nothing),(121,120,Just (Open (121,120)))]
+
+
+
+graphTest17  :: Gr Node (Annotation (Node, Node))
+graphTest17 =
+    mkGraph [(0,0), (4,0), (5,0), (7,0),
+             (1,1), (3,1),
+             (2,2), (6,2)
+            ]
+            [ 
+              (1,3, Nothing),
+              (4,5, Nothing),
+
+              ( 0, 1, Just $ Open  (0,1)),
+              ( 3, 4, Just $ Close (0,1)),
+
+              ( 5, 2, Just $ Open  (5,2)),
+              ( 6, 7, Just $ Close (5,2)),
+
+              ( 2, 1, Just $ Open  (2,1)),
+              ( 3, 6, Just $ Close (2,1))
+            ]
+
 funbl summary graph s = forward s s
   where forward []     found = found
         forward (n:ns) found = forward  ((new       ) ++ ns) (new ++ found)
@@ -847,7 +901,7 @@ rofl = do
 --    let (MkGen g) = arbitrary :: Gen (InterGraph () String)
 --    let (InterGraph gr) = g (mkQCGen 49) 175 -- 44, 48,
 
-    let (MkGen g) = arbitrary :: Gen (InterCFG () String)
+    let (MkGen g) = arbitrary :: Gen (InterCFG Node (Node, Node))
     let (InterCFG s gr) = g (mkQCGen 49) 40 -- 44, 48,
 
     start <- getCurrentTime
@@ -1223,3 +1277,105 @@ contextGraphFrom g n0 =
                                      x == x',
                                      let c' = DynamicContext { node = m , stack = stack0 }
                      ]
+
+
+inNode :: (Graph gr) => 
+    gr Node (Annotation (Node, Node)) ->       {-- see InterCFG --}
+    Node ->
+    FA gr () Node
+inNode cfg m = FA {
+      initial = initial,
+      transition = mkGraph ([(sf,()), (m', ())] ++ [(n, ()) | n <- Set.toList initial])
+                            [(m,  m', Epsilon),
+                             (m', sf, Only $ Set.fromList [procedure]),
+                             (sf,sf, All)
+                            ],
+      final = Set.fromList [sf]
+    }
+  where initial = Set.fromList $ nodes cfg
+        (minCfgNode, maxCfgNode) = nodeRange cfg
+        sf = minCfgNode - 1
+        m' = minCfgNode - 2
+        Just procedure = lab cfg m
+
+
+inNodeAnd :: (DynGraph gr) => 
+    gr Node (Annotation (Node, Node)) ->       {-- see InterCFG --}
+    Node ->
+    FA gr () Node ->
+    FA gr () Node
+inNodeAnd cfg m fa@(FA { initial, transition, final}) = -- traceShow (reachedCfgStates, reachedForward, reachedBackward) $ 
+    FA {
+      initial = initial,
+      transition = mkGraph ((labNodes transition) ++ [(n', ()) | n' <- copies])
+                           (
+                            [ (         n,          n2, l)  | (n,n2,l) <- labEdges transition, not $ n `elem` (reached) ∧ n2 `elem` (reached)]
+                         ++ [ (copyOf ! n, copyOf ! n2, l)  | (n,n2,l) <- labEdges transition,       n `elem` (reached) ∧ n2 `elem` (reached)]
+                           ),
+      final   = final
+    }
+  where
+        reachedCfgStates = Data.List.delete m $ (nodes cfg) `Data.List.intersect` reached
+        reached = reachedForward `Data.List.intersect` reachedBackward
+        reachedBackward = Set.toList $ (∐) [ Set.fromList $ reachable sf (grev transition) | sf <- Set.toList final ]
+        reachedForward  =                                    reachable  m       transition
+        copies = newNodes (length $ reachedCfgStates) transition
+        copyOf =             (Map.fromList [ (n, n') | (n, n') <- zip reachedCfgStates copies ])
+                 `Map.union` (Map.fromList [ (n, n)  | n <- nodes transition])
+
+
+
+
+
+anyWhere :: (Graph gr) => 
+    gr Node (Annotation (Node, Node)) ->       {-- see InterCFG --}
+    FA gr () Node
+anyWhere cfg = FA {
+      initial = Set.fromList $ nodes cfg,
+      transition = mkGraph (  [(sf,())]
+                           ++ [(n,  ()) | n  <- nodes cfg]
+                           -- ++ [(n', ()) | n' <- copies]
+                           )
+                           (
+                              -- [(n ,  n', Epsilon)                         | (n,n') <- zip (nodes cfg) copies]
+                              [(n ,  sf, Only $ Set.fromList [procedure]) | (n,n') <- zip (nodes cfg) copies, let Just procedure = lab cfg n]
+                           ++ [(sf,  sf, All)]
+                           ),
+      final = Set.fromList [sf]
+    }
+  where (sf:copies) = newNodes (noNodes cfg + 1) cfg
+
+
+preStar :: (DynGraph gr) => 
+   gr Node (Annotation (Node, Node)) ->      {-- see InterCFG --}
+   FA gr a Node ->
+   FA gr a Node
+   -- Set (LEdge (Transition Node))
+preStar cfg fa0 = FA { initial = initial fa0, final = final fa0, transition = insEdges (Set.toList es) $ transition fa0 }
+  where  es = (㎲⊒) es0 f
+         es0 = Set.fromList $ labEdges $ transition fa0
+         f :: Set (LEdge (Transition Node)) -> Set (LEdge (Transition Node))
+         f es = es
+              ⊔ Set.fromList [ (p,s, Only $ Set.fromList [procedure]) | e@(p,q, Nothing) <- labEdges cfg,
+                                                                        assert (lab cfg p == lab cfg q) True,
+                                                                        let Just procedure = lab cfg p,
+                                                                        s <- FA.reaches fa q [procedure],
+                                                                        (if (p,s) == (120, 137) then traceShow e else id) True
+                ]
+              ⊔ Set.fromList [ (p,s, Only $ Set.fromList [procedure]) | e@(p,q, Just (Open (p', s))) <- labEdges cfg,
+                                                                        assert (p' == p) True,
+                                                                        assert (q  == s) True,
+                                                                        assert (lab cfg s == Just s) True,
+                                                                        let Just procedure = lab cfg p,
+                                                                        s <- FA.reaches fa q [s,procedure],
+                                                                        (if (p,s) == (120, 137) then traceShow e else id) True
+                ]
+              ⊔ Set.fromList [ (p,s, Only $ Set.fromList [procedure]) | e@(p,q, Just (Close (q', s))) <- labEdges cfg,
+                                                                        assert (lab cfg q == lab cfg q') True,
+                                                                        assert (lab cfg p == lab cfg s)  True,
+                                                                        let Just procedure = lab cfg s,
+                                                                        s <- FA.reaches fa q [],
+                                                                        (if (p,s) == (120, 137) then traceShow e else id) True
+                ]
+           where fa = FA { initial = initial fa0, final = final fa0, transition = insEdges (Set.toList es) $ transition fa0 }
+

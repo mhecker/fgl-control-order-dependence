@@ -1,5 +1,6 @@
 module Util where
 
+
 import Data.List (find, nub, nubBy)
 import Data.Maybe (fromJust)
 import qualified Data.Map as Map
@@ -12,6 +13,7 @@ import Unicode
 import Algebra.Lattice
 
 import Control.Monad (foldM)
+import Control.Monad.Random hiding (join)
 the p = fromJust . find p 
 
 
@@ -93,3 +95,19 @@ rotations xs = rots l double
         rots n (d:ds) = (take l (d:ds)):(rots (n-1) ds)
         double = take (2*l) $ cycle xs
         l = length xs
+
+
+
+sampleFrom :: Int -> Integer -> [a] -> [a]
+sampleFrom seed n xs = evalRand (s n) (mkStdGen seed)
+  where s 0 = return $ []
+        s n = do
+          y <- ss xs
+          ys <- s (n-1)
+          return (y:ys)
+        ss :: MonadRandom m => [t] -> m t
+        ss xs = do
+          i <- getRandomR (1, length xs)
+          return $ xs !! (i-1)
+
+

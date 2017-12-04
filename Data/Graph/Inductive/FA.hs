@@ -97,53 +97,57 @@ sampleWord language  k fa
         fa'@(FA { initial, transition, final}) = simplify fa
         sampleT :: MonadRandom m => Transition b -> m [b]
         sampleT (Only xs) = do
-          i <- getRandomR (1, Set.size xs)
-          return $ [Set.elemAt (i-1) xs]
+          x <- uniform xs 
+          return [x]
         sampleT (All) = do
-          i <- getRandomR (1, Set.size language)
-          return $ [Set.elemAt (i-1) language]
+          x <- uniform language
+          return [x]
         sampleT (Epsilon) = return []
         
-        sample :: MonadRandom m => [t] -> m t
-        sample xs = do
-          i <- getRandomR (1, length xs)
-          return $ xs !! (i-1)
-          
         sampleSome sampled i
           | i >= k            = return $ sampled
           | otherwise         = do
-              n0 <- sample $ Set.toList $ initial
-              newTraceM <- sampleTrace n0 n0 [] 0
+              n0 <- uniform $ Set.toList $ initial
+              newTraceM <- sampleTrace n0 n0 []
               case newTraceM of
                 Nothing       -> sampleSome (         sampled) (i+1)
                 Just newTrace -> sampleSome (newTrace:sampled) (i+1)
-        sampleTrace n0 n trace length
+        sampleTrace n0 n trace
           | finished && stuck = return $ Just $ (n0, trace)
           | finished          = do
-              continue <- sample [False, True]
+              continue <- uniform [False, True]
               if (continue) then do
-                (m,e) <- sample successors
+                (m,e) <- uniform successors
                 letters <- sampleT e
-                sampleTrace n0 m (letters ++ trace) (length + 1)
+                sampleTrace n0 m (letters ++ trace)
               else
                 return $ Just (n0,trace)
           | stuck = do
-              n0 <- sample $ Set.toList $ initial
-              sampleTrace n0 n0 [] 0
+              n0 <- uniform $ Set.toList $ initial
+              sampleTrace n0 n0 []
           | otherwise = do
-               (m,e) <- sample successors
+               (m,e) <- uniform successors
                letters <- sampleT e
-               sampleTrace n0 m (letters ++ trace) (length + 1)
+               sampleTrace n0 m (letters ++ trace)
          where finished   = n ∈ final
-               successors = [ (m,l) | (m,l) <- lsuc transition n, case l of { Epsilon -> True ; All -> True ; Only xs -> not $ Set.null xs } ]
+               successors = [ e | e@(m,l) <- lsuc transition n, case l of { Epsilon -> True ; All -> True ; Only xs -> not $ Set.null xs } ]
                stuck      = null successors
 
 
-
 simplify :: (Ord b, DynGraph gr) => FA gr a b -> FA gr a b
-simplify (FA { initial, final, transition}) =
-    FA { initial = initial, final = final, transition = subgraph (reachedForward `Data.List.intersect` reachedBackward) filtered}
-  where 
+simplify = simplifyModInitial True
+
+simplifyModInitial :: (Ord b, DynGraph gr) => Bool -> FA gr a b -> FA gr a b
+simplifyModInitial modInitial (FA { initial, final, transition}) =
+    FA { initial = initial', final = final, transition = transition' }
+  where transition'
+          | modInitial = subgraph reached filtered
+          | otherwise  = insNodes [ (n, l) | n <- Set.toList initial, Just l <- [lab transition n]] $
+                         subgraph reached filtered 
+        reached = reachedForward `Data.List.intersect` reachedBackward
+        initial'
+          | modInitial = initial ∩ (Set.fromList reached)
+          | otherwise  = initial
         reachedBackward :: [Node]
         reachedBackward = Set.toList $ (∐) [ Set.fromList $ reachable sf (grev filtered) | sf <- Set.toList final ]
         reachedForward :: [Node]
@@ -152,7 +156,7 @@ simplify (FA { initial, final, transition}) =
                  $ transition
 
 intersect :: (Ord b, DynGraph gr) => FA gr a1 b -> FA gr a2 b -> FA gr (a1, a2) b
-intersect fa1 fa2 = -- simplify $ 
+intersect fa1 fa2 = -- simplifyModInitial False $ 
                FA { initial    = Set.fromList [ nodeMap ! (n1, n2) | n1 <- Set.toList $ initial1,
                                                                      n2 <- Set.toList $ initial2
                                  ],
@@ -174,7 +178,7 @@ intersect fa1 fa2 = -- simplify $
 intersectWithCommonInitialNodes :: (Ord b, DynGraph gr) => FA gr a1 b -> FA gr a2 b -> FA gr (a1, a2) b
 intersectWithCommonInitialNodes fa1 fa2
     -- |   common ⊆ (Set.fromList $ nodes $ transition1)
-    --   ∧ common ⊆ (Set.fromList $ nodes $ transition2) = -- simplify $ 
+    --   ∧ common ⊆ (Set.fromList $ nodes $ transition2) = -- simplifyModInitial False $ 
     |   initial1 == initial2 =
                FA { initial    = common,
                     final      = Set.fromList [ nodeMap ! (n1, n2) | n1 <- Set.toList $ final1,

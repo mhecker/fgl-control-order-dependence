@@ -9,7 +9,7 @@
 #endif
 #define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
 #define INTER(g) (InterGraph g) :: (InterGraph () String)
-#define INTERCFG(g) (InterCFG _ g) :: (InterCFG () String)
+#define INTERCFG(g) (InterCFG _ g) :: (InterCFG (Node) (Node, Node))
 
 
 module Program.Properties.ValidProperties where
@@ -23,7 +23,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn)
+import Util(the, reachableFromIn, sampleFrom)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -53,7 +53,7 @@ import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
@@ -82,6 +82,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   ) 
+import qualified Data.Graph.Inductive.FA as FA
 
 
 import Data.Graph.Inductive.Arbitrary
@@ -1428,6 +1429,42 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
+    testProperty  "alternative implementation of  pre*[at(m2) ∩ pre*[at(m3)]] " $
+      \(INTERCFG(cfg)) seed seed' ->
+                     let  at = inNode cfg
+                          k         = 100
+                          language  = Set.fromList [ n | (_,n) <- labNodes cfg ]
+                          ms        = sampleFrom seed 5 (nodes cfg)
+                     in traceShow (length $ nodes cfg) $
+                        (∀) ms (\m2 -> (∀) ms (\m3 ->
+                          let pre     = preStar cfg (at m3)
+                              prepreAt  = FA.simplify $ preStar cfg $ FA.simplifyModInitial False  $ FA.intersectWithCommonInitialNodes     (at m2) pre
+                              prepreAt' = FA.simplify $ preStar cfg $                                inNodeAnd                          cfg     m2  pre
+                              words   = FA.sampleWordsFor seed  language k prepreAt
+                              words'  = FA.sampleWordsFor seed' language k prepreAt'
+                          in (∀) (words ++ words') (\(m1,stack) -> -- traceShow ((m1,stack), m2, m3) $
+                                 (not $ null $ FA.acceptsIn prepreAt  m1 stack)
+                               ∧ (not $ null $ FA.acceptsIn prepreAt' m1 stack)
+                             )
+                        )),
+    testProperty  "alternative implementation of  at(m2) ∩ pre*[at(m3)] " $
+      \(INTERCFG(cfg)) seed seed' ->
+                     let  at = inNode cfg
+                          k         = 100
+                          language  = Set.fromList [ n | (_,n) <- labNodes cfg ]
+                          ms        = sampleFrom seed 5 (nodes cfg)
+                     in traceShow (length $ nodes cfg) $
+                        (∀) ms (\m2 -> (∀) ms (\m3 ->
+                          let pre     = preStar cfg (at m3)
+                              preAt   = FA.simplify $ FA.intersectWithCommonInitialNodes     (at m2) pre
+                              preAt'  = FA.simplify $ inNodeAnd                          cfg     m2  pre
+                              words   = FA.sampleWordsFor seed  language k preAt
+                              words'  = FA.sampleWordsFor seed' language k preAt'
+                          in (∀) (words ++ words') (\(m1,stack) -> -- traceShow ((m1,stack), m2, m3) $
+                                 (not $ null $ FA.acceptsIn preAt  m1 stack)
+                               ∧ (not $ null $ FA.acceptsIn preAt' m1 stack)
+                             )
+                        )),
     testProperty  "finite context graphs"      $
       \(INTERCFG(g)) ->
                      let  (folded, nodemap) = krinkeSCC g

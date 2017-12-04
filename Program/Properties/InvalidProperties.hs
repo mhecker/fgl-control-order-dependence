@@ -4,7 +4,7 @@
 module Program.Properties.InvalidProperties where
 
 #define INTER(g) (InterGraph g) :: (InterGraph () String)
-#define INTERCFG(g) (InterCFG _ g) :: (InterCFG () String)
+#define INTERCFG(g) (InterCFG _ g) :: (InterCFG (Node) (Node, Node))
 
 
 import Prelude hiding (all)
@@ -56,6 +56,7 @@ import Program.Generator (toProgram, GeneratedProgram)
 
 import Data.Graph.Inductive.Arbitrary
 
+import Data.Graph.Inductive (Node)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     myWod, isinkdomOfSinkContraction, myDod,

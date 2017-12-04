@@ -1309,8 +1309,7 @@ inNodeAnd cfg m fa@(FA { initial, transition, final}) = -- traceShow (reachedCfg
       initial = initial,
       transition = mkGraph ((labNodes transition) ++ [(n', ()) | n' <- copies])
                            (
-                            [ (         n,          n2, l)  | (n,n2,l) <- labEdges transition, not $ n `elem` (reached) ∧ n2 `elem` (reached)]
-                         ++ [ (copyOf ! n, copyOf ! n2, l)  | (n,n2,l) <- labEdges transition,       n `elem` (reached) ∧ n2 `elem` (reached)]
+                            [ (copyOf ! n, copyOf ! n2, l)  | (n,n2,l) <- labEdges transition,       n `elem` (reached) ∧ n2 `elem` (reached)]
                            ),
       final   = final
     }
@@ -1320,8 +1319,7 @@ inNodeAnd cfg m fa@(FA { initial, transition, final}) = -- traceShow (reachedCfg
         reachedBackward = Set.toList $ (∐) [ Set.fromList $ reachable sf (grev transition) | sf <- Set.toList final ]
         reachedForward  =                                    reachable  m       transition
         copies = newNodes (length $ reachedCfgStates) transition
-        copyOf =             (Map.fromList [ (n, n') | (n, n') <- zip reachedCfgStates copies ])
-                 `Map.union` (Map.fromList [ (n, n)  | n <- nodes transition])
+        copyOf = Map.fromList $ [ (n, n') | (n, n') <- zip reachedCfgStates copies ] ++ [(m,m)] ++ [(s,s) | s <- reached, not $ s `elem` (nodes cfg)]
 
 
 

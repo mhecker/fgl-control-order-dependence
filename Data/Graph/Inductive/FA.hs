@@ -73,11 +73,12 @@ reaches :: (Ord b, Graph gr) => FA gr a b -> Node -> [b] -> [Node]
 reaches (FA { initial, final, transition}) s0 word = rc s0 word
   where rc n     []   = [n]
         rc n (x:xs) = normal ++ epsilon
-          where normal  = do
-                            n' <- [ n' | (n', ok)      <- lsuc transition n, x .∈. ok]
+          where successors = lsuc transition n
+                normal  = do
+                            n' <- [ n' | (n', ok)      <- successors, x .∈. ok]
                             rc n' xs
                 epsilon = do
-                            n' <- [ n' | (n', Epsilon) <- lsuc transition n]
+                            n' <- [ n' | (n', Epsilon) <- successors]
                             rc n' (x:xs)
 
 

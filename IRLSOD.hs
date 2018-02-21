@@ -6,6 +6,8 @@ import Algebra.Lattice
 
 import Data.Graph.Inductive.Graph
 
+import Control.Exception.Base (assert)
+
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -78,6 +80,9 @@ data CFGEdge = Guard  Bool BoolFunction
              | Assign Var  VarFunction
              | Read   Var          InputChannel
              | Print  VarFunction  OutputChannel
+             | Call
+             | CallSummary
+             | Return
              | NoOp
              | Spawn
              deriving (Show, Eq, Ord)
@@ -143,10 +148,17 @@ wellformed gr =
                  && length [ n'  | (n', Guard False _) <- lsuc gr n ] == 1
                  && length [ n'  | (n', Assign _ _) <- lsuc gr n ] == 0
                  && length [ n'  | (n', Spawn)      <- lsuc gr n ] == 0 ) | n <- nodes gr]
+  && and [ (length [ n'  | (n', Call) <- lsuc gr n ] /= 0)
+            →   (  length [ n'  | (n', Call)        <- lsuc gr n ] == 1
+                 && length [ n'  | (n', CallSummary) <- lsuc gr n ] == 1
+                 && length [ n'  | (n', _)           <- lsuc gr n ] == 2 ) | n <- nodes gr]
+  && and [ (length [ n'  | (n', Return) <- lsuc gr n ] /= 0)
+            →   (  length [ n'  | (n', Return)        <- lsuc gr n ] == (length $ lsuc gr n)) | n <- nodes gr]
 
 
 type Input = Map InputChannel [Val]
-type ControlState = [Node]
+type ThreadLocalControlState = (Node, [(Node, Node)]) -- (node, [(callNode, entryNode)])
+type ControlState = [ThreadLocalControlState]
 type ThreadLocalStates = [ThreadLocalState]
 type Configuration = (ControlState,GlobalState,ThreadLocalStates,Input)
 data Event = PrintEvent Val OutputChannel
@@ -163,6 +175,8 @@ fromEdge σ i (Read   x  ch) = ReadEvent  (head $ i ! ch)   ch
 fromEdge σ i (Print  vf ch) = PrintEvent (evalV σ vf) ch
 fromEdge σ i (Spawn      ) = Tau
 fromEdge σ i (NoOp       ) = Tau
+fromEdge σ i (Call       ) = Tau
+fromEdge σ i (CallSummary) = error "control flow cannot pass CallSummary"
 
 
 data SecurityLattice = Low | High deriving (Show, Ord, Eq, Bounded, Enum)
@@ -187,16 +201,19 @@ type Trace          = [(CombinedState, (Node,Event), CombinedState)]
 
 eventStep :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [((Node,Event,Int),Configuration)]
 eventStep icfg config@(control,globalσ,tlσs,i) = do
-       (n,tlσ,index) <- zip3 control tlσs [0..]
+       ((n,callString),tlσ,index) <- zip3 control tlσs [0..]
        let σ = globalσ `Map.union` tlσ
-       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc icfg n
+       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ [ (n',e) | (n', e) <- lsuc icfg n, e /= CallSummary ]
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(globalσ',tlσ', i') -> ((n,fromEdge σ i cfgEdge),(n',globalσ',tlσ', i'))) (stepFor cfgEdge (globalσ,tlσ,i)) ) normal
+       let configs' = [ ((n,fromEdge σ i cfgEdge), (control',globalσ', tlσ', i'))  | (n', cfgEdge) <- normal,
+                                                                                         (globalσ',tlσ', i') <- stepFor cfgEdge (globalσ,tlσ,i),
+                                                                                         control' <- controlStateFor (n, n', cfgEdge) (n, callString)
+                      ]
 
 
-       case (spawn, configs') of (_ ,[((_,event),(n',globalσ', tlσ', i'))]) ->
-                                                                         return ((n,event,index),(n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
+       case (spawn, configs') of (_ ,[((_,event),((n',stack), globalσ', tlσ', i'))]) ->
+                                                                         return ((n,event,index),((n', stack)   : ([(spawned,[])   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
                                                                                                   globalσ',
                                                                                                   tlσ' : ([Map.empty | (spawned, Spawn) <- spawn] ++ (deleteAt index tlσs   )),
                                                                                                   i'
@@ -210,19 +227,21 @@ eventStep icfg config@(control,globalσ,tlσs,i) = do
                                  (_ ,_)                               -> error "nichtdeterministisches Programm"
 
 
-
 step :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [Configuration]
 step icfg config@(control,globalσ,tlσs,i) = do
-       (n,tlσ,index) <- zip3 control tlσs [0..]
+       ((n, callString),tlσ,index) <- zip3 control tlσs [0..]
        let σ = globalσ `Map.union` tlσ
-       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ lsuc icfg n
+       let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $  [ (n',e) | (n', e) <- lsuc icfg n, e /= CallSummary ]
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-       let configs' = concat $ fmap (\(n',cfgEdge) -> fmap (\(globalσ',tlσ', i') -> (n',globalσ', tlσ', i')) (stepFor cfgEdge (globalσ,tlσ,i)) ) normal
-       
+       let configs' = [ (control',globalσ', tlσ', i')  | (n', cfgEdge) <- normal,
+                                                         (globalσ',tlσ', i') <- stepFor cfgEdge (globalσ,tlσ,i),
+                                                         control' <- controlStateFor (n, n', cfgEdge) (n, callString)
+                      ]
+
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-       case (spawn, configs') of (_,[(n',globalσ', tlσ', i')]) ->
-                                                            return (n'   : ([spawned   | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
+       case (spawn, configs') of (_,[((n',stack), globalσ', tlσ', i')]) ->
+                                                            return ((n',stack) : ([(spawned,[])  | (spawned, Spawn) <- spawn] ++ (deleteAt index control)),
                                                                     globalσ',
                                                                     tlσ' : ([Map.empty | (spawned, Spawn) <- spawn] ++ (deleteAt index tlσs   )),
                                                                     i'
@@ -235,6 +254,14 @@ step icfg config@(control,globalσ,tlσs,i) = do
                                  (_,[])                  -> error "spawn an exit-node"
                                  (_,_)                   -> error "nichtdeterministisches Programm"
 
+
+controlStateFor :: (Node, Node, CFGEdge) -> ThreadLocalControlState -> [ThreadLocalControlState]
+controlStateFor (n, m, Call)   (nn, stack) = assert (n == nn) $ [(m, (n, m):stack)]
+controlStateFor (n, m, Return) (nn, (m', n'):stack)
+  | n == n' && m == m'  = assert (n == nn) $ [(m, stack)]
+  | otherwise           = assert (n == nn) $ []
+controlStateFor (n, m, CallSummary) _ = error "cannot pass CallSummary"
+controlStateFor (n, m, _)      (nn, stack) = assert (n == nn) $ [(m, stack)]
 
 stepFor :: CFGEdge -> (GlobalState,ThreadLocalState,Input) -> [(GlobalState,ThreadLocalState,Input)]
 stepFor e (globalσ,tlσ,i)  = step e where
@@ -250,6 +277,8 @@ stepFor e (globalσ,tlσ,i)  = step e where
       step (Print  x ch)                 = [(                             globalσ,                              tlσ,                    i)]
       step (Spawn      )                 = undefined
       step (NoOp       )                 = [(                             globalσ,                              tlσ,                    i)]
+      step (Call       )                 = [(                             globalσ,                              tlσ,                    i)]
+      step (Return     )                 = [(                             globalσ,                              tlσ,                    i)]
 
 hide (a,b,c,d) = (a,b,c)
 

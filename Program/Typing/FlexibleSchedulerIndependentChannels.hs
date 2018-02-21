@@ -10,7 +10,7 @@ import Util
 
 -- import Program
 import Program.For
-import Program.Generator (GeneratedProgram(..), Generated(..), toCode)
+import Program.Generator (IntraGeneratedProgram(..), Generated(..), toCodeIntra)
 
 import IRLSOD
 
@@ -215,7 +215,7 @@ data ForProgram = ForProgram {
 type ThreadId = Integer
 
 
-isSecureFlexibleSchedulerIndependentChannel :: GeneratedProgram -> Bool
+isSecureFlexibleSchedulerIndependentChannel :: IntraGeneratedProgram -> Bool
 isSecureFlexibleSchedulerIndependentChannel gen = isJust $ fst $ principalTypingOfGen gen
 
 
@@ -223,9 +223,9 @@ isSecureFlexibleSchedulerIndependentChannelFor ::  ForProgram -> Bool
 isSecureFlexibleSchedulerIndependentChannelFor p = isJust $ fst $ evalFresh $ principalTypingOf p
 
 
-principalTypingOfGen :: GeneratedProgram -> (Maybe ProgramTyping, Gr ConstraintNode ConstraintEdge)
+principalTypingOfGen :: IntraGeneratedProgram -> (Maybe ProgramTyping, Gr ConstraintNode ConstraintEdge)
 principalTypingOfGen gen = evalFresh $ principalTypingOf (ForProgram { code = code, channelTyping = defaultChannelObservability, mainThreadFor = 1})
-  where code = toCode gen
+  where (code, _) = toCodeIntra gen
 
 
 data Rule = FSIskip | FSIass | FSIif | FSIwhile | FSIspawn | FSIseq | FSIsub

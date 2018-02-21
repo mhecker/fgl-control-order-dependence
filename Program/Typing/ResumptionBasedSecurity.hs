@@ -11,7 +11,7 @@ import Util
 
 -- import Program
 import qualified Program.For
-import Program.Generator (GeneratedProgram(..), Generated(..), toCode)
+import Program.Generator (IntraGeneratedProgram(..), Generated(..), toCodeIntra)
 
 import IRLSOD
 
@@ -396,7 +396,7 @@ data ForProgram = ForProgram {
 type ThreadId = Integer
 
 
-isSecureResumptionBasedSecurity :: Criterion -> GeneratedProgram -> Maybe Bool
+isSecureResumptionBasedSecurity :: Criterion -> IntraGeneratedProgram -> Maybe Bool
 isSecureResumptionBasedSecurity maximalCriterion gen =  do
         typings <- principalTypingOfGen maximalCriterion gen
         return $ not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- typings , criterion ⊑ maximalCriterion]
@@ -406,9 +406,9 @@ isSecureResumptionBasedSecurityFor ::  Criterion -> ForProgram -> Bool
 isSecureResumptionBasedSecurityFor maximalCriterion  p = not $ null $ [ criterion | (ProgramTyping { criterion }, _) <- principalTypingOf    maximalCriterion p,   criterion ⊑ maximalCriterion]
 
 
-principalTypingOfGen :: Criterion -> GeneratedProgram -> Maybe [(ProgramTyping, Gr ConstraintNode ConstraintEdge)]
+principalTypingOfGen :: Criterion -> IntraGeneratedProgram -> Maybe [(ProgramTyping, Gr ConstraintNode ConstraintEdge)]
 principalTypingOfGen  maximalCriterion  gen = do
-        let code = toCode gen
+        let (code, _) = toCodeIntra gen
         code' <- for2ResumptionFor code 1
         return $ principalTypingOf  maximalCriterion (ForProgram { code = code', channelTyping = defaultChannelObservability })
 

@@ -13,11 +13,14 @@ import Data.Set.Unicode
 import IRLSOD
 
 type StaticThread = Integer
+type StaticProcedure = String
 
 data Program gr = Program {
     tcfg :: gr CFGNode CFGEdge,
     staticThreadOf :: Node -> StaticThread,
     staticThreads  :: Set StaticThread,
+    staticProcedureOf :: Node -> StaticProcedure,
+    staticProcedures :: Set StaticProcedure,
     mainThread :: StaticThread,
     entryOf :: StaticThread -> Node,
     exitOf  :: StaticThread -> Node,

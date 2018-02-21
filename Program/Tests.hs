@@ -199,7 +199,7 @@ genAndShowSimpleTransitionSystem = do
 --    let simple = generatedSimples !! (length generatedSimples `div` 4)
     -- let simple = SimpleProgram (Map.fromList [(1,Generated (Seq Skip (ForC 2 (Seq (Seq (Seq (Ass "h" (Times (Var "x") (Var "h"))) (Ass "x" (Times (Var "x") (Var "z")))) (Seq Skip (Ass "z" (Times (Var "x") (Var "z"))))) (Seq (If (Leq (Val 0) (Times (Var "y") (Var "z"))) Skip Skip) (Seq Skip (Ass "h" (Times (Var "x") (Var "h")))))))) (Set.fromList ["h","x","y","z"]) (Map.fromList []))])
     -- let simple = SimpleProgram (Map.fromList [(1,Generated (Seq Skip (Seq (ForC 1 (Seq (ForC 2 (Ass "z" (Times (Var "x") (Var "x")))) (ForV (Global "z") (Ass "h" (Times (Var "x") (Var "y")))))) (Seq (Seq (Seq (Ass "z" (Times (Var "y") (Var "h"))) (Ass "z" (Times (Var "x") (Var "z")))) (If (Leq (Val 0) (Times (Var "z") (Var "z"))) (Ass "h" (Times (Var "z") (Var "z"))) Skip)) (If (Leq (Val 0) (Times (Var "x") (Var "y"))) (Seq Skip Skip) (ForV (Global "y") (Ass "h" (Times (Var "y") (Var "x")))))))) (Set.fromList ["h","x","y","z"]) (Map.fromList []))])
-    let simple = SimpleProgram (Map.fromList [(1,Generated (Seq Skip (ForC 1 (Seq (Seq (ForC 2 (Ass (Global "h") (Times (Var (Global "h")) (Var (Global "h"))))) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) (Ass (Global "x") (Times (Var (Global "y")) (Var (Global "h")))) (Ass (Global "y") (Times (Var (Global "z")) (Var (Global "y")))))) (Seq (If (Leq (Val 0) (Times (Var (Global "h")) (Var (Global "z")))) (Ass (Global "h") (Times (Var (Global "x")) (Var (Global "y")))) (Ass (Global "x") (Times (Var (Global "z")) (Var (Global "h"))))) (ForC 2 Skip))))) (Set.map Global $ Set.fromList ["h","x","y","z"]) (Map.fromList []))])
+    let simple = SimpleProgram (Map.fromList [(1,Generated (Seq Skip (ForC 1 (Seq (Seq (ForC 2 (Ass (Global "h") (Times (Var (Global "h")) (Var (Global "h"))))) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) (Ass (Global "x") (Times (Var (Global "y")) (Var (Global "h")))) (Ass (Global "y") (Times (Var (Global "z")) (Var (Global "y")))))) (Seq (If (Leq (Val 0) (Times (Var (Global "h")) (Var (Global "z")))) (Ass (Global "h") (Times (Var (Global "x")) (Var (Global "y")))) (Ass (Global "x") (Times (Var (Global "z")) (Var (Global "h"))))) (ForC 2 Skip))))) (Set.map Global $ Set.fromList ["h","x","y","z"]) (Map.fromList []) (Map.empty) )]) (Map.empty)
 
     let p :: Program Gr = toProgramSimple $ simple
     let low  = Set.map Global (Set.fromList ["x", "y", "z"]) ∩ vars p
@@ -258,7 +258,7 @@ showSimpleTwoValueTransitionSystem = do
     -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
     -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Ass (Global "z") (Times (Var (Global "b")) (Var (Global "z")))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
     -- let p = (toProgramSimple $  SimpleProgram (Map.fromList [(1,Generated (Seq (ForV (Global "b") (Seq (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "b")))) (Ass (Global "c") (Times (Var (Global "x")) (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "y")) (Var (Global "a"))))) (ForC 1 Skip))) (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "z")))) (Seq (Ass (Global "y") (Times (Var (Global "z")) (Var (Global "c")))) (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "x"))))) (ForV (Global "b") (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "x")))))) (Seq (ForV (Global "c") (Ass (Global "y") (Times (Var (Global "x")) (Var (Global "a"))))) (Seq Skip (Ass (Global "z") (Times (Var (Global "x")) (Var (Global "z")))))))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
-    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Seq Skip (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "x")))) (Ass (Global "z") (Times (Var (Global "z")) (Var (Global "x")))) (Ass (Global "h") (Times (Var (Global "h")) (Var (Global "x")))))) (Set.map Global $ Set.fromList ["h","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Seq Skip (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "x")))) (Ass (Global "z") (Times (Var (Global "z")) (Var (Global "x")))) (Ass (Global "h") (Times (Var (Global "h")) (Var (Global "x")))))) (Set.map Global $ Set.fromList ["h","x","y","z"]) (Map.fromList []) (Map.empty))]) (Map.empty)) :: Program Gr
 
     let system = twoValueFromSimpleProgram p
     -- let low = (Set.fromList ["z"])
@@ -278,7 +278,7 @@ showSimpleOneValueTransitionSystem = do
     -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (ForC 2 Skip) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
     -- let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Ass (Global "z") (Times (Var (Global "b")) (Var (Global "z")))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
     --let p = (toProgramSimple $  SimpleProgram (Map.fromList [(1,Generated (Seq (ForV (Global "b") (Seq (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "b")))) (Ass (Global "c") (Times (Var (Global "x")) (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "y")) (Var (Global "a"))))) (ForC 1 Skip))) (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "z")))) (Seq (Ass (Global "y") (Times (Var (Global "z")) (Var (Global "c")))) (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "x"))))) (ForV (Global "b") (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "x")))))) (Seq (ForV (Global "c") (Ass (Global "y") (Times (Var (Global "x")) (Var (Global "a"))))) (Seq Skip (Ass (Global "z") (Times (Var (Global "x")) (Var (Global "z")))))))) (Set.fromList ["a","b","c","x","y","z"]) (Map.fromList []))])) :: Program Gr
-    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Seq Skip (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "x")))) (Ass (Global "z") (Times (Var (Global "z")) (Var (Global "x")))) (Ass (Global "h") (Times (Var (Global "h")) (Var (Global "x")))))) (Set.map Global $ Set.fromList ["h","x","y","z"]) (Map.fromList []))])) :: Program Gr
+    let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1,Generated (Seq Skip (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "x")))) (Ass (Global "z") (Times (Var (Global "z")) (Var (Global "x")))) (Ass (Global "h") (Times (Var (Global "h")) (Var (Global "x")))))) (Set.map Global $ Set.fromList ["h","x","y","z"]) (Map.fromList []) (Map.empty))]) (Map.empty)) :: Program Gr
     let system = oneValueFromSimpleProgram p
     -- let low = (Set.fromList ["z"])
     let low = Set.map Global (Set.fromList ["x", "y", "z"]) ∩ vars p
@@ -294,7 +294,7 @@ showSimpleOneValueTransitionSystem = do
 
 
 timingVsFSI :: GeneratedProgram
-timingVsFSI = GeneratedProgram $ Map.fromList [
+timingVsFSI = GeneratedProgram (Map.fromList [
     (1,Generated (Seq (Seq (Seq (Seq
             (Ass (Global "y") (Val 0))
             (Ass (Global "a") (Times (Var (Global "y")) (Var (Global "y")))))
@@ -308,7 +308,9 @@ timingVsFSI = GeneratedProgram $ Map.fromList [
                   (Seq (ReadFromChannel (Global "z") "stdIn")
                         Skip))))
        (Set.map Global $ Set.fromList ["a","x","y"])
-       (Map.fromList [(2,  Set.map Global $ Set.fromList ["a","y"])])),
+       (Map.fromList [(2,  Set.map Global $ Set.fromList ["a","y"])])
+       (Map.empty)
+    ),
     (2,Generated
             (ForV (Global "a")
                (ForC 1 (
@@ -316,11 +318,14 @@ timingVsFSI = GeneratedProgram $ Map.fromList [
                      (ForV (Global "y")
                         (ReadFromChannel (Global "b") "stdIn")))))
        (Set.map Global $ Set.fromList ["a","y"])
-       (Map.fromList []))
-    ]
+       (Map.fromList [])
+       (Map.empty)
+    )
+    ])
+    (Map.empty)
 
 timingVsFSI2 :: GeneratedProgram
-timingVsFSI2 = GeneratedProgram $ Map.fromList [
+timingVsFSI2 = GeneratedProgram (Map.fromList [
     (1,Generated
           (If CTrue
                (Seq (Seq (ForC 1 (Ass (Global "a") (Val 1))) (Seq (ReadFromChannel (Global "c") "stdIn") (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "a")))))) (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "z")))) (Ass (Global "a") (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "c") "stdIn")) (ForV (Global "c") (ReadFromChannel (Global "z") "lowIn1"))))
@@ -330,5 +335,8 @@ timingVsFSI2 = GeneratedProgram $ Map.fromList [
                    {-else-}
                    (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (Ass (Global "y") (Times (Var (Global "a")) (Var (Global "a"))))) (ForV (Global "a") (ReadFromChannel (Global "b") "stdIn")))))
        (Set.fromList [])
-       (Map.fromList []))
-  ]
+       (Map.fromList [])
+       (Map.empty)
+    )
+  ])
+  (Map.empty)

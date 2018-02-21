@@ -102,7 +102,7 @@ import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
 import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity, isSecureResumptionBasedSecurityFor)
 import Program.CDom
-import Program.Generator (toProgram, GeneratedProgram)
+import Program.Generator (toProgram, toProgramIntra, GeneratedProgram)
 
 main      = all
 
@@ -205,7 +205,7 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
     testProperty  "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testProperty  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated in
                 isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
     testProperty  "timingClassificationDomPaths == timingClassification"
                   timingDDomPathsIsTimingG,

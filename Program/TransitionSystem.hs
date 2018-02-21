@@ -343,13 +343,13 @@ observablePartOfOneValueDefUseSimple  vars entry exit low system = nmap lowOnly 
 securePDG :: Set Var -> Set Var -> Set Var -> SimpleProgram -> Bool
 securePDG vars low high simple =  isSecureTimingClassificationDomPaths p'
   where p'       = toProgram       simple' :: Program Gr
-        simple' = let (SimpleProgram threads) = simple
-                      (Generated for _ _)     = (Map.!) threads 1
+        simple' = let (SimpleProgram threads _) = simple
+                      (Generated for _ _ _)    = (Map.!) threads 1
                       prefix  = foldl Seq Skip $ [ReadFromChannel var       lowIn1 | var <- Set.toList $ (vars ∖ high) ] ++
                                                  [ReadFromChannel var       stdIn  | var <- Set.toList $ high]
                       postfix = foldr Seq Skip   [PrintToChannel  (Var var) stdOut | var <- Set.toList $ low ]
                       for'    = prefix `Seq` for `Seq` postfix
-                  in  (GeneratedProgram (Map.fromList [(1, Generated for' undefined undefined)]))
+                  in  (GeneratedProgram (Map.fromList [(1, Generated for' undefined undefined undefined)]) Map.empty)
 
 
 

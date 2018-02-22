@@ -24,7 +24,7 @@ import qualified Data.Set as Set
 
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.Util
+import Data.Graph.Inductive.Util hiding (isInCycle)
 import Data.Graph.Inductive.Query.Dataflow
 
 
@@ -42,21 +42,52 @@ import Data.Graph.Inductive.Query.Dataflow
 --                              staticThreadOf spawnnode == t1 ]
 
 
-multiThreadAnalysis :: Graph gr => Program gr -> DataflowAnalysis Bool CFGEdge
-multiThreadAnalysis p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) = DataflowAnalysis {
+threadsOfAnalysis :: Graph gr => Program gr -> DataflowAnalysis (Set StaticThread) CFGEdge
+threadsOfAnalysis p@(Program {  mainThread, staticThreads, entryOf, procedureOf }) = DataflowAnalysis {
+    transfer = transfer,
+    initial = initial
+  }
+ where
+  initial = Set.fromList [mainThread]
+  transfer (n1,n2,Spawn) threads = Set.fromList [ thread | thread <- Set.toList $ staticThreads, entryOf (procedureOf thread) == n2]
+  transfer e             threads = threads
+
+threadsOf :: Graph gr => Program gr -> Map Node (Set StaticThread)
+threadsOf p@(Program { tcfg, entryOf, procedureOf, mainThread}) = analysis (threadsOfAnalysis p) tcfg (entryOf (procedureOf mainThread))
+
+isInCycleAnalysis:: DynGraph gr => Program gr -> DataflowAnalysis Bool CFGEdge
+isInCycleAnalysis p@(Program {  mainThread, staticProcedureOf, staticProcedures, entryOf, procedureOf }) = DataflowAnalysis {
     transfer = transfer,
     initial = initial
   }
  where
   initial = False
-  transfer (n1,n2,Spawn) isInMultithread = isInMultithread ⊔ isInCycle (cfg p (staticThreadOf n1)) n1
+  transfer (n1, n2, Spawn)  inCycle =            (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
+  transfer (n1, n2, Call)   inCycle = inCycle ⊔  (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
+  transfer (n1, n2, Return) inCycle =            (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
+  transfer (n1, n2, e)      inCycle =            (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
+  
+  isInProcedureCycleMap  = Map.fromList [ (procedure, isInCycleMap (cfgOfProcedure p procedure)) | procedure <- Set.toList $ staticProcedures ]
+
+isInCycle :: DynGraph gr => Program gr -> Map Node Bool
+isInCycle p@(Program { tcfg, entryOf, procedureOf, mainThread}) = analysis (isInCycleAnalysis p) tcfg (entryOf (procedureOf mainThread))
+
+
+multiThreadAnalysis :: DynGraph gr => Program gr -> DataflowAnalysis Bool CFGEdge
+multiThreadAnalysis p@(Program { tcfg, staticProcedures, entryOf, exitOf }) = DataflowAnalysis {
+    transfer = transfer,
+    initial = initial
+  }
+ where
+  initial = False
+  transfer (n1,n2,Spawn) isInMultithread = isInMultithread ⊔ (isInCycleMap ! n1)
                                                            ⊔ (length (pre tcfg n2) > 1)
   transfer e isInMultithread = isInMultithread
+  isInCycleMap = isInCycle p
 
+isInMultiThread :: DynGraph gr => Program gr -> Map Node Bool
+isInMultiThread p@(Program { tcfg, entryOf, procedureOf, mainThread}) = analysis (multiThreadAnalysis p) tcfg (entryOf $ procedureOf $ mainThread)
 
-isInMultiThread :: Graph gr => Program gr -> Map Node Bool
-isInMultiThread p@(Program { tcfg, entryOf, mainThread}) = analysis (multiThreadAnalysis p) tcfg (entryOf mainThread)
-
-isMultiThread :: Graph gr => Program gr -> Map StaticThread Bool
-isMultiThread p@(Program { tcfg, entryOf, staticThreads } ) =
-    Map.fromList [ (thread, (isInMultiThread p) ! (entryOf thread)) | thread <- Set.toList staticThreads ]
+isMultiThread :: DynGraph gr => Program gr -> Map StaticThread Bool
+isMultiThread p@(Program { tcfg, entryOf, procedureOf, staticThreads } ) =
+    Map.fromList [ (thread, (isInMultiThread p) ! (entryOf $ procedureOf $ thread)) | thread <- Set.toList staticThreads ]

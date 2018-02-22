@@ -72,5 +72,5 @@ dataDependenceGraph graph vars entry = mkGraph (labNodes graph) [ (n,n',DataDepe
 
 
 dataDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-dataDependenceGraphP p@(Program { tcfg, staticThreadOf, mainThread, entryOf}) =
-    dataDependenceGraph tcfg (vars p) (entryOf mainThread)
+dataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, procedureOf}) =
+    dataDependenceGraph tcfg (vars p) (entryOf $ procedureOf $ mainThread)

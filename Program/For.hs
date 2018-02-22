@@ -72,12 +72,12 @@ toChannelJava package inputs outputs obsIn obsOut = unlines $  [
 
 
 
-compile :: DynGraph gr => Map StaticThread Node -> Map StaticProcedure Node -> Node -> For -> Gen Node (gr CFGNode CFGEdge, Node, [Node])
-compile entryOf entryOfProcedure nStart (If b sTrue sFalse) = do
+compile :: DynGraph gr => Map StaticThread StaticProcedure -> Map StaticProcedure Node -> Node -> For -> Gen Node (gr CFGNode CFGEdge, Node, [Node])
+compile procedureOf entryOfProcedure nStart (If b sTrue sFalse) = do
   nTrue <- gen
   nFalse <- gen
-  (gTrue, nTrue', nodesInTrue)  <- compile entryOf entryOfProcedure nTrue sTrue
-  (gFalse,nFalse',nodesInFalse) <- compile entryOf entryOfProcedure nFalse sFalse
+  (gTrue, nTrue', nodesInTrue)  <- compile procedureOf entryOfProcedure nTrue sTrue
+  (gFalse,nFalse',nodesInFalse) <- compile procedureOf entryOfProcedure nFalse sFalse
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nTrue, nFalse, nTrue', nFalse', nJoin] ]
                    [(nStart, nTrue,  Guard True  b),
@@ -91,7 +91,7 @@ compile entryOf entryOfProcedure nStart (If b sTrue sFalse) = do
             [nStart, nJoin] ++ nodesInTrue ++ nodesInFalse
            )
 
-compile entryOf entryOfProcedure nStart (Ass var f) = do
+compile procedureOf entryOfProcedure nStart (Ass var f) = do
   nEnd <- gen
   let nodesInThread = [nStart, nEnd]
   return $ (mkGraph [(n,n) | n <- nodesInThread ]
@@ -100,10 +100,10 @@ compile entryOf entryOfProcedure nStart (Ass var f) = do
             nodesInThread
            )
 
-compile entryOf entryOfProcedure nStart (ForC val s) = do
+compile procedureOf entryOfProcedure nStart (ForC val s) = do
   nInit <- gen
   nLoop <- gen
-  (gLoop,nLoop',nodesInLoop)  <- compile entryOf entryOfProcedure nLoop s
+  (gLoop,nLoop',nodesInLoop)  <- compile procedureOf entryOfProcedure nLoop s
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nInit,nLoop,nLoop',nJoin]]
                     [(nStart, nInit, Assign loopvar (Val val)),
@@ -117,10 +117,10 @@ compile entryOf entryOfProcedure nStart (ForC val s) = do
            )
     where loopvar = ThreadLocal $ "_loopVar" ++ (show nStart)
 
-compile entryOf entryOfProcedure nStart (ForV var s) = do
+compile procedureOf entryOfProcedure nStart (ForV var s) = do
   nInit <- gen
   nLoop <- gen
-  (gLoop,nLoop', nodesInLoop)  <- compile entryOf entryOfProcedure nLoop s
+  (gLoop,nLoop', nodesInLoop)  <- compile procedureOf entryOfProcedure nLoop s
   nJoin <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nInit, nJoin, nLoop, nLoop'] ]
                     [(nStart,  nInit, Assign loopvar (Var var)),
@@ -134,12 +134,12 @@ compile entryOf entryOfProcedure nStart (ForV var s) = do
            )
     where loopvar = ThreadLocal $ "_loopVar" ++ (show nStart)
 
-compile entryOf entryOfProcedure nStart (Seq s1 s2) = do
-  (g1,nMid, nodesInS1) <- compile entryOf entryOfProcedure nStart s1
-  (g2,nEnd, nodesInS2) <- compile entryOf entryOfProcedure nMid   s2
+compile procedureOf entryOfProcedure nStart (Seq s1 s2) = do
+  (g1,nMid, nodesInS1) <- compile procedureOf entryOfProcedure nStart s1
+  (g2,nEnd, nodesInS2) <- compile procedureOf entryOfProcedure nMid   s2
   return $ (g1 `mergeTwoGraphs` g2, nEnd, [nStart] ++ nodesInS1 ++ nodesInS2 )
 
-compile entryOf entryOfProcedure nStart Skip = do
+compile procedureOf entryOfProcedure nStart Skip = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, nop)],
@@ -147,7 +147,7 @@ compile entryOf entryOfProcedure nStart Skip = do
             [nStart, nEnd]
            )
 
-compile entryOf entryOfProcedure nStart (ReadFromChannel var ch) = do
+compile procedureOf entryOfProcedure nStart (ReadFromChannel var ch) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, Read var ch)],
@@ -155,7 +155,7 @@ compile entryOf entryOfProcedure nStart (ReadFromChannel var ch) = do
             [nStart, nEnd]
            )
 
-compile entryOf entryOfProcedure nStart (PrintToChannel var ch) = do
+compile procedureOf entryOfProcedure nStart (PrintToChannel var ch) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd]]
                     [(nStart, nEnd, Print var ch)],
@@ -163,7 +163,7 @@ compile entryOf entryOfProcedure nStart (PrintToChannel var ch) = do
             [nStart, nEnd]
            )
 
-compile entryOf entryOfProcedure nStart (SpawnThread threadId) = do
+compile procedureOf entryOfProcedure nStart (SpawnThread threadId) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd, nThread]]
                     [(nStart, nEnd, nop),
@@ -171,10 +171,10 @@ compile entryOf entryOfProcedure nStart (SpawnThread threadId) = do
             nEnd,
             [nStart, nEnd]
            )
-    where nThread = entryOf ! threadId
+    where nThread = entryOfProcedure ! (procedureOf ! threadId)
 
 
-compile entryOf entryOfProcedure nStart (CallProcedure procId) = do
+compile procedureOf entryOfProcedure nStart (CallProcedure procId) = do
   nEnd <- gen
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd, nProc]]
                     [(nStart, nEnd, CallSummary),
@@ -187,30 +187,15 @@ compile entryOf entryOfProcedure nStart (CallProcedure procId) = do
     where nProc = entryOfProcedure ! procId
 
 
-compileAll :: DynGraph gr => Map StaticThread For -> Map StaticProcedure For -> Gen Node (Map StaticThread (Node,gr CFGNode CFGEdge,Node,[Node]), Map StaticProcedure (Node,gr CFGNode CFGEdge,Node,[Node]))
-compileAll threads procedures = do
-  threadEntryNodes <- forM (Map.toList threads) $ (\(t,program) -> do
-     entryNode <- gen
-     return (t,entryNode,program)
-   )
+compileAll :: DynGraph gr => Map StaticThread StaticProcedure -> Map StaticProcedure For -> Gen Node (Map StaticProcedure (Node,gr CFGNode CFGEdge,Node,[Node]))
+compileAll procedureOf procedures = do
   procedureEntryNodes <- forM (Map.toList procedures) $ (\(p,program) -> do
      entryNode <- gen
      return (p,entryNode,program)
    )
-  let entryOf           = (Map.fromList $ fmap (\(t,entryNode,program) -> (t,entryNode)) threadEntryNodes)
   let entryOfProcedures = (Map.fromList $ fmap (\(p,entryNode,program) -> (p,entryNode)) procedureEntryNodes)
-  threadGraphs <- forM threadEntryNodes $ (\(t,entryNode,program) -> do
-     (graph,exitNode,nodes) <- compile entryOf
-                                       entryOfProcedures
-                                       entryNode
-                                       (Skip `Seq` program) -- prevent the first edge in any thread from being a (possibly high)
-                                                            -- Read instruction, which would make the first node, on which all
-                                                            -- others control-depend by default, high
-                                                            -- TODO: better cope with this in the analysis!?!?
-     return $ (t, (entryNode,graph,exitNode,nodes))
-   )
   procedureGraphs <- forM procedureEntryNodes $ (\(p,entryNode,program) -> do
-     (graph,exitNode,nodes) <- compile entryOf
+     (graph,exitNode,nodes) <- compile procedureOf
                                        entryOfProcedures
                                        entryNode
                                        (Skip `Seq` program) -- prevent the first edge in any thread from being a (possibly high)
@@ -219,14 +204,14 @@ compileAll threads procedures = do
                                                             -- TODO: better cope with this in the analysis!?!?
      return $ (p, (entryNode,graph,exitNode,nodes))
    )
-  return $ (Map.fromList threadGraphs, Map.fromList procedureGraphs)
+  return $ Map.fromList procedureGraphs
 
 
 
-compileAllToProgram :: DynGraph gr => Map StaticThread For -> Map StaticProcedure For -> Program gr
+compileAllToProgram :: DynGraph gr => Map StaticThread StaticProcedure -> Map StaticProcedure For -> Program gr
 compileAllToProgram threadCode procedureCode = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = procedureOf,
     staticThreads  = Set.fromList $ staticThreads,
     staticProcedureOf = staticProcedureOf,
     staticProcedures  = Set.fromList $ staticProcedures,
@@ -235,18 +220,16 @@ compileAllToProgram threadCode procedureCode = Program {
     exitOf = exitOf,
     observability = error "observability noch nicht definiert"
    }
-  where staticThreadOf n = fromJust $
-          find (\t -> let (_,_,_,nodes) = compiledThreadCode ! t in n ∊ nodes)
-               staticThreads
+  where procedureOf t = threadCode ! t
         staticThreads = Map.keys threadCode
         staticProcedureOf n = fromJust $
           find (\t -> let (_,_,_,nodes) = compiledProcedureCode ! t in n ∊ nodes)
                staticProcedures
         staticProcedures = Map.keys procedureCode
-        entryOf = (!) (fmap (\(entryNode,_  ,_       ,_) -> entryNode) compiledThreadCode)
-        exitOf  = (!) (fmap (\(_        ,_  ,exitNode,_) -> exitNode ) compiledThreadCode)
+        entryOf = (!) (fmap (\(entryNode,_  ,_       ,_) -> entryNode) compiledProcedureCode)
+        exitOf  = (!) (fmap (\(_        ,_  ,exitNode,_) -> exitNode ) compiledProcedureCode)
         tcfg    = foldr1
                    mergeTwoGraphs
-                   [ cfg | (_,(_        ,cfg,_       ,_)) <- Map.toList $ compiledThreadCode ]
+                   [ cfg | (_,(_        ,cfg,_       ,_)) <- Map.toList $ compiledProcedureCode ]
 
-        (compiledThreadCode, compiledProcedureCode) = runGenFrom 1 $ compileAll threadCode procedureCode
+        compiledProcedureCode = runGenFrom 1 $ compileAll threadCode procedureCode

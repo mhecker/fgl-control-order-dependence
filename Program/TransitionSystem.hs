@@ -59,11 +59,11 @@ type SymbolicDefUseSystem gr = gr SymbolicDefUseNode ()
 
 
 fromSimpleProgram :: DynGraph gr => Program gr -> SymbolicDefUseSystem gr
-fromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, exitOf })
+fromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, procedureOf, entryOf, exitOf })
     | Set.size staticThreads /= 1 = error "not simple: more than one thread"
     | otherwise                   = unrollFrom tcfg (mkGraph [(entry, initial)] [])
-  where entry   = entryOf mainThread
-        exit    = exitOf  mainThread
+  where entry   = entryOf $ procedureOf $ mainThread
+        exit    = exitOf  $ procedureOf $ mainThread
         cfg     = tcfg
         initial = (Map.fromList [ (v, Set.fromList [InitialVar v] ) | v <- Set.toList $ vars p ], entry, Set.empty)
 
@@ -121,9 +121,9 @@ secureSymbolicDefUseSystem exit low high system = (∀) exitstates (\(varDeps, _
 
 
 secureSymbolic :: DynGraph gr => Set Var -> Set Var -> Program gr -> Bool
-secureSymbolic low high p@(Program { mainThread, exitOf }) = secureSymbolicDefUseSystem exit low high system
+secureSymbolic low high p@(Program { mainThread, exitOf, procedureOf }) = secureSymbolicDefUseSystem exit low high system
   where system  = fromSimpleProgram p
-        exit    = exitOf  mainThread
+        exit    = exitOf  $ procedureOf $ mainThread
 
 
 type TwoValue = Bool
@@ -145,7 +145,7 @@ initialTwoValueStates vars = [ fmap (Set.singleton) $ Map.fromList σ | σ <-
 
 
 twoValueFromSimpleProgram :: DynGraph gr => Program gr -> TwoValueDefUseSystem gr
-twoValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, exitOf })
+twoValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, procedureOf, exitOf })
     | Set.size staticThreads /= 1 = error "not simple: more than one thread"
     | otherwise                   =
         twoValueUnrollFrom tcfg (mkGraph [ (i,(σ,entry))
@@ -154,7 +154,7 @@ twoValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf,
                                          ]
                                          []
                                 )
-  where entry   = entryOf mainThread
+  where entry   = entryOf $ procedureOf $ mainThread
 
 
 twoValueUnrollFrom :: DynGraph gr => gr CFGNode CFGEdge -> TwoValueDefUseSystem gr -> TwoValueDefUseSystem gr
@@ -201,10 +201,10 @@ secureTwoValueDefUseSystem vars entry exit low system = (∀) entrystates (\(i,n
 
 
 secureTwoValueDefUse :: DynGraph gr => Set Var -> Program gr -> Bool
-secureTwoValueDefUse low p@(Program { mainThread, exitOf, entryOf }) = secureTwoValueDefUseSystem variables entry exit low system
+secureTwoValueDefUse low p@(Program { mainThread, exitOf, entryOf, procedureOf}) = secureTwoValueDefUseSystem variables entry exit low system
   where system    = twoValueFromSimpleProgram p
-        entry     = entryOf mainThread
-        exit      = exitOf  mainThread
+        entry     = entryOf $ procedureOf $ mainThread
+        exit      = exitOf  $ procedureOf $ mainThread
         variables = vars p
 
 
@@ -248,7 +248,7 @@ initialOneValueStates vars = [ fmap (Set.singleton) $ Map.fromList σ | σ <-
 
 
 oneValueFromSimpleProgram :: DynGraph gr => Program gr -> OneValueDefUseSystem gr
-oneValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, exitOf })
+oneValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, procedureOf, exitOf })
     | Set.size staticThreads /= 1 = error "not simple: more than one thread"
     | otherwise                   =
         oneValueUnrollFrom tcfg (mkGraph [ (i,(σ,entry))
@@ -257,7 +257,7 @@ oneValueFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf,
                                          ]
                                          []
                                 )
-  where entry   = entryOf mainThread
+  where entry   = entryOf $ procedureOf $ mainThread
 
 
 oneValueUnrollFrom :: DynGraph gr => gr CFGNode CFGEdge -> OneValueDefUseSystem gr -> OneValueDefUseSystem gr
@@ -310,10 +310,10 @@ secureOneValueDefUseSystem vars entry exit low system = (∀) exitstates (\(i,(�
 
 
 secureOneValueDefUse :: DynGraph gr => Set Var -> Program gr -> Bool
-secureOneValueDefUse low p@(Program { mainThread, exitOf, entryOf }) = secureOneValueDefUseSystem variables entry exit low system
+secureOneValueDefUse low p@(Program { mainThread, exitOf, entryOf, procedureOf }) = secureOneValueDefUseSystem variables entry exit low system
   where system    = oneValueFromSimpleProgram p
-        entry     = entryOf mainThread
-        exit      = exitOf  mainThread
+        entry     = entryOf $ procedureOf $ mainThread
+        exit      = exitOf  $ procedureOf $ mainThread
         variables = vars p
 
 
@@ -343,13 +343,13 @@ observablePartOfOneValueDefUseSimple  vars entry exit low system = nmap lowOnly 
 securePDG :: Set Var -> Set Var -> Set Var -> SimpleProgram -> Bool
 securePDG vars low high simple =  isSecureTimingClassificationDomPaths p'
   where p'       = toProgram       simple' :: Program Gr
-        simple' = let (SimpleProgram threads _) = simple
-                      (Generated for _ _ _)    = (Map.!) threads 1
+        simple' = let (SimpleProgram procedureOf code) = simple
+                      (Generated for _ _ _)    = (Map.!) code ((Map.!) procedureOf 1)
                       prefix  = foldl Seq Skip $ [ReadFromChannel var       lowIn1 | var <- Set.toList $ (vars ∖ high) ] ++
                                                  [ReadFromChannel var       stdIn  | var <- Set.toList $ high]
                       postfix = foldr Seq Skip   [PrintToChannel  (Var var) stdOut | var <- Set.toList $ low ]
                       for'    = prefix `Seq` for `Seq` postfix
-                  in  (GeneratedProgram (Map.fromList [(1, Generated for' undefined undefined undefined)]) Map.empty)
+                  in  (GeneratedProgram (Map.fromList [(1, "1")]) (Map.fromList [("1", Generated for' undefined undefined undefined)]))
 
 
 
@@ -377,7 +377,7 @@ initialConcreteStates vars = [ Map.fromList σ | σ <-
 
 
 concreteFromSimpleProgram :: DynGraph gr => Program gr -> ConcreteSystem gr
-concreteFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, exitOf })
+concreteFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf, procedureOf, exitOf })
     | Set.size staticThreads /= 1 = error "not simple: more than one thread"
     | otherwise                   =
         concreteUnrollFrom tcfg (mkGraph [ (i,(σ,entry))
@@ -386,7 +386,7 @@ concreteFromSimpleProgram p@(Program { tcfg, staticThreads, mainThread, entryOf,
                                          ]
                                          []
                                 )
-  where entry   = entryOf mainThread
+  where entry   = entryOf $ procedureOf $ mainThread
 
 
 concreteUnrollFrom :: DynGraph gr => gr CFGNode CFGEdge -> ConcreteSystem gr -> ConcreteSystem gr

@@ -23,25 +23,25 @@ import Debug.Trace
 
 
 data Generated = Generated For (Set Var) (Map StaticThread (Set Var)) (Map StaticProcedure (Set Var)) deriving Show
-data IntraGeneratedProgram = IntraGeneratedProgram (Map StaticThread Generated) (Map StaticProcedure Generated) deriving Show
-data GeneratedProgram = GeneratedProgram (Map StaticThread Generated) (Map StaticProcedure Generated) deriving Show
-data SimpleProgram    = SimpleProgram    (Map StaticThread Generated) (Map StaticProcedure Generated) deriving Show
+data IntraGeneratedProgram = IntraGeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
+data GeneratedProgram = GeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
+data SimpleProgram    = SimpleProgram    (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 
-toCodeIntra :: IntraGeneratedProgram -> (Map StaticThread For, Map StaticProcedure For)
-toCodeIntra (IntraGeneratedProgram forThreads forProcedures) = (
-  fmap (\(Generated for _ _ _) -> for) forThreads, 
+toCodeIntra :: IntraGeneratedProgram -> (Map StaticThread  StaticProcedure, Map StaticProcedure For)
+toCodeIntra (IntraGeneratedProgram threadOf forProcedures) = (
+  threadOf, 
   fmap (\(Generated for _ _ _) -> for) forProcedures
  )
   
-toCodeSimple :: SimpleProgram -> (Map StaticThread For, Map StaticProcedure For)
-toCodeSimple (SimpleProgram forThreads forProcedures) = (
-  fmap (\(Generated for _ _ _) -> for) forThreads, 
+toCodeSimple :: SimpleProgram -> (Map StaticThread  StaticProcedure, Map StaticProcedure For)
+toCodeSimple (SimpleProgram threadOf forProcedures) = (
+  threadOf, 
   fmap (\(Generated for _ _ _) -> for) forProcedures
  )
 
-toCode :: GeneratedProgram -> (Map StaticThread For, Map StaticProcedure For)
-toCode (GeneratedProgram forThreads forProcedures) = (
-  fmap (\(Generated for _ _ _) -> for) forThreads, 
+toCode :: GeneratedProgram -> (Map StaticThread StaticProcedure, Map StaticProcedure For)
+toCode (GeneratedProgram threadOf forProcedures) = (
+  threadOf, 
   fmap (\(Generated for _ _ _) -> for) forProcedures
  )
 
@@ -51,13 +51,14 @@ sampleCode = do
     do putStrLn $ show $ procedures
    )
 
-programGenerator :: Int -> (Set StaticThread) -> (Set StaticProcedure) -> (Map StaticThread Generated) -> (Map StaticProcedure Generated) -> Gen (Map StaticThread Generated, Map StaticProcedure Generated)
+programGenerator :: Int -> (Set StaticThread) -> (Set StaticProcedure) -> (Map StaticThread StaticProcedure) -> (Map StaticProcedure Generated) -> Gen (Map StaticThread StaticProcedure, Map StaticProcedure Generated)
 programGenerator n threadsAvailable proceduresAvailable generated generatedProcedures
   | not $ Set.null $ threadsAvailable ∩ threadsGenerated = error "invariance violated"
   | (Set.null $ toGenerate) && (Set.null $ toGenerateProcedures) = return (generated, generatedProcedures)
   -- TODO: is this bias toward threads harmful?
   | not $ Set.null $ toGenerate = do
       let thread = head $ Set.toList toGenerate
+      let procedure = "thread" ++ show thread
       f@(Generated p' _ spawned' called') <- forGenerator inChannels
                                                           outChannels
                                                           vars
@@ -69,8 +70,8 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
       programGenerator n
                        ((threadsAvailable ∖ (Map.keysSet spawned')) ∖ (Set.fromList [thread]) )
                        proceduresAvailable 
-                       (Map.insert thread f generated)
-                       (Map.insert ("thread" ++ show thread) f generatedProcedures)
+                       (Map.insert thread    procedure generated)
+                       (Map.insert procedure f generatedProcedures)
   | not $ Set.null $ toGenerateProcedures = do
       let procedure = head $ Set.toList toGenerateProcedures
       f@(Generated p' _ spawned' called') <- forGenerator inChannels
@@ -86,10 +87,10 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
                        ((proceduresAvailable ∖ Set.fromList [procedure]) )
                        generated
                        (Map.insert procedure f generatedProcedures)
-  where spawned              = Map.keysSet $ Map.unions [ spawned | Generated _ _ spawned _      <- Map.elems generated ++ Map.elems generatedProcedures ]
-        called               = Map.keysSet $ Map.unions [ called  | Generated _ _ _       called <- Map.elems generated ++ Map.elems generatedProcedures ]
-        varsAvailable        = Map.unionsWith (∩)       [ spawned | Generated _ _ spawned _      <- Map.elems generated ++ Map.elems generatedProcedures ]
-        varsAvailableCalls   = Map.unionsWith (∩)       [ called  | Generated _ _ _       called <- Map.elems generated ++ Map.elems generatedProcedures ]
+  where spawned              = Map.keysSet $ Map.unions [ spawned | Generated _ _ spawned _      <- Map.elems generatedProcedures ]
+        called               = Map.keysSet $ Map.unions [ called  | Generated _ _ _       called <- Map.elems generatedProcedures ]
+        varsAvailable        = Map.unionsWith (∩)       [ spawned | Generated _ _ spawned _      <- Map.elems generatedProcedures ]
+        varsAvailableCalls   = Map.unionsWith (∩)       [ called  | Generated _ _ _       called <- Map.elems generatedProcedures ]
         threadsGenerated     = Map.keysSet generated
         proceduresGenerated  = Map.keysSet generatedProcedures
         toGenerate           = spawned ∖ threadsGenerated
@@ -115,7 +116,7 @@ instance Arbitrary GeneratedProgram where
       (generated, generatedProcedures) <- programGenerator n
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
-                                    (Map.fromList [(1, f)])
+                                    (Map.fromList [(1, "main")])
                                     (Map.fromList [("main", f)])
       return $ GeneratedProgram generated generatedProcedures
     where
@@ -140,7 +141,7 @@ instance Arbitrary SimpleProgram where
                                                           threadsAvailable
                                                           proceduresAvailable
                                                           n
-      return $ SimpleProgram (Map.fromList [(1,Generated (Skip `Seq` p) vars spawned called)]) (Map.empty)
+      return $ SimpleProgram (Map.fromList [(1,"main")]) (Map.fromList [("main", Generated (Skip `Seq` p) vars spawned called)])
     where
       threadsAvailable = Set.fromList []
       proceduresAvailable = Set.fromList []
@@ -165,7 +166,7 @@ instance Arbitrary IntraGeneratedProgram where
       (generated, generatedProcedures) <- programGenerator n
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
-                                    (Map.fromList [(1, f)])
+                                    (Map.fromList [(1, "main")])
                                     (Map.fromList [("main", f)])
       return $ IntraGeneratedProgram generated generatedProcedures
     where

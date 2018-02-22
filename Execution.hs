@@ -20,7 +20,7 @@ import Control.Monad(forM_)
 import Data.Graph.Inductive.Graph
 
 initialConfiguration :: Graph gr => Program gr -> Input -> Configuration
-initialConfiguration (Program { mainThread, entryOf }) input = ([(entryOf mainThread, [])], Map.empty, [Map.empty], input)
+initialConfiguration (Program { mainThread, entryOf, procedureOf }) input = ([(entryOf (procedureOf mainThread), [])], Map.empty, [Map.empty], input)
 
 
 showAllFinalStates program input = do

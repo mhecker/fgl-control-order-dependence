@@ -22,11 +22,11 @@ import Data.Graph.Inductive.Query.Dependence
 
 
 controlDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-controlDependenceGraphP p@(Program { tcfg, staticThreadOf, staticThreads, entryOf, exitOf }) =
+controlDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
     foldr mergeTwoGraphs empty [ insEdge (entry,exit, ControlDependence) $
-                                 controlDependenceGraph (insEdge (entry, exit, false) $ nfilter (\node -> staticThreadOf node == thread) tcfg)
+                                 controlDependenceGraph (insEdge (entry, exit, false) $ nfilter (\node -> staticProcedureOf node == thread) tcfg)
                                                         exit
-                                 | thread <- Set.toList staticThreads, let entry = entryOf thread, let exit = exitOf thread ]
+                                 | thread <- Set.toList staticProcedures, let entry = entryOf thread, let exit = exitOf thread ]
 
 controlDependenceGraph :: DynGraph gr => gr a b -> Node -> gr a Dependence
 controlDependenceGraph graph exit = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]

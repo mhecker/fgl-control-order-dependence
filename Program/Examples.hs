@@ -37,20 +37,20 @@ import Data.Set.Unicode
 exampleIrreducible :: Program Gr
 exampleIrreducible = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedureOf = staticProcedureOf,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..3] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..3] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = undefined
+        entryOf "1" = 1
+        exitOf "1" = undefined
         tcfg = mkGraph [(n,n) | n <- [1..3]] $
                        [(1,2,true), (1,3,false), (2,3,nop), (3,2,nop)]
 
@@ -59,20 +59,20 @@ exampleIrreducible = Program {
 exampleSimonReducibleWod :: Program Gr
 exampleSimonReducibleWod = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..5] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..5] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 5
+        entryOf "1" = 1
+        exitOf "1" = 5
         tcfg = mkGraph [(n,n) | n <- [1..5]] $
                        [(1,2,true), (1,3,false), (2,4,true), (2,5,false), (3,5,nop),(4,5,nop)]
 
@@ -81,20 +81,20 @@ exampleSimonReducibleWod = Program {
 exampleSimonReducibleWod2 :: Program Gr
 exampleSimonReducibleWod2 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [0..4] = 1 
+  where staticProcedureOf n 
+         | n ∊ [0..4] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 0
-        exitOf 1 = 4
+        entryOf "1" = 0
+        exitOf "1" = 4
         tcfg = mkGraph [(n,n) | n <- [0..4]] $
                        [(0,4,nop), (4,1,nop), (4,2,nop), (1,2,nop), (1,3,nop),(2,3,nop), (3,4,nop)]
 
@@ -119,20 +119,20 @@ exampleSimonReducibleWod2 = Program {
 exampleSimpleClassic :: Program Gr
 exampleSimpleClassic = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..10] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..10] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 10
+        entryOf "1" = 1
+        exitOf "1" = 10
         tcfg = mkGraph [(n,n) | n <- [1..10]]  $
                        [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
                    ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
@@ -161,20 +161,20 @@ exampleSimpleClassic = Program {
 exampleSimpleArtificialEndNode :: Program Gr
 exampleSimpleArtificialEndNode = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..10] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..10] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 10
+        entryOf "1" = 1
+        exitOf "1" = 10
         tcfg = mkGraph [(n,n) | n <- [1..10]]  $
                        [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
                    ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
@@ -203,20 +203,20 @@ exampleSimpleArtificialEndNode = Program {
 exampleSimpleNoUniqueEndNode :: Program Gr
 exampleSimpleNoUniqueEndNode = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..10] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..10] = "1"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 10
+        entryOf "1" = 1
+        exitOf "1" = 10
         tcfg = mkGraph [(n,n) | n <- [1..10]]  $
                        [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
                    ++  [(3,4,false),(4,5,nop),(5,3,nop),(3,9,true)]
@@ -244,20 +244,20 @@ exampleSimpleNoUniqueEndNode = Program {
 exampleSimpleNoUniqueEndNodeWithChoice :: Program Gr
 exampleSimpleNoUniqueEndNodeWithChoice = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..12] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..12] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 10
+        entryOf "1" = 1
+        exitOf "1" = 10
         tcfg = mkGraph [(n,n) | n <- [1..12]]  $
                        [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
                    ++  [(6,7,true), (7,8,true),(8,6,true)]
@@ -286,20 +286,20 @@ exampleSimpleNoUniqueEndNodeWithChoice = Program {
 exampleSimpleNoUniqueEndNodeWithChoice2 :: Program Gr
 exampleSimpleNoUniqueEndNodeWithChoice2 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..14] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..14] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 10
+        entryOf "1" = 1
+        exitOf "1" = 10
         tcfg = mkGraph [(n,n) | n <- [1..14]] $
                        [(1,2,true), (2,3,true), (2,6,false), (1,10,false)]
                    ++  [(6,7,true), (7,8,true),(8,6,true)]
@@ -325,23 +325,23 @@ exampleSimpleNoUniqueEndNodeWithChoice2 = Program {
 example1 :: Program Gr
 example1 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,2],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1","2"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1,2,7,8,9,10,11,12] = 1 
-         | n ∊ [3,4,5,6] = 2
+  where staticProcedureOf n 
+         | n ∊ [1,2,7,8,9,10,11,12] = "1" 
+         | n ∊ [3,4,5,6] = "2"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        entryOf 2 = 3
-        exitOf 1 = 12
-        exitOf 2 = 6
+        entryOf "1" = 1
+        entryOf "2" = 3
+        exitOf "1" = 12
+        exitOf "2" = 6
         tcfg = mkGraph (genLNodes 1 12) $
                         [(1,2,Assign (Global "x") (Val 42)),(2,3,spawn),(3,4,false),(3,5,true),(4,6,Print (Var (Global "x")) stdOut),(5,6,nop)]
                     ++  [(2,7,nop),(7,8,true),(8,9,nop),(9,10,nop),(10,11,true),(10,7,false),(11,12,Assign (Global "x") (Var (Global "x")))]
@@ -363,20 +363,20 @@ example1 = Program {
 example2 :: Program Gr
 example2 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..12] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..12] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 12
+        entryOf "1" = 1
+        exitOf "1" = 12
         tcfg = mkGraph (genLNodes 1 12)  $
                        [(1,2,Assign (Global "x") (Val 42)), (2,3,Read (Global "h") stdIn),(3,4,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(3,5,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),(4,6,nop),(5,6,nop),(6,7,nop)]
                    ++  [(7,8,false),(8,9,nop),(9,7,nop),(7,10,true),(10,11,Assign (Global "x") (Var (Global "x"))),(11,12,nop)]
@@ -398,20 +398,20 @@ example2 = Program {
 example2' :: Program Gr
 example2' = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..12] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..12] = "1" 
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 12
+        entryOf "1" = 1
+        exitOf "1" = 12
         tcfg = mkGraph (genLNodes 1 12)  $
                        [(1,2,Assign (Global "x") (Val 42)),(2,3,true),(2,4,false),(3,5,nop),(4,5,nop),(5,6,Assign (Global "x") (Var (Global "x"))),(6,7,nop)]
                    ++  [(7,8,nop),(8,9,nop),(9,10,nop),(10,7,false),(10,11,true),(11,12,Assign (Global "x") (Var (Global "x")))]
@@ -434,20 +434,20 @@ example2' = Program {
 exampleNticd :: Program Gr
 exampleNticd = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [3, 1, 6, 10, 15, 42] = 1
+  where staticProcedureOf n 
+         | n ∊ [3, 1, 6, 10, 15, 42] = "1"
          | otherwise = error "uknown node"
-        entryOf 1 = 15
-        exitOf 1 = 42
+        entryOf "1" = 15
+        exitOf "1" = 42
         tcfg =  mkGraph [(15,15),(3,3),(1,1),(42,42)] [(3,1,nop),(3,42,nop),(1,3,nop),(1,42,nop),(15,1,nop),(15,42,nop)]
 
 
@@ -455,46 +455,46 @@ exampleNticd = Program {
 exampleSmnF5 :: Program Gr
 exampleSmnF5 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  =  Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ [8, 5, 1, 12, 2] = 1
+  where staticProcedureOf n
+         | n ∊ [8, 5, 1, 12, 2] = "1"
          | otherwise = error "uknown node"
-        entryOf 1 = 12
-        exitOf 1 = 5
+        entryOf "1" = 12
+        exitOf "1" = 5
         tcfg =  mkGraph [(8,8),(5,5),(1,1),(12,12),(2,2)] [(8,5,nop),(1,8,nop),(1,5,nop),(1,2,nop),(2,1,nop),(12,8,nop),(12,5,nop),(12,1,nop)]
 
 
 exampleNticd2SmnF5 :: Program Gr
 exampleNticd2SmnF5 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ [17, 1, 2, 3, 7, 8] = 1
+  where staticProcedureOf n
+         | n ∊ [17, 1, 2, 3, 7, 8] = "1"
          | otherwise = error "uknown node"
-        entryOf 1 = 8
-        exitOf 1 = 7
+        entryOf "1" = 8
+        exitOf "1" = 7
         tcfg = mkGraph [(17,17),(1,1),(2,2),(3,3),(7,7),(8,8)] [(1,7,nop), (17,1,nop),(17,2,nop),(17,3,nop),(2,17,nop),(3,17,nop),(3,7,nop),(8,17,nop),(8,1,nop),(8,2,nop),(8,3,nop),(8,7,nop)]
 
 
 exampleNtscd :: Program Gr
 exampleNtscd = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
          (1,ForC 1 (Seq (ForC 2
                             (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut"))
@@ -508,20 +508,20 @@ exampleNtscd = p { observability = defaultObservabilityMap (tcfg p) }
 exampleNtscd2 :: Program Gr
 exampleNtscd2 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [-20,15,18,22,27] = 1
+  where staticProcedureOf n 
+         | n ∊ [-20,15,18,22,27] = "1"
          | otherwise = error "uknown node"
-        entryOf 1 = 27
-        exitOf 1 = 18
+        entryOf "1" = 27
+        exitOf "1" = 18
         tcfg = mkGraph [(-20,-20),(15,15),(18,18),(22,22),(27,27)] [(-20,15,nop),(-20,18,nop),(15,18,nop),(15,22,nop),(22,18,nop),(27,-20,nop),(27,18,nop)]
 
 
@@ -535,23 +535,23 @@ exampleNtscd2 = Program {
 example3 :: Program Gr
 example3 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,2],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1","2"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ [1,2,5,6,7] = 1
-         | n ∊ [3,4]      = 2
+  where staticProcedureOf n
+         | n ∊ [1,2,5,6,7] = "1"
+         | n ∊ [3,4]      = "2"
          | otherwise = error "unknown node"
-        entryOf 1 = 1
-        entryOf 2 = 3
-        exitOf 1 = 7
-        exitOf 2 = 4
+        entryOf "1" = 1
+        entryOf "2" = 3
+        exitOf "1" = 7
+        exitOf "2" = 4
         tcfg = mkGraph (genLNodes 1 7)  $
                        [(1,2,nop),(2,3,spawn),(3,4,Assign (Global "x") (Val 17))]
                    ++  [(2,5,nop),(5,6,Assign (Global "x") (Val 4)),(6,7,Print (Var (Global "x")) stdOut)]
@@ -571,23 +571,23 @@ example3 = Program {
 example4 :: Program Gr
 example4 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,2],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1","2"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ ([1..7] ++ [10,11]) = 1
-         | n ∊ ([8..9])           = 2
+  where staticProcedureOf n
+         | n ∊ ([1..7] ++ [10,11]) = "1"
+         | n ∊ ([8..9])           = "2"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        entryOf 2 = 8
-        exitOf 1 = 11
-        exitOf 2 = 9
+        entryOf "1" = 1
+        entryOf "2" = 8
+        exitOf "1" = 11
+        exitOf "2" = 9
         tcfg = mkGraph (genLNodes 1 11)  $
                        [(1,2,Assign (Global "x") (Val 42)), (2,3,Read (Global "h") stdIn),(3,4,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(3,5,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),(4,6,nop),(5,6,nop),(6,7,nop)]
                    ++  [(7,8,Spawn),(7,10, NoOp), (10,11,Print (Var (Global "x")) stdOut),(8,9,Print (Var (Global "x")) stdOut)]
@@ -605,23 +605,23 @@ example4 = Program {
 example5 :: Program Gr
 example5 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,2],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1","2"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ ([1..7] ++ [10,11]) = 1
-         | n ∊ ([8..9])         = 2
+  where staticProcedureOf n
+         | n ∊ ([1..7] ++ [10,11]) = "1"
+         | n ∊ ([8..9])         = "2"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        entryOf 2 = 8
-        exitOf 1 = 10
-        exitOf 2 = 9
+        entryOf "1" = 1
+        entryOf "2" = 8
+        exitOf "1" = 10
+        exitOf "2" = 9
         tcfg = mkGraph (genLNodes 1 11)  $
                        [(1,2,Assign (Global "x") (Val 42)), (2,11, NoOp), (11,3,Read (Global "h") stdIn),(3,4,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(3,5,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),(4,6,nop),(5,6,nop),(6,7,nop)]
                    ++  [(2,8,Spawn),(7,10,Print (Var (Global "x")) stdOut),(8,9,Print (Var (Global "x")) stdOut)]
@@ -645,23 +645,23 @@ example5 = Program {
 example6 :: Program Gr
 example6 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,2],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1","2"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ ([1..8]   ++ [11,12]) = 1
-         | n ∊ ([9..10])             = 2
+  where staticProcedureOf n
+         | n ∊ ([1..8]   ++ [11,12]) = "1"
+         | n ∊ ([9..10])             = "2"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        entryOf 2 = 9
-        exitOf 1 = 12
-        exitOf 2 = 10
+        entryOf "1" = 1
+        entryOf "2" = 9
+        exitOf "1" = 12
+        exitOf "2" = 10
         tcfg = mkGraph (genLNodes 1 12)  $
                        [(1,2,Assign (Global "x") (Val 42)), (2,3,Read (Global "h") stdIn),(3,4,false),(3,11,true),(11,12,Print (Var (Global "x")) stdOut),
                         (4,5,nop), (5,6,Guard True (Leq (Var (Global "h")) (Var (Global "h")))),(5,7,Guard False (Leq (Var (Global "h")) (Var (Global "h")))),
@@ -683,23 +683,23 @@ example6 = Program {
 example7 :: Program Gr
 example7 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,2],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1","2"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ ([1..5]) = 1
-         | n ∊ ([6..7]) = 2
+  where staticProcedureOf n
+         | n ∊ ([1..5]) = "1"
+         | n ∊ ([6..7]) = "2"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        entryOf 2 = 6
-        exitOf 1 = 5
-        exitOf 2 = 7
+        entryOf "1" = 1
+        entryOf "2" = 6
+        exitOf "1" = 5
+        exitOf "2" = 7
         tcfg = mkGraph (genLNodes 1 7)  $
                        [(1,2,Assign (Global "x") (Val 42)), (2,3,nop), (3,4,Read (Global "h") stdIn),(4,5,Print (Var (Global "x")) stdOut)]
                    ++  [(2,6,Spawn),(6,7,Print (Var (Global "x")) stdOut)]
@@ -756,26 +756,26 @@ example7 = Program {
 example8 :: Program Gr
 example8 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,2,3],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1","2","3"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ ([1..17] ++ [20..23]) = 1
-         | n ∊ ([201..202]) = 2
-         | n ∊ ([301..302]) = 3
+  where staticProcedureOf n
+         | n ∊ ([1..17] ++ [20..23]) = "1"
+         | n ∊ ([201..202]) = "2"
+         | n ∊ ([301..302]) = "3"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        entryOf 2 = 201
-        entryOf 3 = 301
-        exitOf 1 = 17
-        exitOf 2 = 202
-        exitOf 3 = 302
+        entryOf "1" = 1
+        entryOf "2" = 201
+        entryOf "3" = 301
+        exitOf "1" = 17
+        exitOf "2" = 202
+        exitOf "3" = 302
         tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..23] ++ [201..202] ++ [301..302]]  $
                        [( 1,23,nop),
                         (23,20,Read (Global "h") stdIn),
@@ -857,26 +857,26 @@ example8 = Program {
 example8' :: Program Gr
 example8' = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
-    staticThreads  = Set.fromList [1,2,3],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads    = Set.fromList [1,2,3],
+    staticProcedures = Set.fromList ["1","2","3"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ ([1..17] ++ [20..23]) = 1
-         | n ∊ ([201..202]) = 2
-         | n ∊ ([301..302]) = 3
+  where staticProcedureOf n
+         | n ∊ ([1..17] ++ [20..23]) = "1"
+         | n ∊ ([201..202]) = "2"
+         | n ∊ ([301..302]) = "3"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        entryOf 2 = 201
-        entryOf 3 = 301
-        exitOf 1 = 17
-        exitOf 2 = 202
-        exitOf 3 = 302
+        entryOf "1" = 1
+        entryOf "2" = 201
+        entryOf "3" = 301
+        exitOf "1" = 17
+        exitOf "2" = 202
+        exitOf "3" = 302
         tcfg = mkGraph [(n,n) | n <- [1..17] ++ [20..23] ++ [201..202] ++ [301..302]]  $
                        [( 1,23,nop),
                         (23,20,Read (Global "h") stdIn),
@@ -922,26 +922,26 @@ example8' = Program {
 threadSpawn1 :: Program Gr
 threadSpawn1 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1,4,6],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1", "4", "6"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ [1,2,3,7] = 1
-         | n ∊ [4,5,8]   = 4
-         | n ∊ [6,9]     = 6
+  where staticProcedureOf n
+         | n ∊ [1,2,3,7] = "1"
+         | n ∊ [4,5,8]   = "4"
+         | n ∊ [6,9]     = "6"
          | otherwise = error "unknown node"
-        entryOf 1 = 1
-        entryOf 4 = 4
-        entryOf 6 = 6
-        exitOf 1 = 7
-        exitOf 4 = 8
-        exitOf 6 = 9
+        entryOf "1" = 1
+        entryOf "4" = 4
+        entryOf "6" = 6
+        exitOf "1" = 7
+        exitOf "4" = 8
+        exitOf "6" = 9
         tcfg = mkGraph (genLNodes 1 9)  $
                        [(1,2,nop),(2,4,spawn),(2,3,nop),(3,6,spawn),(3,7,nop)]
                    ++  [(4,5,nop),(5,6,spawn),(5,8,nop)]
@@ -964,26 +964,26 @@ threadSpawn1 = Program {
 threadSpawn2 :: Program Gr
 threadSpawn2 = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
-    staticThreads  = Set.fromList [1,5,8],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads     = Set.fromList [1,5,8],
+    staticProcedures  = Set.fromList ["1","5","8"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n
-         | n ∊ [1,2,3,4] = 1
-         | n ∊ [5,6,7]   = 5
-         | n ∊ [8,9]     = 8
+  where staticProcedureOf n
+         | n ∊ [1,2,3,4] = "1"
+         | n ∊ [5,6,7]   = "5"
+         | n ∊ [8,9]     = "8"
          | otherwise = error "unknown node"
-        entryOf 1 = 1
-        entryOf 5 = 5
-        entryOf 8 = 8
-        exitOf 1 = 4
-        exitOf 5 = 7
-        exitOf 8 = 9
+        entryOf "1" = 1
+        entryOf "5" = 5
+        entryOf "8" = 8
+        exitOf "1" = 4
+        exitOf "5" = 7
+        exitOf "8" = 9
         tcfg = mkGraph (genLNodes 1 9)  $
                        [(1,2,nop),(2,4,true),(2,3,false),(3,5,spawn),(3,2,nop)]
                    ++  [(5,6,nop),(6,8,spawn),(6,7,nop)]
@@ -1006,7 +1006,7 @@ threadSpawn2 = Program {
 -}
 joachim2 :: Program Gr
 joachim2 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                         `Seq` -- Notwendig, da sonst die Controlabhängigkeit vom Start-Knoten zu viel tainted.
@@ -1033,7 +1033,7 @@ joachim2 = p { observability = defaultObservabilityMap (tcfg p) }
 -}
 joachim3 :: Program Gr
 joachim3 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            SpawnThread 2                `Seq`
@@ -1058,7 +1058,7 @@ joachim3 = p { observability = defaultObservabilityMap (tcfg p) }
 
 noFlow :: Program Gr
 noFlow = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
@@ -1070,7 +1070,7 @@ noFlow = p { observability = defaultObservabilityMap (tcfg p) }
 
 directFlow :: Program Gr
 directFlow = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
@@ -1081,7 +1081,7 @@ directFlow = p { observability = defaultObservabilityMap (tcfg p) }
 
 directFlowThread :: Program Gr
 directFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty 
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
@@ -1097,7 +1097,7 @@ directFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
 
 noDirectFlowThread :: Program Gr
 noDirectFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Ass (Global "h") (Val 0)               `Seq`
@@ -1113,7 +1113,7 @@ noDirectFlowThread = p { observability = defaultObservabilityMap (tcfg p) }
 
 indirectFlow :: Program Gr
 indirectFlow = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
@@ -1129,7 +1129,7 @@ indirectFlow = p { observability = defaultObservabilityMap (tcfg p) }
 
 orderConflict :: Program Gr
 orderConflict = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
@@ -1151,7 +1151,7 @@ orderConflict = p { observability = defaultObservabilityMap (tcfg p) }
 -- In unserm modell ist das aber so!
 dubiousOrderConflict :: Program Gr
 dubiousOrderConflict = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Ass (Global "x") (Val 42)              `Seq`
@@ -1171,7 +1171,7 @@ dubiousOrderConflict = p { observability = defaultObservabilityMap (tcfg p) }
 
 cdomIsBroken :: Program Gr
 cdomIsBroken = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1229,7 +1229,7 @@ fromList []
 -}
 cdomIsBroken' :: Program Gr
 cdomIsBroken' = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1251,7 +1251,7 @@ cdomIsBroken' = p { observability = defaultObservabilityMap (tcfg p) }
 
 cdomIsBroken2 :: Program Gr
 cdomIsBroken2 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1274,7 +1274,7 @@ cdomIsBroken2 = p { observability = defaultObservabilityMap (tcfg p) }
 -- http://dx.doi.org/10.1007/978-3-642-40206-7_18
 noninterferingSchedulers :: Program Gr
 noninterferingSchedulers = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1309,15 +1309,10 @@ noninterferingSchedulers = p { observability = defaultObservabilityMap (tcfg p) 
 
 
 timingVsFSI3 :: Program Gr
-timingVsFSI3 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram timingVsFSI3Code Map.empty
+timingVsFSI3 = code2Program timingVsFSI3Code
 
 timingVsFSI3For :: ForProgram
-timingVsFSI3For = ForProgram {
-    code = timingVsFSI3Code,
-    channelTyping = defaultChannelObservability,
-    mainThreadFor = 1
-  }
+timingVsFSI3For = code2ForProgram timingVsFSI3Code
   
 timingVsFSI3Code = code where
          code = Map.fromList $ [
@@ -1335,7 +1330,7 @@ timingVsFSI3Code = code where
 
 timingDependenceExample:: Program Gr
 timingDependenceExample = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
            (1, Skip                                         `Seq`
                ReadFromChannel (Global "h") "stdIn"                  `Seq`
@@ -1352,7 +1347,7 @@ timingDependenceExample = p { observability = defaultObservabilityMap (tcfg p) }
 
 code2Program :: Map Integer For -> Program Gr
 code2Program code = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = compileAllToProgram (Map.fromList [ (thread, show thread) | thread <- Map.keys code]) (Map.fromList [(show thread, for) | (thread, for) <- Map.assocs code])
 
 code2ForProgram :: Map Integer For -> ForProgram
 code2ForProgram code = ForProgram {
@@ -1573,7 +1568,7 @@ sys     0m2.974s
 -}
 figure5right' :: Program Gr
 figure5right' = p { observability = defaultObservabilityMap (tcfg p)  }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1605,7 +1600,7 @@ figure5right' = p { observability = defaultObservabilityMap (tcfg p)  }
 
 figure5right'' :: Program Gr
 figure5right'' = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1638,7 +1633,7 @@ figure5right'' = p { observability = defaultObservabilityMap (tcfg p) }
 
 ijisLSODistkaputt :: Program Gr
 ijisLSODistkaputt = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1657,9 +1652,7 @@ ijisLSODistkaputt = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD ::  Program Gr
-minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
-        code = minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode
+minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD = code2Program minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode
 
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode = Map.fromList $ [
           (1,
@@ -1678,16 +1671,12 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode = Map.fromList $ 
          ]
 
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor :: ForProgram
-minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor = ForProgram {
-    code = minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode,
-    channelTyping = defaultChannelObservability,
-    mainThreadFor = 1
-  }
+minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor = code2ForProgram minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODCode
 
 
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2 ::  Program Gr
 minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1704,7 +1693,7 @@ minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2 = p { observability 
 
 minimalClassificationIsLessPreciseThanSimonClassification ::  Program Gr
 minimalClassificationIsLessPreciseThanSimonClassification = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1723,7 +1712,7 @@ minimalClassificationIsLessPreciseThanSimonClassification = p { observability = 
 
 timingSecureButNotCombinedTimingSecure ::  Program Gr
 timingSecureButNotCombinedTimingSecure = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1747,18 +1736,18 @@ timingSecureButNotCombinedTimingSecure = p { observability = defaultObservabilit
 
 timingSecureButNotCombinedTimingSecureGenerated :: Program Gr
 timingSecureButNotCombinedTimingSecureGenerated = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList [(1,Seq (If CTrue (If CFalse (Seq Skip Skip) (Seq (ReadFromChannel (Global "x") "lowIn1") (Ass (Global "y") (Plus (Var (Global "x")) (Var (Global "x")))))) (Seq (Seq Skip (ReadFromChannel (Global "x") "stdIn")) (If (Leq (Val 0) (Plus (Var (Global "x")) (Var (Global "x")))) Skip (Ass (Global "a") (Plus (Var (Global "x")) (Var (Global "x"))))))) (Seq (If CTrue (If CFalse (PrintToChannel (Val 42) "stdOut") (ReadFromChannel (Global "c") "stdIn")) (ForC 1 (Ass (Global "z") (Val 1)))) (If CFalse (Seq (PrintToChannel (Val 17) "stdOut") Skip) (Seq (Ass (Global "z") (Val 0)) (SpawnThread 2))))),(2,ForV (Global "z") (Seq (ForC 2 (Seq Skip (PrintToChannel (Plus (Var (Global "z")) (Var (Global "z"))) "stdOut"))) (Seq (Seq (Ass (Global "c") (Plus (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "y") "lowIn1")) (Seq Skip (PrintToChannel (Plus (Var (Global "z")) (Var (Global "y"))) "stdOut")))))]
 
 someGeneratedProgram :: Program Gr
 someGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList [(1,Seq (ForC 3 (If CTrue (Seq Skip Skip) (Seq (ReadFromChannel (Global "x") "stdIn") (ReadFromChannel (Global "y") "lowIn1")))) (Seq (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel (Global "c") "lowIn1"))) (ForV (Global "c") (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (SpawnThread 3) (ReadFromChannel (Global "y") "stdIn"))))),(3,ForV (Global "c") (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (Seq (ForC 3 (ReadFromChannel (Global "b") "stdIn")) (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (ReadFromChannel (Global "x") "stdIn") (PrintToChannel (Plus (Var (Global "c")) (Var (Global "b"))) "stdOut"))) (Seq (Seq (PrintToChannel (Plus (Var (Global "c")) (Var (Global "c"))) "stdOut") (PrintToChannel (Plus (Var (Global "c")) (Var (Global "c"))) "stdOut")) (Seq (Ass (Global "a") (Plus (Var (Global "c")) (Var (Global "c")))) (Ass (Global "x") (Plus (Var (Global "a")) (Var (Global "a"))))))))]
 
 -- this one generates *very* long (inifinitely so?!?!) executions with defaultInput'
 anotherGeneratedProgram :: Program Gr
 anotherGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         -- code = Map.fromList [(1,Seq (Seq (ForC 2 (ForC 2 (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "a") "lowIn1")) (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")))) (ForC 1 (Seq (Seq (ReadFromChannel (Global "x") "stdIn") (SpawnThread 3)) (ForV (Global "a") (ReadFromChannel (Global "c") "lowIn1"))))),(2,Seq (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "x")))) (ForV (Global "x") (ReadFromChannel (Global "z") "lowIn1")) (ForC 2 (ReadFromChannel (Global "a") "stdIn"))) (Seq (Seq (ReadFromChannel (Global "a") "lowIn1") Skip) (ForV (Global "x") (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "a"))))))) (Seq (Seq (ForV (Global "a") Skip) (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (PrintToChannel (Times (Var (Global "x")) (Var (Global "a"))) "stdOut"))) (ForC 2 (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "x")))) (ReadFromChannel (Global "z") "lowIn1"))))),(3,ForV (Global "a") (ForC 1 (Seq (ForV (Global "x") (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "x"))))) (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "a")))) (SpawnThread 2) (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")))))]
         code = Map.fromList [
           (1,Seq (Seq (ForC 2
@@ -1798,13 +1787,13 @@ anotherGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
 -- this one appears to be secure, but cannot be proven so
 aSecureGeneratedProgram :: Program Gr
 aSecureGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass (Global "z") (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel (Global "a") "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV (Global "a") (ReadFromChannel (Global "y") "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "b") "stdIn")) (If (Leq (Val 0) (Times (Var (Global "b")) (Var (Global "b")))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel (Global "c") "stdIn") (Ass (Global "y") (Val 0))) (If CFalse (Ass (Global "a") (Val (-1))) (ReadFromChannel (Global "y") "lowIn1"))))]
 
 
 clientServerKeyExampleSimple ::  Program Gr
 clientServerKeyExampleSimple = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (setup,
            Skip                                                             `Seq`
@@ -1831,7 +1820,7 @@ clientServerKeyExampleSimple = p { observability = defaultObservabilityMap (tcfg
 
 clientServerKeyExample ::  Program Gr
 clientServerKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (setup,
            Skip                                                             `Seq`
@@ -1865,7 +1854,7 @@ clientServerKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
 
 clientSetupKeyExample ::  Program Gr
 clientSetupKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (setup,
            Skip                                                             `Seq`
@@ -1903,7 +1892,7 @@ clientSetupKeyExample = p { observability = defaultObservabilityMap (tcfg p) }
 
 singleThreadedDelay :: Program Gr
 singleThreadedDelay = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1920,7 +1909,7 @@ singleThreadedDelay = p { observability = defaultObservabilityMap (tcfg p) }
 -- similiar to http://dx.doi.org/10.1109/csf.2012.15
 environmentTotalAssumption1 :: Program Gr
 environmentTotalAssumption1 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1932,7 +1921,7 @@ environmentTotalAssumption1 = p { observability = defaultObservabilityMap (tcfg 
          ]
 environmentTotalAssumption2 :: Program Gr
 environmentTotalAssumption2 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1948,7 +1937,7 @@ environmentTotalAssumption2 = p { observability = defaultObservabilityMap (tcfg 
 
 simple :: Program Gr
 simple = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1960,7 +1949,7 @@ simple = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 simple2 :: Program Gr
 simple2 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1975,7 +1964,7 @@ simple2 = p { observability = defaultObservabilityMap (tcfg p) }
 
 simple3 :: Program Gr
 simple3 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -1991,7 +1980,7 @@ simple3 = p { observability = defaultObservabilityMap (tcfg p) }
 
 twoLoops :: Program Gr
 twoLoops = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -2024,27 +2013,27 @@ twoLoops = p { observability = defaultObservabilityMap (tcfg p) }
 twoLoops' :: Program Gr
 twoLoops' = Program {
     tcfg = tcfg,
-    staticThreadOf = staticThreadOf,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
     staticThreads  = Set.fromList [1],
-    staticProcedureOf = const $ undefined,
-    staticProcedures  = Set.empty,
+    staticProcedures  = Set.fromList ["1"],
     mainThread = 1,
     entryOf = entryOf,
     exitOf = exitOf,
     observability = defaultObservabilityMap tcfg
    }
-  where staticThreadOf n 
-         | n ∊ [1..8] = 1 
+  where staticProcedureOf n 
+         | n ∊ [1..8] = "1"
          | otherwise = error "uknown node"
-        entryOf 1 = 1
-        exitOf 1 = 5
+        entryOf "1" = 1
+        exitOf "1" = 5
         tcfg = mkGraph (genLNodes 1 8) $
                         [(1,2,NoOp), (2,3,NoOp), (3,8,Guard True CTrue), (8,4,NoOp), (4,5, Guard True CTrue)]
                     ++  [(3,6,Guard False CTrue), (6,2, NoOp), (4,7,Guard False CTrue), (7,8,NoOp)]
 
 forIf :: Program Gr
 forIf = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
@@ -2059,7 +2048,7 @@ forIf = p { observability = defaultObservabilityMap (tcfg p) }
 
 minimalClassificationVstimingClassificationDomPathsCounterExampleSimon:: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExampleSimon = p { observability = defaultObservabilityMap (tcfg p) } 
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
@@ -2075,7 +2064,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleSimon = p { obs
 
 minimalClassificationVstimingClassificationDomPathsCounterExampleMartin:: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExampleMartin = p { observability = defaultObservabilityMap (tcfg p) } 
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                          `Seq`
@@ -2093,7 +2082,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleMartin = p { ob
 
 minimalClassificationVstimingClassificationDomPathsCounterExample :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample = p { observability = defaultObservabilityMap (tcfg p) } 
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            ForC 2 (
@@ -2117,7 +2106,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExample = p { observab
 
 minimalClassificationVstimingClassificationDomPathsCounterExample2 :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample2 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (Seq (Seq (If CFalse (Seq (SpawnThread 3) (PrintToChannel (Val 1) "stdOut")) (If CFalse (ReadFromChannel (Global "c") "lowIn1") (SpawnThread 2))) (If CFalse (If CTrue (Ass (Global "a") (Val (-1))) (Ass (Global "y") (Val 17))) (ForC 1 (PrintToChannel (Val 42) "stdOut")))) (ForC 1 (Seq (If CFalse (ReadFromChannel (Global "c") "lowIn1") (ReadFromChannel (Global "b") "lowIn1")) (If CFalse (ReadFromChannel (Global "x") "lowIn1") (Ass (Global "z") (Val 0)))))) ),
           (2, (Seq (Seq (Seq (ForC 1 (Ass (Global "y") (Val (-1)))) (Seq (ReadFromChannel (Global "b") "lowIn1") (Ass (Global "b") (Times (Var (Global "y")) (Var (Global "y")))))) (Seq (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) Skip (Ass (Global "c") (Times (Var (Global "y")) (Var (Global "b"))))) (Seq (ReadFromChannel (Global "x") "stdIn") (ReadFromChannel (Global "b") "stdIn")))) (ForV (Global "x") (ForV (Global "b") (Seq (Ass (Global "x") ((Var (Global "x")) `Plus` (Val (-1)))) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "x")))) (Ass (Global "a") (Times (Var (Global "x")) (Var (Global "b")))) (ReadFromChannel (Global "a") "stdIn")))))) ),
@@ -2128,7 +2117,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExample2 = p { observa
 
 minimalClassificationVstimingClassificationDomPathsCounterExample2Essential :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample2Essential = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, Skip                             `Seq`
               Ass (Global "x") (Val 1)                  `Seq`
@@ -2153,7 +2142,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExample2Essential = p 
 -- counter example 3 and 4 are essential the same as minimalClassificationVstimingClassificationDomPathsCounterExampleEssential
 minimalClassificationVstimingClassificationDomPathsCounterExample3 :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample3 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(Seq (Seq (ForC 2 (Seq (SpawnThread 3) (SpawnThread 2))) (Seq (If CTrue (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Val (-1)) "stdOut")) (ForC 1 (Ass (Global "x") (Val 1))))) (ForC 2 (Seq (ForC 1 Skip) (Seq (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "x") "lowIn1")))))),
          (2,(Seq (Seq (Seq (Seq Skip (ReadFromChannel (Global "x") "lowIn1")) (ForV (Global "x") Skip)) (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x")))) (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut")) (ForC 2 (ReadFromChannel (Global "x") "lowIn1")))) (ForV (Global "x") (Seq (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (ReadFromChannel (Global "z") "lowIn1")) (Seq (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Times (Var (Global "x")) (Var (Global "z"))) "stdOut")))))),
@@ -2162,7 +2151,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExample3 = p { observa
 
 minimalClassificationVstimingClassificationDomPathsCounterExample4 :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExample4 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(If CFalse (ForC 2 (Seq (Seq Skip (ReadFromChannel (Global "b") "lowIn1")) (ForC 2 (SpawnThread 2)))) (If CFalse (Seq (Seq (SpawnThread 3) (ReadFromChannel (Global "z") "lowIn1")) (Seq (ReadFromChannel (Global "x") "lowIn1") (ReadFromChannel (Global "y") "lowIn1"))) (If CFalse (Seq (Ass (Global "a") (Val 1)) (ReadFromChannel (Global "x") "lowIn1")) (Seq (PrintToChannel (Val 17) "stdOut") (ReadFromChannel (Global "a") "stdIn"))))) ),
           (2,(ForV (Global "b") (Seq (Ass (Global "b") ((Var (Global "b")) `Plus` (Val (-1)))) (Seq (ForC 2 (Seq (ReadFromChannel (Global "a") "stdIn") (Ass (Global "c") (Times (Var (Global "b")) (Var (Global "a")))))) (If (Leq (Val 0) (Times (Var (Global "c")) (Var (Global "b")))) (ForC 1 (ReadFromChannel (Global "y") "stdIn")) (Seq Skip (Ass (Global "x") (Times (Var (Global "b")) (Var (Global "c"))))))))) ),
@@ -2172,7 +2161,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExample4 = p { observa
 
 minimalClassificationVstimingClassificationDomPathsCounterExampleEssential :: Program Gr
 minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, Skip                             `Seq`
               Ass (Global "x") (Val 0)                  `Seq`
@@ -2192,7 +2181,7 @@ minimalClassificationVstimingClassificationDomPathsCounterExampleEssential = p {
 -- This was spurioulsy reported as a counterExample to allSound [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD ] in some test run: probably just bad luck in sampling executions ¯\__(ツ)__/¯
 notReallyUnsound :: Program Gr
 notReallyUnsound = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(Seq (Seq (Seq (Seq Skip (Ass (Global "z") (Val 0))) (ForV (Global "z") Skip)) (Seq (Seq (SpawnThread 2) (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")) (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "c") "lowIn1") (ReadFromChannel (Global "b") "stdIn")))) (Seq (ForC 2 (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") Skip)) (ForC 2 (Seq (SpawnThread 3) Skip))))),
           (2,(Seq (ForC 2 (ForV (Global "z") (ForC 2 (Ass (Global "y") (Times (Var (Global "z")) (Var (Global "z"))))))) (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (Seq (ForC 1 (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")) (ForC 2 (ReadFromChannel (Global "x") "lowIn1"))) (ForV (Global "z") (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (Ass (Global "x") (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "x") "lowIn1")))))),
@@ -2220,7 +2209,7 @@ notReallyUnsound = p { observability = defaultObservabilityMap (tcfg p) }
 -- fromList []
 notReallyUnsound2 :: Program Gr
 notReallyUnsound2 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(If CFalse (If CFalse (If CFalse (Seq (PrintToChannel (Val 42) "stdOut") Skip) (Seq (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))) (Seq (If CTrue (SpawnThread 2) (Ass (Global "x") (Val 0))) (ForC 1 (PrintToChannel (Val 17) "stdOut")))) (Seq (ForC 1 (If CFalse (PrintToChannel (Val 17) "stdOut") (SpawnThread 3))) (If CTrue (Seq Skip (PrintToChannel (Val 0) "stdOut")) (ForC 2 Skip))))),
           (2,(ForC 2 (Seq (If CFalse (If CFalse (Ass (Global "x") (Val 42)) (ReadFromChannel (Global "c") "stdIn")) (Seq Skip (PrintToChannel (Val 1) "stdOut"))) (Seq (Seq (Ass (Global "x") (Val 0)) (ReadFromChannel (Global "b") "lowIn1")) (ForC 2 (Ass (Global "c") (Times (Var (Global "x")) (Var (Global "b"))))))))),
@@ -2231,7 +2220,7 @@ notReallyUnsound2 = p { observability = defaultObservabilityMap (tcfg p) }
 -- see notReallyUnsound
 notReallyUnsound3 :: Program Gr
 notReallyUnsound3 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (Seq (ForC 1 (SpawnThread 2)) (If CTrue (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "c") "stdIn")))),
           (2, (Seq (Seq (Ass (Global "a") (Val 0)) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")) (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut"))))
@@ -2240,7 +2229,7 @@ notReallyUnsound3 = p { observability = defaultObservabilityMap (tcfg p) }
 -- see notReallyUnsound
 notReallyUnsound4 :: Program Gr
 notReallyUnsound4 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(Seq (Seq (Ass (Global "y") (Val 1)) (SpawnThread 3)) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) (ReadFromChannel (Global "y") "lowIn1") (Ass (Global "y") (Times (Var (Global "y")) (Var (Global "y"))))))),
           (3,(If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "y")))) (Seq (Ass (Global "c") (Times (Var (Global "y")) (Var (Global "y")))) (ReadFromChannel (Global "c") "lowIn1")) (Seq (PrintToChannel (Times (Var (Global "y")) (Var (Global "y"))) "stdOut") (ReadFromChannel (Global "b") "lowIn1"))))
@@ -2249,7 +2238,7 @@ notReallyUnsound4 = p { observability = defaultObservabilityMap (tcfg p) }
 -- see notReallyUnsound
 notReallyUnsound5 :: Program Gr
 notReallyUnsound5 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(Seq (Seq (SpawnThread 2) (Ass (Global "c") (Val 1))) (Seq (Ass (Global "c") (Times (Var (Global "c")) (Var (Global "c")))) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut")))),
           (2,(Seq (Seq (Ass (Global "y") (Val (-1))) (Ass (Global "a") (Times (Var (Global "y")) (Var (Global "y"))))) (Seq (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "x") "stdIn"))) )
@@ -2258,7 +2247,7 @@ notReallyUnsound5 = p { observability = defaultObservabilityMap (tcfg p) }
 -- see notReallyUnsound
 notReallyUnsound6 :: Program Gr
 notReallyUnsound6 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(Seq (Seq (SpawnThread 3) (SpawnThread 2)) (If CFalse (Ass (Global "a") (Val 1)) (PrintToChannel (Val 0) "stdOut")))),
            (2,(If CFalse (If CFalse (Ass (Global "c") (Val 1)) Skip) (Seq (PrintToChannel (Val (-1)) "stdOut") Skip))),
@@ -2268,7 +2257,7 @@ notReallyUnsound6 = p { observability = defaultObservabilityMap (tcfg p) }
 -- see notReallyUnsound
 notReallyUnsound7 :: Program Gr
 notReallyUnsound7 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(Seq (Seq (SpawnThread 2) (SpawnThread 3)) (If CTrue (PrintToChannel (Val (-1)) "stdOut") (ReadFromChannel (Global "a") "stdIn")))),
           (2,(Seq (If CTrue (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "c") "lowIn1")) (ForC 2 (ReadFromChannel (Global "a") "stdIn")))),
@@ -2278,7 +2267,7 @@ notReallyUnsound7 = p { observability = defaultObservabilityMap (tcfg p) }
 -- see notReallyUnsound
 notReallyUnsound8 :: Program Gr
 notReallyUnsound8 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,(Seq (Seq (PrintToChannel (Val 0) "stdOut") (Ass (Global "x") (Val 42))) (Seq (SpawnThread 2) (ReadFromChannel (Global "x") "lowIn1")))),
           (2,(Seq (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (SpawnThread 3)) (ForV (Global "x") (ReadFromChannel (Global "b") "lowIn1")))),
@@ -2312,7 +2301,7 @@ notReallyUnsound8 = p { observability = defaultObservabilityMap (tcfg p) }
 
 notReallyUnsound9 :: Program Gr
 notReallyUnsound9 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (Seq (Seq Skip (PrintToChannel (Val 0) "stdOut")) (Seq (SpawnThread 2) (PrintToChannel (Val 1) "stdOut")))),
           (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut") (SpawnThread 3)) (Seq (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "b") "lowIn1")))),
@@ -2351,7 +2340,7 @@ notReallyUnsound9 = p { observability = defaultObservabilityMap (tcfg p) }
 -- Interrupted.
 notReallyUnsound10 :: Program Gr
 notReallyUnsound10 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (Seq (Seq (SpawnThread 3) (ReadFromChannel (Global "c") "stdIn")) (ForC 1 (ReadFromChannel (Global "a") "lowIn1"))) ),
           (3, (Seq (Seq (Ass (Global "z") (Val (-1))) (ReadFromChannel (Global "b") "lowIn1")) (Seq (PrintToChannel (Times (Var (Global "b")) (Var (Global "z"))) "stdOut") (ReadFromChannel (Global "b") "lowIn1"))))
@@ -2376,7 +2365,7 @@ notReallyUnsound10 = p { observability = defaultObservabilityMap (tcfg p) }
 -- Interrupted.
 notReallyUnsound11 :: Program Gr
 notReallyUnsound11 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (ForC 2 (ReadFromChannel (Global "c") "lowIn1")))),
           (2, (ForC 2 (Seq (PrintToChannel (Val 1) "stdOut") (ReadFromChannel (Global "x") "stdIn")))),
@@ -2421,7 +2410,7 @@ notReallyUnsound11 = p { observability = defaultObservabilityMap (tcfg p) }
 -- fromList []
 notReallyUnsound12 :: Program Gr
 notReallyUnsound12 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (ForC 2 (Seq (ReadFromChannel (Global "z") "lowIn1") (SpawnThread 2)))),
           (2, (Seq (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")) (Seq Skip (SpawnThread 3)))),
@@ -2449,7 +2438,7 @@ notReallyUnsound12 = p { observability = defaultObservabilityMap (tcfg p) }
 -- Interrupted.
 notReallyUnsound13 :: Program Gr
 notReallyUnsound13 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (ForC 1 (Seq (SpawnThread 2) (PrintToChannel (Val (-1)) "stdOut")))),
           (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut") (PrintToChannel (Val 1) "stdOut")) (If CFalse (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val 1) "stdOut"))))
@@ -2504,7 +2493,7 @@ notReallyUnsound13 = p { observability = defaultObservabilityMap (tcfg p) }
 -- fromList []
 notReallyUnsound14 :: Program Gr
 notReallyUnsound14 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
             (1, (ForC 1 (Seq (SpawnThread 2) (PrintToChannel (Val (-1)) "stdOut")))),
             (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut") (PrintToChannel (Val 1) "stdOut")) (If CFalse (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val 1) "stdOut"))))
@@ -2526,7 +2515,7 @@ notReallyUnsound14 = p { observability = defaultObservabilityMap (tcfg p) }
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
 notReallyUnsound15 :: Program Gr
 notReallyUnsound15 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
             (1,(Seq (Seq (PrintToChannel (Val 42) "stdOut") (Ass (Global "z") (Val 42))) (Seq (SpawnThread 3) (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut")))),
             (2,(If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (Ass (Global "b") (Times (Var (Global "z")) (Var (Global "z"))))) (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "a") "lowIn1") Skip))),
@@ -2544,7 +2533,7 @@ notReallyUnsound15 = p { observability = defaultObservabilityMap (tcfg p) }
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ...
 notReallyUnsound16 :: Program Gr
 notReallyUnsound16 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
             (1,(Seq (Seq (Ass (Global "a") (Val 17)) (SpawnThread 2)) (ForV (Global "a") (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "a"))))))),
             (2,(Seq (ForV (Global "a") (SpawnThread 3)) (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (Ass (Global "b") (Times (Var (Global "a")) (Var (Global "a"))))))),
@@ -2581,7 +2570,7 @@ notReallyUnsound16 = p { observability = defaultObservabilityMap (tcfg p) }
 -- fromList []
 notReallyUnsound18 :: Program Gr
 notReallyUnsound18 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
             (1,(Seq (If CTrue Skip (ReadFromChannel (Global "a") "lowIn1")) (Seq (PrintToChannel (Val 42) "stdOut") (SpawnThread 2)))),
             (2,(ForC 2 (Seq (ReadFromChannel (Global "c") "lowIn1") (SpawnThread 3))) ),
@@ -2602,7 +2591,7 @@ notReallyUnsound18 = p { observability = defaultObservabilityMap (tcfg p) }
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
 notReallyUnsound17 :: Program Gr
 notReallyUnsound17 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
             (1, (Seq (Seq (SpawnThread 2) (PrintToChannel (Val 0) "stdOut")) (Seq (PrintToChannel (Val 0) "stdOut") (ReadFromChannel (Global "b") "lowIn1")))),
             (2, (ForC 2 (Seq (ReadFromChannel (Global "x") "lowIn1") (ReadFromChannel (Global "x") "lowIn1"))))
@@ -2621,7 +2610,7 @@ notReallyUnsound17 = p { observability = defaultObservabilityMap (tcfg p) }
 -- i  = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[2,1,2,1,2])] ...     i' = fromList [("lowIn1",[1,2,3,4,1]),("lowIn2",[4,3,2,1,4]),("stdIn",[-1,0,-1,0,-1])] ... 
 notReallyUnsound19 :: Program Gr
 notReallyUnsound19 = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
             (1,(Seq (Seq (Ass (Global "y") (Val 17)) (Ass (Global "a") (Times (Var (Global "y")) (Var (Global "y"))))) (ForC 2 (SpawnThread 3)))),
             (2,(ForC 1 (Seq (ReadFromChannel (Global "c") "stdIn") (ReadFromChannel (Global "c") "stdIn")))),
@@ -2636,7 +2625,7 @@ notReallyUnsound19 = p { observability = defaultObservabilityMap (tcfg p) }
 
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1, (ForC 1
                  (If CFalse (Seq (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut"))
@@ -2650,7 +2639,7 @@ controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
 
 simpleBlocking :: Program Gr
 simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) } 
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                            `Seq`
@@ -2671,7 +2660,7 @@ simpleBlocking =  p { observability = defaultObservabilityMap (tcfg p) }
 
 exampleTimingDep :: Program Gr 
 exampleTimingDep=  p { observability = defaultObservabilityMap (tcfg p) } 
-  where p = compileAllToProgram code Map.empty
+  where p = code2Program code
         code = Map.fromList $ [
           (1,
            Skip                            `Seq`

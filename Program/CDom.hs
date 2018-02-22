@@ -45,10 +45,10 @@ import Data.Graph.Inductive.PatriciaTree
 
 
 idomChef  :: DynGraph gr => Program gr ->  Map (Node,Node) Node
-idomChef p@(Program {tcfg, entryOf, mainThread} ) = Map.fromList
+idomChef p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
     [ ((n,n'), lca n n')   | n <- nodes tcfg, n' <- nodes tcfg ]
   where dom :: Map Node Node
-        dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+        dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
         lca :: Node -> Node -> Node
         lca n n' = c
@@ -79,10 +79,10 @@ idomChef p@(Program {tcfg, entryOf, mainThread} ) = Map.fromList
 --         dom = Map.fromList $ iDom tcfg (entryOf mainThread)
 
 idomMohrEtAl :: DynGraph gr => Program gr ->  Map (Node,Node) Node
-idomMohrEtAl p@(Program {tcfg, entryOf, mainThread} ) = Map.fromList
+idomMohrEtAl p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
     [ ((n,n'), leastValidFrom $ lca n n')   | n <- nodes tcfg, n' <- nodes tcfg ]
   where dom :: Map Node Node
-        dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+        dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
         inMulti = isInMultiThread p
         inCycleSet = notInCycleSet tcfg  -- TODO: ggf auf zyklen innerhalb von threads einschränken?!?!?

@@ -159,14 +159,14 @@ cdomIsTreeDomViolations p@(Program {tcfg}) θ cd =
 
 
 chopPathsAreDomPaths :: DynGraph gr => (Program gr ->  Map (Node,Node) Node) -> Program gr -> Bool
-chopPathsAreDomPaths cd p@(Program { tcfg, observability, entryOf, mainThread }) =
+chopPathsAreDomPaths cd p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) =
     (∀) [ (n,m) | ((n,m),True) <- Map.assocs mhp]
         (\(n,m) -> let c = idom ! (n,m) in
                                                                                                           (chop c n) ∩ (Set.fromList (pre timing n)) ==
                    (Set.unions [ chop a b |  (a,b) <- consecutive $ [ y |  x <- domPathBetween n c , y <- [x,x] ] ]) ∩ (Set.fromList (pre timing n))
         )
  where dom :: Map Node Node
-       dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+       dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
        domPathBetween dominated dominator
                  | dominated  == dominator = [dominated]
@@ -183,14 +183,14 @@ chopPathsAreDomPaths cd p@(Program { tcfg, observability, entryOf, mainThread })
 
 
 chopPathsAreDomPaths2 :: DynGraph gr => (Program gr ->  Map (Node,Node) Node) -> Program gr -> Bool
-chopPathsAreDomPaths2 cd p@(Program { tcfg, observability, entryOf, mainThread }) =
+chopPathsAreDomPaths2 cd p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) =
     (∀) [ (n,m) | ((n,m),True) <- Map.assocs mhp]
         (\(n,m) -> let c = idom ! (n,m) in
                                                                                                           (chop c n) ∩ (Set.fromList (pre timing n)) ==
                    (Set.unions [ chop a b ∩ (Set.fromList (pre timing b)) |  (a,b) <- consecutive $ [ y |  x <- domPathBetween dom n c , y <- [x,x] ] ])
         )
  where dom :: Map Node Node
-       dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+       dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
        idom = cd p
        mhp = mhpFor p
        trnsclos = trc tcfg
@@ -200,7 +200,7 @@ chopPathsAreDomPaths2 cd p@(Program { tcfg, observability, entryOf, mainThread }
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 
 -- chopPathsAreDomPathsViolations :: DynGraph gr => Program gr -> (Program gr ->  Map (Node,Node) Node) -> [(Node,Node)]
-chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, mainThread }) =
+chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) =
     [ (n,m,c,chop1, chop2, path) | ((n,m),True) <- Map.assocs mhp,
               let c = idom ! (n,m),
               let chop1 = (chop c n) ∩ (Set.fromList (pre timing n)),
@@ -209,7 +209,7 @@ chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, mai
               chop1 /= chop2
     ]
  where dom :: Map Node Node
-       dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+       dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
        idom = cd p
        mhp = mhpFor p
@@ -223,14 +223,14 @@ chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, mai
 
 
 idomIsTree ::  forall gr. DynGraph gr => Program gr -> Map (Node,Node) Node -> Bool
-idomIsTree p@(Program { tcfg, observability, entryOf, mainThread }) idom =
+idomIsTree p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) idom =
     (∀) (scc tree)               (\scc -> length scc == 1)
  ∧  (∀) (nodes tree  \\ [entry]) (\n   -> hasEdge tree' (entry,n))
    where tree :: gr CFGNode ()
          tree =  mkGraph (labNodes tcfg)
                          (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, (c,m)  <- [ (c,n) , (c,n') ]])
          tree' = trc tree
-         entry = entryOf mainThread
+         entry = entryOf $ procedureOf $ mainThread
 
 
 idomIsTreeProgram :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
@@ -243,7 +243,7 @@ idomIsTreeProgram cdomComputation p = idomIsTree p idom
 idomChefTreeIsDomTree :: Program Gr -> Bool
 idomChefTreeIsDomTree p = (toMap $ idomToTree (idomChef p)) == (invert dom)
   where dom :: Map Node Node
-        dom = Map.fromList $ iDom (tcfg p) (entryOf p $ mainThread p)
+        dom = Map.fromList $ iDom (tcfg p) (entryOf p $ procedureOf p $ mainThread p)
 
 toMap :: Graph gr => gr Node () -> Map Node (Set Node)
 toMap tree = Map.fromList [ (n,Set.fromList sucs) | n <- nodes tree, let sucs = suc tree n, (¬) (null sucs) ]
@@ -259,7 +259,7 @@ chopsCdomArePrefixes cdomComputation p =
 
         idom = insEdge (entry,entry,()) $ idomToTree cdom
 
-        entry = entryOf p $ mainThread p
+        entry = entryOf p $ procedureOf p $ mainThread p
 
         trnsclos = trc $ tcfg p
 
@@ -289,7 +289,7 @@ chopsCdomAreExclChops cdomComputation p =
 
         idom = insEdge (entry,entry,()) $ idomToTree cdom
 
-        entry = entryOf p $ mainThread p
+        entry = entryOf p $ procedureOf p $ mainThread p
 
         trnsclos = trc $ tcfg p
 

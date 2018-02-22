@@ -225,7 +225,8 @@ isSecureFlexibleSchedulerIndependentChannelFor p = isJust $ fst $ evalFresh $ pr
 
 principalTypingOfGen :: IntraGeneratedProgram -> (Maybe ProgramTyping, Gr ConstraintNode ConstraintEdge)
 principalTypingOfGen gen = evalFresh $ principalTypingOf (ForProgram { code = code, channelTyping = defaultChannelObservability, mainThreadFor = 1})
-  where (code, _) = toCodeIntra gen
+  where (procedureOf, codeOf) = toCodeIntra gen
+        code = Map.fromList [ (thread, codeOf ! procedure) | (thread, procedure) <- Map.assocs procedureOf ]
 
 
 data Rule = FSIskip | FSIass | FSIif | FSIwhile | FSIspawn | FSIseq | FSIsub

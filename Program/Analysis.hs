@@ -71,7 +71,7 @@ precomputedUsing idomComputation p@(Program { tcfg }) =
                 ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
     dataConflictGraph = dataConflictGraphP p
     timingdg = timingDependenceGraphP p
-    dom = Map.fromList $ iDom tcfg (entryOf p $ mainThread p)
+    dom = Map.fromList $ iDom tcfg (entryOf p $ procedureOf p $ mainThread p)
 
 
 clInitFrom :: (Node -> Maybe SecurityLattice) -> (Node -> SecurityLattice)
@@ -301,7 +301,7 @@ isSecureTimingClassificationDomPaths p = isSecureTimingClassificationFor cl clt 
                                                                           m <- nodes $ tcfg p,
                                                                           mhp ! (n,m) ]
           where dom :: Map Node Node
-                dom = Map.fromList $ iDom (tcfg p) (entryOf p $ mainThread p)
+                dom = Map.fromList $ iDom (tcfg p) (entryOf p $ procedureOf p $ mainThread p)
 
                 idom = idomMohrEtAl p
                 mhp = mhpFor p

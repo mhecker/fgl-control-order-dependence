@@ -42,41 +42,54 @@ type MhpInformation = Set (Node,Node)
 
 
 simonMhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
-simonMhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
+simonMhpFor p@(Program { tcfg }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
   where mhp n1 n2
-         | staticThreadOf n1 == staticThreadOf n2 = isInMulti ! n1  -- == isInMulti ! n2
-         | otherwise                              = (n1,n2) ∈ mhpDiff
-
+           | (threads1 == threads2) ∧ (Set.size threads1 == 1) = isInMulti ! n1  -- == isInMulti ! n2
+           | otherwise                                         = (n1,n2) ∈ mhpDiff
+          where threads1 = threadsOfMap ! n1 
+                threads2 = threadsOfMap ! n2
         isInMulti = isInMultiThread p
         mhpDiff   = mhpDifferentSimon p
+        threadsOfMap = threadsOf p
 
 
 mhpSetFor :: DynGraph gr => Program gr -> Set (Node,Node)
-mhpSetFor p@(Program { tcfg, staticThreadOf }) =
-     Set.fromList [ (n1,n2) | n1 <- nodes tcfg, n2 <- nodes tcfg, staticThreadOf n1 == staticThreadOf n2, isInMulti ! n1 ]
-   ⊔ Set.filter (\(n1,n2) -> staticThreadOf n1 /= staticThreadOf n2) mhpDiff
-  where isInMulti = isInMultiThread p
+mhpSetFor p@(Program { tcfg }) =
+     Set.fromList [ (n1,n2) | n1 <- nodes tcfg, n2 <- nodes tcfg, sameThread n1 n2, isInMulti ! n1 ]
+   ⊔ Set.filter (\(n1,n2) -> not $ sameThread n1 n2) mhpDiff
+  where sameThread n1 n2 = (threads1 == threads2) ∧ (Set.size threads1 == 1)
+          where threads1 = threadsOfMap ! n1 
+                threads2 = threadsOfMap ! n2
+        isInMulti = isInMultiThread p
         mhpDiff   = mhpDifferent p
+        threadsOfMap = threadsOf p
 
 
 mhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
-mhpFor p@(Program { tcfg, staticThreadOf }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
+mhpFor p@(Program { tcfg }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
   where mhp n1 n2
-         | staticThreadOf n1 == staticThreadOf n2 = isInMulti ! n1  -- == isInMulti ! n2
-         | otherwise                              = (n1,n2) ∈ mhpDiff
-
+           | (threads1 == threads2) ∧ (Set.size threads1 == 1) = isInMulti ! n1  -- == isInMulti ! n2
+           | otherwise                                         = (n1,n2) ∈ mhpDiff
+          where threads1 = threadsOfMap ! n1 
+                threads2 = threadsOfMap ! n2
         isInMulti = isInMultiThread p
         mhpDiff   = mhpDifferent p
+        threadsOfMap = threadsOf p
+
 
 
 mhpDifferent p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ [(a,b),(b,a)] | a <- nodes tcfg, (b,Spawn) <- lsuc tcfg a ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
                                                                    b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a], -- TODO: Performance
-                                                                   a' <- suc trnsclos a])
+                                                                   a' <- suc trnsclos a,
+                                                                   not $ Set.null $ (threadsOfMap ! a') ⊓ (threadsOfMap ! a) 
+                                             ]
+                      )
        )
 
  where trnsclos = trc tcfg
+       threadsOfMap = threadsOf p
 
 
 mhpDifferentSimon p@(Program { tcfg }) =
@@ -84,7 +97,11 @@ mhpDifferentSimon p@(Program { tcfg }) =
                                     [(a,b),(b,a)] | n <- nodes tcfg, (a,Spawn) <- lsuc tcfg n, (b,e) <- lsuc tcfg n, e /= Spawn ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
                                                                    b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a], -- TODO: Performance
-                                                                   a' <- suc trnsclos a])
+                                                                   a' <- suc trnsclos a,
+                                                                   not $ Set.null $ (threadsOfMap ! a') ⊓ (threadsOfMap ! a) 
+                                             ]
+                      )
        )
 
  where trnsclos = trc tcfg
+       threadsOfMap = threadsOf p

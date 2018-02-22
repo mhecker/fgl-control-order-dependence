@@ -80,7 +80,7 @@ timingDDomPathsIsTimingG generated = timingDDomPathsIsTiming p
   where p = toProgram generated
 
 timingDDomPathsIsTiming :: Program Gr -> Bool
-timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =
+timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread, procedureOf }) =
             (cl   == cl')
           ∧ (clt  == Map.fromList [((n,m), clt' (n,m)) | n <- nodes tcfg,
                                                          m <- nodes tcfg,
@@ -90,7 +90,7 @@ timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread }) =
         clt' = cltFromCle dom idom cle
 
         dom :: Map Node Node
-        dom = Map.fromList $ iDom tcfg (entryOf mainThread)
+        dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
         idom = idomMohrEtAl p
         mhp = mhpFor p

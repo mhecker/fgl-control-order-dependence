@@ -408,8 +408,10 @@ isSecureResumptionBasedSecurityFor maximalCriterion  p = not $ null $ [ criterio
 
 principalTypingOfGen :: Criterion -> IntraGeneratedProgram -> Maybe [(ProgramTyping, Gr ConstraintNode ConstraintEdge)]
 principalTypingOfGen  maximalCriterion  gen = do
-        let (code, _) = toCodeIntra gen
+        let (procedureOf, codeOf) = toCodeIntra gen
+        let code = Map.fromList [ (thread, codeOf ! procedure) | (thread, procedure) <- Map.assocs procedureOf ]
         code' <- for2ResumptionFor code 1
+        
         return $ principalTypingOf  maximalCriterion (ForProgram { code = code', channelTyping = defaultChannelObservability })
 
 data ConstraintNode = ConstLevel SecurityLattice | VarLevel Var deriving Show

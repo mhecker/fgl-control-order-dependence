@@ -1,3 +1,3 @@
 # be on ubuntu 16.04
 sudo aptitude install libghc-fgl-dev libghc-quickcheck2-dev libghc-tasty-dev libghc-tasty-hunit-dev libghc-tasty-quickcheck-dev libghc-base-unicode-symbols-dev
-cabal install  lattices fgl-arbitrary containers-unicode-symbols  MonadRandom monad-gen fgl-visualize tasty-ant-xml tasty-expected-failure logict
+cabal install  lattices-1.5.0 fgl-arbitrary-0.2.0.3 containers-unicode-symbols-0.3.1.1  MonadRandom-0.5.1 monad-gen-0.3.0.1 fgl-visualize-0.1.0.1 tasty-ant-xml-1.0.5 tasty-expected-failure-0.11.0.4 logict-0.6.0.2 --constraint='tasty installed'

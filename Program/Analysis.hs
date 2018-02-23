@@ -46,7 +46,7 @@ import IRLSOD
 type SecurityAnalysis gr =  DynGraph gr => Program gr -> Bool
 
 data PrecomputedResults gr = PrecomputedResults {
-    cpdg :: gr CFGNode Dependence,
+    cpdg :: gr SDGNode Dependence,
     idom :: Map (Node, Node) Node,
     trnsclos :: gr CFGNode (),
     mhps :: Map Node (Set Node),

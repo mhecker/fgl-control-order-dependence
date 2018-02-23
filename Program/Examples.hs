@@ -2683,6 +2683,8 @@ simpleProcedural  =  p { observability = defaultObservabilityMap (tcfg p) }
            Ass (Global "i")   (Val 1)      `Seq`
            ForV (Global "n") (
              CallProcedure "Add"           `Seq`
+             CallProcedure "Increment"     `Seq`
+             CallProcedure "Decrement"     `Seq`
              CallProcedure "Increment"
            )                               `Seq`
            Skip
@@ -2692,6 +2694,9 @@ simpleProcedural  =  p { observability = defaultObservabilityMap (tcfg p) }
           ),
           ("Increment", Skip `Seq`
               Ass (Global "i") ((Var $ Global "i") `Plus` (Val 1))
+          ),
+          ("Decrement", Skip `Seq`
+              Ass (Global "i") ((Var $ Global "i") `Plus` (Val (-1)))
           )
          ]
 

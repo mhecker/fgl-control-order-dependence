@@ -7,6 +7,8 @@
 
 module Data.Graph.Inductive.Query.DataDependence where
 
+import Control.Monad.Gen
+import Control.Monad
 
 import Unicode
 
@@ -47,10 +49,48 @@ dependenceAnalysis vars = DataflowAnalysis {
   transfer e@(_,_,Print  _ _) reachingDefs = reachingDefs
   transfer e@(_,_,Spawn)      reachingDefs = reachingDefs
   transfer e@(_,_,NoOp)       reachingDefs = reachingDefs
+  transfer e@(_,_,Call)       reachingDefs = initial
+  transfer e@(_,_,Return)     reachingDefs = initial
+  transfer e@(_,_,CallSummary)reachingDefs = initial
 
 
 
-dataDependence :: DynGraph gr => gr CFGNode CFGEdge -> Set Var -> Node -> Map Node (Set Node)
+withParameterNodes :: DynGraph gr => Program gr -> gr SDGNode CFGEdge
+withParameterNodes  p@(Program { tcfg, mainThread, entryOf, procedureOf}) = undefined
+
+withFormals :: DynGraph gr => Program gr -> gr SDGNode CFGEdge
+withFormals  p@(Program { tcfg, mainThread, entryOf, procedureOf, staticProcedures })
+    | Set.null allVars = lifted 
+    | otherwise = runGenFrom (max + 1) $ do
+        withFormals <- addAfter (entryOf $ procedureOf $ mainThread) NoOp Dummy [ (FormalIn v, Def v) | v <- Set.toList $ allVars ] lifted
+        return withFormals
+
+  where (min, max) = nodeRange tcfg
+        allVars = vars p
+        lifted = nmap CFGNode tcfg
+        -- formalIns = Map.fromList [ (p, [ FormalIn v | v <- allVars
+        --                            ) | p <- staticProcedures
+        --             ]
+addAfter :: DynGraph gr => Node -> b -> a ->  [(a,b)] -> gr a b -> Gen Node (gr a b)
+addAfter start startLabel lastLabel nodeLabels graph = do
+  nodes <- forM nodeLabels (\(a, b) -> do
+      n <- gen
+      return ((n, a), b)
+   )
+  let ((firstNode,_), _) = head nodes
+  lastNode <- gen
+  let chain =  [ (from, to, e)  | (((from, _),e), ((to, _), _)) <- zip nodes ((tail nodes) ++ [((lastNode, undefined), undefined)]) ]
+  let outgoing  = lsuc graph start
+  return $ insEdge  (start, firstNode, startLabel)
+         $ insEdges chain
+         $ insEdges [(lastNode,  m, e) | (m,e) <- outgoing]
+         $ delEdges [(start,     m)    | (m,e) <- outgoing]
+         $ insNodes (fmap fst nodes)
+         $ insNodes [(lastNode, lastLabel)]
+         $ graph
+
+
+dataDependence :: DynGraph gr => gr a CFGEdge -> Set Var -> Node -> Map Node (Set Node)
 dataDependence graph vars entry = Map.fromList [
       (n, Set.fromList $
           [ reachedFromN | reachedFromN <- nodes graph,
@@ -66,7 +106,7 @@ dataDependence graph vars entry = Map.fromList [
   where reaching :: Map Node (Map Var (Set (LEdge CFGEdge)))
         reaching = analysis (dependenceAnalysis vars) graph entry
 
-dataDependenceGraph :: DynGraph gr => gr CFGNode CFGEdge -> Set Var -> Node -> gr CFGNode Dependence
+dataDependenceGraph :: DynGraph gr => gr a CFGEdge -> Set Var -> Node -> gr a Dependence
 dataDependenceGraph graph vars entry = mkGraph (labNodes graph) [ (n,n',DataDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
   where dependencies = dataDependence graph vars entry
 

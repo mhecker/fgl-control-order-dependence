@@ -15,10 +15,8 @@ import Data.Graph.Inductive.Query.InterThreadDependence
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-
 import IRLSOD
 import Program
-
 
 programDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 programDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
@@ -40,3 +38,29 @@ concurrentProgramDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticPr
                                  | procedure <- Set.toList staticProcedures, let entry = entryOf procedure, let exit = exitOf procedure ]
   where tdeps = interThreadDependenceGraphP p
         ddeps = dataDependenceGraphP p
+
+
+
+-- systemDependenceGraphP :: DynGraph gr => Program gr -> gr SDGNode Dependence
+-- systemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
+--     insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
+--     foldr mergeTwoGraphs empty $ [ pdg ] ++ 
+--                                  [ insEdge (entry,exit, ControlDependence) $
+--                                    insNode (
+--                                    controlDependenceGraph (insEdge (entry, exit, false) $ cfgOfProcedure p procedure)
+--                                                           exit
+--                                  | procedure <- Set.toList staticProcedures, let entry = entryOf procedure, let exit = exitOf procedure
+--                                    var <- vars p
+--                                  ]
+--   where pdg = nmap CFGNode (programDependenceGraph p)
+
+-- concurrentSystemDependenceGraphP :: DynGraph gr => Program gr -> gr SDGNode Dependence
+-- concurrentSystemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
+--     insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
+--     foldr mergeTwoGraphs empty $ [ tdeps, ddeps] ++
+--                                  [ insEdge (entry,exit, ControlDependence) $
+--                                    controlDependenceGraph (insEdge (entry, exit, false) $ cfgOfProcedure p procedure)
+--                                                           exit
+--                                  | procedure <- Set.toList staticProcedures, let entry = entryOf procedure, let exit = exitOf procedure ]
+--   where tdeps = interThreadDependenceGraphP p
+--         ddeps = dataDependenceGraphP p

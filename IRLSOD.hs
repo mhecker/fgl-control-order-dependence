@@ -78,6 +78,8 @@ useV (Neg x)     = useV x
 
 data CFGEdge = Guard  Bool BoolFunction
              | Assign Var  VarFunction
+             | Use    Var
+             | Def    Var
              | Read   Var          InputChannel
              | Print  VarFunction  OutputChannel
              | Call
@@ -95,6 +97,9 @@ useE (Read    _ _)  = Set.empty
 useE Spawn          = Set.empty
 useE (Print vf _)   = useV vf
 useE NoOp           = Set.empty
+useE (Use x)        = Set.fromList [ x]
+useE (Def _)        = Set.empty
+
 
 defE :: CFGEdge -> Set Var
 defE (Guard   _ _) = Set.empty
@@ -103,15 +108,18 @@ defE (Read    x _) = Set.singleton x
 defE Spawn         = Set.empty
 defE (Print   _ _) = Set.empty
 defE NoOp          = Set.empty
+defE (Def x)       = Set.fromList [ x]
+defE (Use _)       = Set.empty
 
-use :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
+
+use :: Graph gr => gr a CFGEdge -> CFGNode -> Set Var
 use gr n = Set.unions [ useE e | (n',e) <- lsuc gr n ]
 
-def :: Graph gr => gr CFGNode CFGEdge -> CFGNode -> Set Var
+def :: Graph gr => gr a CFGEdge -> CFGNode -> Set Var
 def gr n = Set.unions [ defE e | (n',e) <- lsuc gr n ]
 
--- vars :: Graph gr => gr CFGNode CFGEdge -> Set Var
--- vars gr  = Set.unions [ useE e ∪ defE e | (_,_,e) <- labEdges gr ]
+-- varsInCfg :: Graph gr => gr CFGNode CFGEdge -> Set Var
+-- varsInCfg gr  = Set.unions [ useE e ∪ defE e | (_,_,e) <- labEdges gr ]
 
 type CFGNode = Int
 

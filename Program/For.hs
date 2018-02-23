@@ -211,7 +211,7 @@ compileAll procedureOf procedures = do
                                                             -- TODO: better cope with this in the analysis!?!?
      return $ (p, (entryNode,
                    insEdge (exitNode, exitOfProcedures ! p, NoOp) $ insNode (exitOfProcedures ! p, exitOfProcedures ! p) $ graph,
-                   exitNode,
+                   (exitOfProcedures ! p),
                    (exitOfProcedures ! p):nodes
                   )
               )

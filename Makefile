@@ -1,13 +1,20 @@
 # uncomment for profiling builds
 # PROF=defined
+# DEBUG=defined
 
 ifdef PROF
 PROF_GHC=-prof -fprof-auto -osuf p_o
 PROF_RTS=-p
 endif
 
+ifdef DEBUG
+DEBUG_GHC=-prof -fprof-auto -fprof-cafs -osuf p_o
+DEBUG_RTS=-xc
+endif
+
+
 THREADED=-threaded
-RTS=+RTS -N $(PROF_RTS) -RTS
+RTS=+RTS -N $(PROF_RTS) $(DEBUG_RTS) -RTS
 COLOR=--color always
 ROFL = Program/Tests
 CABAL_PREFIX=cabal exec --
@@ -20,28 +27,40 @@ GHC_FLAGS=-rtsopts -O -fno-ignore-asserts
 all : all.test all.fail rofl
 
 %.test.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc              $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC)  $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
+endif
+ifdef DEBUG
+	$(CABAL_PREFIX) ghc $(DEBUG_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test.bin,%,$@) -o $@
 endif
 
 %.fail.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc              $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC)  $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
+endif
+ifdef DEBUG
+	$(CABAL_PREFIX) ghc $(DEBUG_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail.bin,%,$@) -o $@
 endif
 
 
 %.test-xml.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc              $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC)  $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
+endif
+ifdef DEBUG
+	$(CABAL_PREFIX) ghc $(DEBUG_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.ValidProperties -main-is Program.Properties.ValidProperties.$(patsubst %.test-xml.bin,%,$@)X -o $@
 endif
 
 %.fail-xml.bin : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc              $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC)  $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
+endif
+ifdef DEBUG
+	$(CABAL_PREFIX) ghc $(DEBUG_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Properties.InvalidProperties -main-is Program.Properties.InvalidProperties.$(patsubst %.fail-xml.bin,%,$@)X -o $@
 endif
 
 
@@ -60,9 +79,12 @@ endif
 
 
 $(ROFL) : .FORCE
-	$(CABAL_PREFIX) ghc             $(THREADED) $(GHC_FLAGS) --make Program.Tests -main-is Program.Tests.main -o $@
+	$(CABAL_PREFIX) ghc              $(THREADED) $(GHC_FLAGS) --make Program.Tests -main-is Program.Tests.main -o $@
 ifdef PROF
-	$(CABAL_PREFIX) ghc $(PROF_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Tests -main-is Program.Tests.main -o $@
+	$(CABAL_PREFIX) ghc $(PROF_GHC)  $(THREADED) $(GHC_FLAGS) --make Program.Tests -main-is Program.Tests.main -o $@
+endif
+ifdef DEBUG
+	$(CABAL_PREFIX) ghc $(DEBUG_GHC) $(THREADED) $(GHC_FLAGS) --make Program.Tests -main-is Program.Tests.main -o $@
 endif
 
 rofl : $(ROFL)

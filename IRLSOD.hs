@@ -78,12 +78,12 @@ useV (Neg x)     = useV x
 
 data CFGEdge = Guard  Bool BoolFunction
              | Assign Var  VarFunction
-             | Use    Var
-             | Def    Var
              | Read   Var          InputChannel
              | Print  VarFunction  OutputChannel
              | Call
              | CallSummary
+             | Use    Var
+             | Def    Var
              | Return
              | NoOp
              | Spawn
@@ -97,9 +97,11 @@ useE (Read    _ _)  = Set.empty
 useE Spawn          = Set.empty
 useE (Print vf _)   = useV vf
 useE NoOp           = Set.empty
-useE (Use x)        = Set.fromList [ x]
 useE (Def _)        = Set.empty
-
+useE (Use x)        = Set.fromList [ x]
+useE CallSummary    = Set.empty
+useE Call           = Set.empty
+useE Return         = Set.empty
 
 defE :: CFGEdge -> Set Var
 defE (Guard   _ _) = Set.empty
@@ -110,6 +112,9 @@ defE (Print   _ _) = Set.empty
 defE NoOp          = Set.empty
 defE (Def x)       = Set.fromList [ x]
 defE (Use _)       = Set.empty
+defE CallSummary   = Set.empty
+defE Call          = Set.empty
+defE Return        = Set.empty
 
 
 use :: Graph gr => gr a CFGEdge -> CFGNode -> Set Var

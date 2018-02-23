@@ -2672,6 +2672,31 @@ exampleTimingDep=  p { observability = defaultObservabilityMap (tcfg p) }
           )
          ]
 
+simpleProcedural :: Program Gr
+simpleProcedural  =  p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram (Map.fromList [ (1, "Main") ]) code
+        code = Map.fromList $ [
+          ("Main",
+           Skip                            `Seq`
+           Ass (Global "sum") (Val 0)      `Seq`
+           Ass (Global "n")   (Val 10)     `Seq`
+           Ass (Global "i")   (Val 1)      `Seq`
+           ForV (Global "n") (
+             CallProcedure "Add"           `Seq`
+             CallProcedure "Increment"
+           )                               `Seq`
+           Skip
+          ),
+          ("Add", Skip `Seq`
+              Ass (Global "sum") ((Var $ Global "sum") `Plus` (Var $ Global "i"))
+          ),
+          ("Increment", Skip `Seq`
+              Ass (Global "i") ((Var $ Global "i") `Plus` (Val 1))
+          )
+         ]
+
+
+
 exampleTimingDepInterestingTwoFinger :: DynGraph gr => gr () ()
 exampleTimingDepInterestingTwoFinger = mkGraph [(-36,()),(-29,()),(-19,()),(39,()),(40,())] [(-36,-29,()),(-36,39,()),(-36,39,()),(-29,-19,()),(-19,39,()),(39,-19,()),(40,-36,()),(40,-29,()),(40,-19,()),(40,39,())]
 
@@ -2716,6 +2741,8 @@ wodDodInteresting1 = mkGraph [(-3,()),(7,()),(25,()),(29,()),(30,())] [(-3,-3,()
 
 wodDodInteresting2 :: DynGraph gr => gr () ()
 wodDodInteresting2 = mkGraph [(-16,()),(2,()),(9,()),(12,()),(28,()),(29,())] [(-16,2,()),(2,12,()),(9,2,()),(9,12,()),(12,-16,()),(28,9,()),(28,9,()),(28,12,()),(29,-16,()),(29,2,()),(29,9,()),(29,12,()),(29,28,())]
+
+
 
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
@@ -2873,4 +2900,9 @@ syntacticCodeExamples = jcsPaperExamples ++ [
 
 failingWodNtscdReducible = [
               $(withName 'exampleSimonReducibleWod)
+            ]
+
+
+interprocedural = [
+                $(withName 'exampleSimonReducibleWod)
             ]

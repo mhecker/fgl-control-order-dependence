@@ -59,11 +59,12 @@ withParameterNodes :: DynGraph gr => Program gr -> gr SDGNode CFGEdge
 withParameterNodes  p@(Program { tcfg, mainThread, entryOf, procedureOf}) = undefined
 
 withFormals :: DynGraph gr => Program gr -> gr SDGNode CFGEdge
-withFormals  p@(Program { tcfg, mainThread, entryOf, procedureOf, staticProcedures })
+withFormals  p@(Program { tcfg, entryOf, exitOf, staticProcedures })
     | Set.null allVars = lifted 
     | otherwise = runGenFrom (max + 1) $ do
-        withFormals <- addAfter (entryOf $ procedureOf $ mainThread) NoOp Dummy [ (FormalIn v, Def v) | v <- Set.toList $ allVars ] lifted
-        return withFormals
+          withFormals <- addFormals allVars [(entryOf procedure, exitOf procedure) | procedure <- Set.toList $ staticProcedures] lifted
+          withActuals <- addActuals allVars [(n,m)                                 | (n,m, CallSummary) <- labEdges withFormals] withFormals
+          return withActuals
 
   where (min, max) = nodeRange tcfg
         allVars = vars p
@@ -71,6 +72,22 @@ withFormals  p@(Program { tcfg, mainThread, entryOf, procedureOf, staticProcedur
         -- formalIns = Map.fromList [ (p, [ FormalIn v | v <- allVars
         --                            ) | p <- staticProcedures
         --             ]
+
+addFormals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Gen Node (gr SDGNode CFGEdge)
+addFormals allVars [] graph = return graph
+addFormals allVars ((entry, exit):rest) graph = do
+        withFormalIns  <- addAfter  entry NoOp Dummy [ (FormalIn  v, Def v) | v <- Set.toList $ allVars ] graph
+        withFormalOuts <- addBefore exit             [ (FormalOut v, Use v) | v <- Set.toList $ allVars ] withFormalIns
+        addFormals allVars rest withFormalOuts
+
+
+addActuals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Gen Node (gr SDGNode CFGEdge)
+addActuals allVars [] graph = return graph
+addActuals allVars ((call, return):rest) graph = do
+        withActualIns  <- addAfter  call   NoOp Dummy [ (ActualIn  v, Use v) | v <- Set.toList $ allVars ] graph
+        withActualOuts <- addBefore return            [ (ActualOut v, Def v) | v <- Set.toList $ allVars ] withActualIns
+        addActuals allVars rest withActualOuts
+
 addAfter :: DynGraph gr => Node -> b -> a ->  [(a,b)] -> gr a b -> Gen Node (gr a b)
 addAfter start startLabel lastLabel nodeLabels graph = do
   nodes <- forM nodeLabels (\(a, b) -> do
@@ -88,6 +105,23 @@ addAfter start startLabel lastLabel nodeLabels graph = do
          $ insNodes (fmap fst nodes)
          $ insNodes [(lastNode, lastLabel)]
          $ graph
+
+
+addBefore :: DynGraph gr => Node -> [(a,b)] -> gr a b -> Gen Node (gr a b)
+addBefore end nodeLabels graph = do
+  nodes <- forM nodeLabels (\(a, b) -> do
+      n <- gen
+      return ((n, a), b)
+   )
+  let ((firstNode,_), _) = head nodes
+  let chain =  [ (from, to, e)  | (((from, _),e), ((to, _), _)) <- zip nodes ((tail nodes) ++ [((end, undefined), undefined)]) ]
+  let incoming  = lpre graph end
+  return $ insEdges chain
+         $ insEdges [(m, firstNode, e) | (m,e) <- incoming]
+         $ delEdges [(m, end)          | (m,e) <- incoming]
+         $ insNodes (fmap fst nodes)
+         $ graph
+
 
 
 dataDependence :: DynGraph gr => gr a CFGEdge -> Set Var -> Node -> Map Node (Set Node)

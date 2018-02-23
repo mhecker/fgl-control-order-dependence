@@ -209,9 +209,14 @@ compileAll procedureOf procedures = do
                                                             -- Read instruction, which would make the first node, on which all
                                                             -- others control-depend by default, high
                                                             -- TODO: better cope with this in the analysis!?!?
-     return $ (p, (entryNode,graph,exitNode,nodes))
+     return $ (p, (entryNode,
+                   insEdge (exitNode, exitOfProcedures ! p, NoOp) $ insNode (exitOfProcedures ! p, exitOfProcedures ! p) $ graph,
+                   exitNode,
+                   (exitOfProcedures ! p):nodes
+                  )
+              )
    )
-  return $ Map.fromList [  (p, (entryNode, insEdge (exitNode, exitOfProcedures ! p, NoOp) graph,exitNode,nodes))   | (p, (entryNode,graph,exitNode,nodes)) <- procedureGraphs ]
+  return $ Map.fromList procedureGraphs
 
 
 

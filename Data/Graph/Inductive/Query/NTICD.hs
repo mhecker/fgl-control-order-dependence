@@ -55,8 +55,8 @@ type SmnFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> 
 cdepGraphP :: DynGraph gr => (gr CFGNode CFGEdge -> gr CFGNode Dependence) -> Program gr -> gr CFGNode Dependence 
 cdepGraphP graphGen  p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
     foldr mergeTwoGraphs empty [ insEdge (entry, exit, ControlDependence) $ 
-                                 graphGen (insEdge (entry, exit, false) $ nfilter (\node -> staticProcedureOf node == thread) tcfg)
-                               | thread <- Set.toList staticProcedures,  let entry = entryOf thread, let exit = exitOf thread ]
+                                 graphGen (insEdge (entry, exit, false) $ nfilter (\node -> staticProcedureOf node == procedure) tcfg)
+                               | procedure <- Set.toList staticProcedures,  let entry = entryOf procedure, let exit = exitOf procedure ]
 
 cdepGraph :: DynGraph gr => (gr a b -> Map Node (Set Node)) -> gr a b -> gr a Dependence
 cdepGraph cdGen graph  = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]

@@ -179,7 +179,7 @@ compile procedureOf entryOfProcedure exitOfProcedure  nStart (CallProcedure proc
   return $ (mkGraph [(n,n) | n <- [nStart, nEnd, nProc, nProcExit]]
                     [(nStart, nEnd, CallSummary),
                      (nStart, nProc, Call),
-                     (nProcExit, nStart, Return)
+                     (nProcExit, nEnd, Return)
                     ],
             nEnd,
             [nStart, nEnd]

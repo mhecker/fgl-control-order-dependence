@@ -26,8 +26,8 @@ defaultChannelObservability channel
 
 
 defaultObservabilityMap :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification
-defaultObservabilityMap gr = \n -> obsmap ! n where
- obsmap = Map.fromList $ [ (n, defaultObservability gr n) | n <- nodes gr ]
+defaultObservabilityMap gr = \n -> Map.lookup n obsmap where
+ obsmap = Map.fromList $ [ (n, l) | n <- nodes gr, Just l <- [defaultObservability gr n] ]
  defaultObservability gr n
    | levels == [] = Nothing
    | otherwise    = Just $ (∐) levels

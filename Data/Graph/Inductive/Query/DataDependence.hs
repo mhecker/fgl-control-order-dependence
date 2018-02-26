@@ -100,7 +100,7 @@ withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
           withFormals <- addFormals allVars [(entryOf procedure, exitOf procedure) | procedure <- Set.toList $ staticProcedures] lifted
           withActuals <- addActuals allVars [(n,m)                                 | (n,m, CallSummary) <- labEdges withFormals] withFormals
           return withActuals
-        formalInFor = Map.fromList [ (n, find graphWithParameterNodes n follow (found v))   | (n, ActualIn v) <- labNodes graphWithParameterNodes ]
+        formalInFor = Map.fromList [ (n, find graphWithParameterNodes n follow (found v))   | (n, ActualIn v _) <- labNodes graphWithParameterNodes ]
           where follow (_, Use _) = True
                 follow (_, Call ) = True
                 follow (_, Def _) = True
@@ -108,7 +108,7 @@ withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
                 follow          _ = False
                 found v (FormalIn v') = v == v'
                 found v _             = False
-        formalOutFor = Map.fromList [ (n, find (grev graphWithParameterNodes) n follow (found v))   | (n, ActualOut v) <- labNodes graphWithParameterNodes ]
+        formalOutFor = Map.fromList [ (n, find (grev graphWithParameterNodes) n follow (found v))   | (n, ActualOut v _) <- labNodes graphWithParameterNodes ]
           where follow (_, Use _)  = True
                 follow (_, Def _)  = True
                 follow (_, Return) = True
@@ -130,8 +130,8 @@ addFormals allVars ((entry, exit):rest) graph = do
 addActuals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Gen Node (gr SDGNode CFGEdge)
 addActuals allVars [] graph = return graph
 addActuals allVars ((call, return):rest) graph = do
-        withActualIns  <- addAfter  call   NoOp Dummy [ (ActualIn  v, Use v) | v <- Set.toList $ allVars ] graph
-        withActualOuts <- addBefore return            [ (ActualOut v, Def v) | v <- Set.toList $ allVars ] withActualIns
+        withActualIns  <- addAfter  call   NoOp Dummy [ (ActualIn  v call, Use v) | v <- Set.toList $ allVars ] graph
+        withActualOuts <- addBefore return            [ (ActualOut v call, Def v) | v <- Set.toList $ allVars ] withActualIns
         addActuals allVars rest withActualOuts
 
 addAfter :: DynGraph gr => Node -> b -> a ->  [(a,b)] -> gr a b -> Gen Node (gr a b)

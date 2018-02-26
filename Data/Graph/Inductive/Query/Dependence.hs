@@ -4,7 +4,7 @@ import IRLSOD
 
 import Data.Graph.Inductive
 
-data Dependence = ControlDependence | DataDependence | SummaryDependence | SpawnDependence | InterThreadDependence | ParameterInDependence | ParameterOutDependence deriving (Show, Eq, Enum, Ord, Bounded)
+data Dependence = ControlDependence | DataDependence | SummaryDependence | SpawnDependence | CallDependence | InterThreadDependence | ParameterInDependence | ParameterOutDependence deriving (Show, Eq, Enum, Ord, Bounded)
 
 data SDGNode = CFGNode CFGNode
              | FormalIn Var

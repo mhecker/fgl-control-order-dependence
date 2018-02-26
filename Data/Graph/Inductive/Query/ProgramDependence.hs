@@ -145,3 +145,33 @@ summaryComputation parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor })
                                          ]
           _                 -> Set.empty
           where formalIn = source
+
+
+
+
+slice :: Graph gr => gr SDGNode Dependence -> (Dependence -> Bool) -> Set Node -> Set Node
+slice graph follow nodes = (㎲⊒) nodes f
+  where f nodes = nodes ∪ (Set.fromList [ m | n <- Set.toList nodes, (m,e) <- lpre graph n, follow e])
+
+systemDependenceGraphSlice ::  Graph gr => gr SDGNode Dependence -> Set Node -> Set Node
+systemDependenceGraphSlice graph s0 = s2
+  where s1 = slice graph follow1 s0
+        s2 = slice graph follow2 s1
+
+        follow1 ControlDependence      = True
+        follow1 DataDependence         = True
+        follow1 CallDependence         = True
+        follow1 SummaryDependence      = True
+        follow1 SpawnDependence        = True
+        follow1 InterThreadDependence  = True
+        follow1 ParameterInDependence  = True
+        follow1 ParameterOutDependence = False
+
+        follow2 ControlDependence      = True
+        follow2 DataDependence         = True
+        follow2 CallDependence         = False
+        follow2 SummaryDependence      = True
+        follow2 SpawnDependence        = True
+        follow2 InterThreadDependence  = True
+        follow2 ParameterInDependence  = False
+        follow2 ParameterOutDependence = True

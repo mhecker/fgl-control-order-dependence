@@ -144,7 +144,6 @@ mainEquivAnnotated = do
   showCounterExamplesPniForEquivAnnotated p defaultInput defaultInput'
 
 mainEquivAnnotatedSampled = do
-  
   putStrLn $ show $ length $ allFinishedAnnotatedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedAnnotatedExecutionTraces p defaultInput'
   showCounterExamplesPniForEquivAnnotatedSampled p defaultInput defaultInput'

@@ -2701,6 +2701,39 @@ simpleProcedural  =  p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+simpleProcedural2 :: Program Gr
+simpleProcedural2  =  p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram (Map.fromList [ (1, "Main") ]) code
+        code = Map.fromList $ [
+          ("Main",
+           Skip                            `Seq`
+           Ass (Global "sum") (Val 0)      `Seq`
+           Ass (Global "n")   (Val 10)     `Seq`
+           Ass (Global "i")   (Val 1)      `Seq`
+           ForV (Global "n") (
+             CallProcedure "Add"           `Seq`
+             CallProcedure "Increment"     `Seq`
+             CallProcedure "Decrement"     `Seq`
+             CallProcedure "Increment"
+           )                               `Seq`
+           Ass (Global "sum") (Val 0)      `Seq`
+           Ass (Global "i")   (Val 1)      `Seq`
+           CallProcedure "Add"             `Seq`
+           Ass (Global "result") (Var $ Global "sum") `Seq`
+           Skip
+          ),
+          ("Add", Skip `Seq`
+              Ass (Global "sum") ((Var $ Global "sum") `Plus` (Var $ Global "i"))
+          ),
+          ("Increment", Skip `Seq`
+              Ass (Global "i") ((Var $ Global "i") `Plus` (Val 1))
+          ),
+          ("Decrement", Skip `Seq`
+              Ass (Global "i") ((Var $ Global "i") `Plus` (Val (-1)))
+          )
+         ]
+
+
 
 exampleTimingDepInterestingTwoFinger :: DynGraph gr => gr () ()
 exampleTimingDepInterestingTwoFinger = mkGraph [(-36,()),(-29,()),(-19,()),(39,()),(40,())] [(-36,-29,()),(-36,39,()),(-36,39,()),(-29,-19,()),(-19,39,()),(39,-19,()),(40,-36,()),(40,-29,()),(40,-19,()),(40,39,())]

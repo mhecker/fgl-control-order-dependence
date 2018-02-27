@@ -204,6 +204,23 @@ dataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, procedureOf}) = (
 
 
 
+nonTrivialDataDependenceGraphP :: DynGraph gr => Program gr -> (gr SDGNode Dependence, ParameterMaps)
+nonTrivialDataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, procedureOf}) = (nonTrivialDataDependenceGraph, parameterMaps)
+  where (withParameters, parameterMaps) = withParameterNodes p
+        nonTrivialDataDependenceGraph = mkGraph (labNodes withParameters) [ (n, n', DataDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's, nonTrivial n n']
+        dependencies = dataDependence withParameters (vars p) (entryOf $ procedureOf $ mainThread)
+        nonTrivial n n' = case (lab withParameters n, lab withParameters n') of
+          (Just (FormalIn  x),   Just (FormalOut x'))    -> x /= x'
+          -- (Just (FormalIn  x),   Just (ActualIn  x' _ )) -> x /= x'
+          -- (Just (ActualOut x _), Just (FormalOut x'))    -> x /= x'
+          (Nothing,           _                  ) -> error "label not found"
+          (_,                 Nothing            ) -> error "label not found"
+          (_,                 _                  ) -> True
+
+
+
+
+
 
 data MustKill  = MustKill (Node, Node) Var deriving (Show, Eq, Ord)
 

@@ -2707,9 +2707,7 @@ simpleProcedural2  =  p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           ("Main",
            Skip                            `Seq`
-           Ass (Global "sum") (Val 0)      `Seq`
-           Ass (Global "n")   (Val 10)     `Seq`
-           Ass (Global "i")   (Val 1)      `Seq`
+           CallProcedure "Init"            `Seq`
            ForV (Global "n") (
              CallProcedure "Add"           `Seq`
              CallProcedure "Increment"     `Seq`
@@ -2722,6 +2720,11 @@ simpleProcedural2  =  p { observability = defaultObservabilityMap (tcfg p) }
            Ass (Global "result") (Var $ Global "sum") `Seq`
            Skip
           ),
+          ("Init", Skip `Seq`
+           Ass (Global "sum") (Val 0)      `Seq`
+           Ass (Global "n")   (Val 10)     `Seq`
+           Ass (Global "i")   (Val 1)
+          ),
           ("Add", Skip `Seq`
               Ass (Global "sum") ((Var $ Global "sum") `Plus` (Var $ Global "i"))
           ),
@@ -2730,6 +2733,33 @@ simpleProcedural2  =  p { observability = defaultObservabilityMap (tcfg p) }
           ),
           ("Decrement", Skip `Seq`
               Ass (Global "i") ((Var $ Global "i") `Plus` (Val (-1)))
+          )
+         ]
+
+
+simpleRecursive :: Program Gr
+simpleRecursive  =  p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram (Map.fromList [ (1, "Main") ]) code
+        code = Map.fromList $ [
+          ("Main",
+           Skip                            `Seq`
+           CallProcedure "Init"            `Seq`
+           CallProcedure "Fak"             `Seq`
+           Skip
+          ),
+          ("Init", Skip `Seq`
+           Ass (Global "n")      (Val 5)   `Seq`
+           Ass (Global "fak")    (Val 1)   `Seq`
+           Ass (Global "result") (Val 0)
+          ),
+          ("Fak", Skip `Seq`
+              If ((Var $ Global "n") `Leq` (Val 1)) (
+                  Ass (Global "result") (Var $ Global "fak")
+                ) {- ELSE -} (
+                  Ass (Global "fak") ((Var $ Global "fak") `Times` (Var $ Global "n"))   `Seq`
+                  Ass (Global "n")   ((Var $ Global "n")   `Plus`  (Val (-1) ))          `Seq`
+                  CallProcedure "Fak"
+                )
           )
          ]
 
@@ -2942,5 +2972,7 @@ failingWodNtscdReducible = [
 
 
 interprocedural = [
-                $(withName 'exampleSimonReducibleWod)
+                $(withName 'simpleProcedural),
+                $(withName 'simpleProcedural2),
+                $(withName 'simpleRecursive)
             ]

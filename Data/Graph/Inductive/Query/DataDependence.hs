@@ -10,6 +10,9 @@ module Data.Graph.Inductive.Query.DataDependence where
 import Control.Monad.Gen
 import Control.Monad
 
+import Debug.Trace
+
+
 import Unicode
 
 
@@ -198,3 +201,58 @@ dataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, procedureOf}) = (
       parameterMaps
     )
   where (withParameters, parameterMaps) = withParameterNodes p
+
+
+
+
+data MustKill  = MustKill (Node, Node) Var deriving (Show, Eq, Ord)
+
+mustKill :: DynGraph gr => Program gr -> (Set MustKill)
+mustKill p@(Program { tcfg, entryOf, exitOf, mainThread, procedureOf, staticProcedures }) = (𝝂) allMustKillAll mustKillF
+  where mustKillF = mustKillFFor tcfg entry entryExits allVarsReachedByInitial
+        entry = entryOf $ procedureOf $ mainThread
+        allMustKillAll = Set.fromList [ MustKill (entry, exit) x | (entry, exit) <- entryExits, x <- Set.toList $ allVars ]
+        entryExits = [ (entry, exit) | procedure <- Set.toList $ staticProcedures,
+                                       let entry = entryOf procedure,
+                                       let exit  = exitOf procedure
+                     ]
+        allVars = vars p
+        allVarsReachedByInitial = Map.fromList [(x, True) | x <- Set.toList $ allVars ]
+
+mustKillFFor :: DynGraph gr =>
+    gr a CFGEdge ->
+    Node ->
+    [(Node, Node)] ->
+    Map Var Bool ->
+    Set MustKill ->
+    Set MustKill
+mustKillFFor graph entry entryExits allVarsReachedByInitial mustKills = traceShow (mustKills, initialReaches) $ 
+    Set.fromList [ MustKill (entry, exit) x | (entry, exit) <- entryExits, (x, False) <- Map.assocs $  initialReaches ! exit  ]
+  where initialReachesGivenMustKillF = initialReachesGivenMustKillFFor graph allVarsReachedByInitial mustKills
+        initialReaches  = (㎲⊒)
+                           (Map.fromList [(entry, allVarsReachedByInitial)] ⊔ Map.fromList [(n, Map.empty) | n <- nodes graph])
+                           initialReachesGivenMustKillF
+initialReachesGivenMustKillFFor :: DynGraph gr =>
+    gr a CFGEdge ->
+    Map Var Bool -> 
+    Set MustKill ->
+    Map Node (Map Var Bool) ->
+    Map Node (Map Var Bool)
+initialReachesGivenMustKillFFor graph allVarsReachedByInitial mustKills initialReaches =
+    initialReaches ⊔ Map.fromList [(n, (∐) [ transfer e (initialReaches ! m) | (m,label) <- lpre graph n, let e = (m,n,label) ]) | n <- nodes graph  ]
+  where
+    transfer :: (Node, Node, CFGEdge) -> Map Var Bool -> Map Var Bool
+    transfer e@(_,_,Guard _ _)   initialReaches = initialReaches
+    transfer e@(_,_,Assign x _)  initialReaches = Map.insert x False initialReaches
+    transfer e@(_,_,Read   x _)  initialReaches = Map.insert x False initialReaches
+    transfer e@(_,_,Def    x)    initialReaches = Map.insert x False initialReaches
+    transfer e@(_,_,Use    x)    initialReaches = initialReaches
+    transfer e@(_,_,Print  _ _)  initialReaches = initialReaches
+    transfer e@(_,_,Spawn)       initialReaches = initialReaches
+    transfer e@(_,_,NoOp)        initialReaches = initialReaches
+    transfer e@(_,_,Call)        initialReaches = allVarsReachedByInitial
+    transfer e@(_,_,Return)      initialReaches = Map.empty
+    transfer e@(m,n,CallSummary) initialReaches = Map.union (Map.fromList [ (x, False) | MustKill (entry', exit') x <- Set.toList $ mustKills, entry' == entry, exit' == exit ])
+                                                            initialReaches
+      where [entry] =  [ entry | (entry, Call)   <- lsuc graph m ]  -- TODO: handle virtual calls
+            [exit]  =  [ exit  | (exit,  Return) <- lpre graph n ]  -- TODO: handle virtual calls

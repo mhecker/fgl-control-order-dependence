@@ -243,7 +243,7 @@ mustKillFFor :: DynGraph gr =>
     Map Var Bool ->
     Set MustKill ->
     Set MustKill
-mustKillFFor graph entry entryExits allVarsReachedByInitial mustKills = traceShow (mustKills, initialReaches) $ 
+mustKillFFor graph entry entryExits allVarsReachedByInitial mustKills =
     Set.fromList [ MustKill (entry, exit) x | (entry, exit) <- entryExits, (x, False) <- Map.assocs $  initialReaches ! exit  ]
   where initialReachesGivenMustKillF = initialReachesGivenMustKillFFor graph allVarsReachedByInitial mustKills
         initialReaches  = (㎲⊒)
@@ -273,3 +273,47 @@ initialReachesGivenMustKillFFor graph allVarsReachedByInitial mustKills initialR
                                                             initialReaches
       where [entry] =  [ entry | (entry, Call)   <- lsuc graph m ]  -- TODO: handle virtual calls
             [exit]  =  [ exit  | (exit,  Return) <- lpre graph n ]  -- TODO: handle virtual calls
+
+
+
+data Definition = CFGEdge (LEdge CFGEdge) | Initial deriving (Show, Eq, Ord)
+
+
+reachingDefsP ::  DynGraph gr => Program gr -> Map Node (Map Var (Set Definition))
+reachingDefsP p@(Program { tcfg, entryOf, exitOf, mainThread, procedureOf, staticProcedures }) =
+     (㎲⊒) (Map.fromList [(entry, allVarsReachedByInitial)] ⊔ Map.fromList [(n, Map.empty) | n <- nodes tcfg]) reachingDefsGivenMustKillF
+  where reachingDefsGivenMustKillF = reachingDefsGivenMustKillFFor
+          (tcfg)
+          (allVarsReachedByInitial)
+          (mustKill p)
+        entry = entryOf $ procedureOf $ mainThread
+        allVars = vars p
+        allVarsReachedByInitial = Map.fromList [(x, Set.fromList [Initial]) | x <- Set.toList $ allVars ]
+
+
+reachingDefsGivenMustKillFFor :: DynGraph gr =>
+    gr a CFGEdge ->
+    Map Var (Set Definition) -> 
+    Set MustKill ->
+    Map Node (Map Var (Set Definition)) ->
+    Map Node (Map Var (Set Definition))
+reachingDefsGivenMustKillFFor graph allVarsReachedByInitial mustKills reachingDefs =
+    reachingDefs ⊔ Map.fromList [(n, (∐) [ transfer e (reachingDefs ! m) | (m,label) <- lpre graph n, let e = (m,n,label) ]) | n <- nodes graph  ]
+  where
+    transfer :: (Node, Node, CFGEdge) -> Map Var (Set Definition) -> Map Var (Set Definition)
+    transfer e@(_,_,Guard _ _)   reachingDefs = reachingDefs
+    transfer e@(_,_,Assign x _)  reachingDefs = Map.insert x (Set.fromList [ CFGEdge e ]) reachingDefs
+    transfer e@(_,_,Read   x _)  reachingDefs = Map.insert x (Set.fromList [ CFGEdge e ]) reachingDefs
+    transfer e@(_,_,Def    x)    reachingDefs = Map.insert x (Set.fromList [ CFGEdge e ]) reachingDefs
+    transfer e@(_,_,Use    x)    reachingDefs = reachingDefs
+    transfer e@(_,_,Print  _ _)  reachingDefs = reachingDefs
+    transfer e@(_,_,Spawn)       reachingDefs = reachingDefs
+    transfer e@(_,_,NoOp)        reachingDefs = reachingDefs
+    transfer e@(_,_,Call)        reachingDefs = allVarsReachedByInitial
+    transfer e@(_,_,Return)      reachingDefs = Map.empty
+    transfer e@(m,n,CallSummary) reachingDefs = Map.union (Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | MustKill (entry', exit') x <- Set.toList $ mustKills, entry' == entry, exit' == exit ])
+                                                          reachingDefs
+      where [entry] =  [ entry | (entry, Call)   <- lsuc graph m ]  -- TODO: handle virtual calls
+            [exit]  =  [ exit  | (exit,  Return) <- lpre graph n ]  -- TODO: handle virtual calls
+
+

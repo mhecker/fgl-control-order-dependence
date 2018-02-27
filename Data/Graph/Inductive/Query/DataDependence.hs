@@ -85,24 +85,26 @@ find graph start followEdge found
 
 
 data ParameterMaps = ParameterMaps {
-    formalInFor   :: Map Node Node,
-    formalOutFor  :: Map Node Node,
-    actualInsFor  :: Map Node (Set Node),
-    actualOutsFor :: Map Node (Set Node)
+    formalInFor   :: Map Node Node,       -- actualIn   ->     formalIn
+    formalOutFor  :: Map Node Node,       -- actualOut  ->     formalOut
+    actualInsFor  :: Map Node (Set Node), -- formalIn   -> Set actualIn
+    actualOutsFor :: Map Node (Set Node), -- formalOut  -> Set actualOut
+    parameterNodesFor :: Map (Node, Node) (Set Node)  --   (entry, exit)  -> (Set formalIn ∪ Set formalOut)
+                                                      -- ∪ (call, return) -> (Set actualIn ∪ Set actualOut)
   } deriving (Eq, Show)
 
 withParameterNodes :: DynGraph gr => Program gr -> (gr SDGNode CFGEdge, ParameterMaps)
 withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
-    | Set.null allVars = (lifted, ParameterMaps Map.empty Map.empty Map.empty Map.empty)
-    | otherwise = (graphWithParameterNodes, ParameterMaps { formalInFor = formalInFor, formalOutFor = formalOutFor, actualInsFor = actualInsFor, actualOutsFor = actualOutsFor })
+    | Set.null allVars = (lifted, ParameterMaps Map.empty Map.empty Map.empty Map.empty Map.empty)
+    | otherwise = (graphWithParameterNodes, ParameterMaps { formalInFor = formalInFor, formalOutFor = formalOutFor, actualInsFor = actualInsFor, actualOutsFor = actualOutsFor, parameterNodesFor = parameterNodesFor })
 
   where (min, max) = nodeRange tcfg
         allVars = vars p
         lifted = nmap CFGNode tcfg
-        graphWithParameterNodes = runGenFrom (max + 1) $ do
-          withFormals <- addFormals allVars [(entryOf procedure, exitOf procedure) | procedure <- Set.toList $ staticProcedures] lifted
-          withActuals <- addActuals allVars [(n,m)                                 | (n,m, CallSummary) <- labEdges withFormals] withFormals
-          return withActuals
+        (graphWithParameterNodes, parameterNodesFor) = runGenFrom (max + 1) $ do
+          (withFormals, formalNodesFor)    <- addFormals allVars [(entryOf procedure, exitOf procedure) | procedure <- Set.toList $ staticProcedures] lifted      Map.empty
+          (withActuals, parameterNodesFor) <- addActuals allVars [(n,m)                                 | (n,m, CallSummary) <- labEdges withFormals] withFormals formalNodesFor
+          return (withActuals, parameterNodesFor)
         formalInFor = Map.fromList [ (n, find graphWithParameterNodes n follow (found v))   | (n, ActualIn v _) <- labNodes graphWithParameterNodes ]
           where follow (_, Use _) = True
                 follow (_, Call ) = True
@@ -122,22 +124,22 @@ withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
         actualOutsFor = invert formalOutFor
 
 
-addFormals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Gen Node (gr SDGNode CFGEdge)
-addFormals allVars [] graph = return graph
-addFormals allVars ((entry, exit):rest) graph = do
-        withFormalIns  <- addAfter  entry NoOp Dummy [ (FormalIn  v, Def v) | v <- Set.toList $ allVars ] graph
-        withFormalOuts <- addBefore exit             [ (FormalOut v, Use v) | v <- Set.toList $ allVars ] withFormalIns
-        addFormals allVars rest withFormalOuts
+addFormals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Map (Node, Node) (Set Node) -> Gen Node (gr SDGNode CFGEdge, Map (Node, Node) (Set Node))
+addFormals allVars                   [] graph parameterNodesFor = return (graph, parameterNodesFor)
+addFormals allVars ((entry, exit):rest) graph parameterNodesFor = do
+        (withFormalIns,  formalIns)  <- addAfter  entry NoOp Dummy [ (FormalIn  v, Def v) | v <- Set.toList $ allVars ] graph
+        (withFormalOuts, formalOuts) <- addBefore exit             [ (FormalOut v, Use v) | v <- Set.toList $ allVars ] withFormalIns
+        addFormals allVars rest withFormalOuts (parameterNodesFor ⊔ (Map.fromList [ ((entry, exit), formalIns ∪ formalOuts) ]))
 
 
-addActuals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Gen Node (gr SDGNode CFGEdge)
-addActuals allVars [] graph = return graph
-addActuals allVars ((call, return):rest) graph = do
-        withActualIns  <- addAfter  call   NoOp Dummy [ (ActualIn  v call, Use v) | v <- Set.toList $ allVars ] graph
-        withActualOuts <- addBefore return            [ (ActualOut v call, Def v) | v <- Set.toList $ allVars ] withActualIns
-        addActuals allVars rest withActualOuts
+addActuals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Map (Node, Node) (Set Node) -> Gen Node (gr SDGNode CFGEdge, Map (Node, Node) (Set Node))
+addActuals allVars []                    graph parameterNodesFor = return (graph, parameterNodesFor)
+addActuals allVars ((call, return):rest) graph parameterNodesFor = do
+        (withActualIns,  actualIns ) <- addAfter  call   NoOp Dummy [ (ActualIn  v call, Use v) | v <- Set.toList $ allVars ] graph
+        (withActualOuts, actualOuts) <- addBefore return            [ (ActualOut v call, Def v) | v <- Set.toList $ allVars ] withActualIns
+        addActuals allVars rest withActualOuts (parameterNodesFor ⊔ (Map.fromList [ ((call, return), actualIns ∪ actualOuts) ]))
 
-addAfter :: DynGraph gr => Node -> b -> a ->  [(a,b)] -> gr a b -> Gen Node (gr a b)
+addAfter :: DynGraph gr => Node -> b -> a ->  [(a,b)] -> gr a b -> Gen Node (gr a b, Set Node)
 addAfter start startLabel lastLabel nodeLabels graph = do
   nodes <- forM nodeLabels (\(a, b) -> do
       n <- gen
@@ -147,16 +149,18 @@ addAfter start startLabel lastLabel nodeLabels graph = do
   lastNode <- gen
   let chain =  [ (from, to, e)  | (((from, _),e), ((to, _), _)) <- zip nodes ((tail nodes) ++ [((lastNode, undefined), undefined)]) ]
   let outgoing  = lsuc graph start
-  return $ insEdge  (start, firstNode, startLabel)
+  return ( insEdge  (start, firstNode, startLabel)
          $ insEdges chain
          $ insEdges [(lastNode,  m, e) | (m,e) <- outgoing]
          $ delEdges [(start,     m)    | (m,e) <- outgoing]
          $ insNodes (fmap fst nodes)
          $ insNodes [(lastNode, lastLabel)]
          $ graph
+         , Set.fromList $ fmap (fst.fst) nodes
+         )
 
 
-addBefore :: DynGraph gr => Node -> [(a,b)] -> gr a b -> Gen Node (gr a b)
+addBefore :: DynGraph gr => Node -> [(a,b)] -> gr a b -> Gen Node (gr a b, Set Node)
 addBefore end nodeLabels graph = do
   nodes <- forM nodeLabels (\(a, b) -> do
       n <- gen
@@ -165,11 +169,13 @@ addBefore end nodeLabels graph = do
   let ((firstNode,_), _) = head nodes
   let chain =  [ (from, to, e)  | (((from, _),e), ((to, _), _)) <- zip nodes ((tail nodes) ++ [((end, undefined), undefined)]) ]
   let incoming  = lpre graph end
-  return $ insEdges chain
+  return ( insEdges chain
          $ insEdges [(m, firstNode, e) | (m,e) <- incoming]
          $ delEdges [(m, end)          | (m,e) <- incoming]
          $ insNodes (fmap fst nodes)
          $ graph
+         , Set.fromList $ fmap (fst.fst) nodes
+         )
 
 
 
@@ -279,6 +285,77 @@ initialReachesGivenMustKillFFor graph allVarsReachedByInitial mustKills initialR
 data Definition = CFGEdge (LEdge CFGEdge) | Initial deriving (Show, Eq, Ord)
 
 
+trivialDataIndependenceGraphP :: DynGraph gr => Program gr -> (gr SDGNode Independence, ParameterMaps)
+trivialDataIndependenceGraphP p@(Program { tcfg, mainThread, entryOf, exitOf, procedureOf, staticProcedureOf, staticProcedures }) = (trivialDataIndependenceGraph, parameterMaps)
+  where (withParameters, parameterMaps@(ParameterMaps { formalInFor, formalOutFor, actualInsFor, actualOutsFor, parameterNodesFor })) = withParameterNodes p
+        reaching = reachingDefsP p
+        allVars = vars p
+        trivialDataIndependenceGraph = mkGraph (labNodes withParameters) trivialDataIndependences
+        trivialDataIndependences = [
+           (formalIn, actualIn, DataIndependence)
+              | (entry, exit)  <- entryExits,
+                let formals = Set.toList $ parameterNodesFor ! (entry, exit),
+                (call, return) <- callReturns, staticProcedureOf call == staticProcedureOf entry, -- TODO: performance
+                let actuals = Set.toList $ parameterNodesFor ! (call, return),
+                
+                let reachingCall = reaching ! call,
+                let independentVars = allVars ∖ ( Set.fromList [ x | (x, defs) <- Map.assocs reachingCall, Initial ∈ defs ]),
+                x <- Set.toList independentVars,
+                let [formalIn] = [ formalIn | formalIn <- formals, isFormalInForX formalIn ]
+                      where isFormalInForX n = case (lab withParameters n) of
+                              Just (FormalIn x') -> x == x'
+                              Nothing            -> error "no such node"
+                              _                  -> False,
+                let [actualIn] = [ actualIn | actualIn <- actuals, isActualInForX actualIn ]
+                      where isActualInForX n = case (lab withParameters n) of
+                              Just (ActualIn x' _) -> x == x'
+                              Nothing            -> error "no such node"
+                              _                  -> False
+         ] ++ [
+           (actualOut, formalOut, DataIndependence)
+              | (entry, exit)  <- entryExits,
+                let formals = Set.toList $ parameterNodesFor ! (entry, exit),
+                (call, return) <- callReturns, staticProcedureOf call == staticProcedureOf entry, -- TODO: performance
+                let actuals = Set.toList $ parameterNodesFor ! (call, return),
+                
+                let reachingExit = reaching ! exit,
+                let independentVars = allVars ∖ ( Set.fromList [ x | (x, defs) <- Map.assocs reachingExit, CFGEdge (call, return, CallSummary) ∈ defs ]),
+                x <- Set.toList independentVars,
+                let [formalOut] = [ formalOut | formalOut <- formals, isFormalOutForX formalOut ]
+                      where isFormalOutForX n = case (lab withParameters n) of
+                              Just (FormalOut x') -> x == x'
+                              Nothing            -> error "no such node"
+                              _                  -> False,
+                let [actualOut] = [ actualOut | actualOut <- actuals, isActualOutForX actualOut ]
+                      where isActualOutForX n = case (lab withParameters n) of
+                              Just (ActualOut x' _) -> x == x'
+                              Nothing            -> error "no such node"
+                              _                  -> False
+         ] ++ [
+           (formalIn, formalOut, DataIndependence)
+              | (entry, exit)  <- entryExits,
+                let formals = Set.toList $ parameterNodesFor ! (entry, exit),
+                let reachingExit = reaching ! exit,
+                let independentVars = allVars ∖ ( Set.fromList [ x | (x, defs) <- Map.assocs reachingExit, Initial ∈ defs ]),
+                x <- Set.toList independentVars,
+                let [formalOut] = [ formalOut | formalOut <- formals, isFormalOutForX formalOut ]
+                      where isFormalOutForX n = case (lab withParameters n) of
+                              Just (FormalOut x') -> x == x'
+                              Nothing             -> error "no such node"
+                              _                   -> False,
+                let [formalIn] = [ formalIn| formalIn <- formals, isFormalInForX formalIn ]
+                      where isFormalInForX n = case (lab withParameters n) of
+                              Just (FormalIn  x') -> x == x'
+                              Nothing             -> error "no such node"
+                              _                   -> False
+         ]
+        entryExits = [ (entry, exit) | procedure <- Set.toList $ staticProcedures,
+                                       let entry = entryOf procedure,
+                                       let exit  = exitOf procedure
+                     ]
+        callReturns = [ (call, return) | (call, return, CallSummary) <- labEdges tcfg]
+
+
 reachingDefsP ::  DynGraph gr => Program gr -> Map Node (Map Var (Set Definition))
 reachingDefsP p@(Program { tcfg, entryOf, exitOf, mainThread, procedureOf, staticProcedures }) =
      (㎲⊒) (Map.fromList [(entry, allVarsReachedByInitial)] ⊔ Map.fromList [(n, Map.empty) | n <- nodes tcfg]) reachingDefsGivenMustKillF
@@ -311,9 +388,11 @@ reachingDefsGivenMustKillFFor graph allVarsReachedByInitial mustKills reachingDe
     transfer e@(_,_,NoOp)        reachingDefs = reachingDefs
     transfer e@(_,_,Call)        reachingDefs = allVarsReachedByInitial
     transfer e@(_,_,Return)      reachingDefs = Map.empty
-    transfer e@(m,n,CallSummary) reachingDefs = Map.union (Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | MustKill (entry', exit') x <- Set.toList $ mustKills, entry' == entry, exit' == exit ])
-                                                          reachingDefs
+    transfer e@(m,n,CallSummary) reachingDefs = Map.union
+        (               Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | MustKill (entry', exit') x <- Set.toList $ mustKills, entry' == entry, exit' == exit ])
+        (reachingDefs ⊔ Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | x <- allVars ])
       where [entry] =  [ entry | (entry, Call)   <- lsuc graph m ]  -- TODO: handle virtual calls
             [exit]  =  [ exit  | (exit,  Return) <- lpre graph n ]  -- TODO: handle virtual calls
+            allVars = Map.keys allVarsReachedByInitial
 
 

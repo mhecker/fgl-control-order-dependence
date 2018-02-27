@@ -7,7 +7,7 @@ import Data.Graph.Inductive
 data Dependence = ControlDependence | DataDependence | SummaryDependence | SpawnDependence | CallDependence | InterThreadDependence | ParameterInDependence | ParameterOutDependence deriving (Show, Eq, Enum, Ord, Bounded)
 
 
-data Independence = IntraIndependence deriving (Show, Eq, Enum, Ord, Bounded)
+data Independence = DataIndependence deriving (Show, Eq, Enum, Ord, Bounded)
 
 
 

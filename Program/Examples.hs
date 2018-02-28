@@ -2971,7 +2971,7 @@ failingWodNtscdReducible = [
             ]
 
 
-interprocedural = [
+interproceduralTestSuit = [
                 $(withName 'simpleProcedural),
                 $(withName 'simpleProcedural2),
                 $(withName 'simpleRecursive)

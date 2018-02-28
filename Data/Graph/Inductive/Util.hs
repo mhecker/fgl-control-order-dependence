@@ -17,6 +17,8 @@ import qualified Data.Tree as Tree
 import Data.Tree (Tree)
 import Control.Monad(liftM2,guard)
 
+import Control.Exception.Base (assert)
+
 import Data.Graph.Inductive.Graph hiding (labnfilter) -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Query.DFS (scc, condensation, dff')
@@ -236,3 +238,7 @@ isCond graph n = case suc graph n of
 removeDuplicateEdges :: (DynGraph gr, Eq b) => gr a b -> gr a b
 removeDuplicateEdges g = mkGraph (labNodes g)
                                  (nub $ labEdges g)
+
+insNodeIfNecessary (n, l) g
+  | n `elem` nodes g = assert (lab g n == Just l) $ g
+  | otherwise        = insNode (n,l) g

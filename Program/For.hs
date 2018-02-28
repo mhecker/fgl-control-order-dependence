@@ -17,6 +17,7 @@ import qualified Data.Set as Set
 import Data.List (find)
 import Data.Maybe (fromJust)
 
+import Debug.Trace
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Util
@@ -210,7 +211,7 @@ compileAll procedureOf procedures = do
                                                             -- others control-depend by default, high
                                                             -- TODO: better cope with this in the analysis!?!?
      return $ (p, (entryNode,
-                   insEdge (exitNode, exitOfProcedures ! p, NoOp) $ insNode (exitOfProcedures ! p, exitOfProcedures ! p) $ graph,
+                   insEdge (exitNode, exitOfProcedures ! p, NoOp) $ insNodeIfNecessary (exitOfProcedures ! p, exitOfProcedures ! p) $ graph,
                    (exitOfProcedures ! p),
                    (exitOfProcedures ! p):nodes
                   )

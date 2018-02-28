@@ -11,6 +11,7 @@ import Control.Monad.Gen
 import Control.Monad
 
 import Debug.Trace
+import Control.Exception.Base (assert)
 
 
 import Unicode
@@ -69,7 +70,7 @@ find :: Graph gr => gr a b -> Node -> ((Node, b) -> Bool) -> (a -> Bool) -> Node
 find graph start followEdge found
     | found (label start) = start
     | otherwise   = case filter followEdge $ lsuc graph start of
-        []      -> error "not found"
+        []      -> error ("not found, at:" ++ (show start))
         [(n,_)] -> find graph n followEdge found
         _       -> error "linear search only"
   where label n = fromJust $ lab graph n
@@ -217,8 +218,8 @@ nonTrivialDataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, procedure
         dependencies = dataDependence withParameters (vars p) (entryOf $ procedureOf $ mainThread)
         nonTrivial n n' = case (lab withParameters n, lab withParameters n') of
           (Just (FormalIn  x),   Just (FormalOut x'))    -> x /= x'
-          -- (Just (FormalIn  x),   Just (ActualIn  x' _ )) -> x /= x'
-          -- (Just (ActualOut x _), Just (FormalOut x'))    -> x /= x'
+          (Just (FormalIn  x),   Just (ActualIn  x' _ )) -> x /= x'
+          (Just (ActualOut x _), Just (FormalOut x'))    -> x /= x'
           (Nothing,           _                  ) -> error "label not found"
           (_,                 Nothing            ) -> error "label not found"
           (_,                 _                  ) -> True
@@ -283,6 +284,7 @@ initialReachesGivenMustKillFFor graph allVarsReachedByInitial mustKills initialR
 
 
 data Definition = CFGEdge (LEdge CFGEdge) | Initial deriving (Show, Eq, Ord)
+
 
 
 trivialDataIndependenceGraphP :: DynGraph gr => Program gr -> (gr SDGNode Independence, ParameterMaps)
@@ -356,6 +358,63 @@ trivialDataIndependenceGraphP p@(Program { tcfg, mainThread, entryOf, exitOf, pr
         callReturns = [ (call, return) | (call, return, CallSummary) <- labEdges tcfg]
 
 
+
+implicitDataDependenceGraphP :: DynGraph gr => Program gr -> (gr SDGNode Dependence, ParameterMaps)
+implicitDataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, exitOf, procedureOf, staticProcedureOf, staticProcedures }) = (implicitDataDependenceGraph, parameterMaps)
+  where (withParameters, parameterMaps@(ParameterMaps { formalInFor, formalOutFor, actualInsFor, actualOutsFor, parameterNodesFor })) = withParameterNodes p
+        reaching = reachingDefsP p
+        allVars = vars p
+        implicitDataDependenceGraph = mkGraph (labNodes withParameters) implicitDataDependences
+        implicitDataDependences = [
+           (formalIn, actualIn, DataDependence)
+              | (entry, exit)  <- entryExits,
+                let formals = Set.toList $ parameterNodesFor ! (entry, exit),
+                (call, return) <- callReturns, staticProcedureOf call == staticProcedureOf entry, -- TODO: performance
+                let actuals = Set.toList $ parameterNodesFor ! (call, return),
+                
+                (formalIn, Just (FormalIn x   ))   <- [ (n, lab withParameters n) | n <- formals],
+                (actualIn, Just (ActualIn x' _))   <- [ (n, lab withParameters n) | n <- actuals], x == x'
+         ] ++ [
+           (actualOut, formalOut, DataDependence)
+              | (entry, exit)  <- entryExits,
+                let formals = Set.toList $ parameterNodesFor ! (entry, exit),
+                (call, return) <- callReturns, staticProcedureOf call == staticProcedureOf entry, -- TODO: performance
+                let actuals = Set.toList $ parameterNodesFor ! (call, return),
+                
+                (formalOut, Just (FormalOut x   )) <- [ (n, lab withParameters n) | n <- formals],
+                (actualOut, Just (ActualOut x' _)) <- [ (n, lab withParameters n) | n <- actuals], x == x'
+         ] ++ [
+           (formalIn, formalOut, DataDependence)
+              | (entry, exit)  <- entryExits,
+                let formals = Set.toList $ parameterNodesFor ! (entry, exit),
+                let reachingExit = reaching ! exit,
+
+                (formalIn,  Just (FormalIn  x ))   <- [ (n, lab withParameters n) | n <- formals],
+                (formalOut, Just (FormalOut x'))   <- [ (n, lab withParameters n) | n <- formals], x == x'
+         ]
+        entryExits = [ (entry, exit) | procedure <- Set.toList $ staticProcedures,
+                                       let entry = entryOf procedure,
+                                       let exit  = exitOf procedure
+                     ]
+        callReturns = [ (call, return) | (call, return, CallSummary) <- labEdges tcfg]
+
+
+
+dataDependenceGraphViaIndependenceP :: DynGraph gr => Program gr -> (gr SDGNode Dependence, ParameterMaps)
+dataDependenceGraphViaIndependenceP p@(Program { tcfg, mainThread, entryOf, procedureOf}) =
+        assert (paramaterMaps1 == paramaterMaps2) $
+        assert (paramaterMaps2 == paramaterMaps3) $
+        (mergeTwoGraphs nonTrivialDataDependenceGraph trivialDataDependenceGraph, paramaterMaps1)
+  where (implicitDataDependenceGraph,   paramaterMaps1) = implicitDataDependenceGraphP p
+        (nonTrivialDataDependenceGraph, paramaterMaps2) = nonTrivialDataDependenceGraphP p
+        (trivialDataIndependenceGraph,  paramaterMaps3) = trivialDataIndependenceGraphP p
+
+        trivialDataDependenceGraph =   delEdges [ (from, to) | (from, to, DataIndependence) <- labEdges trivialDataIndependenceGraph ]
+                                     $ implicitDataDependenceGraph
+
+
+
+
 reachingDefsP ::  DynGraph gr => Program gr -> Map Node (Map Var (Set Definition))
 reachingDefsP p@(Program { tcfg, entryOf, exitOf, mainThread, procedureOf, staticProcedures }) =
      (㎲⊒) (Map.fromList [(entry, allVarsReachedByInitial)] ⊔ Map.fromList [(n, Map.empty) | n <- nodes tcfg]) reachingDefsGivenMustKillF
@@ -384,13 +443,14 @@ reachingDefsGivenMustKillFFor graph allVarsReachedByInitial mustKills reachingDe
     transfer e@(_,_,Def    x)    reachingDefs = Map.insert x (Set.fromList [ CFGEdge e ]) reachingDefs
     transfer e@(_,_,Use    x)    reachingDefs = reachingDefs
     transfer e@(_,_,Print  _ _)  reachingDefs = reachingDefs
-    transfer e@(_,_,Spawn)       reachingDefs = reachingDefs
+    transfer e@(_,_,Spawn)       reachingDefs = allVarsReachedByInitial
     transfer e@(_,_,NoOp)        reachingDefs = reachingDefs
     transfer e@(_,_,Call)        reachingDefs = allVarsReachedByInitial
     transfer e@(_,_,Return)      reachingDefs = Map.empty
-    transfer e@(m,n,CallSummary) reachingDefs = Map.union
-        (               Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | MustKill (entry', exit') x <- Set.toList $ mustKills, entry' == entry, exit' == exit ])
-        (reachingDefs ⊔ Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | x <- allVars ])
+    transfer e@(m,n,CallSummary) reachingDefs = Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | x <- allVars ]
+    -- transfer e@(m,n,CallSummary) reachingDefs = Map.union
+    --     (               Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | MustKill (entry', exit') x <- Set.toList $ mustKills, entry' == entry, exit' == exit ])
+    --     (reachingDefs ⊔ Map.fromList [ (x, Set.fromList [ CFGEdge e ]) | x <- allVars ])
       where [entry] =  [ entry | (entry, Call)   <- lsuc graph m ]  -- TODO: handle virtual calls
             [exit]  =  [ exit  | (exit,  Return) <- lpre graph n ]  -- TODO: handle virtual calls
             allVars = Map.keys allVarsReachedByInitial

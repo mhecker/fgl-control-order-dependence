@@ -56,6 +56,7 @@ import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
+import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
@@ -96,7 +97,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program)
+import Program.Examples (testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -138,6 +139,8 @@ color      = defaultMain                               $ testGroup "color"     [
 colorX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "color"     [ mkTest [colorTests], mkProp [colorProps]]
 reducible  = defaultMain                               $ testGroup "reducible" [                      mkProp [reducibleProps]]
 reducibleX = defaultMainWithIngredients [antXMLRunner] $ testGroup "reducible" [                      mkProp [reducibleProps]]
+indeps     = defaultMain                               $ testGroup "indeps"    [ mkTest [indepsTests], mkProp [indepsProps]]
+indepsX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "indeps"    [ mkTest [indepsTests], mkProp [indepsProps]]
 
 
 
@@ -160,10 +163,10 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps, indepsProps]
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, sensitiveDomTests, timingDepTests, dodProps, wodProps, colorProps                ]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, sensitiveDomTests, timingDepTests, dodProps, wodProps, colorProps                , indepsTests]
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
@@ -1591,6 +1594,20 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   | (exampleName, p) <- testsuite
   ] ++
   []
+
+
+indepsProps = testGroup "(concerning dependencey graph representations using independencies)" [
+    testProperty "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p
+  ]
+indepsTests = testGroup "(concerning color algorithms)" $
+  [  testCase  ( "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP for " ++ exampleName)
+                $ dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
+  []
+
 
 
 miscProps = testGroup "(misc)" [

@@ -338,3 +338,40 @@ timingVsFSI2 = GeneratedProgram  (Map.fromList [(1, "1")]) (Map.fromList [
        (Map.empty)
     )
   ])
+
+
+indepsCounterExample :: GeneratedProgram
+indepsCounterExample = GeneratedProgram
+ (Map.fromList [(1,"main"),(3,"thread3")])
+ (Map.fromList [("bar",Generated (ForV (Global "b") (If (Leq (Val 0) (Times (Var (Global "b")) (Var (Global "b")))) (Seq (ReadFromChannel (Global "c") "lowIn1") (ReadFromChannel (Global "y") "lowIn1")) (If (Leq (Val 0) (Times (Var (Global "b")) (Var (Global "b")))) Skip (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut"))))
+                 undefined undefined undefined
+                ),
+                ("baz",Generated (Seq (ForC 1 (If CTrue (SpawnThread 3) (Ass (Global "c") (Val 17)))) (ForC 2 (Seq (ReadFromChannel (Global "b") "stdIn") (CallProcedure "bar"))))
+                 -- (fromList [Global "b"]) (fromList [(3,fromList [])]) (Map.fromList [("bar",fromList [Global "b"])])
+                 undefined undefined undefined
+                ),
+                ("main",Generated (Seq (Seq (ForC 2 Skip) (If CTrue (CallProcedure "baz") (ReadFromChannel (Global "y") "lowIn1"))) (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "a"))))) (Seq Skip (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "z")))))))
+                 -- (fromList [Global "a",Global "z"]) (fromList []) (fromList [("baz",fromList [])])
+                                  undefined undefined undefined
+                ),
+                ("thread3",Generated (Seq (If CTrue (Seq (PrintToChannel (Val 17) "stdOut") (PrintToChannel (Val 42) "stdOut")) (ForC 1 Skip)) (Seq (Seq (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "x") "stdIn")) (ForV (Global "x") (Ass (Global "b") (Times (Var (Global "x")) (Var (Global "x")))))))
+                 -- (fromList [Global "b",Global "x"]) (fromList []) (fromList [])
+                 undefined undefined undefined
+                )
+  ]
+ )
+
+indepsExceptionExample :: GeneratedProgram
+indepsExceptionExample = GeneratedProgram
+ (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+ (Map.fromList [("bar",Generated (Seq (If CTrue (If CFalse (PrintToChannel (Val 0) "stdOut") Skip) (Seq (ReadFromChannel (Global "y") "stdIn") (Ass (Global "y") (Times (Var (Global "y")) (Var (Global "y")))))) (Seq (Seq (Ass (Global "c") (Val 0)) (CallProcedure "foo")) (Seq (CallProcedure "foo") (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut"))))
+                  undefined undefined undefined),
+                ("baz",Generated (Seq (If CFalse (If CFalse (ReadFromChannel (Global "y") "stdIn") (Ass (Global "y") (Val (-1)))) (Seq (ReadFromChannel (Global "x") "lowIn1") (ReadFromChannel (Global "x") "lowIn1"))) (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") (Ass (Global "b") (Val (-1)))) (Seq (CallProcedure "baz") (Ass (Global "y") (Times (Var (Global "b")) (Var (Global "b")))))))
+                  undefined undefined undefined),
+                ("foo",Generated (ForC 1 (Seq (Seq (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (Ass (Global "y") (Times (Var (Global "c")) (Var (Global "c"))))) (ForC 2 (ReadFromChannel (Global "c") "lowIn1"))))
+                  undefined undefined undefined),
+                ("main",Generated (Seq (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (CallProcedure "bar") (PrintToChannel (Val 1) "stdOut"))) (ForC 1 (If CFalse (ReadFromChannel (Global "z") "stdIn") Skip)))                 undefined undefined undefined),
+                ("thread2",Generated (If CTrue (If CFalse (ForC 1 (PrintToChannel (Val 42) "stdOut")) (Seq (ReadFromChannel (Global "x") "lowIn1") Skip)) (Seq (If CFalse (ReadFromChannel (Global "b") "stdIn") (CallProcedure "bar")) (Seq (CallProcedure "baz") (Ass (Global "z") (Val 17)))))
+                 undefined undefined undefined),
+                ("thread3",Generated (ForC 1 (Seq (If CTrue Skip (ReadFromChannel (Global "a") "stdIn")) (Seq (Ass (Global "a") (Val 42)) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut"))))
+                 undefined undefined undefined)])

@@ -94,6 +94,38 @@ concurrentSystemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticPro
         lift = nmap CFGNode
 
 
+nonTrivialsystemDependenceGraphP :: DynGraph gr => Program gr -> gr SDGNode Dependence
+nonTrivialsystemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
+    addSummaryEdges parameterMaps $ 
+    addParameterEdges  parameterMaps $
+    insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
+    foldr mergeTwoGraphs empty $ [ ddeps ] ++ 
+                                 [ lift $
+                                   insEdge (entry,exit, ControlDependence) $
+                                   controlDependenceGraph (insEdge (entry, exit, false) $ cfgOfProcedure p procedure)
+                                                          exit
+                                 | procedure <- Set.toList staticProcedures, let entry = entryOf procedure, let exit = exitOf procedure ]
+  where (ddeps, parameterMaps) = nonTrivialDataDependenceGraphP p
+        lift = nmap CFGNode
+
+
+concurrentNonTrivialSystemDependenceGraphP :: DynGraph gr => Program gr -> gr SDGNode Dependence
+concurrentNonTrivialSystemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
+    addSummaryEdges parameterMaps $ 
+    addParameterEdges  parameterMaps $
+    insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
+    foldr mergeTwoGraphs empty $ [ ddeps] ++
+                                 [ lift tdeps ] ++
+                                 [ lift $ 
+                                   insEdge (entry,exit, ControlDependence) $
+                                   controlDependenceGraph (insEdge (entry, exit, false) $ cfgOfProcedure p procedure)
+                                                          exit
+                                 | procedure <- Set.toList staticProcedures, let entry = entryOf procedure, let exit = exitOf procedure ]
+  where tdeps = interThreadDependenceGraphP p
+        (ddeps, parameterMaps) = nonTrivialDataDependenceGraphP p
+        lift = nmap CFGNode
+
+
 
 
 
@@ -145,6 +177,57 @@ summaryComputation parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor })
                                          ]
           _                 -> Set.empty
           where formalIn = source
+
+
+addNonTrivialSummaryEdges :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
+addNonTrivialSummaryEdges parameterMaps graph =
+      insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries]
+    $ graph
+  where summaries = summaryComputation parameterMaps graph initialWorkSet initialReached initialAoPaths initialSummaries
+        initialWorkSet   = Set.fromList [ (source, formalOut, edge)             | formalOut <- formalOuts, (source, edge) <- lpre graph formalOut, isIntra edge]
+        initialReached   = Map.fromList [ (formalOut, Set.fromList [formalOut]) | formalOut <- formalOuts ]
+        initialAoPaths   = Map.empty
+        initialSummaries = Set.empty
+        formalOuts = [ formalOut | formalOut <- nodes graph, Just (FormalOut _) <- [lab graph formalOut]]
+
+summaryComputationForIndependencies :: DynGraph gr =>
+  ParameterMaps ->
+  gr SDGNode Dependence ->
+  gr SDGNode Independence -> 
+  Set (Node, Node, Dependence) ->
+  Map Node (Set Node) ->
+  Map Node (Set Node) ->
+  Set SummaryEdge ->
+  Set SummaryEdge
+summaryComputationForIndependencies parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor })
+                   nonTrivialSystemDependenceGraph
+                   trivialDataIndependenceGraph
+                   workSet
+                   reached
+                   aoPaths
+                   summaries
+    | Set.null workSet = summaries
+    | otherwise = traceShow (workSet, summaries) $
+                  assert (isIntra edge) $
+        if (source ∈ (reached ! formalOut)) then
+          summaryComputation parameterMaps nonTrivialSystemDependenceGraph  workSet'             reached aoPaths summaries
+        else
+          summaryComputation parameterMaps nonTrivialSystemDependenceGraph (workSet' ∪ newEdges) (reached ⊔ newReached) (aoPaths ⊔ newAoPaths) (summaries ∪ newSummaries)
+  where ((source, formalOut, edge), workSet') = Set.deleteFindMin workSet
+        newEdges   = Set.fromList [ (source', formalOut, edge') | (source', edge') <- lpre nonTrivialSystemDependenceGraph source, isIntra edge']
+        newReached = Map.fromList [ (formalOut, Set.fromList [source])]
+        newAoPaths = case lab nonTrivialSystemDependenceGraph source of
+          Just (ActualOut _ _) -> Map.fromList [ (source, Set.fromList [formalOut]) ]
+          _                    -> Map.empty
+        newSummaries = case lab nonTrivialSystemDependenceGraph source of
+          Just (FormalIn _) -> Set.fromList [ (actualIn, actualOut) | actualIn  <- Set.toList $ actualInsFor  ! formalIn,  Just (ActualIn  _ call ) <- [lab nonTrivialSystemDependenceGraph actualIn],
+                                                                      actualOut <- Set.toList $ actualOutsFor ! formalOut, Just (ActualOut _ call') <- [lab nonTrivialSystemDependenceGraph actualOut],
+                                                                      call == call' -- TODO: performance
+                                         ]
+          _                 -> Set.empty
+          where formalIn = source
+
+
 
 
 

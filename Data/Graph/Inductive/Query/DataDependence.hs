@@ -96,15 +96,17 @@ data ParameterMaps = ParameterMaps {
 
 withParameterNodes :: DynGraph gr => Program gr -> (gr SDGNode CFGEdge, ParameterMaps)
 withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
-    | Set.null allVars = (lifted, ParameterMaps Map.empty Map.empty Map.empty Map.empty Map.empty)
+    | Set.null allVars = (lifted, ParameterMaps Map.empty Map.empty Map.empty Map.empty (Map.fromList [((entry, exit), Set.empty) | (entry, exit) <- entryExits]) )
     | otherwise = (graphWithParameterNodes, ParameterMaps { formalInFor = formalInFor, formalOutFor = formalOutFor, actualInsFor = actualInsFor, actualOutsFor = actualOutsFor, parameterNodesFor = parameterNodesFor })
 
   where (min, max) = nodeRange tcfg
         allVars = vars p
         lifted = nmap CFGNode tcfg
+        entryExits  = [(entryOf procedure, exitOf procedure) | procedure <- Set.toList $ staticProcedures]
+        callReturns = [(n,m)                                 | (n,m, CallSummary) <- labEdges tcfg]
         (graphWithParameterNodes, parameterNodesFor) = runGenFrom (max + 1) $ do
-          (withFormals, formalNodesFor)    <- addFormals allVars [(entryOf procedure, exitOf procedure) | procedure <- Set.toList $ staticProcedures] lifted      Map.empty
-          (withActuals, parameterNodesFor) <- addActuals allVars [(n,m)                                 | (n,m, CallSummary) <- labEdges withFormals] withFormals formalNodesFor
+          (withFormals, formalNodesFor)    <- addFormals allVars entryExits  lifted      Map.empty
+          (withActuals, parameterNodesFor) <- addActuals allVars callReturns withFormals formalNodesFor
           return (withActuals, parameterNodesFor)
         formalInFor = Map.fromList [ (n, find graphWithParameterNodes n follow (found v))   | (n, ActualIn v _) <- labNodes graphWithParameterNodes ]
           where follow (_, Use _) = True

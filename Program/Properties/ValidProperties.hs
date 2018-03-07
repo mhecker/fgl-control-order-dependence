@@ -57,7 +57,7 @@ import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, 
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes)
-import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp)
+import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp)
 
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -1599,7 +1599,13 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 
 indepsProps = testGroup "(concerning dependencey graph representations using independencies)" [
-    testProperty "summaryComputation                      =~  summaryComputationF"
+    testProperty "summaryComputation                      =~  summaryComputationGfpLfp"
+                $ \generated ->
+                    let p   :: Program Gr = toProgram generated
+                        (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfp p parameterMaps pdg,
+    testProperty "summaryComputation                      =~  summaryComputationLfp"
                 $ \generated ->
                     let p   :: Program Gr = toProgram generated
                         (_, parameterMaps) = withParameterNodes p
@@ -1610,7 +1616,13 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
                   dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p
   ]
 indepsTests = testGroup "(concerning color algorithms)" $
-  [  testCase  ( "summaryComputation                      =~  summaryComputationF for " ++ exampleName)
+  [  testCase  ( "summaryComputation                      =~  summaryComputationGfpLfp for " ++ exampleName)
+                $   let (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfp p parameterMaps pdg @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
+  [  testCase  ( "summaryComputation                      =~  summaryComputationLfp for " ++ exampleName)
                 $   let (_, parameterMaps) = withParameterNodes p
                         pdg = programDependenceGraphP p
                     in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg @? ""

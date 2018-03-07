@@ -184,6 +184,76 @@ summaryComputationF parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor }
 
 
 
+type SummaryIndependence = (Node, Node, ())
+
+
+addSummaryEdgesGfpLfp :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
+addSummaryEdgesGfpLfp p
+                      parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
+                      graph =
+      insEdges [ (actualIn, actualOut, SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries,
+                                                             (ActualIn  x call ) <- [fromJust $ lab graph actualIn],  -- avoid duplicate edges
+                                                             (ActualOut y call') <- [fromJust $ lab graph actualOut], --
+                                                             assert (call == call') $ True,                           --
+                                                             x /= y                                                   --
+      ]
+    $ insEdges (summaryIndependenciesToNonTrivialSummaryDependencies parameterMaps graph summaryIndependencies)
+    $ graph
+  where summaries = summariesGivenSummaryIndependencies summaryIndependencies
+        summaryIndependencies =  (𝝂) (Set.fromList initialSummaryIndependencies) summaryIndependenciesF 
+        intraOnly = efilter (\(n, m, e) -> isIntra e) graph
+
+        summaryIndependenciesF :: Set SummaryIndependence -> Set SummaryIndependence
+        summaryIndependenciesF summaryIndependencies = Set.fromList [ (actualIn, actualOut, ()) | (actualIn, actualOut, ()) <- Set.toList $ summaryIndependencies, not $ (actualIn, actualOut) ∈ summaries ]
+          where summaries = summariesGivenSummaryIndependencies  summaryIndependencies
+
+        summariesGivenSummaryIndependencies  :: Set SummaryIndependence -> Set SummaryEdge
+        summariesGivenSummaryIndependencies summaryIndependencies = (㎲⊒) (Set.empty) (summaryComputationGivenSummaryIndependenciesF  parameterMaps intraOnly summaryIndependencies)
+        initialSummaryIndependencies = [ (actualIn, actualOut, ()) | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                     (formalIn,  FormalIn  x ) <- [(n, fromJust $ lab graph n)],
+                                                                     (formalOut, FormalOut x') <- [(m, fromJust $ lab graph m)],
+                                                                     assert (x == x') $ True,
+                                                                     actualIn  <- Set.toList $ actualInsFor  ! formalIn,  (ActualIn  _ call ) <- [fromJust $ lab graph actualIn],
+                                                                     actualOut <- Set.toList $ actualOutsFor ! formalOut, (ActualOut _ call') <- [fromJust $ lab graph actualOut],
+                                                                     call == call'
+                                       ]
+        (trivialDataIndependenceGraph, _) = trivialDataIndependenceGraphP p
+
+summaryIndependenciesToNonTrivialSummaryDependencies  :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> Set SummaryIndependence -> [LEdge Dependence]
+summaryIndependenciesToNonTrivialSummaryDependencies
+          parameterMaps@(ParameterMaps { parameterNodesFor })
+          graph
+          summaryIndependencies
+  = [ (actualIn, actualOut, SummaryDependence) | parameterNodes <- Map.elems parameterNodesFor,
+                                                 (actualIn,  ActualIn   x  call  ) <- [(n, fromJust $ lab graph n) | n <- Set.toList $ parameterNodes ],
+                                                 (actualOut, ActualOut  x' call' ) <- [(n, fromJust $ lab graph n) | n <- Set.toList $ parameterNodes ],
+                                                 x == x',
+                                                 assert (call == call') $ True,
+                                                 not $ (actualIn, actualOut, ()) ∈ summaryIndependencies
+    ]
+
+summaryComputationGivenSummaryIndependenciesF :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> Set SummaryIndependence -> Set SummaryEdge -> Set SummaryEdge
+summaryComputationGivenSummaryIndependenciesF
+                    parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
+                    graph
+                    summaryIndependencies
+                    summaries =
+    assert ([ e | (n, m, e) <- labEdges graph, not $ isIntra e ] == []) $
+    summaries
+  ⊔ Set.fromList [ (actualIn, actualOut) | (formalIn, FormalIn x)  <- labNodes reachable,
+                                           (formalOut, FormalOut y) <- [ (m, fromJust $ lab reachable m) | m <- suc reachable formalIn],
+                                           actualIn  <- Set.toList $ actualInsFor  ! formalIn,  (ActualIn  _ call ) <- [fromJust $ lab reachable actualIn],
+                                           actualOut <- Set.toList $ actualOutsFor ! formalOut, (ActualOut _ call') <- [fromJust $ lab reachable actualOut],
+                                           call == call'
+    ]
+  where intraGraphWithSummaries = insEdges [ (actualIn, actualOut, SummaryDependence) | (actualIn, actualOut) <- Set.toList summaries ]
+                                $ insEdges (summaryIndependenciesToNonTrivialSummaryDependencies parameterMaps graph summaryIndependencies)
+                                $ graph
+        reachable = trc intraGraphWithSummaries
+
+
+
+
 slice :: Graph gr => gr SDGNode Dependence -> (Dependence -> Bool) -> Set Node -> Set Node
 slice graph follow nodes = (㎲⊒) nodes f
   where f nodes = nodes ∪ (Set.fromList [ m | n <- Set.toList nodes, (m,e) <- lpre graph n, follow e])

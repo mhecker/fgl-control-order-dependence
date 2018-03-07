@@ -123,8 +123,10 @@ withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
                 follow          _ = False
                 found v (FormalOut v') = v == v'
                 found v _              = False
-        actualInsFor = invert formalInFor
-        actualOutsFor = invert formalOutFor
+        actualInsFor =   Map.fromList [(formalIn, Set.empty) | (formalIn, FormalIn _) <- labNodes graphWithParameterNodes ]
+                       ⊔ (invert formalInFor)
+        actualOutsFor =  Map.fromList [(formalIn, Set.empty) | (formalIn, FormalIn _) <- labNodes graphWithParameterNodes ]
+                       ⊔ (invert formalOutFor)
 
 
 addFormals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Map (Node, Node) (Set Node) -> Gen Node (gr SDGNode CFGEdge, Map (Node, Node) (Set Node))

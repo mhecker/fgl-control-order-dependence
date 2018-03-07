@@ -22,10 +22,15 @@ import Data.List ((\\))
 import Debug.Trace
 
 
-data Generated = Generated For (Set Var) (Map StaticThread (Set Var)) (Map StaticProcedure (Set Var)) deriving Show
+data Generated = Generated For (Set Var) (Map StaticThread (Set Var)) (Map StaticProcedure (Set Var))
+instance Show Generated where
+  show (Generated p vars spawned called)  = "Generated (" ++ (show p) ++ ") undefined undefined undefined"
+
 data IntraGeneratedProgram = IntraGeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 data GeneratedProgram = GeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 data SimpleProgram    = SimpleProgram    (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
+
+
 
 toCodeIntra :: IntraGeneratedProgram -> (Map StaticThread  StaticProcedure, Map StaticProcedure For)
 toCodeIntra (IntraGeneratedProgram threadOf forProcedures) = (

@@ -56,7 +56,9 @@ import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
-import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP)
+import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes)
+import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp)
+
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
@@ -1597,11 +1599,23 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 
 indepsProps = testGroup "(concerning dependencey graph representations using independencies)" [
+    testProperty "summaryComputation                      =~  summaryComputationF"
+                $ \generated ->
+                    let p   :: Program Gr = toProgram generated
+                        (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg,
     testProperty "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p
   ]
 indepsTests = testGroup "(concerning color algorithms)" $
+  [  testCase  ( "summaryComputation                      =~  summaryComputationF for " ++ exampleName)
+                $   let (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
   [  testCase  ( "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP for " ++ exampleName)
                 $ dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p @? ""
   | (exampleName, p) <- testsuite ++ interproceduralTestSuit

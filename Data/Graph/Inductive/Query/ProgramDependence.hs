@@ -190,7 +190,8 @@ type SummaryIndependence = (Node, Node, ())
 addSummaryEdgesGfpLfp :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
 addSummaryEdgesGfpLfp p
                       parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
-                      graph =
+                      graph
+  =
       insEdges [ (actualIn, actualOut, SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries,
                                                              (ActualIn  x call ) <- [fromJust $ lab graph actualIn],  -- avoid duplicate edges
                                                              (ActualOut y call') <- [fromJust $ lab graph actualOut], --
@@ -221,14 +222,14 @@ addSummaryEdgesGfpLfp p
 
 summaryIndependenciesToNonTrivialSummaryDependencies  :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> Set SummaryIndependence -> [LEdge Dependence]
 summaryIndependenciesToNonTrivialSummaryDependencies
-          parameterMaps@(ParameterMaps { parameterNodesFor })
+          parameterMaps@(ParameterMaps { parameterNodesFor, trivialActualInFor })
           graph
           summaryIndependencies
-  = [ (actualIn, actualOut, SummaryDependence) | parameterNodes <- Map.elems parameterNodesFor,
-                                                 (actualIn,  ActualIn   x  call  ) <- [(n, fromJust $ lab graph n) | n <- Set.toList $ parameterNodes ],
-                                                 (actualOut, ActualOut  x' call' ) <- [(n, fromJust $ lab graph n) | n <- Set.toList $ parameterNodes ],
-                                                 x == x',
+  = [ (actualIn, actualOut, SummaryDependence) | (actualOut, actualIn) <- Map.assocs trivialActualInFor,
+                                                 let (ActualIn  x  call ) = fromJust $ lab graph actualIn,
+                                                 let (ActualOut x' call') = fromJust $ lab graph actualOut,
                                                  assert (call == call') $ True,
+                                                 assert (x    == x'   ) $ True,
                                                  not $ (actualIn, actualOut, ()) ∈ summaryIndependencies
     ]
 
@@ -250,6 +251,85 @@ summaryComputationGivenSummaryIndependenciesF
                                 $ insEdges (summaryIndependenciesToNonTrivialSummaryDependencies parameterMaps graph summaryIndependencies)
                                 $ graph
         reachable = trc intraGraphWithSummaries
+
+
+addSummaryEdgesGfpLfpWorkList :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
+addSummaryEdgesGfpLfpWorkList p
+                      parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
+                      graph
+  =   insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries]
+    $ insEdges (summaryIndependenciesToNonTrivialSummaryDependencies parameterMaps graph summaryIndependencies)
+    $ graph
+  where (summaries, summaryIndependencies) = summaryComputationGfpLfpWorkList parameterMaps graph initialWorkSet initialReached initialAoPaths initialSummaries initialSummaryIndependencies
+        initialWorkSet   = Set.fromList [ (source, formalOut)                   | formalOut <- formalOuts, (source, edge) <- lpre graph formalOut, isIntra edge]
+        initialReached   = Map.fromList [ (formalOut, Set.fromList [formalOut]) | formalOut <- formalOuts ]
+        initialAoPaths   = Map.fromList [ (actualOut, Set.empty)                | actualOut <- actualOuts ]
+        initialSummaries = Set.empty
+        formalOuts = [ formalOut | formalOut <- nodes graph, Just (FormalOut _)     <- [lab graph formalOut]]
+        actualOuts = [ actualOut | actualOut <- nodes graph, Just (ActualOut  _ _ ) <- [lab graph actualOut]]
+        
+        initialSummaryIndependencies = Set.fromList $ 
+                                       [ (actualIn, actualOut, ()) | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                     (formalIn,  FormalIn  x ) <- [(n, fromJust $ lab graph n)],
+                                                                     (formalOut, FormalOut x') <- [(m, fromJust $ lab graph m)],
+                                                                     assert (x == x') $ True,
+                                                                     actualIn  <- Set.toList $ actualInsFor  ! formalIn,  (ActualIn  _ call ) <- [fromJust $ lab graph actualIn],
+                                                                     actualOut <- Set.toList $ actualOutsFor ! formalOut, (ActualOut _ call') <- [fromJust $ lab graph actualOut],
+                                                                     call == call'
+                                       ]
+        (trivialDataIndependenceGraph, _) = trivialDataIndependenceGraphP p
+
+
+summaryComputationGfpLfpWorkList :: DynGraph gr =>
+                   ParameterMaps ->
+                   gr SDGNode Dependence ->
+                   Set (Node, Node) ->
+                   Map Node (Set Node) ->
+                   Map Node (Set Node) ->
+                   Set SummaryEdge ->
+                   Set SummaryIndependence ->
+                   (Set SummaryEdge, Set SummaryIndependence)
+summaryComputationGfpLfpWorkList parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, trivialActualInFor })
+                   graph
+                   workSet
+                   reached
+                   aoPaths
+                   summaries
+                   summaryindependencies
+    | Set.null workSet = (summaries, summaryindependencies)
+    | otherwise =
+        if (source ∈ (reached ! formalOut)) then
+          summaryComputationGfpLfpWorkList parameterMaps graph (workSet' ∪ newIntraWorklistEdgesViaSummaries                                                    ) reached                aoPaths                summaries summaryindependencies
+        else
+          summaryComputationGfpLfpWorkList parameterMaps graph (workSet' ∪ newIntraWorklistEdgesViaSummaries ∪ newIntraWorklistEdges  ∪ newSummaryWorklistEdges) (reached ⊔ newReached) (aoPaths ⊔ newAoPaths) (summaries ∪ newSummaries) (summaryindependencies ∖ lostIndependencies)
+  where ((source, formalOut), workSet') = Set.deleteFindMin workSet
+        newReached = Map.fromList [ (formalOut, Set.fromList [source])]
+        newAoPaths = case lab graph source of
+            Just (ActualOut _ _) -> Map.fromList [ (source, Set.fromList [formalOut]) ]
+            _                    -> Map.empty
+        newIntraWorklistEdges             = Set.fromList [ (source', formalOut) | (source', edge) <- lpre graph source, isIntra edge]
+        newIntraWorklistEdgesViaSummaries = case lab graph source of
+            Just (ActualOut _ _) ->   Set.fromList [ (actualIn, formalOut) | (actualIn, actualOut') <- Set.toList summaries, actualOut' == actualOut] -- TODO: performance
+                                    ∪ Set.fromList [ (actualIn, formalOut) |  actualIn <- [ trivialActualInFor ! actualOut ], not $ (actualIn, actualOut,()) ∈ summaryindependencies ]
+            _                    -> Set.empty
+          where actualOut = source
+        (newSummaries, lostIndependencies, newSummaryWorklistEdges) = case lab graph source of
+            Just (FormalIn _) -> lop2sol $ 
+                                 [ ([(actualIn, actualOut   )  | x /= x'],
+                                    [(actualIn, actualOut,())  | x == x'],
+                                    [(actualIn, formalOut')    | formalOut' <- Set.toList $ aoPaths ! actualOut ]
+                                   )
+                                 | actualIn  <- Set.toList $ actualInsFor  ! formalIn,  Just (ActualIn  x  call ) <- [lab graph actualIn],
+                                   actualOut <- Set.toList $ actualOutsFor ! formalOut, Just (ActualOut x' call') <- [lab graph actualOut],
+                                   call == call' -- TODO: performance
+                                 ]
+            _                 -> (Set.empty, Set.empty, Set.empty)
+          where formalIn = source
+                lop2sol [] = (Set.empty, Set.empty, Set.empty)
+                lop2sol ((a,b,c):xs) = ((Set.fromList a) ⊔ as, (Set.fromList b) ⊔ bs, (Set.fromList c) ⊔ cs)
+                  where (as,bs,cs) = lop2sol xs
+
+
 
 
 

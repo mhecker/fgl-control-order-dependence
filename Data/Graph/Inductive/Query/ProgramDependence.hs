@@ -387,10 +387,20 @@ summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x call), (actualOut, 
                             -- traceShow ("SummaryEdge: ", se) $
                             let [return] = [ return | (return, CallSummary) <- lsuc cfg call ]
                                 cg'Trc = trc cg'
-                                cg' = callGraphGivenIndeps x y cg cgNodeMap trivialDataIndependenceGraph parameterMaps
-                            in not $
-                              (∀) [    (n, CallSite (call', return')) | n <- pre cg'Trc (cgNodeMap ! (CallSite (call, return))),   CallSite (call', return') <- [ fromJust $ lab cg'Trc n ] ]
-                               (\((n, CallSite (call', return'))) ->
+                                cg' = callGraphGivenIndepsFor x y
+                                expectedSummariesAt = [ (n, CallSite (call', return')) | n <- pre cg'Trc (cgNodeMap ! (CallSite (call, return))),   CallSite (call', return') <- [ fromJust $ lab cg'Trc n ] ]
+                                possibleSummariesAt = [ (n, CallSite (call', return')) | n <- pre cgTrc  (cgNodeMap ! (CallSite (call, return))),   CallSite (call', return') <- [ fromJust $ lab cgTrc  n ] ]
+                            in
+                              assert ((cgNodeMap ! (CallSite (call, return)),  CallSite (call, return)) `elem` expectedSummariesAt) $
+                              assert ((cgNodeMap ! (CallSite (call, return)),  CallSite (call, return)) `elem` possibleSummariesAt) $
+                              (
+                                if (length possibleSummariesAt > 1) then
+                                  traceShow ("# Implied summary Edges:", length expectedSummariesAt - 1, " of ", length possibleSummariesAt - 1 )
+                                else
+                                  id
+                              ) $
+                              not $
+                              (∀) expectedSummariesAt (\((n, CallSite (call', return'))) ->
                                                let [actualIn']  = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
                                                                                        ActualIn  x' call'' <- [ fromJust $ lab cfgWithParameterNodes actual],
                                                                                        assert (call' == call'') True,
@@ -406,12 +416,14 @@ summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x call), (actualOut, 
                                                   (actualOut', SummaryDependence) `elem` (lsuc sdg actualIn')
                                )
                           ]
-  where cfg = tcfg p
+  where callGraphGivenIndepsFor x y = callGraphGivenIndeps x y cg cgNodeMap trivialDataIndependenceGraph parameterMaps
+        cfg = tcfg p
         (cfgWithParameterNodes, parameterMaps@(ParameterMaps { parameterNodesFor })) = withParameterNodes p
         pdg = programDependenceGraphP p
         sdg = addSummaryEdges parameterMaps pdg
         (trivialDataIndependenceGraph, _) = strongTrivialDataIndependenceGraphP p
         (cg, cgNodeMap) = callGraph p
+        cgTrc = trc cg
         summaries = [((actualIn,  fromJust $ lab cfgWithParameterNodes actualIn),
                       (actualOut, fromJust $ lab cfgWithParameterNodes actualOut)
                      )

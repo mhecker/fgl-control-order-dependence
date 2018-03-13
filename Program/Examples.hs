@@ -2737,6 +2737,47 @@ simpleProcedural2  =  p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+simpleProcedural3 :: Program Gr
+simpleProcedural3  =  p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram (Map.fromList [ (1, "Main") ]) code
+        code = Map.fromList $ [
+          ("Main",
+           Skip                            `Seq`
+           Ass (Global "sum") (Val 0)      `Seq`
+           Ass (Global "n")   (Val 10)     `Seq`
+           CallProcedure "Compute"         `Seq`
+           Skip
+          ),
+          ("Compute",
+           Skip                            `Seq`
+           CallProcedure "ReallyCompute"   `Seq`
+           CallProcedure "ReallyCompute"   `Seq`
+           Skip
+          ),
+          ("ReallyCompute",
+           Skip                            `Seq`
+           Ass (Global "i")   (Val 1)      `Seq`
+           ForV (Global "n") (
+             CallProcedure "Add"           `Seq`
+             CallProcedure "Increment"     `Seq`
+             CallProcedure "Decrement"     `Seq`
+             CallProcedure "Increment"
+           )                               `Seq`
+           Skip
+          ),
+          ("Add", Skip `Seq`
+              Ass (Global "sum") ((Var $ Global "sum") `Plus` (Var $ Global "i"))
+          ),
+          ("Increment", Skip `Seq`
+              Ass (Global "i") ((Var $ Global "i") `Plus` (Val 1))
+          ),
+          ("Decrement", Skip `Seq`
+              Ass (Global "i") ((Var $ Global "i") `Plus` (Val (-1)))
+          )
+         ]
+
+
+
 simpleRecursive :: Program Gr
 simpleRecursive  =  p { observability = defaultObservabilityMap (tcfg p) } 
   where p = compileAllToProgram (Map.fromList [ (1, "Main") ]) code

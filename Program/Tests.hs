@@ -89,6 +89,13 @@ showGraph g = do
 showPDG p = showGraph $ programDependenceGraphP p
 showcPDG p = showGraph $ concurrentProgramDependenceGraphP p
 showCFG p = showGraph $ tcfg p
+-- showSDGSimp sdg = showGraph $ efilter f sdg
+--   where f (_,_, SummaryDependence) = True
+--         f (_,_, ParameterInDependence)   = True
+--         f (_,_, ParameterOutDependence)  = True
+--         f (_,_, CallDependence)          = True
+--         f (_,_, ControlDependence)       = True
+--         f _                              = False
 showTDG p = showGraph $ timingDependenceGraphP p
 showConflicts p = showGraph $ dataConflictGraphP p
 showInterIDomGraph gr s = showGraph $ withNodes $ trrAcyclic $ ( fromPredMap (interDom gr s) :: Gr () ())
@@ -107,6 +114,7 @@ investigate s gr = do
 
 
 showDomTree cdomComputation p = showGraph idom
+
   where
     cdom = cdomComputation p
     idom = insEdge (entry,entry,()) $ idomToTree cdom

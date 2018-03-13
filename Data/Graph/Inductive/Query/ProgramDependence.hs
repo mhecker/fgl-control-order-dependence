@@ -331,6 +331,92 @@ summaryComputationGfpLfpWorkList parameterMaps@(ParameterMaps { actualInsFor, ac
 
 
 
+data CallGraphEdge = Calls | IncludesCallSite deriving (Ord, Eq, Show)
+data CallGraphNode =  Procedure (Node, Node) | CallSite (Node, Node) deriving (Ord, Eq, Show)
+  
+callGraph :: Graph gr => Program gr ->  (gr CallGraphNode CallGraphEdge, Map CallGraphNode Node)
+callGraph p@(Program { tcfg, entryOf, exitOf, staticProcedures, staticProcedureOf })  = (mkGraph nodes edges, nodeMap)
+  where nodes' =
+             [ CallSite (call, return)    | (call, return, CallSummary) <- labEdges tcfg ]
+         ++  [ Procedure (entryOf procedure, exitOf procedure)  | procedure <- Set.toList $ staticProcedures ]
+        nodeMap = Map.fromList $ zip nodes' [1..]
+        nodes = [ (n, l) | (l,n) <- Map.assocs nodeMap]
+
+        edges =    [ (nodeMap ! (CallSite (call, return))               , nodeMap ! (Procedure (entryOf proc, exitOf proc)), Calls) | (call, return, CallSummary) <- labEdges tcfg,
+                                                                                                                                       (entry, Call) <- lsuc tcfg call,
+                                                                                                                                       let proc = staticProcedureOf entry,
+                                                                                                                                       assert (exitOf proc `elem` (pre tcfg return)) True
+                   ]
+                ++ [ (nodeMap ! ( Procedure (entryOf proc, exitOf proc)), nodeMap ! (CallSite (call, return)), IncludesCallSite)     | (call, return, CallSummary) <- labEdges tcfg,
+                                                                                                                                        let proc = staticProcedureOf call
+                   ]
+
+callGraphGivenIndeps :: DynGraph gr => Var -> Var ->  gr CallGraphNode CallGraphEdge -> Map CallGraphNode Node -> gr SDGNode Independence ->  ParameterMaps -> gr CallGraphNode CallGraphEdge
+callGraphGivenIndeps x y cg cgNodeMap trivialDataIndependenceGraph parameterMaps@(ParameterMaps { parameterNodesFor }) = efilter f cg
+                                     where f (_,_, Calls) = True
+                                           f (n,m, IncludesCallSite) = case (fromJust $ lab cg n, fromJust $ lab cg m) of
+                                             (Procedure (entry', exit'), CallSite (call', return')) ->
+                                               let formals = Set.toList $ parameterNodesFor ! (entry', exit')
+                                                   actuals = Set.toList $ parameterNodesFor ! (call', return')
+                                                   [formalOut'] = [ formal | formal <- Set.toList $ parameterNodesFor ! (entry', exit'),
+                                                                                       FormalOut y' <- [ fromJust $ lab trivialDataIndependenceGraph formal],
+                                                                                       y' == y
+                                                                  ]
+                                                   [formalIn']  = [ formal | formal <- Set.toList $ parameterNodesFor ! (entry', exit'),
+                                                                                       FormalIn  x' <- [ fromJust $ lab trivialDataIndependenceGraph formal],
+                                                                                       x' == x
+                                                                  ]
+                                                   [actualOut'] = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
+                                                                                       ActualOut y' call'' <- [ fromJust $ lab trivialDataIndependenceGraph actual],
+                                                                                       assert (call'' == call') True,
+                                                                                       y' == y
+                                                                  ]
+                                                   [actualIn']  = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
+                                                                                       ActualIn  x' call'' <- [ fromJust $ lab trivialDataIndependenceGraph actual],
+                                                                                       assert (call'' == call') True,
+                                                                                       x' == x
+                                                                  ]
+                                               in not $    (formalIn',  actualIn',  DataIndependence) `elem` labEdges trivialDataIndependenceGraph
+                                                        || (actualOut', formalOut', DataIndependence) `elem` labEdges trivialDataIndependenceGraph
+                                             _                                      -> undefined
+
+-- summaryIndepsProperty :: DynGraph gr => Program gr -> Bool
+summaryIndepsPropertyViolations :: DynGraph gr => Program gr -> [ ((Node, SDGNode), (Node, SDGNode)) ]
+summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x call), (actualOut, ActualOut y call)) | se@((actualIn, ActualIn x call), (actualOut, ActualOut y _)) <- summaries,
+                            -- traceShow () $
+                            -- traceShow ("SummaryEdge: ", se) $
+                            let [return] = [ return | (return, CallSummary) <- lsuc cfg call ]
+                                cg'Trc = trc cg'
+                                cg' = callGraphGivenIndeps x y cg cgNodeMap trivialDataIndependenceGraph parameterMaps
+                            in not $
+                              (∀) [    (n, CallSite (call', return')) | n <- pre cg'Trc (cgNodeMap ! (CallSite (call, return))),   CallSite (call', return') <- [ fromJust $ lab cg'Trc n ] ]
+                               (\((n, CallSite (call', return'))) ->
+                                               let [actualIn']  = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
+                                                                                       ActualIn  x' call'' <- [ fromJust $ lab cfgWithParameterNodes actual],
+                                                                                       assert (call' == call'') True,
+                                                                                       x' == x
+                                                                  ]
+                                                   [actualOut'] = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
+                                                                                       ActualOut y' call'' <- [ fromJust $ lab cfgWithParameterNodes actual],
+                                                                                       assert (call' == call'') True,
+                                                                                       y' == y
+                                                                 ]
+                                               in
+                                                  -- traceShow ("Expected: ", (actualIn', actualOut', SummaryDependence)) $
+                                                  (actualOut', SummaryDependence) `elem` (lsuc sdg actualIn')
+                               )
+                          ]
+  where cfg = tcfg p
+        (cfgWithParameterNodes, parameterMaps@(ParameterMaps { parameterNodesFor })) = withParameterNodes p
+        pdg = programDependenceGraphP p
+        sdg = addSummaryEdges parameterMaps pdg
+        (trivialDataIndependenceGraph, _) = strongTrivialDataIndependenceGraphP p
+        (cg, cgNodeMap) = callGraph p
+        summaries = [((actualIn,  fromJust $ lab cfgWithParameterNodes actualIn),
+                      (actualOut, fromJust $ lab cfgWithParameterNodes actualOut)
+                     )
+                    | (actualIn, actualOut, SummaryDependence) <- labEdges sdg
+                    ]
 
 
 

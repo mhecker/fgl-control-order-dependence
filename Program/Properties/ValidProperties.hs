@@ -53,11 +53,12 @@ import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges)
 import Data.Graph.Inductive.PatriciaTree (Gr)
+import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes)
-import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList)
+import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations)
 
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -1599,12 +1600,19 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 
 indepsProps = testGroup "(concerning dependencey graph representations using independencies)" [
+    testProperty "summaryIndepsProperty"
+                $ \generated ->
+                    let p   :: Program Gr = toProgram generated
+                    in summaryIndepsPropertyViolations p == [],
     testProperty "summaryComputation                      =~  summaryComputationGfpLfpWorkList"
                 $ \generated ->
                     let p   :: Program Gr = toProgram generated
-                        (_, parameterMaps) = withParameterNodes p
+                        (cfg, parameterMaps) = withParameterNodes p
                         pdg = programDependenceGraphP p
-                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfpWorkList p parameterMaps pdg,
+                        sdg               = addSummaryEdges                 parameterMaps pdg
+                        sdgGfpLfpWorkList = addSummaryEdgesGfpLfpWorkList p parameterMaps pdg
+                    in traceShow (length $ nodes cfg, length $ [ () | (_,_,SummaryDependence) <- labEdges sdg]) $
+                                                      sdg == sdgGfpLfpWorkList,
     testProperty "summaryComputation                      =~  summaryComputationGfpLfp"
                 $ \generated ->
                     let p   :: Program Gr = toProgram generated

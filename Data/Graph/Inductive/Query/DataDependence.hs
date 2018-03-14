@@ -91,14 +91,18 @@ data ParameterMaps = ParameterMaps {
     actualInsFor  :: Map Node (Set Node), -- formalIn   -> Set actualIn
     actualOutsFor :: Map Node (Set Node), -- formalOut  -> Set actualOut
     trivialActualInFor :: Map Node Node,  -- actualOut  ->     actualIn  s.t.  both var(actualIn) == var(actualOut)
+    actualInForVar  :: Map ((Node, Node), Var) Node,  -- ((call, return), x) -> actualIn  s.t. var(actualIn) == x
+    actualOutForVar :: Map ((Node, Node), Var) Node,  -- ((call, return), x) -> actualOut s.t. var(actualOut) == x
+    formalInForVar  :: Map ((Node, Node), Var) Node,  -- ((entry, exit), x) -> formalIn  s.t. var(formalIn) == x
+    formalOutForVar :: Map ((Node, Node), Var) Node,  -- ((entry, exit), x) -> formalOut s.t. var(formalOut) == x
     parameterNodesFor :: Map (Node, Node) (Set Node)  --   (entry, exit)  -> (Set formalIn ∪ Set formalOut)
                                                       -- ∪ (call, return) -> (Set actualIn ∪ Set actualOut)
   } deriving (Eq, Show)
 
 withParameterNodes :: DynGraph gr => Program gr -> (gr SDGNode CFGEdge, ParameterMaps)
 withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
-    | Set.null allVars = (lifted, ParameterMaps Map.empty Map.empty Map.empty Map.empty Map.empty (Map.fromList [((entry, exit), Set.empty) | (entry, exit) <- entryExits]) )
-    | otherwise = (graphWithParameterNodes, ParameterMaps { formalInFor = formalInFor, formalOutFor = formalOutFor, actualInsFor = actualInsFor, actualOutsFor = actualOutsFor, trivialActualInFor = trivialActualInFor, parameterNodesFor = parameterNodesFor })
+    | Set.null allVars = (lifted, ParameterMaps Map.empty Map.empty Map.empty Map.empty Map.empty Map.empty Map.empty Map.empty Map.empty (Map.fromList [((entry, exit), Set.empty) | (entry, exit) <- entryExits]) )
+    | otherwise = (graphWithParameterNodes, ParameterMaps { formalInFor = formalInFor, formalOutFor = formalOutFor, actualInsFor = actualInsFor, actualOutsFor = actualOutsFor, trivialActualInFor = trivialActualInFor, parameterNodesFor = parameterNodesFor, actualInForVar = actualInForVar, actualOutForVar = actualOutForVar, formalInForVar = formalInForVar, formalOutForVar = formalOutForVar })
 
   where (min, max) = nodeRange tcfg
         allVars = vars p
@@ -134,6 +138,18 @@ withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
                                                                (actualOut, ActualOut x' _) <- [ (m, fromJust $ lab  graphWithParameterNodes m) | m <- Set.toList $ parameterNodesFor ! callReturn],
                                                                x == x'
                          ]
+        actualInForVar  = Map.fromList [((callReturn, x), actualIn)  | callReturn <- callReturns,
+                                                                       (actualIn,  ActualIn x _)  <- [ (n, fromJust $ lab  graphWithParameterNodes n) | n <- Set.toList $ parameterNodesFor ! callReturn]
+                         ]
+        actualOutForVar = Map.fromList [((callReturn, x), actualOut) | callReturn <- callReturns,
+                                                                       (actualOut, ActualOut x _) <- [ (n, fromJust $ lab  graphWithParameterNodes n) | n <- Set.toList $ parameterNodesFor ! callReturn]
+                         ]
+        formalInForVar  = Map.fromList [((entryExit, x), formalIn)  | entryExit <- entryExits,
+                                                                       (formalIn,  FormalIn x)    <- [ (n, fromJust $ lab  graphWithParameterNodes n) | n <- Set.toList $ parameterNodesFor ! entryExit]
+                         ]
+        formalOutForVar = Map.fromList [((entryExit, x), formalOut) | entryExit <- entryExits,
+                                                                       (formalOut, FormalOut x)   <- [ (n, fromJust $ lab  graphWithParameterNodes n) | n <- Set.toList $ parameterNodesFor ! entryExit]
+                         ]
 
 
 addFormals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Map (Node, Node) (Set Node) -> Gen Node (gr SDGNode CFGEdge, Map (Node, Node) (Set Node))
@@ -147,8 +163,8 @@ addFormals allVars ((entry, exit):rest) graph parameterNodesFor = do
 addActuals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Map (Node, Node) (Set Node) -> Gen Node (gr SDGNode CFGEdge, Map (Node, Node) (Set Node))
 addActuals allVars []                    graph parameterNodesFor = return (graph, parameterNodesFor)
 addActuals allVars ((call, return):rest) graph parameterNodesFor = do
-        (withActualIns,  actualIns ) <- addAfter  call   NoOp Dummy [ (ActualIn  v call, Use v) | v <- Set.toList $ allVars ] graph
-        (withActualOuts, actualOuts) <- addBefore return            [ (ActualOut v call, Def v) | v <- Set.toList $ allVars ] withActualIns
+        (withActualIns,  actualIns ) <- addAfter  call   NoOp Dummy [ (ActualIn  v (call, return), Use v) | v <- Set.toList $ allVars ] graph
+        (withActualOuts, actualOuts) <- addBefore return            [ (ActualOut v (call, return), Def v) | v <- Set.toList $ allVars ] withActualIns
         addActuals allVars rest withActualOuts (parameterNodesFor ⊔ (Map.fromList [ ((call, return), actualIns ∪ actualOuts) ]))
 
 addAfter :: DynGraph gr => Node -> b -> a ->  [(a,b)] -> gr a b -> Gen Node (gr a b, Set Node)

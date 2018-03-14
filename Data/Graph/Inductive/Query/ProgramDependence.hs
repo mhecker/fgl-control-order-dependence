@@ -367,13 +367,13 @@ callGraphGivenIndeps x y cg cgNodeMap trivialDataIndependenceGraph parameterMaps
                                                                                        x' == x
                                                                   ]
                                                    [actualOut'] = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
-                                                                                       ActualOut y' call'' <- [ fromJust $ lab trivialDataIndependenceGraph actual],
-                                                                                       assert (call'' == call') True,
+                                                                                       ActualOut y' (call'', return'') <- [ fromJust $ lab trivialDataIndependenceGraph actual],
+                                                                                       assert (call'' == call'  ∧  return'' == return') True,
                                                                                        y' == y
                                                                   ]
                                                    [actualIn']  = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
-                                                                                       ActualIn  x' call'' <- [ fromJust $ lab trivialDataIndependenceGraph actual],
-                                                                                       assert (call'' == call') True,
+                                                                                       ActualIn  x' (call'', return'') <- [ fromJust $ lab trivialDataIndependenceGraph actual],
+                                                                                       assert (call'' == call'  ∧  return'' == return') True,
                                                                                        x' == x
                                                                   ]
                                                in not $    (formalIn',  actualIn',  DataIndependence) `elem` labEdges trivialDataIndependenceGraph
@@ -382,35 +382,26 @@ callGraphGivenIndeps x y cg cgNodeMap trivialDataIndependenceGraph parameterMaps
 
 -- summaryIndepsProperty :: DynGraph gr => Program gr -> Bool
 summaryIndepsPropertyViolations :: DynGraph gr => Program gr -> [ ((Node, SDGNode), (Node, SDGNode)) ]
-summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x call), (actualOut, ActualOut y call)) | se@((actualIn, ActualIn x call), (actualOut, ActualOut y _)) <- summaries,
+summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x (call, return)), (actualOut, ActualOut y (call, return))) | se@((actualIn, ActualIn x (call, return)), (actualOut, ActualOut y _)) <- summaries,
                             -- traceShow () $
                             -- traceShow ("SummaryEdge: ", se) $
-                            let [return] = [ return | (return, CallSummary) <- lsuc cfg call ]
-                                cg'Trc = trc cg'
+                            let cg'Trc = trc cg'
                                 cg' = callGraphGivenIndepsFor x y
                                 expectedSummariesAt = [ (n, CallSite (call', return')) | n <- pre cg'Trc (cgNodeMap ! (CallSite (call, return))),   CallSite (call', return') <- [ fromJust $ lab cg'Trc n ] ]
                                 possibleSummariesAt = [ (n, CallSite (call', return')) | n <- pre cgTrc  (cgNodeMap ! (CallSite (call, return))),   CallSite (call', return') <- [ fromJust $ lab cgTrc  n ] ]
                             in
                               assert ((cgNodeMap ! (CallSite (call, return)),  CallSite (call, return)) `elem` expectedSummariesAt) $
                               assert ((cgNodeMap ! (CallSite (call, return)),  CallSite (call, return)) `elem` possibleSummariesAt) $
-                              (
-                                if (length possibleSummariesAt > 1) then
-                                  traceShow ("# Implied summary Edges:", length expectedSummariesAt - 1, " of ", length possibleSummariesAt - 1 )
-                                else
-                                  id
-                              ) $
+                              -- (
+                              --   if (length possibleSummariesAt > 1) then
+                              --     traceShow ("# Implied summary Edges:", length expectedSummariesAt - 1, " of ", length possibleSummariesAt - 1 )
+                              --   else
+                              --     id
+                              -- ) $
                               not $
                               (∀) expectedSummariesAt (\((n, CallSite (call', return'))) ->
-                                               let [actualIn']  = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
-                                                                                       ActualIn  x' call'' <- [ fromJust $ lab cfgWithParameterNodes actual],
-                                                                                       assert (call' == call'') True,
-                                                                                       x' == x
-                                                                  ]
-                                                   [actualOut'] = [ actual | actual <- Set.toList $ parameterNodesFor ! (call', return'),
-                                                                                       ActualOut y' call'' <- [ fromJust $ lab cfgWithParameterNodes actual],
-                                                                                       assert (call' == call'') True,
-                                                                                       y' == y
-                                                                 ]
+                                               let actualIn'  = actualInForVar  ! ((call', return'), x)
+                                                   actualOut' = actualOutForVar ! ((call', return'), y)
                                                in
                                                   -- traceShow ("Expected: ", (actualIn', actualOut', SummaryDependence)) $
                                                   (actualOut', SummaryDependence) `elem` (lsuc sdg actualIn')
@@ -418,7 +409,7 @@ summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x call), (actualOut, 
                           ]
   where callGraphGivenIndepsFor x y = callGraphGivenIndeps x y cg cgNodeMap trivialDataIndependenceGraph parameterMaps
         cfg = tcfg p
-        (cfgWithParameterNodes, parameterMaps@(ParameterMaps { parameterNodesFor })) = withParameterNodes p
+        (cfgWithParameterNodes, parameterMaps@(ParameterMaps { parameterNodesFor, actualInForVar, actualOutForVar })) = withParameterNodes p
         pdg = programDependenceGraphP p
         sdg = addSummaryEdges parameterMaps pdg
         (trivialDataIndependenceGraph, _) = strongTrivialDataIndependenceGraphP p
@@ -429,6 +420,54 @@ summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x call), (actualOut, 
                      )
                     | (actualIn, actualOut, SummaryDependence) <- labEdges sdg
                     ]
+
+
+
+addImplicitSummaryEdgesLfp :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
+addImplicitSummaryEdgesLfp p parameterMaps sdg =
+      insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries]
+    $ sdg
+  where summaries = implicitSummaryEdgesLfp p parameterMaps sdg
+
+
+implicitSummaryEdgesLfp :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> Set SummaryEdge
+implicitSummaryEdgesLfp p parameterMaps sdg =  (㎲⊒) (Set.empty) (implicitSummaryComputationF parameterMaps sdg trivialDataIndependenceGraph (cg, cgNodeMap))
+  where (trivialDataIndependenceGraph, _) = strongTrivialDataIndependenceGraphP p
+        (cg, cgNodeMap) = callGraph p
+
+
+implicitSummaryComputationF :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Independence -> (gr CallGraphNode CallGraphEdge, Map CallGraphNode Node) -> Set SummaryEdge -> Set SummaryEdge
+implicitSummaryComputationF
+                    parameterMaps@(ParameterMaps { actualInForVar, actualOutForVar, formalInForVar, formalOutForVar })
+                    sdg
+                    trivialDataIndependenceGraph
+                    (cg, cgNodeMap)
+                    implicitSummaries =
+    implicitSummaries
+  ⊔ Set.fromList [ (actualIn', actualOut') | ((actualIn, ActualIn x (call, return)), (actualOut, ActualOut y _)) <- summaries,
+                                             (n, IncludesCallSite)  <- lpre cg (cgNodeMap ! (CallSite (call, return))),
+                                             let Procedure (entry, exit) = fromJust $ lab cg n,
+                                             let formalIn   = formalInForVar  ! ((entry, exit), x),
+                                             let formalOut  = formalOutForVar ! ((entry, exit), y),
+                                             not $  (formalIn,  actualIn,  DataIndependence) `elem` labEdges trivialDataIndependenceGraph,
+                                             not $  (actualOut, formalOut, DataIndependence) `elem` labEdges trivialDataIndependenceGraph,
+                                             (m, Calls) <- lpre cg n,
+                                             let CallSite (call', return') = fromJust $ lab cg m,
+                                             let actualIn'  = actualInForVar  ! ((call', return'), x),
+                                             let actualOut' = actualOutForVar ! ((call', return'), y)
+    ]
+  where summaries = [((actualIn,  fromJust $ lab sdg actualIn),
+                      (actualOut, fromJust $ lab sdg actualOut)
+                     )
+                    | (actualIn, actualOut, SummaryDependence) <- labEdges sdg
+                    ]
+                ++  [((actualIn,  fromJust $ lab sdg actualIn),
+                      (actualOut, fromJust $ lab sdg actualOut)
+                     )
+                    | (actualIn, actualOut) <- Set.toList $ implicitSummaries
+                    ]
+
+
 
 
 

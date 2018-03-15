@@ -1608,21 +1608,24 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
                         sdg                     = addSummaryEdges              parameterMaps pdg
                         nonImplicitSummariesSdg = addNonImplicitSummaryEdges p parameterMaps pdg
                         sdg'                    = addImplicitSummaryEdgesLfp p parameterMaps nonImplicitSummariesSdg
-                    in sdg == sdg',
-    testProperty "implicitSummaryEdgesLfp are valid"
-                $ \generated ->
-                    let p   :: Program Gr = toProgram generated
-                        pdg = programDependenceGraphP p
-                        (cfg, parameterMaps) = withParameterNodes p
-                        sdg = addSummaryEdges  parameterMaps pdg
-                        implicitSummaries = implicitSummaryEdgesLfp p parameterMaps sdg 
-                        allSummaries = Set.fromList [ (actualIn, actualOut)  | (actualIn, actualOut, SummaryDependence) <-  labEdges sdg]
-                    in traceShow ("Implicit Summary Edges:", Set.size implicitSummaries, " of ", Set.size allSummaries) $
-                       implicitSummaries ⊆ allSummaries,
-    testProperty "summaryIndepsProperty"
-                $ \generated ->
-                    let p   :: Program Gr = toProgram generated
-                    in summaryIndepsPropertyViolations p == []
+                        summaries               = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                    ]
+                        summaries'              = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitSummariesSdg]
+                    in traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summaries') $
+                       sdg == sdg'
+    -- testProperty "implicitSummaryEdgesLfp are valid"
+    --             $ \generated ->
+    --                 let p   :: Program Gr = toProgram generated
+    --                     pdg = programDependenceGraphP p
+    --                     (cfg, parameterMaps) = withParameterNodes p
+    --                     sdg = addSummaryEdges  parameterMaps pdg
+    --                     implicitSummaries = implicitSummaryEdgesLfp p parameterMaps sdg 
+    --                     allSummaries = Set.fromList [ (actualIn, actualOut)  | (actualIn, actualOut, SummaryDependence) <-  labEdges sdg]
+    --                 in traceShow ("Implicit Summary Edges:", Set.size implicitSummaries, " of ", Set.size allSummaries) $
+    --                    implicitSummaries ⊆ allSummaries,
+    -- testProperty "summaryIndepsProperty"
+    --             $ \generated ->
+    --                 let p   :: Program Gr = toProgram generated
+    --                 in summaryIndepsPropertyViolations p == [],
   --   testProperty "summaryComputation                      =~  summaryComputationGfpLfpWorkList"
   --               $ \generated ->
   --                   let p   :: Program Gr = toProgram generated
@@ -1638,12 +1641,12 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
   --                       (_, parameterMaps) = withParameterNodes p
   --                       pdg = programDependenceGraphP p
   --                   in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfp p parameterMaps pdg,
-  --   testProperty "summaryComputation                      =~  summaryComputationLfp"
-  --               $ \generated ->
-  --                   let p   :: Program Gr = toProgram generated
-  --                       (_, parameterMaps) = withParameterNodes p
-  --                       pdg = programDependenceGraphP p
-  --                   in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg,
+    -- testProperty "summaryComputation                      =~  summaryComputationLfp"
+    --             $ \generated ->
+    --                 let p   :: Program Gr = toProgram generated
+    --                     (_, parameterMaps) = withParameterNodes p
+    --                     pdg = programDependenceGraphP p
+    --                 in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg
   --   testProperty "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP"
   --               $ \generated -> let  p :: Program Gr = toProgram generated in
   --                 dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p

@@ -14,6 +14,7 @@ import Data.Graph.Inductive.Query.DataDependence
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.InterThreadDependence
 
+import Algebra.Lattice
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -558,7 +559,26 @@ implicitSummaryPredecessorsOfActualInF
                        ]
 
 
+data PathState = Trivial | Translated | NonTrivial deriving (Show, Ord, Eq, Bounded, Enum)
+instance JoinSemiLattice PathState where
+  Trivial    `join` x          = x
+  x          `join` Trivial    = x
 
+  NonTrivial `join` x          = NonTrivial 
+  x          `join` NonTrivial = NonTrivial
+
+  Translated `join` Translated = Translated
+
+instance BoundedJoinSemiLattice PathState where
+  bottom = Trivial
+
+
+after :: PathState -> PathState -> PathState
+after Trivial x = x
+after Translated Trivial    = Translated
+after Translated Translated = NonTrivial
+after Translated NonTrivial = NonTrivial
+after NonTrivial x          = NonTrivial
 
 
 addNonImplicitSummaryEdges :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
@@ -566,8 +586,8 @@ addNonImplicitSummaryEdges p parameterMaps graph =
       insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries]
     $ graph
   where summaries = nonImplicitSummaryComputation parameterMaps graph trivialDataIndependenceGraph (cg, cgNodeMap) initialWorkSet initialReached initialAoPaths initialSummaries
-        initialWorkSet   = Set.fromList [ (source, formalOut, isNonTrivialEdge graph (source, formalOut, edge)) | formalOut <- formalOuts, (source, edge) <- lpre graph formalOut, isIntra edge]
-        initialReached   = Map.fromList [ (formalOut, Map.fromList [(formalOut, False)]) | formalOut <- formalOuts ]
+        initialWorkSet   = Set.fromList [ (source, formalOut, pathStateForEdge graph (source, formalOut, edge)) | formalOut <- formalOuts, (source, edge) <- lpre graph formalOut, isIntra edge]
+        initialReached   = Map.fromList [ (formalOut, Map.fromList [(formalOut, Trivial)]) | formalOut <- formalOuts ]
         initialAoPaths   = Map.fromList [ (actualOut, Map.empty)                | actualOut <- actualOuts ]
         initialSummaries = Set.empty
         formalOuts = [ formalOut | formalOut <- nodes graph, Just (FormalOut _)     <- [lab graph formalOut]]
@@ -577,22 +597,24 @@ addNonImplicitSummaryEdges p parameterMaps graph =
         (cg, cgNodeMap) = callGraph p
 
 
-isNonTrivialEdge graph (n, m, e) = case (fromJust $ lab graph n, fromJust $ lab graph m, e) of
-          (FormalIn  x,   FormalOut x',   DataDependence) -> assert (x == x')                                      $ True
-          (FormalIn  x,   ActualIn  x' _, DataDependence) -> assert (x == x')                                      $ False
-          (ActualOut x _, FormalOut x',   DataDependence) -> assert (x == x')                                      $ False
-          (ActualOut x _, ActualIn x' _,  DataDependence) -> assert (x == x')                                      $ True
+pathStateForEdge graph (n, m, e) = case (fromJust $ lab graph n, fromJust $ lab graph m, e) of
+          (FormalIn  x,   FormalOut x',   DataDependence) -> assert (x == x')                                      $ NonTrivial
+          (FormalIn  x,   ActualIn  x' _, DataDependence) -> assert (x == x')                                      $ Trivial
+          (ActualOut x _, FormalOut x',   DataDependence) -> assert (x == x')                                      $ Trivial
+          (ActualOut x _, ActualIn x' _,  DataDependence) -> assert (x == x')                                      $ Trivial
 
-          (CFGNode _,     ActualIn x' _,  _             ) -> assert (e `elem` [DataDependence, ControlDependence]) $ True
-          (ActualOut x _, CFGNode _,      _             ) -> assert (e `elem` [DataDependence                   ]) $ True
-          (CFGNode _,     FormalOut x',   _             ) -> assert (e `elem` [DataDependence                   ]) $ True
-          (FormalIn x,    CFGNode _,      _             ) -> assert (e `elem` [DataDependence                   ]) $ True
+          (CFGNode _,     ActualIn x' _,  _             ) -> assert (e `elem` [DataDependence, ControlDependence]) $ NonTrivial
+          (ActualOut x _, CFGNode _,      _             ) -> assert (e `elem` [DataDependence                   ]) $ NonTrivial
+          (CFGNode _,     FormalOut x',   _             ) -> assert (e `elem` [DataDependence                   ]) $ NonTrivial
+          (FormalIn x,    CFGNode _,      _             ) -> assert (e `elem` [DataDependence                   ]) $ NonTrivial
+
+          (ActualIn x _,  ActualOut x' _, SummaryDependence) -> if (x == x') then Trivial else Translated
 
           (n',            m',             _             ) -> error (show (n', m', e))
 
 
-type WorkListEdge =  (Node, Node, Bool) -- (sourece, formalOut, isNonTrivial)
-nonImplicitSummaryComputation :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Independence -> (gr CallGraphNode CallGraphEdge, Map CallGraphNode Node) -> Set WorkListEdge -> Map Node (Map Node Bool) -> Map Node (Map Node Bool) -> Set SummaryEdge -> Set SummaryEdge
+type WorkListEdge =  (Node, Node, PathState) -- (sourece, formalOut, pathState)
+nonImplicitSummaryComputation :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Independence -> (gr CallGraphNode CallGraphEdge, Map CallGraphNode Node) -> Set WorkListEdge -> Map Node (Map Node PathState) -> Map Node (Map Node PathState) -> Set SummaryEdge -> Set SummaryEdge
 nonImplicitSummaryComputation
                    parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor })
                    graph
@@ -605,23 +627,23 @@ nonImplicitSummaryComputation
     | Set.null workSet = summaries
     | otherwise = 
         case Map.lookup source (reached ! formalOut) of
-          Just isNonTrivial' -> if isNonTrivial ⊑ isNonTrivial' then old else new
+          Just pathState' -> if pathState ⊑ pathState' then old else new
           Nothing            ->                                               new
   where
         old = nonImplicitSummaryComputation parameterMaps graph trivialDataIndependenceGraph (cg, cgNodeMap) (workSet'                                                                                        ) reached                aoPaths                summaries
         new = 
               nonImplicitSummaryComputation parameterMaps graph trivialDataIndependenceGraph (cg, cgNodeMap) (workSet' ∪ newIntraWorklistEdgesViaSummaries ∪ newIntraWorklistEdges  ∪ newSummaryWorklistEdges) (reached ⊔ newReached) (aoPaths ⊔ newAoPaths) (summaries ∪ newSummaries)
 
-        ((source, formalOut, isNonTrivial), workSet') = Set.deleteFindMin workSet
+        ((source, formalOut, pathState), workSet') = Set.deleteFindMin workSet
         labelOf n = fromJust $ lab graph n
 
-        newReached = Map.fromList [ (formalOut, Map.fromList [(source, isNonTrivial)])]
+        newReached = Map.fromList [ (formalOut, Map.fromList [(source, pathState)])]
         newAoPaths = case lab graph source of
-            Just (ActualOut _ _) -> Map.fromList [ (source, Map.fromList [(formalOut, isNonTrivial)]) ]
+            Just (ActualOut _ _) -> Map.fromList [ (source, Map.fromList [(formalOut, pathState)]) ]
             _                    -> Map.empty
-        newIntraWorklistEdges             = Set.fromList [ (source', formalOut, isNonTrivial ⊔ isNonTrivialEdge graph (source', source, edge)) | (source', edge) <- lpre graph source, isIntra edge]
+        newIntraWorklistEdges             = Set.fromList [ (source', formalOut, pathState `after` pathStateForEdge graph (source', source, edge)) | (source', edge) <- lpre graph source, isIntra edge]
         newIntraWorklistEdgesViaSummaries = case lab graph source of
-            Just (ActualOut _ (call, return)) -> Set.fromList [ (actualIn', formalOut, isNonTrivial) | (actualIn', actualOut') <- Set.toList allSummaries ]
+            Just (ActualOut _ (call, return)) -> Set.fromList [ (actualIn', formalOut, pathState `after` pathStateForEdge graph (actualIn', actualOut', SummaryDependence)) | (actualIn', actualOut') <- Set.toList allSummaries]
               where actualOut = source
                     (_, nonImplicitSummarieCandidates) =
                       (㎲⊒) (Set.singleton actualOut, Set.empty) (implicitSummarySuccessorsOfActualOutF parameterMaps labelOf summaries  trivialDataIndependenceGraph (cg, cgNodeMap) )
@@ -634,18 +656,19 @@ nonImplicitSummaryComputation
                                      ]
             _                                 -> Set.empty
         (newSummaries, newSummaryWorklistEdges) = case lab graph source of
-            Just (FormalIn _) -> -- traceShow ((source, formalOut, isNonTrivial), reached ! formalOut)  $ 
-                                 if (isNonTrivial) then
+            Just (FormalIn _) -> -- traceShow ((source, formalOut, pathState), reached ! formalOut)  $
+                                 -- (if (formalIn == 80) then traceShow ((source, formalOut, pathState), reached ! formalOut) else id) $
+                                 if (pathState == NonTrivial) then
                                  lop2sol $ 
-                                 [ ((actualIn, actualOut),   [(actualIn', formalOut', isNonTrivial') | (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut,
-                                                                                                       (formalOut', isNonTrivial') <- Map.assocs $ aoPaths ! actualOut'
+                                 [ ((actualIn, actualOut),   [(actualIn', formalOut', pathState' `after` pathStateForEdge graph (actualIn', actualOut', SummaryDependence)) | (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut,
+                                                                                                       (formalOut', pathState') <- Map.assocs $ aoPaths ! actualOut'
                                                              ])
                                  | actualIn  <- Set.toList $ actualInsFor  ! formalIn,  Just (ActualIn  _ callReturn ) <- [lab graph actualIn],
                                    actualOut <- Set.toList $ actualOutsFor ! formalOut, Just (ActualOut _ callReturn') <- [lab graph actualOut],
                                    callReturn == callReturn' -- TODO: performance
                                  ]
                                  else
-                                 -- traceShow ((source, formalOut, isNonTrivial), reached ! formalOut)  $ 
+                                 -- traceShow ((source, formalOut, pathState), reached ! formalOut)  $ 
                                  (Set.empty, Set.empty)
             _                 -> (Set.empty, Set.empty)
           where formalIn = source

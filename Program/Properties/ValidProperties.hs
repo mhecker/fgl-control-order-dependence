@@ -1609,8 +1609,8 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
                         nonImplicitSummariesSdg = addNonImplicitSummaryEdges p parameterMaps pdg
                         sdg'                    = addImplicitSummaryEdgesLfp p parameterMaps nonImplicitSummariesSdg
                         summaries               = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                    ]
-                        summaries'              = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitSummariesSdg]
-                    in traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summaries') $
+                        summariesNonImplicit    = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitSummariesSdg]
+                    in traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summariesNonImplicit) $
                        sdg == sdg'
     -- testProperty "implicitSummaryEdgesLfp are valid"
     --             $ \generated ->

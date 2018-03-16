@@ -296,8 +296,8 @@ initialReachesGivenMustKillFFor graph allVarsReachedByInitial mustKills initialR
     transfer e@(_,_,Guard _ _)   initialReaches = initialReaches
     transfer e@(_,_,Assign x _)  initialReaches = Map.insert x False initialReaches
     transfer e@(_,_,Read   x _)  initialReaches = Map.insert x False initialReaches
-    transfer e@(_,_,Def    x)    initialReaches = Map.insert x False initialReaches
-    transfer e@(_,_,Use    x)    initialReaches = initialReaches
+    transfer e@(_,_,Def    x)    initialReaches = undefined -- Map.insert x False initialReaches
+    transfer e@(_,_,Use    x)    initialReaches = undefined -- initialReaches
     transfer e@(_,_,Print  _ _)  initialReaches = initialReaches
     transfer e@(_,_,Spawn)       initialReaches = initialReaches
     transfer e@(_,_,NoOp)        initialReaches = initialReaches

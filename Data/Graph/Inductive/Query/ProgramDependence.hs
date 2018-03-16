@@ -539,13 +539,13 @@ implicitSummarySuccessorsOfActualOutF
                         ]
         newSummaries = Set.fromList [ (actualIn, actualOut) | (actualIn, actualOut) <- Set.toList baseSummaries, actualOut ∈ newActualOuts ]
 
-
-implicitSummaryPredecessorsOfActualInF :: DynGraph gr => ParameterMaps -> (Node -> SDGNode) -> gr SDGNode Independence -> (gr CallGraphNode CallGraphEdge, Map CallGraphNode Node) -> Set Node -> Set Node
+implicitSummaryPredecessorsOfActualInF :: DynGraph gr => ParameterMaps -> (Node -> SDGNode) -> gr SDGNode Independence -> (gr CallGraphNode CallGraphEdge, Map CallGraphNode Node) -> Set (Node, Node) -> Set Node -> Set Node
 implicitSummaryPredecessorsOfActualInF
                     parameterMaps@(ParameterMaps { actualInForVar, actualOutForVar, formalInForVar, formalOutForVar })
                     labelOf
                     trivialDataIndependenceGraph
                     (cg, cgNodeMap)
+                    callSites
                     actualIns = actualIns ⊔ newActualIns
   where actualInsWithNode = [ (actualIn, labelOf actualIn) | actualIn <- Set.toList $ actualIns ]
         newActualIns = Set.fromList [ actualIn' | (actualIn, ActualIn x (call, return)) <- actualInsWithNode,
@@ -555,6 +555,7 @@ implicitSummaryPredecessorsOfActualInF
                                                   not $  (formalIn,  actualIn,  DataIndependence) `elem` labEdges trivialDataIndependenceGraph,
                                                   (m, Calls) <- lpre cg n,
                                                   let CallSite (call', return') = fromJust $ lab cg m,
+                                                  (call', return') ∈ callSites,
                                                   let actualIn'  = actualInForVar  ! ((call', return'), x)
                        ]
 
@@ -645,19 +646,21 @@ nonImplicitSummaryComputation
         newIntraWorklistEdgesViaSummaries = case lab graph source of
             Just (ActualOut _ (call, return)) -> Set.fromList [ (actualIn', formalOut, pathState `after` pathStateForEdge graph (actualIn', actualOut', SummaryDependence)) | (actualIn', actualOut') <- Set.toList allSummaries]
               where actualOut = source
-                    (_, nonImplicitSummarieCandidates) =
+                    (actualOut's, nonImplicitSummarieCandidates) =
                       (㎲⊒) (Set.singleton actualOut, Set.empty) (implicitSummarySuccessorsOfActualOutF parameterMaps labelOf summaries  trivialDataIndependenceGraph (cg, cgNodeMap) )
+                    callSites = Set.fromList [ (call', return') | actualOut' <- Set.toList $ actualOut's, let ActualOut _ (call', return') = fromJust $ lab graph actualOut' ]
                     allSummaries =   Set.fromList [ (actualIn', actualOut) | (actualIn', actualOut') <- Set.toList summaries, actualOut' == actualOut]
                                    ∪ Set.fromList [ (actualIn', actualOut) | actualIn' <- Set.toList $
                                                                                (㎲⊒) (Set.fromList [ actualIn | (actualIn, actualOut) <- Set.toList nonImplicitSummarieCandidates ])
-                                                                                     (implicitSummaryPredecessorsOfActualInF parameterMaps labelOf trivialDataIndependenceGraph (cg, cgNodeMap)),
+                                                                                     (implicitSummaryPredecessorsOfActualInF parameterMaps labelOf trivialDataIndependenceGraph (cg, cgNodeMap) callSites),
                                                                              let ActualIn _ (call', return') = fromJust $ lab graph actualIn',
-                                                                             (call', return') == (call, return)
+                                                                             (call', return') == (call, return),
+                                                                             let implicits = nonImplicitSummarieCandidates ∪ ((㎲⊒) (Set.empty) (implicitSummaryPredecessorsF parameterMaps labelOf nonImplicitSummarieCandidates trivialDataIndependenceGraph (cg, cgNodeMap))),
+                                                                             assert ((actualIn', actualOut) ∈ implicits) $ True
                                      ]
             _                                 -> Set.empty
         (newSummaries, newSummaryWorklistEdges) = case lab graph source of
             Just (FormalIn _) -> -- traceShow ((source, formalOut, pathState), reached ! formalOut)  $
-                                 -- (if (formalIn == 80) then traceShow ((source, formalOut, pathState), reached ! formalOut) else id) $
                                  if (pathState == NonTrivial) then
                                  lop2sol $ 
                                  [ ((actualIn, actualOut),   [(actualIn', formalOut', pathState' `after` pathStateForEdge graph (actualIn', actualOut', SummaryDependence)) | (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut,
@@ -686,6 +689,23 @@ slice :: Graph gr => gr SDGNode Dependence -> (Dependence -> Bool) -> Set Node -
 slice graph follow nodes = (㎲⊒) nodes f
   where f nodes = nodes ∪ (Set.fromList [ m | n <- Set.toList nodes, (m,e) <- lpre graph n, follow e])
 
+intraSlice ::  Graph gr => gr SDGNode Dependence -> Set Node -> Set Node
+intraSlice graph nodes = slice graph follow nodes
+  where follow ControlDependence      = True
+        follow DataDependence         = True
+        follow CallDependence         = False
+        follow SummaryDependence      = True
+        follow SpawnDependence        = False
+        follow InterThreadDependence  = False
+        follow ParameterInDependence  = False
+        follow ParameterOutDependence = False
+
+
+intraChop :: DynGraph gr => gr SDGNode Dependence -> Set Node -> Set Node -> Set Node
+intraChop graph nodes1 nodes2  = (intraSlice graph nodes1) ∩ (intraSlice (grev graph) nodes2)
+
+
+        
 systemDependenceGraphSlice ::  Graph gr => gr SDGNode Dependence -> Set Node -> Set Node
 systemDependenceGraphSlice graph s0 = s2
   where s1 = slice graph follow1 s0

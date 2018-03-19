@@ -126,7 +126,7 @@ instance Arbitrary GeneratedProgram where
       return $ GeneratedProgram generated generatedProcedures
     where
       threadsAvailable = Set.fromList [2,3]
-      proceduresAvailable = Set.fromList ["foo", "bar", "baz"]
+      proceduresAvailable = Set.fromList ["foo", "bar", "baz", "procF", "procH", "procG"]
       inChannels       = Set.fromList [stdIn,lowIn1]
       outChannels      = Set.fromList [stdOut]
       vars             = Set.map Global $
@@ -266,7 +266,7 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
                              (Map.fromList [(thread, varsAvailable)])
                              (Map.empty)
    ),
-   (if (Set.null proceduresAvailable) then 0 else 1,
+   (if (Set.null proceduresAvailable) then 0 else 2,
        do procedure <- elements $ Set.toList proceduresAvailable
           return $ Generated (CallProcedure procedure)
                              (varsAvailable)

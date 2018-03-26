@@ -263,22 +263,36 @@ addSummaryEdgesGfpLfpWorkList p
   =   insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries]
     $ insEdges (summaryIndependenciesToNonTrivialSummaryDependencies parameterMaps graph summaryIndependencies)
     $ graph
-  where (summaries, summaryIndependencies) = summaryComputationGfpLfpWorkList parameterMaps graph initialWorkSet initialReached initialAoPaths initialSummaries initialSummaryIndependencies
+  where (summaries, summaryIndependencies, _, _) = summaryComputationGfpLfpWorkList parameterMaps graph initialWorkSet initialReached initialAoAiPaths initialSummaries initialSummaryIndependencies initialformalInActualInIndependencies actualOutFormalOutIndependencies
         initialWorkSet   = Set.fromList [ (source, formalOut)                   | formalOut <- formalOuts, (source, edge) <- lpre graph formalOut, isIntra edge]
         initialReached   = Map.fromList [ (formalOut, Set.fromList [formalOut]) | formalOut <- formalOuts ]
-        initialAoPaths   = Map.fromList [ (actualOut, Set.empty)                | actualOut <- actualOuts ]
+        initialAoAiPaths = Map.fromList [ (actualOut, Set.empty)                | actualOut <- actualOuts ]
+                         ⊔ Map.fromList [ (actualIn,  Set.empty)                | actualIn  <- actualIns  ]
         initialSummaries = Set.empty
         formalOuts = [ formalOut | formalOut <- nodes graph, Just (FormalOut _)     <- [lab graph formalOut]]
         actualOuts = [ actualOut | actualOut <- nodes graph, Just (ActualOut  _ _ ) <- [lab graph actualOut]]
+        actualIns  = [ actualIn  | actualIn  <- nodes graph, Just (ActualIn   _ _ ) <- [lab graph actualIn]]
         
         initialSummaryIndependencies = Set.fromList $ 
-                                       [ (actualIn, actualOut, ()) | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
-                                                                     (formalIn,  FormalIn  x ) <- [(n, fromJust $ lab graph n)],
-                                                                     (formalOut, FormalOut x') <- [(m, fromJust $ lab graph m)],
-                                                                     assert (x == x') $ True,
-                                                                     actualIn  <- Set.toList $ actualInsFor  ! formalIn,  (ActualIn  _ call ) <- [fromJust $ lab graph actualIn],
-                                                                     actualOut <- Set.toList $ actualOutsFor ! formalOut, (ActualOut _ call') <- [fromJust $ lab graph actualOut],
-                                                                     call == call'
+                                       [ (actualIn, actualOut, ())        | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                            (formalIn,  FormalIn  x ) <- [(n, fromJust $ lab graph n)],
+                                                                            (formalOut, FormalOut x') <- [(m, fromJust $ lab graph m)],
+                                                                            assert (x == x') $ True,
+                                                                            actualIn  <- Set.toList $ actualInsFor  ! formalIn,  (ActualIn  _ call ) <- [fromJust $ lab graph actualIn],
+                                                                            actualOut <- Set.toList $ actualOutsFor ! formalOut, (ActualOut _ call') <- [fromJust $ lab graph actualOut],
+                                                                            call == call'
+                                       ]
+        initialformalInActualInIndependencies = Set.fromList $ 
+                                       [ (formalIn, actualIn, (),())      | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                            (formalIn, FormalIn  x )   <- [(n, fromJust $ lab graph n)],
+                                                                            (actualIn, ActualIn  x' _) <- [(m, fromJust $ lab graph m)],
+                                                                            assert (x == x') $ True
+                                       ]
+        actualOutFormalOutIndependencies = Set.fromList $ 
+                                       [ (actualOut, formalOut, (),(),()) | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                            (actualOut, ActualOut  x  _) <- [(n, fromJust $ lab graph n)],
+                                                                            (formalOut, FormalOut  x')   <- [(m, fromJust $ lab graph m)],
+                                                                            assert (x == x') $ True
                                        ]
         (trivialDataIndependenceGraph, _) = trivialDataIndependenceGraphP p
 
@@ -293,15 +307,13 @@ summaryComputationGfpLfpWorkList :: DynGraph gr =>
                    Set SummaryIndependence ->
                    Set FormalInActualInIndependence ->
                    Set ActualOutFormalOutIndependence ->
-                   (Set SummaryEdge, Set SummaryIndependence, Set FormalInActualInIndependence , Set ActualOutFormalOutIndependence ->
-)
+                   (Set SummaryEdge, Set SummaryIndependence, Set FormalInActualInIndependence , Set ActualOutFormalOutIndependence)
 summaryComputationGfpLfpWorkList
                    parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, trivialActualInFor })
                    graph
                    workSet
                    reached
-                   aoPaths
-                   aiPaths
+                   aoAiPaths
                    summaries
                    summaryindependencies
                    formalInActualInInIndependencies
@@ -309,16 +321,14 @@ summaryComputationGfpLfpWorkList
     | Set.null workSet = (summaries, summaryindependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies)
     | otherwise =
         if (source ∈ (reached ! target)) then
-          summaryComputationGfpLfpWorkList parameterMaps graph (workSet' ∪ newIntraWorklistEdgesViaSummaries                                                   )  reached                aoPaths                summaries                  summaryindependencies                         formalInActualInInIndependencies              actualOutFormalOutIndependencies
+          summaryComputationGfpLfpWorkList parameterMaps graph (workSet' ∪ newIntraWorklistEdgesViaIndependencies                                                   )  reached                aoAiPaths                 summaries                  summaryindependencies                         formalInActualInInIndependencies              actualOutFormalOutIndependencies
         else
-          summaryComputationGfpLfpWorkList parameterMaps graph (workSet' ∪ newIntraWorklistEdgesViaSummaries ∪ newIntraWorklistEdges  ∪ newSummaryWorklistEdges) (reached ⊔ newReached) (aoPaths ⊔ newAoPaths) (summaries ∪ newSummaries) (summaryindependencies ∖ lostIndependencies)  (formalInActualInInIndependencies ∖ lostFiAi) (actualOutFormalOutIndependencies ∖ lostAoFo)
-  where ((source, formalOut), workSet') = Set.deleteFindMin workSet
+          summaryComputationGfpLfpWorkList parameterMaps graph (workSet' ∪ newIntraWorklistEdgesViaIndependencies ∪ newIntraWorklistEdges  ∪ newSummaryWorklistEdges) (reached ⊔ newReached) (aoAiPaths ⊔ newAoAiPaths) (summaries ∪ newSummaries) (summaryindependencies ∖ lostIndependencies)  (formalInActualInInIndependencies ∖ lostFiAi) (actualOutFormalOutIndependencies ∖ lostAoFo)
+  where ((source, target), workSet') = Set.deleteFindMin workSet
         newReached = Map.fromList [ (target, Set.fromList [source])]
-        newAoPaths = case lab graph source of
-            Just (ActualOut _ _) -> Map.fromList [ (source, Set.fromList [target]) ]
-            _                    -> Map.empty
-        newAiPaths = case lab graph source of
-            Just (ActualIn _ _)  -> Map.fromList [ (source, Set.fromList [target]) ]
+        newAoAiPaths = case lab graph source of
+            Just (ActualOut _ _) -> Map.fromList [ (source, Set.fromList [target] ∪ aoAiPaths ! target) ]
+            Just (ActualIn _ _)  -> Map.fromList [ (source, Set.fromList [target] ∪ aoAiPaths ! target) ]
             _                    -> Map.empty
         newIntraWorklistEdges             = Set.fromList [ (source', target) | (source', edge) <- lpre graph source, isIntra edge]
         newIntraWorklistEdgesViaIndependencies = case lab graph source of
@@ -331,21 +341,21 @@ summaryComputationGfpLfpWorkList
               where actualIn  = source
             _                    ->   Set.empty
         lostAoFo = case (lab graph source, lab graph target) of
-            (Just (ActualOut x _), Just (FormalOut x' )) -> Set.fromList [ (actualOut, formalOut) | x == x'] else Set.empty
+            (Just (ActualOut x _), Just (FormalOut x' )) -> Set.fromList [ (actualOut, formalOut, (), (), ()) | x == x']
               where actualOut = source
-            (Just (ActualOut x _), Just (ActualIn  _ _)) -> Set.fromList [ (actualout, formalOut) | formalOut <- aiPaths ! actualIn,
-                                                                                                    FormalOut x' <- [ fromJust $ lab graph formalOut],
-                                                                                                    x == x'
+                    formalOut = target
+            (Just (ActualOut x _), Just (ActualIn  _ _)) -> Set.fromList [ (actualOut, formalOut, (), (), ()) | formalOut <- Set.toList $ aoAiPaths ! actualIn,
+                                                                                                                FormalOut x' <- [ fromJust $ lab graph formalOut],
+                                                                                                                x == x'
                                                             ]
               where actualOut = source
                     actualIn  = target
-                    Just (FormalOut x') = lab graph formalOut
             _                    -> Set.empty
         lostFiAi = case (lab graph source, lab graph target) of 
             (Just (FormalIn x), Just (FormalOut x'))     -> Set.empty
-            (Just (FormalIn x), Just (ActualIn _ _))     -> Set.fromList [ (formalIn, actualIn) | actualIn' <- aiPaths ! actualIn,
-                                                                                                  ActualIn x' _ <- [ fromJust $ lab graph actualIn'],
-                                                                                                  x == x'
+            (Just (FormalIn x), Just (ActualIn _ _))     -> Set.fromList [ (formalIn, actualIn, (), ()) | actualIn' <- Set.toList $ aoAiPaths ! actualIn,
+                                                                                                          ActualIn x' _ <- [ fromJust $ lab graph actualIn'],
+                                                                                                          x == x'
                                                             ]
               where formalIn  = source
                     actualIn  = target
@@ -354,7 +364,9 @@ summaryComputationGfpLfpWorkList
             Just (FormalIn _) -> lop2sol $ 
                                  [ ([(actualIn, actualOut   )  | x /= x'],
                                     [(actualIn, actualOut,())  | x == x'],
-                                    [(actualIn, formalOut')    | formalOut' <- Set.toList $ aoPaths ! actualOut ]
+                                    [(actualIn, formalOut')    | formalOut' <- Set.toList $ aoAiPaths ! actualOut, FormalOut _ <- [fromJust $ lab graph formalOut ]]
+
+                                    
                                    )
                                  | actualIn  <- Set.toList $ actualInsFor  ! formalIn,  Just (ActualIn  x  call ) <- [lab graph actualIn],
                                    actualOut <- Set.toList $ actualOutsFor ! formalOut, Just (ActualOut x' call') <- [lab graph actualOut],

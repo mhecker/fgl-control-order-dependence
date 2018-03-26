@@ -58,7 +58,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes)
-import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp,  addNonImplicitSummaryEdges, addImplicitSummaryEdgesLfp)
+import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdges, addImplicitAndTrivialSummaryEdgesLfp)
 
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -1606,11 +1606,11 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
                         pdg = programDependenceGraphP p
                         (cfg, parameterMaps) = withParameterNodes p
                         sdg                     = addSummaryEdges              parameterMaps pdg
-                        nonImplicitSummariesSdg = addNonImplicitSummaryEdges p parameterMaps pdg
-                        sdg'                    = addImplicitSummaryEdgesLfp p parameterMaps nonImplicitSummariesSdg
-                        summaries               = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                    ]
-                        summariesNonImplicit    = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitSummariesSdg]
-                    in traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summariesNonImplicit) $
+                        (nonImplicitNonTrivialSummariesSdg, summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies)  = addNonImplicitNonTrivialSummaryEdges p parameterMaps pdg
+                        sdg'                    = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps nonImplicitNonTrivialSummariesSdg summaryIndependencies formalInActualInInIndependencies actualOutFormalOutIndependencies
+                        summaries                       = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                              ]
+                        summariesNonImplicitNonTrivial  = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSummariesSdg]
+                    in traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summariesNonImplicitNonTrivial) $
                        sdg == sdg',
     -- testProperty "implicitSummaryEdgesLfp are valid"
     --             $ \generated ->
@@ -1656,10 +1656,10 @@ indepsTests = testGroup "(concerning color algorithms)" $
                 $   let pdg = programDependenceGraphP p
                         (cfg, parameterMaps)   = withParameterNodes p
                         sdg                     = addSummaryEdges              parameterMaps pdg
-                        nonImplicitSummariesSdg = addNonImplicitSummaryEdges p parameterMaps pdg
-                        sdg'                    = addImplicitSummaryEdgesLfp p parameterMaps nonImplicitSummariesSdg
-                        summaries               = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                    ]
-                        summariesNonImplicit    = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitSummariesSdg]
+                        (nonImplicitNonTrivialSummariesSdg, summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies)  = addNonImplicitNonTrivialSummaryEdges p parameterMaps pdg
+                        sdg'                    = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps nonImplicitNonTrivialSummariesSdg summaryIndependencies formalInActualInInIndependencies actualOutFormalOutIndependencies
+                        summaries                      = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                              ]
+                        summariesNonImplicitNonTrivial = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSummariesSdg]
                     in sdg == sdg'  @? ""
   | (exampleName, p) <- testsuite ++ interproceduralTestSuit
   ] ++

@@ -661,8 +661,7 @@ addNonImplicitNonTrivialSummaryEdges :: DynGraph gr => Program gr -> ParameterMa
 addNonImplicitNonTrivialSummaryEdges p
                            parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
                            graph
-  = traceShow initialformalInActualInIndependencies $ 
-    (
+  = (
       insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries]
     $ graph,
       summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies
@@ -806,7 +805,7 @@ nonImplicitNonTrivialSummaryComputation
             (Just (FormalIn _), Just (FormalOut _)) -> 
                                  lop2sol $ 
                                  [ ( if (pathState == NonTrivial) then [(actualIn, actualOut   )  | x /= x'] else [],
-                                    [(actualIn', actualOut',())  | x == x', (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut, (if (actualIn', actualOut') == (1357,1392) then traceShow (formalIn, formalOut, pathState) else id) $ True ],
+                                    [(actualIn', actualOut',())  | x == x', (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut ],
                                     [(actualIn', formalOut', pathState' `after` pathStateForEdge graph (actualIn', actualOut', SummaryDependence)) | (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut,
                                                                                                        (formalOut', pathState') <- Map.assocs $ aoPaths ! actualOut'
 

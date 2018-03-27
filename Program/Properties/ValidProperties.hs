@@ -1663,28 +1663,28 @@ indepsTests = testGroup "(concerning color algorithms)" $
                     in sdg == sdg'  @? ""
   | (exampleName, p) <- testsuite ++ interproceduralTestSuit
   ] ++
-  -- [  testCase  ( "summaryComputation                      =~  summaryComputationGfpLfpWorkList for " ++ exampleName)
-  --               $   let (_, parameterMaps) = withParameterNodes p
-  --                       pdg = programDependenceGraphP p
-  --                   in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfpWorkList p parameterMaps pdg @? ""
-  -- | (exampleName, p) <- testsuite ++ interproceduralTestSuit
-  -- ] ++
-  -- [  testCase  ( "summaryComputation                      =~  summaryComputationGfpLfp for " ++ exampleName)
-  --               $   let (_, parameterMaps) = withParameterNodes p
-  --                       pdg = programDependenceGraphP p
-  --                   in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfp p parameterMaps pdg @? ""
-  -- | (exampleName, p) <- testsuite ++ interproceduralTestSuit
-  -- ] ++
-  -- [  testCase  ( "summaryComputation                      =~  summaryComputationLfp for " ++ exampleName)
-  --               $   let (_, parameterMaps) = withParameterNodes p
-  --                       pdg = programDependenceGraphP p
-  --                   in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg @? ""
-  -- | (exampleName, p) <- testsuite ++ interproceduralTestSuit
-  -- ] ++
-  -- [  testCase  ( "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP for " ++ exampleName)
-  --               $ dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p @? ""
-  -- | (exampleName, p) <- testsuite ++ interproceduralTestSuit
-  -- ] ++
+  [  testCase  ( "summaryComputation                      =~  summaryComputationGfpLfpWorkList for " ++ exampleName)
+                $   let (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfpWorkList p parameterMaps pdg @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
+  [  testCase  ( "summaryComputation                      =~  summaryComputationGfpLfp for " ++ exampleName)
+                $   let (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfp p parameterMaps pdg @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
+  [  testCase  ( "summaryComputation                      =~  summaryComputationLfp for " ++ exampleName)
+                $   let (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
+  [  testCase  ( "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP for " ++ exampleName)
+                $ dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
   []
 
 

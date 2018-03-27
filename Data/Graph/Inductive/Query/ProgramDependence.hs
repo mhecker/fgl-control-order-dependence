@@ -661,7 +661,8 @@ addNonImplicitNonTrivialSummaryEdges :: DynGraph gr => Program gr -> ParameterMa
 addNonImplicitNonTrivialSummaryEdges p
                            parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
                            graph
-  = (
+  = traceShow initialformalInActualInIndependencies $ 
+    (
       insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries]
     $ graph,
       summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies
@@ -789,22 +790,23 @@ nonImplicitNonTrivialSummaryComputation
                                                                              assert ((actualIn', actualOut) ∈ implicits) $ True
                                      ]
             _                                 -> Set.empty
+        -- FIXME: we need to create worklist edges for implicit summaries that become "unblocked" by this removal
         lostAoFo = case (lab graph source, lab graph target) of
             (Just (ActualOut x _), Just (FormalOut x' )) -> Set.fromList [ (actualOut, formalOut, (), (), ()) | x == x']
               where actualOut = source
                     formalOut = target
             _                    -> Set.empty
+        -- FIXME: we need to create worklist edges for implicit summaries that become "unblocked" by this removal
         lostFiAi = case (lab graph source, lab graph target) of 
             (Just (FormalIn x), Just (ActualIn x' _))    -> Set.fromList [ (formalIn,  actualIn,  (), ()    ) | x == x']
               where formalIn  = source
                     actualIn  = target
             _                    -> Set.empty
         (newSummaries, lostIndependencies, newSummaryWorklistEdges) = case (lab graph source, lab graph target) of
-            (Just (FormalIn _), Just (FormalOut _)) ->
-                                 if (pathState == NonTrivial) then
+            (Just (FormalIn _), Just (FormalOut _)) -> 
                                  lop2sol $ 
-                                 [ ([(actualIn, actualOut   )  | x /= x'],
-                                    [(actualIn', actualOut',())  | x == x', (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut ],
+                                 [ ( if (pathState == NonTrivial) then [(actualIn, actualOut   )  | x /= x'] else [],
+                                    [(actualIn', actualOut',())  | x == x', (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut, (if (actualIn', actualOut') == (1357,1392) then traceShow (formalIn, formalOut, pathState) else id) $ True ],
                                     [(actualIn', formalOut', pathState' `after` pathStateForEdge graph (actualIn', actualOut', SummaryDependence)) | (actualIn', actualOut') <- Set.toList $ allSummaries actualIn actualOut,
                                                                                                        (formalOut', pathState') <- Map.assocs $ aoPaths ! actualOut'
 
@@ -814,8 +816,6 @@ nonImplicitNonTrivialSummaryComputation
                                    actualOut <- Set.toList $ actualOutsFor ! formalOut, Just (ActualOut x' callReturn') <- [lab graph actualOut],
                                    callReturn == callReturn' -- TODO: performance
                                  ]
-                                 else
-                                 (Set.empty, Set.empty, Set.empty)
             _                 -> (Set.empty, Set.empty, Set.empty)
           where formalIn = source
                 formalOut = target

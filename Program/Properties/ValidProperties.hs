@@ -58,7 +58,7 @@ import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes)
-import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdges, addImplicitAndTrivialSummaryEdgesLfp)
+import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdges, addImplicitAndTrivialSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdgesGfpLfp)
 
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -1600,6 +1600,24 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 
 indepsProps = testGroup "(concerning dependencey graph representations using independencies)" [
+    testProperty "addNonImplicitNonTrivialSummaryEdgesGfpLfp  =~   addNonImplicitNonTrivialSummaryEdges"
+                $ \generated ->
+                  let p :: Program Gr = toProgram generated
+                      (_, parameterMaps) = withParameterNodes p
+                      pdg = programDependenceGraphP p
+                      (nonImplicitNonTrivialSdg , summaryIndependencies , formalInActualInIndependencies , actualOutFormalOutIndependencies ) = addNonImplicitNonTrivialSummaryEdges       p parameterMaps pdg
+                      (nonImplicitNonTrivialSdg', summaryIndependencies', formalInActualInIndependencies', actualOutFormalOutIndependencies') = addNonImplicitNonTrivialSummaryEdgesGfpLfp p parameterMaps pdg
+
+                      sdg  = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps  summaryIndependencies  formalInActualInIndependencies  actualOutFormalOutIndependencies  nonImplicitNonTrivialSdg 
+                      sdg' = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps  summaryIndependencies' formalInActualInIndependencies' actualOutFormalOutIndependencies' nonImplicitNonTrivialSdg'
+                      
+                      baseSummaries  = Set.fromList [ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSdg ]
+                      baseSummaries' = Set.fromList [ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSdg']
+                    in   baseSummaries                    ⊇                     baseSummaries'
+                       ∧                              sdg ==                              sdg'
+                       ∧            summaryIndependencies ==            summaryIndependencies'
+                       ∧   formalInActualInIndependencies ==   formalInActualInIndependencies'
+                       ∧ actualOutFormalOutIndependencies == actualOutFormalOutIndependencies',
     testProperty "nonImplicitSummaryComputation is correct"
                 $ \generated ->
                     let p   :: Program Gr = toProgram generated
@@ -1607,7 +1625,7 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
                         (cfg, parameterMaps) = withParameterNodes p
                         sdg                     = addSummaryEdges              parameterMaps pdg
                         (nonImplicitNonTrivialSummariesSdg, summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies)  = addNonImplicitNonTrivialSummaryEdges p parameterMaps pdg
-                        sdg'                    = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps nonImplicitNonTrivialSummariesSdg summaryIndependencies formalInActualInInIndependencies actualOutFormalOutIndependencies
+                        sdg'                    = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps summaryIndependencies formalInActualInInIndependencies actualOutFormalOutIndependencies nonImplicitNonTrivialSummariesSdg
                         summaries                       = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                              ]
                         summariesNonImplicitNonTrivial  = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSummariesSdg]
                     in traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summariesNonImplicitNonTrivial) $
@@ -1652,12 +1670,31 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
   --                 dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p
   ]
 indepsTests = testGroup "(concerning color algorithms)" $
+  [  testCase  ( "addNonImplicitNonTrivialSummaryEdgesGfpLfp  =~   addNonImplicitNonTrivialSummaryEdges for " ++ exampleName)
+                $ let (_, parameterMaps) = withParameterNodes p
+                      pdg = programDependenceGraphP p
+                      (nonImplicitNonTrivialSdg , summaryIndependencies , formalInActualInIndependencies , actualOutFormalOutIndependencies ) = addNonImplicitNonTrivialSummaryEdges       p parameterMaps pdg
+                      (nonImplicitNonTrivialSdg', summaryIndependencies', formalInActualInIndependencies', actualOutFormalOutIndependencies') = addNonImplicitNonTrivialSummaryEdgesGfpLfp p parameterMaps pdg
+
+                      sdg  = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps  summaryIndependencies  formalInActualInIndependencies  actualOutFormalOutIndependencies  nonImplicitNonTrivialSdg 
+                      sdg' = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps  summaryIndependencies' formalInActualInIndependencies' actualOutFormalOutIndependencies' nonImplicitNonTrivialSdg'
+                      
+                      baseSummaries  = Set.fromList [ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSdg ]
+                      baseSummaries' = Set.fromList [ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSdg']
+                    in                      baseSummaries ⊇                    baseSummaries'
+                       ∧                              sdg ==                              sdg'
+                       ∧            summaryIndependencies ==            summaryIndependencies'
+                       ∧   formalInActualInIndependencies ==   formalInActualInIndependencies'
+                       ∧ actualOutFormalOutIndependencies == actualOutFormalOutIndependencies'
+                       @? ""
+  | (exampleName, p) <- testsuite ++ interproceduralTestSuit
+  ] ++
   [  testCase  ( "nonImplicitSummaryComputation is correct  for " ++ exampleName)
                 $   let pdg = programDependenceGraphP p
                         (cfg, parameterMaps)   = withParameterNodes p
                         sdg                     = addSummaryEdges              parameterMaps pdg
                         (nonImplicitNonTrivialSummariesSdg, summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies)  = addNonImplicitNonTrivialSummaryEdges p parameterMaps pdg
-                        sdg'                    = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps nonImplicitNonTrivialSummariesSdg summaryIndependencies formalInActualInInIndependencies actualOutFormalOutIndependencies
+                        sdg'                    = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps summaryIndependencies formalInActualInInIndependencies actualOutFormalOutIndependencies  nonImplicitNonTrivialSummariesSdg
                         summaries                      = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                              ]
                         summariesNonImplicitNonTrivial = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSummariesSdg]
                     in sdg == sdg'  @? ""

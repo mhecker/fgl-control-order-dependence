@@ -470,8 +470,8 @@ summaryIndepsPropertyViolations p = [ ((actualIn, ActualIn x (call, return)), (a
 
 
 
-addImplicitAndTrivialSummaryEdgesLfp :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence ->  Set SummaryIndependence -> Set FormalInActualInIndependence -> Set ActualOutFormalOutIndependence ->  gr SDGNode Dependence
-addImplicitAndTrivialSummaryEdgesLfp p parameterMaps@(ParameterMaps { trivialActualInFor }) sdg summaryindependencies formalInActualInInIndependencies  actualOutFormalOutIndependencies =
+addImplicitAndTrivialSummaryEdgesLfp :: DynGraph gr => Program gr -> ParameterMaps ->  Set SummaryIndependence -> Set FormalInActualInIndependence -> Set ActualOutFormalOutIndependence ->  gr SDGNode Dependence -> gr SDGNode Dependence
+addImplicitAndTrivialSummaryEdgesLfp p parameterMaps@(ParameterMaps { trivialActualInFor }) summaryindependencies formalInActualInInIndependencies  actualOutFormalOutIndependencies sdg =
       insEdges [ (actualIn, actualOut,  SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries, not $ hasLEdge sdg (actualIn, actualOut,  SummaryDependence) ]
     $ sdg
   where summaries = implicitSummaryEdgesLfp p parameterMaps sdg summaryindependencies formalInActualInInIndependencies  actualOutFormalOutIndependencies
@@ -827,7 +827,94 @@ nonImplicitNonTrivialSummaryComputation
 
 
 
+addNonImplicitNonTrivialSummaryEdgesGfpLfp :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> (gr SDGNode Dependence, Set SummaryIndependence, Set FormalInActualInIndependence, Set ActualOutFormalOutIndependence)
+addNonImplicitNonTrivialSummaryEdgesGfpLfp p
+                      parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
+                      graph
+  = (
+      insEdges [ (actualIn, actualOut, SummaryDependence)  | (actualIn, actualOut) <- Set.toList summaries,
+                                                             (ActualIn  x call ) <- [fromJust $ lab graph actualIn],  -- avoid duplicate edges
+                                                             (ActualOut y call') <- [fromJust $ lab graph actualOut], --
+                                                             assert (call == call') $ True,                           --
+                                                             assert (x /= y) $ True
+      ]
+    $ graph,
+      summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies
+    )
+  where summaries = summariesGivenIndependencies (summaryIndependencies, formalInActualInInIndependencies, actualOutFormalOutIndependencies)
+        (summaryIndependencies, (formalInActualInInIndependencies, actualOutFormalOutIndependencies)) =
+            (𝝂) (initialSummaryIndependencies, (initialFormalInActualInIndependencies, initialActualOutFormalOutIndependencies)) independenciesF
+          where
+            initialSummaryIndependencies = Set.fromList $ 
+                                       [ (actualIn, actualOut, ())        | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                            (formalIn,  FormalIn  x ) <- [(n, fromJust $ lab graph n)],
+                                                                            (formalOut, FormalOut x') <- [(m, fromJust $ lab graph m)],
+                                                                            assert (x == x') $ True,
+                                                                            actualIn  <- Set.toList $ actualInsFor  ! formalIn,  (ActualIn  _ call ) <- [fromJust $ lab graph actualIn],
+                                                                            actualOut <- Set.toList $ actualOutsFor ! formalOut, (ActualOut _ call') <- [fromJust $ lab graph actualOut],
+                                                                            call == call'
+                                       ]
+            initialFormalInActualInIndependencies = Set.fromList $ 
+                                       [ (formalIn, actualIn, (),())      | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                            (formalIn, FormalIn  x )   <- [(n, fromJust $ lab graph n)],
+                                                                            (actualIn, ActualIn  x' _) <- [(m, fromJust $ lab graph m)],
+                                                                            assert (x == x') $ True
+                                       ]
+            initialActualOutFormalOutIndependencies = Set.fromList $ 
+                                       [ (actualOut, formalOut, (),(),()) | (n, m, DataIndependence) <- labEdges trivialDataIndependenceGraph,
+                                                                            (actualOut, ActualOut  x  _) <- [(n, fromJust $ lab graph n)],
+                                                                            (formalOut, FormalOut  x')   <- [(m, fromJust $ lab graph m)],
+                                                                            assert (x == x') $ True
+                                       ]
+            (trivialDataIndependenceGraph, _) = strongTrivialDataIndependenceGraphP p
 
+
+        
+        intraOnly = efilter (\(n, m, e) -> isIntra e) graph
+
+        independenciesF :: (Set SummaryIndependence, (Set FormalInActualInIndependence, Set ActualOutFormalOutIndependence))
+                        -> (Set SummaryIndependence, (Set FormalInActualInIndependence, Set ActualOutFormalOutIndependence))
+        independenciesF (summaryIndependencies, (formalInActualInIndependencies, actualOutFormalOutIndependencies)) =
+            ( Set.fromList [ (actualIn,  actualOut, ())        | (actualIn,  actualOut, ()   )      <- Set.toList $ summaryIndependencies,            not $ (actualIn, actualOut) ∈ summaries ],
+            ( Set.fromList [ (formalIn,  actualIn , (), ())    | (formalIn,  actualIn,  (), ())     <- Set.toList $ formalInActualInIndependencies,   not $ formalIn `elem` pre reachable actualIn ],
+              Set.fromList [ (actualOut, formalOut, (), (),()) | (actualOut, formalOut, (), (), ()) <- Set.toList $ actualOutFormalOutIndependencies, not $ actualOut `elem` pre reachable formalOut ]
+            ))
+          where summaries = summariesGivenIndependencies (summaryIndependencies, formalInActualInIndependencies, actualOutFormalOutIndependencies)
+                intraGraphWithSummaries = 
+                                  addImplicitAndTrivialSummaryEdgesLfp p parameterMaps summaryIndependencies formalInActualInIndependencies actualOutFormalOutIndependencies
+                                $ insEdges [ (actualIn, actualOut, SummaryDependence) | (actualIn, actualOut) <- Set.toList summaries ]
+                                $ intraOnly
+                reachable = trc intraGraphWithSummaries
+
+        summariesGivenIndependencies  :: (Set SummaryIndependence, Set FormalInActualInIndependence, Set ActualOutFormalOutIndependence) -> Set SummaryEdge
+        summariesGivenIndependencies  (summaryIndependencies, formalInActualInIndependencies, actualOutFormalOutIndependencies) =
+           (㎲⊒) (Set.empty) (summaryComputationGivenIndependenciesF p parameterMaps intraOnly  (summaryIndependencies, formalInActualInIndependencies, actualOutFormalOutIndependencies))
+
+
+summaryComputationGivenIndependenciesF :: DynGraph gr => Program gr -> ParameterMaps -> gr SDGNode Dependence -> (Set SummaryIndependence, Set FormalInActualInIndependence, Set ActualOutFormalOutIndependence) -> Set SummaryEdge -> Set SummaryEdge
+summaryComputationGivenIndependenciesF
+                    p
+                    parameterMaps@(ParameterMaps { actualInsFor, actualOutsFor, parameterNodesFor })
+                    graph
+                    (summaryIndependencies, formalInActualInIndependencies, actualOutFormalOutIndependencies)
+                    summaries =
+    assert ([ e | (n, m, e) <- labEdges graph, not $ isIntra e ] == []) $
+    summaries
+  ⊔ Set.fromList [ (actualIn, actualOut) | (formalIn, FormalIn x)  <- labNodes reachable,
+                                           (formalOut, FormalOut y) <- [ (m, fromJust $ lab reachable m) | m <- suc reachable formalIn],
+                                           actualIn  <- Set.toList $ actualInsFor  ! formalIn,  (ActualIn  _ call ) <- [fromJust $ lab reachable actualIn],
+                                           actualOut <- Set.toList $ actualOutsFor ! formalOut, (ActualOut _ call') <- [fromJust $ lab reachable actualOut],
+                                           call == call',
+                                           not $ hasLEdge intraGraphWithSummaries (actualIn, actualOut, SummaryDependence) 
+    ]
+  where intraGraphWithSummaries = 
+                                  addImplicitAndTrivialSummaryEdgesLfp p parameterMaps summaryIndependencies formalInActualInIndependencies actualOutFormalOutIndependencies
+                                $ insEdges [ (actualIn, actualOut, SummaryDependence) | (actualIn, actualOut) <- Set.toList summaries ]
+                                $ graph
+        reachable = trc intraGraphWithSummaries
+
+
+                        
 
 slice :: Graph gr => gr SDGNode Dependence -> (Dependence -> Bool) -> Set Node -> Set Node
 slice graph follow nodes = (㎲⊒) nodes f

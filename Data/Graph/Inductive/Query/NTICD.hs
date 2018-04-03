@@ -1129,7 +1129,7 @@ sinkDFUpDef graph =
                                             (∀) (suc isinkdom z) (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
                                       ]
                      )
-                   | z <- nodes graph, (x:_) <- [suc isinkdom z]]
+                   | z <- nodes graph, (∃) (suc isinkdom z) (\x -> True)]
   where sinkdom  = sinkdomOf graph
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
@@ -1327,7 +1327,7 @@ mDFUpDef graph =
                                             )
                                       ]
                      )
-                   | z <- nodes graph, (x:_) <- [suc imdom z]]
+                   | z <- nodes graph,  (∃) (suc imdom z) (\x -> True)]
   where mdom  = mdomOfLfp graph
         mdf   = mDF graph
         imdom = immediateOf mdom :: gr () ()

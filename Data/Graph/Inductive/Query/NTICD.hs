@@ -1633,48 +1633,37 @@ idomToDF graph idomG =
       (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
   where f2 df = df ⊔ 
            Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
                                    ]
                           )
                         | x <- nodes graph]
          ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre idomG x,
                                                           y <- Set.toList $ df ! z,
-                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
                                    ])
                         | x <- nodes graph]
         idomSccs = scc idomG
-
-        idomSccOfMap = Map.fromList [ (c, cycle) | cycle <- idomSccs, not $ isSingleton cycle, c <- cycle ]
-        idomSccOf m = case Map.lookup m idomSccOfMap of
-          Nothing -> [m]
-          Just cycle -> cycle
-
-        isSingleton [x] = True
-        isSingleton _   = False
+        idomSccOf = Map.fromList [ (c, cycle) | cycle <- idomSccs, c <- cycle ]
 
 idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> gr () () -> Map Node (Set Node)
 idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
   where f2 df x = cycleCompletion $ Map.insert x (local ⊔  up) df
           where local =       (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
                                    ]
                 up    =       (∐) [ Set.fromList [ y ] | z <- pre idomG x,
                                                           y <- Set.toList $ df ! z,
-                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
                                    ]
-        cycleCompletion df = foldr update df [ (c, allYs) | cycle <- Map.elems idomSccOfMap, let allYs = (∐) [ df ! c | c <- cycle ], c <- cycle ]
-          where update (c, allYs) df = Map.insert c allYs df 
+        cycleCompletion df = foldr update df [ (c, allYs) | cycle <- idomSccs, isCycle cycle, let allYs = (∐) [ df ! c | c <- cycle ], c <- cycle ]
+          where update (c, allYs) df = Map.insert c allYs df
+                isCycle [_] = False
+                isCycle (_:_) = True
 
         sorting = topsort idomG
         idomSccs = scc idomG -- TODO: use the fact that SCC algorithms implicitly yield a  topsort
+        idomSccOf = Map.fromList [ (c, cycle) | cycle <- idomSccs, c <- cycle ]
 
-        idomSccOfMap = Map.fromList [ (c, cycle) | cycle <- idomSccs, not $ isSingleton cycle, c <- cycle ]
-        idomSccOf m = case Map.lookup m idomSccOfMap of
-          Nothing -> [m]
-          Just cycle -> cycle
-
-        isSingleton [x] = True
-        isSingleton _   = False
 
 
 mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)

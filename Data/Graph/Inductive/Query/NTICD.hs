@@ -1647,17 +1647,14 @@ idomToDF graph idomG =
 
 idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> gr () () -> Map Node (Set Node)
 idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
-  where f2  df cycle = cycleCompletion $ foldl f2' df cycle
-          where cycleCompletion df = case cycle of
-                  [_]   -> df
-                  (_:_) -> foldr update df [ (c, allYs) | c <- cycle]
-                    where update (c, allYs) df = Map.insert c allYs df
-                          allYs = (∐) [ df ! c | c <- cycle ]
-        f2' df x     = Map.insert x (local ⊔  up) df
-          where local =       (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
+  where f2 df cycle  = Map.fromList [ (x, local ⊔ up) | x <- cycle ] `Map.union` df
+          where local =       (∐) [ Set.fromList [ y ] | x <- cycle, 
+                                                          y <- pre graph x,
+                                                          (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
                                    ]
-                up    =       (∐) [ Set.fromList [ y ] | z <- pre idomG x,
+                up    =       (∐) [ Set.fromList [ y ] | x <- cycle,
+                                                          z <- pre idomG x,
+                                                          not $ z ∊ cycle,
                                                           y <- Set.toList $ df ! z,
                                                          (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
                                    ]

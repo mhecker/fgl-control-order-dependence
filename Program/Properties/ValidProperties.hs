@@ -77,11 +77,11 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
-    sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX,
+    sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     idomToDF, idomToDFFast,
     imdomOf, imdomOfLfp,
     mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty, imdomTwoFingercd,
-    mDFUp, mDFUpDef, mDFUpDefViaMdoms,
+    mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
     mDFLocal, mDFLocalDef, mDFUpGivenX, 
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
@@ -339,6 +339,10 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     --                 let g = generatedGraph
     --                 in NTICD.sinkdomOf              g ==
     --                    NTICD.sinkdomOfGfp           g,
+    testProperty   "sinkDFUpGivenXViaSinkdoms == sinkDFUpGivenX"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                       NTICD.sinkDFUpGivenXViaSinkdoms  g ==
+                       NTICD.sinkDFUpGivenX             g,
     testProperty   "sinkDFUpDefViaSinkdoms == sinkDFUpDef"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.sinkDFUpDefViaSinkdoms  g ==
@@ -394,6 +398,18 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
   ]
 
 insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
+  [  testCase    (  "sinkDFUpGivenXViaMdoms == sinkDFUpGivenX for " ++ exampleName)
+            $          NTICD.sinkDFUpGivenXViaSinkdoms     g ==
+                       NTICD.sinkDFUpGivenX             g
+                       @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    (  "sinkDFUpDefViaMdoms == sinkDFUpDef for " ++ exampleName)
+            $            NTICD.sinkDFUpDefViaSinkdoms     g ==
+                         NTICD.sinkDFUpDef             g
+                       @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
             $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
                     in NTICD.idomToDFFast g isinkdom ==
@@ -479,6 +495,10 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     --                 let g = generatedGraph
     --                 in NTICD.mdomOfLfp            g ==
     --                    NTICD.mdomOfimdomProperty  g,
+    testProperty   "mDFUpGivenXViaMdoms == mDFUpGivenX"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                       NTICD.mDFUpGivenXViaMdoms     g ==
+                       NTICD.mDFUpGivenX             g,
     testProperty   "mDFUpDefViaMdoms == mDFUpDef"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.mDFUpDefViaMdoms     g ==
@@ -538,6 +558,18 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     --                    NTICD.ntscdF3              g
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
+  [  testCase    (  "mDFUpGivenXViaMdoms == mDFUpGivenX for " ++ exampleName)
+            $          NTICD.mDFUpGivenXViaMdoms     g ==
+                       NTICD.mDFUpGivenX             g
+                       @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    (  "mDFUpDefViaMdoms == mDFUpDef for " ++ exampleName)
+            $            NTICD.mDFUpDefViaMdoms     g ==
+                         NTICD.mDFUpDef             g
+                       @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "idomToDFFast _ imdom == idomToDF _ imdom for " ++ exampleName)
             $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
                         imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()

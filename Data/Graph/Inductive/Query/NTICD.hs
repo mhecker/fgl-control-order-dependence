@@ -1074,9 +1074,11 @@ joinUpperBound graph = Map.delete dummyNode $ jub condNodes init
 
 
 
-domsOf graph dom = Map.fromList [ (z, Set.fromList [ x | x <- Set.toList $  dom ! z,
-                                                         x /= z,
-                                                        (∀) (dom ! z) (\x' -> (x' /= z) → (x' ∈ dom ! x))
+domsOf graph dom = Map.fromList [ (z, Set.fromList [ y | x <- Set.toList $ dom ! z,  x /= z,
+                                                         y <- Set.toList $ dom ! x,
+                                                        (∀) (dom ! z) (\x' -> x' == z ∨
+                                                          (∀) (dom ! x') (\y' -> y' ∈ dom ! y)
+                                                        )
                                     ]
                                 )
                               | z <- nodes graph
@@ -1164,7 +1166,16 @@ sinkDFUpDefViaSinkdoms graph =
         sinkdoms = sinkdomsOf graph
         sinkdf   = sinkDF graph
 
-                                 
+sinkDFUpGivenXViaSinkdoms :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+sinkDFUpGivenXViaSinkdoms graph =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
+                                                not $ x ∈ sinkdoms ! y
+                                      ]
+                     )
+                   | z <- nodes graph,  x <- Set.toList $ sinkdoms ! z]
+  where sinkdom  = sinkdomOf graph
+        sinkdoms = sinkdomsOf graph
+        sinkdf   = sinkDF graph
 
 sinkDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 sinkDFUpGivenX graph =
@@ -1362,6 +1373,17 @@ mDFUpDefViaMdoms graph =
                                       ]
                      )
                    | z <- nodes graph,  (∃) (mdoms ! z) (\x -> True)]
+  where mdom  = mdomOf graph
+        mdoms = mdomsOf graph
+        mdf   = mDF graph
+        
+mDFUpGivenXViaMdoms :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+mDFUpGivenXViaMdoms graph =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ mdf ! z,
+                                                not $ x ∈ mdoms ! y
+                                      ]
+                     )
+                   | z <- nodes graph,  x <- Set.toList $ mdoms ! z]
   where mdom  = mdomOf graph
         mdoms = mdomsOf graph
         mdf   = mDF graph

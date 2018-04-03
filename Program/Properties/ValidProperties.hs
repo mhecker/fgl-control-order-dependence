@@ -347,6 +347,18 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                            (z == z') → (dfUp == dfUp')
                          )
                        ),
+    testProperty   "sinkDFUpGivenX ! (x,z) == sinkDFUpDef ! z"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                    let sinkDFUp    = NTICD.sinkDFUpGivenX g
+                        sinkDFUpDef = NTICD.sinkDFUpDef    g
+                    in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
+                         dfUp == sinkDFUpDef ! z
+                       )
+                    ∧  (∀) (Map.assocs sinkDFUpDef) (\(z, dfUp) ->
+                         (∀) [ (x, dfUp') | ((x,z'), dfUp') <- Map.assocs sinkDFUp, z == z'] (\(x, dfUp') ->
+                           dfUp == dfUp'
+                         )
+                       ),
     testProperty   "sinkDFUp              == sinkDFUpDef"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.sinkDFUp                g ==
@@ -469,6 +481,18 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
                          (∀) (Map.assocs mDFUp) (\((x',z'), dfUp') ->
                            (z == z') → (dfUp == dfUp')
+                         )
+                       ),
+    testProperty   "mDFUpGivenX ! (x,z) == mDFUpDef ! z"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                    let mDFUp    = NTICD.mDFUpGivenX g
+                        mDFUpDef = NTICD.mDFUpDef    g
+                    in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
+                         dfUp == mDFUpDef ! z
+                       )
+                    ∧  (∀) (Map.assocs mDFUpDef) (\(z, dfUp) ->
+                         (∀) [ (x, dfUp') | ((x,z'), dfUp') <- Map.assocs mDFUp, z == z'] (\(x, dfUp') ->
+                           dfUp == dfUp'
                          )
                        ),
     testProperty   "mDFUp              == mDFUpDef"

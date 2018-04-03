@@ -1141,16 +1141,10 @@ sinkDFUpDef graph =
 sinkDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 sinkDFUpGivenX graph =
       Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
-                                                assert (
-                                                (∀) (suc isinkdom y)                                (/=x)
-                                                ↔
-                                                (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
-                                                ) True,
-                                                
                                                 (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
                                       ]
                      )
-                   | z <- nodes graph, x <- suc isinkdom z]
+                   | z <- nodes graph, c <- suc isinkdom z,  x <- isinkdomSccOf c]
   where sinkdom  = sinkdomOf graph
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
@@ -1340,7 +1334,7 @@ mDFUpGivenX graph =
                                                 (∀) (suc imdom y) (\c ->  (∀) (imdomSccOf c) (/= x))
                                       ]
                      )
-                   | z <- nodes graph, x <- suc imdom z]
+                   | z <- nodes graph, c <- suc imdom z, x <- imdomSccOf c]
   where mdom  = mdomOfLfp graph
         mdf   = mDF graph
         imdom = immediateOf mdom :: gr () ()

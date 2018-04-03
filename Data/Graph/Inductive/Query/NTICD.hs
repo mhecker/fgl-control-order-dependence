@@ -1105,9 +1105,7 @@ sinkDFLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFLocal graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
                                             x == y ∨
-                                            (∀) (suc isinkdom y) (\z -> 
-                                              (∀) (isinkdomSccOf z) (/= x)
-                                            )  
+                                            (∀) (suc isinkdom y) (\z -> not $ x ∊ (isinkdomSccOf z))
                                       ]
                      )
                    | x <- nodes graph ]
@@ -1141,7 +1139,7 @@ sinkDFUpDef graph =
 sinkDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 sinkDFUpGivenX graph =
       Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
-                                                (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
+                                                (∀) (suc isinkdom y) (\c ->  not $ x ∊ (isinkdomSccOf c))
                                       ]
                      )
                    | z <- nodes graph, c <- suc isinkdom z,  x <- isinkdomSccOf c]
@@ -1159,9 +1157,10 @@ sinkDFUp graph =
                                                 assert (
                                                 (∀) (suc isinkdom y)                                (/=x)
                                                 ↔
-                                                (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
+                                                (∀) (suc isinkdom y) (\c ->  not $ x ∊ (isinkdomSccOf c))
                                                 ) True,
-                                                (∀) (suc isinkdom y) (/= x)
+                                                
+                                                (∀) (suc isinkdom y) (\c ->  not $ x ∊ (isinkdomSccOf c))
                                       ]
                      )
                    | z <- nodes graph, assert ((length $ suc isinkdom z) <= 1) True,  [x] <- [suc isinkdom z]]
@@ -1302,9 +1301,7 @@ mDFLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFLocal graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
                                             x == y ∨
-                                            (∀) (suc imdom y) (\z -> 
-                                              (∀) (imdomSccOf z) (/= x)
-                                            )  
+                                            (∀) (suc imdom y) (\z -> not $ x ∊ (imdomSccOf z))
                                       ]
                      )
                    | x <- nodes graph ]
@@ -1331,7 +1328,7 @@ mDFUpDef graph =
 mDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 mDFUpGivenX graph =
       Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                                (∀) (suc imdom y) (\c ->  (∀) (imdomSccOf c) (/= x))
+                                                (∀) (suc imdom y) (\c ->  not $ x ∊ (imdomSccOf c))
                                       ]
                      )
                    | z <- nodes graph, c <- suc imdom z, x <- imdomSccOf c]
@@ -1345,9 +1342,7 @@ mDFUpGivenX graph =
 mDFUp :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFUp graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                                (∀) (suc imdom y) (\c ->
-                                                  (∀) (imdomSccOf c) (/= x)
-                                                )
+                                                (∀) (suc imdom y) (\c -> not $ x ∊  (imdomSccOf c))
                                       ]
                      )
                    | z <- nodes graph, assert ((length $ suc imdom z) <= 1) True,  [x] <- [suc imdom z]]
@@ -1638,17 +1633,13 @@ idomToDF graph idomG =
       (㎲⊒) (Map.fromList [(x, Set.empty) | x <- nodes graph]) f2
   where f2 df = df ⊔ 
            Map.fromList [ (x, (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc idomG y) (\c -> 
-                                                           (∀) (idomSccOf c) (/= x)
-                                                         )
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
                                    ]
                           )
                         | x <- nodes graph]
          ⊔ Map.fromList [ (x, (∐) [ Set.fromList [ y ] | z <- pre idomG x,
                                                           y <- Set.toList $ df ! z,
-                                                         (∀) (suc idomG y) (\c ->
-                                                           (∀) (idomSccOf c) (/= x)
-                                                         )
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
                                    ])
                         | x <- nodes graph]
         idomSccs = scc idomG
@@ -1665,15 +1656,11 @@ idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> gr () () -> Map Node (Se
 idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
   where f2 df x = cycleCompletion $ Map.insert x (local ⊔  up) df
           where local =       (∐) [ Set.fromList [ y ] | y <- pre graph x,
-                                                         (∀) (suc idomG y) (\c -> 
-                                                           (∀) (idomSccOf c) (/= x)
-                                                         )
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
                                    ]
                 up    =       (∐) [ Set.fromList [ y ] | z <- pre idomG x,
                                                           y <- Set.toList $ df ! z,
-                                                         (∀) (suc idomG y) (\c ->
-                                                           (∀) (idomSccOf c) (/= x)
-                                                         )
+                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf c))
                                    ]
         cycleCompletion df = foldr update df [ (c, allYs) | cycle <- Map.elems idomSccOfMap, let allYs = (∐) [ df ! c | c <- cycle ], c <- cycle ]
           where update (c, allYs) df = Map.insert c allYs df 

@@ -339,14 +339,14 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     --                 let g = generatedGraph
     --                 in NTICD.sinkdomOf              g ==
     --                    NTICD.sinkdomOfGfp           g,
-    -- testProperty   "sinkDFUpGivenX ! (x,z) is independent of choice of x for given z"
-    --             $ \((CG _ g) :: (Connected Gr () ())) ->
-    --                 let sinkDFUp = NTICD.sinkDFUpGivenX g
-    --                 in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
-    --                      (∀) (Map.assocs sinkDFUp) (\((x',z'), dfUp') ->
-    --                        (z == z') → (dfUp == dfUp')
-    --                      )
-    --                    ),
+    testProperty   "sinkDFUpGivenX ! (x,z) is trivially independent of choice of x for given z, because there is only one"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                    let sinkDFUp = NTICD.sinkDFUpGivenX g
+                    in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
+                         (∀) (Map.assocs sinkDFUp) (\((x',z'), dfUp') ->
+                           (z == z') → (x == x'  ∧  dfUp == dfUp')
+                         )
+                       ),
     testProperty   "sinkDFUp              == sinkDFUpDef"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.sinkDFUp                g ==
@@ -463,14 +463,14 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     --                 let g = generatedGraph
     --                 in NTICD.mdomOfLfp            g ==
     --                    NTICD.mdomOfimdomProperty  g,
-    -- testProperty   "mDFUpGivenX ! (x,z) is independent of choice of x for given z"
-    --             $ \(ARBITRARY(g)) ->
-    --                 let mDFUp = NTICD.mDFUpGivenX g
-    --                 in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
-    --                      (∀) (Map.assocs mDFUp) (\((x',z'), dfUp') ->
-    --                        (z == z') → (dfUp == dfUp')
-    --                      )
-    --                    ),
+    testProperty   "mDFUpGivenX ! (x,z) is trivially independent of choice of x for given z, because there is only one"
+                $ \(ARBITRARY(g)) ->
+                    let mDFUp = NTICD.mDFUpGivenX g
+                    in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
+                         (∀) (Map.assocs mDFUp) (\((x',z'), dfUp') ->
+                           (z == z') → (x == x'  ∧  dfUp == dfUp')
+                         )
+                       ),
     testProperty   "mDFUp              == mDFUpDef"
                 $ \(ARBITRARY(g)) ->
                        NTICD.mDFUp                g ==

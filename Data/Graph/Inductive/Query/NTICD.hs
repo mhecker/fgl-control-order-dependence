@@ -1126,7 +1126,8 @@ sinkDFUpDef graph =
                                             ↔
                                             (∀) (suc isinkdom z) (\c ->  (∀) (isinkdomSccOf c)  (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y))
                                             ) True,
-                                            (∀) (suc isinkdom z) (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
+                                            
+                                            (∀) (suc isinkdom z) (\c ->  (∀) (isinkdomSccOf c)  (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y))
                                       ]
                      )
                    | z <- nodes graph, (∃) (suc isinkdom z) (\x -> True)]
@@ -1145,7 +1146,8 @@ sinkDFUpGivenX graph =
                                                 ↔
                                                 (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
                                                 ) True,
-                                                (∀) (suc isinkdom y) (/= x)
+                                                
+                                                (∀) (suc isinkdom y) (\c ->  (∀) (isinkdomSccOf c)  (/=x))
                                       ]
                      )
                    | z <- nodes graph, x <- suc isinkdom z]
@@ -1168,7 +1170,7 @@ sinkDFUp graph =
                                                 (∀) (suc isinkdom y) (/= x)
                                       ]
                      )
-                   | z <- nodes graph, (x:_) <- [suc isinkdom z]]
+                   | z <- nodes graph, assert ((length $ suc isinkdom z) <= 1) True,  [x] <- [suc isinkdom z]]
   where sinkdom  = sinkdomOf graph
         sinkdf   = sinkDF graph
         isinkdom = immediateOf sinkdom :: gr () ()
@@ -1322,13 +1324,7 @@ mDFLocal graph =
 mDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFUpDef graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                            assert (
-                                            (∀) (suc imdom z)                            (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
-                                            ↔
                                             (∀) (suc imdom z) (\c ->  (∀) (imdomSccOf c) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y))
-                                            ) True,
-                                            (∀) (suc imdom z) (\c ->  (∀) (imdomSccOf c) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
-                                            )
                                       ]
                      )
                    | z <- nodes graph,  (∃) (suc imdom z) (\x -> True)]
@@ -1341,9 +1337,7 @@ mDFUpDef graph =
 mDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 mDFUpGivenX graph =
       Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                                (∀) (suc imdom y) (\c ->
-                                                  (∀) (imdomSccOf c) (/= x)
-                                                )
+                                                (∀) (suc imdom y) (\c ->  (∀) (imdomSccOf c) (/= x))
                                       ]
                      )
                    | z <- nodes graph, x <- suc imdom z]
@@ -1362,7 +1356,7 @@ mDFUp graph =
                                                 )
                                       ]
                      )
-                   | z <- nodes graph, (x:_) <- [suc imdom z]]
+                   | z <- nodes graph, assert ((length $ suc imdom z) <= 1) True,  [x] <- [suc imdom z]]
   where mdom  = mdomOfLfp graph
         mdf   = mDF graph
         imdom = immediateOf mdom :: gr () ()

@@ -1322,8 +1322,12 @@ mDFLocal graph =
 mDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFUpDef graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                            (∀) (suc imdom z) (\c -> 
-                                              (∀) (imdomSccOf c) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
+                                            assert (
+                                            (∀) (suc imdom z)                            (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
+                                            ↔
+                                            (∀) (suc imdom z) (\c ->  (∀) (imdomSccOf c) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y))
+                                            ) True,
+                                            (∀) (suc imdom z) (\c ->  (∀) (imdomSccOf c) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
                                             )
                                       ]
                      )

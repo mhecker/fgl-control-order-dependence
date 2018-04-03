@@ -1073,6 +1073,23 @@ joinUpperBound graph = Map.delete dummyNode $ jub condNodes init
           toNextCond  = toNextRealCondNode graph
 
 
+
+domsOf graph dom = Map.fromList [ (z, Set.fromList [ x | x <- Set.toList $  dom ! z,
+                                                         x /= z,
+                                                        (∀) (dom ! z) (\x' -> (x' /= z) → (x' ∈ dom ! x))
+                                    ]
+                                )
+                              | z <- nodes graph
+                 ]
+
+sinkdomsOf graph = domsOf graph sinkdom
+  where sinkdom = sinkdomOf graph
+
+
+mdomsOf graph = domsOf graph mdom
+  where mdom = mdomOf graph
+
+
 sinkDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
                                             p <- suc graph y,
@@ -1135,6 +1152,19 @@ sinkDFUpDef graph =
 
         isinkdomSccs = scc isinkdom
         isinkdomSccOf m =   the (m ∊) $ isinkdomSccs
+
+sinkDFUpDefViaSinkdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFUpDefViaSinkdoms graph =
+      Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
+                                            (∀) (sinkdoms ! z) (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
+                                      ]
+                     )
+                   | z <- nodes graph,  (∃) (sinkdoms ! z) (\x -> True)]
+  where sinkdom  = sinkdomOf graph
+        sinkdoms = sinkdomsOf graph
+        sinkdf   = sinkDF graph
+
+                                 
 
 sinkDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 sinkDFUpGivenX graph =
@@ -1324,6 +1354,17 @@ mDFUpDef graph =
         imdom = immediateOf mdom :: gr () ()
         imdomSccs = scc imdom
         imdomSccOf m =   the (m ∊) $ imdomSccs
+
+mDFUpDefViaMdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFUpDefViaMdoms graph =
+      Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
+                                            (∀) (mdoms ! z) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
+                                      ]
+                     )
+                   | z <- nodes graph,  (∃) (mdoms ! z) (\x -> True)]
+  where mdom  = mdomOf graph
+        mdoms = mdomsOf graph
+        mdf   = mDF graph
 
 mDFUpGivenX :: forall gr a b. DynGraph gr => gr a b -> Map (Node,Node) (Set Node)
 mDFUpGivenX graph =

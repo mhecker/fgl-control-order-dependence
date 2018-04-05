@@ -1074,10 +1074,10 @@ joinUpperBound graph = Map.delete dummyNode $ jub condNodes init
 
 
 
-domsOf graph dom = Map.fromList [ (z, Set.fromList [ y | x <- Set.toList $ dom ! z,  x /= z,
-                                                         y <- Set.toList $ dom ! x,
-                                                        (∀) (dom ! z) (\x' -> x' == z ∨
-                                                          (∀) (dom ! x') (\y' -> y' ∈ dom ! y)
+domsOf graph dom = Map.fromList [ (z, Set.fromList [ x | y <- Set.toList $ dom ! z,  y /= z,
+                                                         x <- Set.toList $ dom ! y,
+                                                        (∀) (dom ! z) (\y' -> y' == z ∨
+                                                          (∀) (dom ! y') (\x' -> x' ∈ dom ! x)
                                                         )
                                     ]
                                 )
@@ -1096,7 +1096,7 @@ sinkDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
                                             p <- suc graph y,
                                                    x ∈ sinkdom ! p,
-                                            (not $ x ∈ sinkdom ! y)  ∨  x == y ])
+                                            not $ (∃) (sinkdom ! y) (\y' -> y' /= x ∧ x ∈ sinkdom ! y')  ])
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
 
@@ -1113,7 +1113,7 @@ sinkDFcd = xDFcd sinkDF
 
 sinkDFLocalDef graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                            (not $ x ∈ sinkdom ! y)  ∨  x == y ])
+                                            not $ (∃) (sinkdom ! y) (\y' -> y' /= x ∧ x ∈ sinkdom ! y')])
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
 
@@ -1123,7 +1123,6 @@ sinkDFLocalDef graph =
 sinkDFLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFLocal graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                            x == y ∨
                                             (∀) (suc isinkdom y) (\z -> not $ x ∊ (isinkdomSccOf z))
                                       ]
                      )
@@ -1138,12 +1137,6 @@ sinkDFLocal graph =
 sinkDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFUpDef graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
-                                            assert (
-                                            (∀) (suc isinkdom z)                                (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
-                                            ↔
-                                            (∀) (suc isinkdom z) (\c ->  (∀) (isinkdomSccOf c)  (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y))
-                                            ) True,
-                                            
                                             (∀) (suc isinkdom z) (\c ->  (∀) (isinkdomSccOf c)  (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y))
                                       ]
                      )
@@ -1223,6 +1216,15 @@ sinkDFFromUpLocalDef graph =
         dfup = sinkDFUpDef graph
         sinkdom  = sinkdomOf graph
         isinkdom = immediateOf sinkdom :: gr () ()
+
+sinkDFFromUpLocalDefViaSinkdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFFromUpLocalDefViaSinkdoms graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, (∐) [ dfup ! z  | z <- sinkdomsInv ! x  ] ) | x <- nodes graph]
+  where dflocal = sinkDFLocalDef graph
+        dfup = sinkDFUpDefViaSinkdoms graph
+        sinkdoms  = sinkdomsOf graph
+        sinkdomsInv = invert' (fmap Set.toList sinkdoms) `Map.union` (Map.fromList [ (x, []) | x <- nodes graph ]) 
 
 
 
@@ -1314,7 +1316,7 @@ mDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
                                             p <- suc graph y,
                                                    x ∈ mdom ! p,
-                                            (not $ x ∈ mdom ! y)  ∨  x == y ])
+                                            not $ (∃) (mdom ! y) (\y' -> y' /= x ∧ x ∈ mdom ! y')  ])
                    | x <- nodes graph ]
   where mdom = mdomOfLfp graph
 
@@ -1331,7 +1333,7 @@ mDFcd = xDFcd mDF
 
 mDFLocalDef graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                            (not $ x ∈ mdom ! y)  ∨  x == y ])
+                                             not $ (∃) (mdom ! y) (\y' -> y' /= x ∧ x ∈ mdom ! y')  ])
                    | x <- nodes graph ]
   where mdom = mdomOfLfp graph
 
@@ -1341,7 +1343,6 @@ mDFLocalDef graph =
 mDFLocal :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFLocal graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                            x == y ∨
                                             (∀) (suc imdom y) (\z -> not $ x ∊ (imdomSccOf z))
                                       ]
                      )
@@ -1425,6 +1426,14 @@ mDFFromUpLocalDef graph =
         mdom  = mdomOfLfp graph
         imdom = immediateOf mdom :: gr () ()
 
+mDFFromUpLocalDefViaMdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFFromUpLocalDefViaMdoms graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, (∐) [ dfup ! z  | z <- mdomsInv ! x  ] ) | x <- nodes graph]
+  where dflocal = mDFLocalDef graph
+        dfup = mDFUpDefViaMdoms graph
+        mdoms  = mdomsOf graph
+        mdomsInv = invert' (fmap Set.toList mdoms) `Map.union` (Map.fromList [ (x, []) | x <- nodes graph ])
 
 
 mDFFromUpLocalDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence

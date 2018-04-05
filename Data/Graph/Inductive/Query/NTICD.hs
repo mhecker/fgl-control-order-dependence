@@ -1119,9 +1119,10 @@ sinkDFcd = xDFcd sinkDF
 
 sinkDFLocalDef graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                            not $ (∃) (sinkdom ! y) (\y' -> y' /= x ∧ x ∈ sinkdom ! y')])
+                                            not $ x ∈ onedom ! y  ])
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
+        onedom = onedomOf sinkdom
 
 
 
@@ -1340,9 +1341,10 @@ mDFcd = xDFcd mDF
 
 mDFLocalDef graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                             not $ (∃) (mdom ! y) (\y' -> y' /= x ∧ x ∈ mdom ! y')  ])
+                                            not $ x ∈ onedom y  ])
                    | x <- nodes graph ]
   where mdom = mdomOfLfp graph
+        onedom = onedomOf mdom
 
 
 

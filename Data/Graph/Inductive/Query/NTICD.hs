@@ -1119,7 +1119,7 @@ sinkDFcd = xDFcd sinkDF
 
 sinkDFLocalDef graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
-                                            not $ x ∈ onedom ! y  ])
+                                            not $ x ∈ onedom y  ])
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
         onedom = onedomOf sinkdom
@@ -1158,13 +1158,14 @@ sinkDFUpDef graph =
 sinkDFUpDefViaSinkdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFUpDefViaSinkdoms graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ sinkdf ! z,
-                                            (∀) (sinkdoms ! z) (\x -> (not $ x ∈ sinkdom ! y)  ∨  x == y)
+                                            (∀) (sinkdoms ! z) (\x -> not $ x ∈ onedom y)
                                       ]
                      )
                    | z <- nodes graph,  (∃) (sinkdoms ! z) (\x -> True)]
   where sinkdom  = sinkdomOf graph
         sinkdoms = sinkdomsOf graph
         sinkdf   = sinkDF graph
+        onedom = onedomOf sinkdom
 
 sinkDFUpGivenXViaSinkdoms :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 sinkDFUpGivenXViaSinkdoms graph =
@@ -1379,13 +1380,14 @@ mDFUpDef graph =
 mDFUpDefViaMdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFUpDefViaMdoms graph =
       Map.fromList [ (z, Set.fromList [ y | y <- Set.toList $ mdf ! z,
-                                            (∀) (mdoms ! z) (\x -> (not $ x ∈ mdom ! y)  ∨  x == y)
+                                            (∀) (mdoms ! z) (\x -> not $ x ∈ onedom y)
                                       ]
                      )
                    | z <- nodes graph,  (∃) (mdoms ! z) (\x -> True)]
   where mdom  = mdomOf graph
         mdoms = mdomsOf graph
         mdf   = mDF graph
+        onedom = onedomOf mdom
         
 mDFUpGivenXViaMdoms :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 mDFUpGivenXViaMdoms graph =

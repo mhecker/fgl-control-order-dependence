@@ -1074,15 +1074,20 @@ joinUpperBound graph = Map.delete dummyNode $ jub condNodes init
 
 
 
-domsOf graph dom = Map.fromList [ (z, Set.fromList [ x | y <- Set.toList $ dom ! z,  y /= z,
-                                                         x <- Set.toList $ dom ! y,
-                                                        (∀) (dom ! z) (\y' -> y' == z ∨
-                                                          (∀) (dom ! y') (\x' -> x' ∈ dom ! x)
-                                                        )
-                                    ]
-                                )
-                              | z <- nodes graph
+onedomOf dom z = Set.fromList $ [ x | y <- Set.toList (dom ! z),
+                                      y /= z,
+                                      x <- Set.toList (dom ! y)
                  ]
+
+
+
+domsOf graph dom = Map.fromList [ (z, Set.fromList [ x | x <- Set.toList $ onedom z,
+                                                        (∀) (onedom z) (\x' -> x' ∈ dom ! x)
+                                      ]
+                                  )
+                                | z <- nodes graph
+                   ]
+  where onedom = onedomOf dom
 
 sinkdomsOf graph = domsOf graph sinkdom
   where sinkdom = sinkdomOf graph
@@ -1096,9 +1101,10 @@ sinkDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
                                             p <- suc graph y,
                                                    x ∈ sinkdom ! p,
-                                            not $ (∃) (sinkdom ! y) (\y' -> y' /= x ∧ x ∈ sinkdom ! y')  ])
+                                            not $  x ∈ onedom    y ])
                    | x <- nodes graph ]
   where sinkdom = sinkdomOf graph
+        onedom = onedomOf sinkdom
 
 
 sinkDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
@@ -1315,10 +1321,11 @@ imdomOfLfp graph = immediateOf $ mdomOfLfp graph
 mDF graph =
       Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
                                             p <- suc graph y,
-                                                   x ∈ mdom ! p,
-                                            not $ (∃) (mdom ! y) (\y' -> y' /= x ∧ x ∈ mdom ! y')  ])
+                                                   x ∈   mdom ! p,
+                                            not $  x ∈ onedom   y ])
                    | x <- nodes graph ]
   where mdom = mdomOfLfp graph
+        onedom = onedomOf mdom
 
 
 mDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence

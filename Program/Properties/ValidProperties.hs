@@ -331,11 +331,11 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let g = generatedGraph
                     in NTICD.sinkdomOf                  g ==
                        NTICD.sinkdomOfisinkdomProperty  g,
-    testProperty   "sinkdomOf             == sinkdomOfLfp "
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.sinkdomOf              g ==
-                       NTICD.sinkdomOfLfp           g,
+    -- testProperty   "sinkdomOf             == sinkdomOfLfp "
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.sinkdomOf              g ==
+    --                    NTICD.sinkdomOfLfp           g,
     testProperty   "sinkdomOf             == sinkdomOfGfp "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -498,11 +498,11 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     in (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                         NTICD.imdomOfTwoFinger6            g),
-    testProperty   "mdomOf             == mdomOfLfp "
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.mdomOf              g ==
-                       NTICD.mdomOfLfp           g,
+    -- testProperty   "mdomOf             == mdomOfLfp "
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.mdomOf              g ==
+    --                    NTICD.mdomOfLfp           g,
     testProperty   "mdomOfLfp reduces, in some sense,  to a multi-rooted tree"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

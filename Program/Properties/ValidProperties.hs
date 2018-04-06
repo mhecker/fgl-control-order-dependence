@@ -77,13 +77,13 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
-    sinkDFLocal, sinkDFLocalDef, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
+    sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
     idomToDF, idomToDFFast,
     imdomOf, imdomOfLfp,
     mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty, imdomTwoFingercd,
     mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
-    mDFLocal, mDFLocalDef, mDFUpGivenX, 
+    mDFLocal, mDFLocalDef, mDFLocalViaMdoms, mDFUpGivenX, 
     mDFFromUpLocalDefViaMdoms, mDF,
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
@@ -377,7 +377,11 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.sinkDFUp                g ==
                        NTICD.sinkDFUpDef             g,
-    testProperty   "sinkDFLocal           == sinkDFLocalDef"
+    testProperty   "sinkDFLocalViaSinkdoms == sinkDFLocalDef"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                       NTICD.sinkDFLocalViaSinkdoms  g ==
+                       NTICD.sinkDFLocalDef          g,
+    testProperty   "sinkDFLocal            == sinkDFLocalDef"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.sinkDFLocal             g ==
                        NTICD.sinkDFLocalDef          g,
@@ -549,6 +553,10 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                 $ \(ARBITRARY(g)) ->
                        NTICD.mDFUp                g ==
                        NTICD.mDFUpDef             g,
+    testProperty   "mDFLocalViaMdoms   == mDFLocalDef"
+                $ \((CG _ g) :: (Connected Gr () ())) ->
+                       NTICD.mDFLocalViaMdoms     g ==
+                       NTICD.mDFLocalDef          g,
     testProperty   "mDFLocal           == mDFLocalDef"
                 $ \(ARBITRARY(g)) ->
                        NTICD.mDFLocal             g ==

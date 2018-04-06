@@ -1139,6 +1139,15 @@ sinkDFLocal graph =
         isinkdomSccs = scc isinkdom
         isinkdomSccOf m =   the (m ∊) $ isinkdomSccs
 
+sinkDFLocalViaSinkdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+sinkDFLocalViaSinkdoms graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            not $ x ∈ sinkdoms ! y
+                                      ]
+                     )
+                   | x <- nodes graph ]
+  where sinkdoms = sinkdomsOf graph
+
 
 
 sinkDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
@@ -1362,6 +1371,15 @@ mDFLocal graph =
         imdomSccs = scc imdom
         imdomSccOf m =   the (m ∊) $ imdomSccs
 
+
+mDFLocalViaMdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+mDFLocalViaMdoms graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            not $ x ∈ mdoms ! y
+                                      ]
+                     )
+                   | x <- nodes graph ]
+  where mdoms = mdomsOf graph
 
 
 mDFUpDef :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)

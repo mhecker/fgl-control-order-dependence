@@ -1515,7 +1515,8 @@ mDFF2cd = xDFcd mDFF2
 
 
 imdomOfTwoFinger6 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
+imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
+                          twoFinger 0 worklist0 imdom0
   where imdom0   = Map.fromList [ (x, Set.empty )                 | x <- nodes graph]
                  ⊔ Map.fromList [ (x, Set.fromList $ suc graph x) | x <- nodes graph, length (suc graph x) == 1]
         worklist0   = condNodes
@@ -1601,7 +1602,8 @@ imdomOfTwoFinger6 graph = twoFinger 0 worklist0 imdom0
 
 
 imdomOfTwoFinger7 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-imdomOfTwoFinger7 graph = fmap toSet $ twoFinger 0 worklist0 imdom0
+imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
+                          fmap toSet $ twoFinger 0 worklist0 imdom0
   where toSet Nothing  = Set.empty
         toSet (Just x) = Set.fromList [x]
         imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x]]
@@ -1751,13 +1753,13 @@ idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes g
   where f2 df cycle  = Map.fromList [ (x, local ⊔ up) | x <- cycle ] `Map.union` df
           where local =       (∐) [ Set.fromList [ y ] | x <- cycle, 
                                                           y <- pre graph x,
-                                                          (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
+                                                          not $ (∃) (idomSccOf ! x) (\x' -> x' ∊ (suc idomG y))
                                    ]
                 up    =       (∐) [ Set.fromList [ y ] | x <- cycle,
                                                           z <- pre idomG x,
                                                           not $ z ∊ cycle,
                                                           y <- Set.toList $ df ! z,
-                                                         (∀) (suc idomG y) (\c -> not $ x ∊ (idomSccOf ! c))
+                                                          not $ (∃) (idomSccOf ! x) (\x' -> x' ∊ (suc idomG y))
                                    ]
 
         idomSccs = scc idomG

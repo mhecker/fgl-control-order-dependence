@@ -279,157 +279,169 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "idomToDFFast _ isinkdom == sinkDF _"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in NTICD.idomToDFFast g isinkdom ==
+                       NTICD.sinkDF       g,
     testProperty   "idomToDFFast _ isinkdom == idomToDF _ isinkdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
                     in NTICD.idomToDFFast g isinkdom ==
-                       NTICD.idomToDF     g isinkdom,
-    testProperty   "DF of isinkdom Cycles are all the same"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        df    = NTICD.idomToDF g isinkdom
-                        idomSccs = scc isinkdom
-                        cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m))),
-    testProperty   "isinkdomOfSinkContraction is intransitive"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                    in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
-    testProperty   "isinkdomOf^*          == isinkdomOfSinkContraction^*"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
-                       (trc $ fromSuccMap $
-                              NTICD.isinkdomOfSinkContraction g),
-    testProperty   "joinUpperBound always computes an upper bound"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        sinks = NTICD.controlSinks g
-                    in (∀) (Map.assocs $ NTICD.joinUpperBound g) (\(n,maybeNs) -> maybeNs /= Nothing ∨   (∃) (sinks) (\sink -> n ∊ sink)),
-    testProperty   "isinkdomOf^*          == sinkdomOfJoinUpperBound^*"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
-                       (trc $ fromSuccMap $
-                              NTICD.sinkdomOfJoinUpperBound g),
-    testProperty   "isinkdomOf^*          == isinkdomOfGfp2^*"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
-                       (trc $ fromSuccMap $
-                        NTICD.isinkdomOfGfp2             g),
-    testProperty   "sinkdomOf reduces, in some sense,  to a multi-rooted tree"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        isinkdom = NTICD.isinkdomOf g :: Gr () ()
-                    in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
-    testProperty   "sinkdomOf             == sinkdomOfisinkdomProperty"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.sinkdomOf                  g ==
-                       NTICD.sinkdomOfisinkdomProperty  g,
+                       NTICD.idomToDF     g isinkdom
+    -- testProperty   "DF of isinkdom Cycles are all the same"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+    --                     df    = NTICD.idomToDF g isinkdom
+    --                     idomSccs = scc isinkdom
+    --                     cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
+    --                 in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m))),
+    -- testProperty   "isinkdomOfSinkContraction is intransitive"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+    --                 in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
+    -- testProperty   "isinkdomOf^*          == isinkdomOfSinkContraction^*"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
+    --                    (trc $ fromSuccMap $
+    --                           NTICD.isinkdomOfSinkContraction g),
+    -- testProperty   "joinUpperBound always computes an upper bound"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     sinks = NTICD.controlSinks g
+    --                 in (∀) (Map.assocs $ NTICD.joinUpperBound g) (\(n,maybeNs) -> maybeNs /= Nothing ∨   (∃) (sinks) (\sink -> n ∊ sink)),
+    -- testProperty   "isinkdomOf^*          == sinkdomOfJoinUpperBound^*"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
+    --                    (trc $ fromSuccMap $
+    --                           NTICD.sinkdomOfJoinUpperBound g),
+    -- testProperty   "isinkdomOf^*          == isinkdomOfGfp2^*"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
+    --                    (trc $ fromSuccMap $
+    --                     NTICD.isinkdomOfGfp2             g),
+    -- testProperty   "sinkdomOf reduces, in some sense,  to a multi-rooted tree"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     isinkdom = NTICD.isinkdomOf g :: Gr () ()
+    --                 in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
+    -- testProperty   "sinkdomOf             == sinkdomOfisinkdomProperty"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.sinkdomOf                  g ==
+    --                    NTICD.sinkdomOfisinkdomProperty  g,
     -- testProperty   "sinkdomOf             == sinkdomOfLfp "
     --             $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph
     --                 in NTICD.sinkdomOf              g ==
     --                    NTICD.sinkdomOfLfp           g,
-    testProperty   "sinkdomOf             == sinkdomOfGfp "
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.sinkdomOf              g ==
-                       NTICD.sinkdomOfGfp           g,
-    testProperty   "sinkDFFromUpLocalDefViaSinkdoms == sinkDF"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==
-                       NTICD.sinkDF                          g,
-    testProperty   "sinkDFUpGivenXViaSinkdoms == sinkDFUpGivenX"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.sinkDFUpGivenXViaSinkdoms  g ==
-                       NTICD.sinkDFUpGivenX             g,
-    testProperty   "sinkDFUpDefViaSinkdoms == sinkDFUpDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.sinkDFUpDefViaSinkdoms  g ==
-                       NTICD.sinkDFUpDef             g,
-    testProperty   "sinkDFUpGivenX ! (x,z) is independent of choice of x for given z"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                    let sinkDFUp = NTICD.sinkDFUpGivenX g
-                    in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
-                         (∀) (Map.assocs sinkDFUp) (\((x',z'), dfUp') ->
-                           (z == z') → (dfUp == dfUp')
-                         )
-                       ),
-    testProperty   "sinkDFUpGivenX ! (x,z) == sinkDFUpDef ! z"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                    let sinkDFUp    = NTICD.sinkDFUpGivenX g
-                        sinkDFUpDef = NTICD.sinkDFUpDef    g
-                    in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
-                         dfUp == sinkDFUpDef ! z
-                       )
-                    ∧  (∀) (Map.assocs sinkDFUpDef) (\(z, dfUp) ->
-                         (∀) [ (x, dfUp') | ((x,z'), dfUp') <- Map.assocs sinkDFUp, z == z'] (\(x, dfUp') ->
-                           dfUp == dfUp'
-                         )
-                       ),
-    testProperty   "sinkDFUp              == sinkDFUpDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.sinkDFUp                g ==
-                       NTICD.sinkDFUpDef             g,
-    testProperty   "sinkDFLocalViaSinkdoms == sinkDFLocalDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.sinkDFLocalViaSinkdoms  g ==
-                       NTICD.sinkDFLocalDef          g,
-    testProperty   "sinkDFLocal            == sinkDFLocalDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.sinkDFLocal             g ==
-                       NTICD.sinkDFLocalDef          g,
-    testProperty   "sinkDFcd              == nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.sinkDFcd         g ==
-                       NTICD.nticdF3          g,
-    testProperty   "sinkDFFromUpLocalDefcd== nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.sinkDFFromUpLocalDefcd  g==
-                       NTICD.nticdF3                 g,
-    testProperty   "sinkDFFromUpLocalcd   == nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.sinkDFFromUpLocalcd     g ==
-                       NTICD.nticdF3                 g,
-    testProperty   "sinkDFF2cd            == nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.sinkDFF2cd       g ==
-                       NTICD.nticdF3          g
+    -- testProperty   "sinkdomOf             == sinkdomOfGfp "
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.sinkdomOf              g ==
+    --                    NTICD.sinkdomOfGfp           g,
+    -- testProperty   "sinkDFFromUpLocalDefViaSinkdoms == sinkDF"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==
+    --                    NTICD.sinkDF                          g,
+    -- testProperty   "sinkDFUpGivenXViaSinkdoms == sinkDFUpGivenX"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.sinkDFUpGivenXViaSinkdoms  g ==
+    --                    NTICD.sinkDFUpGivenX             g,
+    -- testProperty   "sinkDFUpDefViaSinkdoms == sinkDFUpDef"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.sinkDFUpDefViaSinkdoms  g ==
+    --                    NTICD.sinkDFUpDef             g,
+    -- testProperty   "sinkDFUpGivenX ! (x,z) is independent of choice of x for given z"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                 let sinkDFUp = NTICD.sinkDFUpGivenX g
+    --                 in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
+    --                      (∀) (Map.assocs sinkDFUp) (\((x',z'), dfUp') ->
+    --                        (z == z') → (dfUp == dfUp')
+    --                      )
+    --                    ),
+    -- testProperty   "sinkDFUpGivenX ! (x,z) == sinkDFUpDef ! z"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                 let sinkDFUp    = NTICD.sinkDFUpGivenX g
+    --                     sinkDFUpDef = NTICD.sinkDFUpDef    g
+    --                 in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
+    --                      dfUp == sinkDFUpDef ! z
+    --                    )
+    --                 ∧  (∀) (Map.assocs sinkDFUpDef) (\(z, dfUp) ->
+    --                      (∀) [ (x, dfUp') | ((x,z'), dfUp') <- Map.assocs sinkDFUp, z == z'] (\(x, dfUp') ->
+    --                        dfUp == dfUp'
+    --                      )
+    --                    ),
+    -- testProperty   "sinkDFUp              == sinkDFUpDef"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.sinkDFUp                g ==
+    --                    NTICD.sinkDFUpDef             g,
+    -- testProperty   "sinkDFLocalViaSinkdoms == sinkDFLocalDef"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.sinkDFLocalViaSinkdoms  g ==
+    --                    NTICD.sinkDFLocalDef          g,
+    -- testProperty   "sinkDFLocal            == sinkDFLocalDef"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.sinkDFLocal             g ==
+    --                    NTICD.sinkDFLocalDef          g,
+    -- testProperty   "sinkDFcd              == nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.sinkDFcd         g ==
+    --                    NTICD.nticdF3          g,
+    -- testProperty   "sinkDFFromUpLocalDefcd== nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.sinkDFFromUpLocalDefcd  g==
+    --                    NTICD.nticdF3                 g,
+    -- testProperty   "sinkDFFromUpLocalcd   == nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.sinkDFFromUpLocalcd     g ==
+    --                    NTICD.nticdF3                 g,
+    -- testProperty   "sinkDFF2cd            == nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.sinkDFF2cd       g ==
+    --                    NTICD.nticdF3          g
   ]
 
 insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
-  [  testCase    (  "sinkDFLocal == sinkDFLocalDef for " ++ exampleName)
-            $          NTICD.sinkDFLocal    g ==
-                       NTICD.sinkDFLocalDef g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "sinkDFFromUpLocalDefViaSinkdoms == sinkDF for " ++ exampleName)
-            $          NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==
-                       NTICD.sinkDF                          g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "sinkDFUpGivenXViaMdoms == sinkDFUpGivenX for " ++ exampleName)
-            $          NTICD.sinkDFUpGivenXViaSinkdoms     g ==
-                       NTICD.sinkDFUpGivenX             g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "sinkDFUpDefViaMdoms == sinkDFUpDef for " ++ exampleName)
-            $            NTICD.sinkDFUpDefViaSinkdoms     g ==
-                         NTICD.sinkDFUpDef             g
-                       @? ""
+  -- [  testCase    (  "sinkDFLocal == sinkDFLocalDef for " ++ exampleName)
+  --           $          NTICD.sinkDFLocal    g ==
+  --                      NTICD.sinkDFLocalDef g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "sinkDFFromUpLocalDefViaSinkdoms == sinkDF for " ++ exampleName)
+  --           $          NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==
+  --                      NTICD.sinkDF                          g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "sinkDFUpGivenXViaMdoms == sinkDFUpGivenX for " ++ exampleName)
+  --           $          NTICD.sinkDFUpGivenXViaSinkdoms     g ==
+  --                      NTICD.sinkDFUpGivenX             g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "sinkDFUpDefViaMdoms == sinkDFUpDef for " ++ exampleName)
+  --           $            NTICD.sinkDFUpDefViaSinkdoms     g ==
+  --                        NTICD.sinkDFUpDef             g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
+            $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in NTICD.idomToDFFast g isinkdom ==
+                       NTICD.sinkDF       g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
@@ -438,37 +450,41 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
                        NTICD.idomToDF     g isinkdom @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "DF of isinkdom Cycles are all the same for " ++ exampleName)
-            $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        df    = NTICD.idomToDF g isinkdom
-                        idomSccs = scc isinkdom
-                        cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))  @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "sinkDFGraphP              ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFGraphP p            == NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [  testCase    ( "sinkDFFromUpLocalGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFFromUpLocalGraphP p == NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [  testCase    ( "sinkDFFromUpLocalDefGraphP==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFFromUpLocalDefGraphP p
-                                              ==
-                                                 NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
+  -- [  testCase    ( "DF of isinkdom Cycles are all the same for " ++ exampleName)
+  --           $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+  --                       df    = NTICD.idomToDF g isinkdom
+  --                       idomSccs = scc isinkdom
+  --                       cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
+  --                   in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))  @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "sinkDFGraphP              ==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFGraphP p            == NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
+  -- [  testCase    ( "sinkDFFromUpLocalGraphP   ==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFFromUpLocalGraphP p == NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
+  -- [  testCase    ( "sinkDFFromUpLocalDefGraphP==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFFromUpLocalDefGraphP p
+  --                                             ==
+  --                                                NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
+  -- [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
   []
 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
+    -- testProperty   "mDFFromUpLocalDefViaSMdoms == mDF"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.mDFFromUpLocalDefViaMdoms g ==
+    --                    NTICD.mDF                       g,
     testProperty   "idomToDFFast _ imdom == idomToDF _ imdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -478,149 +494,167 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                          NTICD.idomToDFFast g imdom ==
                          NTICD.idomToDF     g imdom
                        ),
-    testProperty   "DF of imdom Cycles are all the same"
+    testProperty   "idomToDFFast _ imdom  == mDF _ "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
                         imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
                     in (∀) [imdom6, imdom7] (\imdom ->
-                         let df    = NTICD.idomToDF g imdom
-                             idomSccs = scc imdom
-                             cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                         in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))
-                       ),
-    testProperty   "imdomOfTwoFinger7^*   == imdomOfTwoFinger6^*"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in (trc $ fromSuccMap $
-                        NTICD.imdomOfTwoFinger7            g :: Gr () ()) ==
-                       (trc $ fromSuccMap $
-                        NTICD.imdomOfTwoFinger6            g),
-    testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
-                       (trc $ fromSuccMap $
-                        NTICD.imdomOfTwoFinger6            g),
+                         NTICD.idomToDFFast g imdom ==
+                         NTICD.mDF          g
+                       )
+    -- testProperty   "DF of imdom Cycles are all the same"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
+    --                     imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+    --                 in (∀) [imdom6, imdom7] (\imdom ->
+    --                      let df    = NTICD.idomToDF g imdom
+    --                          idomSccs = scc imdom
+    --                          cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
+    --                      in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))
+    --                    ),
+    -- testProperty   "imdomOfTwoFinger7^*   == imdomOfTwoFinger6^*"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in (trc $ fromSuccMap $
+    --                     NTICD.imdomOfTwoFinger7            g :: Gr () ()) ==
+    --                    (trc $ fromSuccMap $
+    --                     NTICD.imdomOfTwoFinger6            g),
+    -- testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
+    --                    (trc $ fromSuccMap $
+    --                     NTICD.imdomOfTwoFinger6            g),
     -- testProperty   "mdomOf             == mdomOfLfp "
     --             $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph
     --                 in NTICD.mdomOf              g ==
     --                    NTICD.mdomOfLfp           g,
-    testProperty   "mdomOfLfp reduces, in some sense,  to a multi-rooted tree"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        imdom = NTICD.imdomOfLfp g :: Gr () ()
-                    in   (∀) (nodes imdom) (\n -> length (suc imdom n) <= 1),
-    testProperty   "mdomOfLfp           == mdomOfimdomProperty"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.mdomOfLfp            g ==
-                       NTICD.mdomOfimdomProperty  g,
-    testProperty   "mDFFromUpLocalDefViaSMdoms == mDF"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.mDFFromUpLocalDefViaMdoms g ==
-                       NTICD.mDF                       g,
-    testProperty   "mDFUpGivenXViaMdoms == mDFUpGivenX"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.mDFUpGivenXViaMdoms     g ==
-                       NTICD.mDFUpGivenX             g,
-    testProperty   "mDFUpDefViaMdoms == mDFUpDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.mDFUpDefViaMdoms     g ==
-                       NTICD.mDFUpDef             g,
-    testProperty   "mDFUpGivenX ! (x,z) is independent of choice of x for given z"
-                $ \(ARBITRARY(g)) ->
-                    let mDFUp = NTICD.mDFUpGivenX g
-                    in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
-                         (∀) (Map.assocs mDFUp) (\((x',z'), dfUp') ->
-                           (z == z') → (dfUp == dfUp')
-                         )
-                       ),
-    testProperty   "mDFUpGivenX ! (x,z) == mDFUpDef ! z"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                    let mDFUp    = NTICD.mDFUpGivenX g
-                        mDFUpDef = NTICD.mDFUpDef    g
-                    in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
-                         dfUp == mDFUpDef ! z
-                       )
-                    ∧  (∀) (Map.assocs mDFUpDef) (\(z, dfUp) ->
-                         (∀) [ (x, dfUp') | ((x,z'), dfUp') <- Map.assocs mDFUp, z == z'] (\(x, dfUp') ->
-                           dfUp == dfUp'
-                         )
-                       ),
-    testProperty   "mDFUp              == mDFUpDef"
-                $ \(ARBITRARY(g)) ->
-                       NTICD.mDFUp                g ==
-                       NTICD.mDFUpDef             g,
-    testProperty   "mDFLocalViaMdoms   == mDFLocalDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.mDFLocalViaMdoms     g ==
-                       NTICD.mDFLocalDef          g,
-    testProperty   "mDFLocal           == mDFLocalDef"
-                $ \(ARBITRARY(g)) ->
-                       NTICD.mDFLocal             g ==
-                       NTICD.mDFLocalDef          g,
-    testProperty   "mDFcd              == ntscdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.mDFcd            g ==
-                       NTICD.ntscdF3          g,
-    testProperty   "mDFFromUpLocalDefcd== ntscdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.mDFFromUpLocalDefcd  g ==
-                       NTICD.ntscdF3              g,
-    testProperty   "mDFFromUpLocalcd   == ntisdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.mDFFromUpLocalcd     g ==
-                       NTICD.ntscdF3              g,
-    testProperty   "imdomTwoFingercd     == ntscdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.imdomTwoFingercd   g ==
-                       NTICD.ntscdF3          g,
-    testProperty   "mDFF2cd            == ntscdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.mDFF2cd              g ==
-                       NTICD.ntscdF3              g
+    -- testProperty   "mdomOfLfp reduces, in some sense,  to a multi-rooted tree"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     imdom = NTICD.imdomOfLfp g :: Gr () ()
+    --                 in   (∀) (nodes imdom) (\n -> length (suc imdom n) <= 1),
+    -- testProperty   "mdomOfLfp           == mdomOfimdomProperty"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.mdomOfLfp            g ==
+    --                    NTICD.mdomOfimdomProperty  g,
+    -- testProperty   "mDFFromUpLocalDefViaSMdoms == mDF"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.mDFFromUpLocalDefViaMdoms g ==
+    --                    NTICD.mDF                       g,
+    -- testProperty   "mDFUpGivenXViaMdoms == mDFUpGivenX"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.mDFUpGivenXViaMdoms     g ==
+    --                    NTICD.mDFUpGivenX             g,
+    -- testProperty   "mDFUpDefViaMdoms == mDFUpDef"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.mDFUpDefViaMdoms     g ==
+    --                    NTICD.mDFUpDef             g,
+    -- testProperty   "mDFUpGivenX ! (x,z) is independent of choice of x for given z"
+    --             $ \(ARBITRARY(g)) ->
+    --                 let mDFUp = NTICD.mDFUpGivenX g
+    --                 in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
+    --                      (∀) (Map.assocs mDFUp) (\((x',z'), dfUp') ->
+    --                        (z == z') → (dfUp == dfUp')
+    --                      )
+    --                    ),
+    -- testProperty   "mDFUpGivenX ! (x,z) == mDFUpDef ! z"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                 let mDFUp    = NTICD.mDFUpGivenX g
+    --                     mDFUpDef = NTICD.mDFUpDef    g
+    --                 in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
+    --                      dfUp == mDFUpDef ! z
+    --                    )
+    --                 ∧  (∀) (Map.assocs mDFUpDef) (\(z, dfUp) ->
+    --                      (∀) [ (x, dfUp') | ((x,z'), dfUp') <- Map.assocs mDFUp, z == z'] (\(x, dfUp') ->
+    --                        dfUp == dfUp'
+    --                      )
+    --                    ),
+    -- testProperty   "mDFUp              == mDFUpDef"
+    --             $ \(ARBITRARY(g)) ->
+    --                    NTICD.mDFUp                g ==
+    --                    NTICD.mDFUpDef             g,
+    -- testProperty   "mDFLocalViaMdoms   == mDFLocalDef"
+    --             $ \((CG _ g) :: (Connected Gr () ())) ->
+    --                    NTICD.mDFLocalViaMdoms     g ==
+    --                    NTICD.mDFLocalDef          g,
+    -- testProperty   "mDFLocal           == mDFLocalDef"
+    --             $ \(ARBITRARY(g)) ->
+    --                    NTICD.mDFLocal             g ==
+    --                    NTICD.mDFLocalDef          g,
+    -- testProperty   "mDFcd              == ntscdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.mDFcd            g ==
+    --                    NTICD.ntscdF3          g,
+    -- testProperty   "mDFFromUpLocalDefcd== ntscdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.mDFFromUpLocalDefcd  g ==
+    --                    NTICD.ntscdF3              g,
+    -- testProperty   "mDFFromUpLocalcd   == ntisdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.mDFFromUpLocalcd     g ==
+    --                    NTICD.ntscdF3              g,
+    -- testProperty   "imdomTwoFingercd     == ntscdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.imdomTwoFingercd   g ==
+    --                    NTICD.ntscdF3          g,
+    -- testProperty   "mDFF2cd            == ntscdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.mDFF2cd              g ==
+    --                    NTICD.ntscdF3              g
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
-  [  testCase    (  "mDFLocal == mDFLocalDef for " ++ exampleName)
-            $          NTICD.mDFLocal    g ==
-                       NTICD.mDFLocalDef g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "mDFFromUpLocalDefViaMdoms == mDF for " ++ exampleName)
-            $          NTICD.mDFFromUpLocalDefViaMdoms g ==
-                       NTICD.mDF                       g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "mDFUpGivenXViaMdoms == mDFUpGivenX for " ++ exampleName)
-            $          NTICD.mDFUpGivenXViaMdoms     g ==
-                       NTICD.mDFUpGivenX             g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "mDFUpDefViaMdoms == mDFUpDef for " ++ exampleName)
-            $            NTICD.mDFUpDefViaMdoms     g ==
-                         NTICD.mDFUpDef             g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  -- [  testCase    ( "idomToDFFast _ imdom == idomToDF _ imdom for " ++ exampleName)
-  --           $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-  --                       imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
-  --                   in (∀) [imdom6, imdom7] (\imdom ->
-  --                        NTICD.idomToDFFast g imdom ==
-  --                        NTICD.idomToDF     g imdom
-  --                      ) @? ""
+  -- [  testCase    (  "mDFLocal == mDFLocalDef for " ++ exampleName)
+  --           $          NTICD.mDFLocal    g ==
+  --                      NTICD.mDFLocalDef g
+  --                      @? ""
   -- | (exampleName, g) <- interestingDodWod
   -- ] ++
+  -- [  testCase    (  "mDFFromUpLocalDefViaMdoms == mDF for " ++ exampleName)
+  --           $          NTICD.mDFFromUpLocalDefViaMdoms g ==
+  --                      NTICD.mDF                       g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "mDFUpGivenXViaMdoms == mDFUpGivenX for " ++ exampleName)
+  --           $          NTICD.mDFUpGivenXViaMdoms     g ==
+  --                      NTICD.mDFUpGivenX             g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "mDFUpDefViaMdoms == mDFUpDef for " ++ exampleName)
+  --           $            NTICD.mDFUpDefViaMdoms     g ==
+  --                        NTICD.mDFUpDef             g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  [  testCase    ( "idomToDFFast _ imdom == idomToDF _ imdom for " ++ exampleName)
+            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                    in (∀) [imdom6, imdom7] (\imdom ->
+                         NTICD.idomToDFFast g imdom ==
+                         NTICD.idomToDF     g imdom
+                       ) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "idomToDFFast _ imdom == mDF _ for " ++ exampleName)
+            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                    in (∀) [imdom6, imdom7] (\imdom ->
+                         NTICD.idomToDFFast g imdom ==
+                         NTICD.mDF          g
+                       ) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   -- [  testCase    ( "DF of imdom Cycles are all the same for " ++ exampleName)
   --           $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
   --                       imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()

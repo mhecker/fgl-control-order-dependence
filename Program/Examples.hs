@@ -472,6 +472,65 @@ exampleSmnF5 = Program {
         exitOf "1" = 5
         tcfg =  mkGraph [(8,8),(5,5),(1,1),(12,12),(2,2)] [(8,5,nop),(1,8,nop),(1,5,nop),(1,2,nop),(2,1,nop),(12,8,nop),(12,5,nop),(12,1,nop)]
 
+exampleSmnF5' :: Program Gr
+exampleSmnF5' = Program {
+    tcfg = tcfg,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads  = Set.fromList [1],
+    staticProcedures  =  Set.fromList ["1"],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticProcedureOf n
+         | n ∊ [8, 5, 1, 12, 2] = "1"
+         | otherwise = error "uknown node"
+        entryOf "1" = 12
+        exitOf "1" = 5
+        tcfg =  mkGraph [(8,8),(5,5),(1,1),(12,12),(2,2)] [(8,5,nop),(1,8,nop),(1,5,nop),(1,2,nop),(2,1,nop),(12,8,nop),(12,5,nop),(12,1,nop)]
+
+
+exampleSmnF4Gfp :: Program Gr
+exampleSmnF4Gfp = Program {
+    tcfg = tcfg,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads  = Set.fromList [1],
+    staticProcedures  =  Set.fromList ["1"],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticProcedureOf n
+         | n ∊ [1, 3, 4, 5] = "1"
+         | otherwise = error "uknown node"
+        entryOf "1" = 1
+        exitOf "4" = 4
+        tcfg =  mkGraph [(1,1),(3,3),(4,4),(5,5)] [(1,4,nop),(1,3,nop),(3,5,nop),(3,4,nop),(5,4,nop)]
+
+
+
+exampleSmnF4Gfp2 :: Program Gr
+exampleSmnF4Gfp2 = Program {
+    tcfg = tcfg,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads  = Set.fromList [1],
+    staticProcedures  =  Set.fromList ["1"],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticProcedureOf n
+         | n ∊ [1, 3, 4, 5] = "1"
+         | otherwise = error "uknown node"
+        entryOf "1" = 1
+        exitOf "4" = 4
+        tcfg =  mkGraph [(1,1),(3,3),(4,4),(5,5)] [(1,3,nop),(3,5,nop),(3,4,nop),(5,3,nop)]
 
 exampleNticd2SmnF5 :: Program Gr
 exampleNticd2SmnF5 = Program {
@@ -504,6 +563,28 @@ exampleNtscd = p { observability = defaultObservabilityMap (tcfg p) }
                          {-else-}
                             (ReadFromChannel (Global "a") "stdIn"))))
          ]
+
+
+exampleNtscd' :: Program Gr
+exampleNtscd' = Program {
+    tcfg = tcfg,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads  = Set.fromList [1],
+    staticProcedures  = Set.fromList ["1"],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticProcedureOf n 
+         | n ∊ [2,5,3,7,8,10,11,12,15] = "1"
+         | otherwise = error "uknown node"
+        entryOf "1" = 2
+        exitOf "1" = 3
+        tcfg = mkGraph [(2,2),(5,5),(3,3),(7,7),(10,10),(11,11),(12,12),(15,15)]
+                       [(2,5,nop),(5,3,nop),(5,7,nop),(7,10,nop),(10,11,nop),(11,15,nop),(10,12,nop),(12,15,nop),(15,5,nop)]
+
 
 
 exampleNtscd2 :: Program Gr
@@ -3083,6 +3164,7 @@ failingNticd = [
 
 failingNtscd = [
               $(withName 'exampleNtscd),
+              $(withName 'exampleNtscd'),
               $(withName 'exampleNtscd2)
             ]
 

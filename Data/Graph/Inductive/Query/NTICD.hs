@@ -361,6 +361,10 @@ ntscdF4 = ntXcd snmF4
 snmF4 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF4 graph = snmLfp graph f4
 
+snmF4Gfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF4Gfp graph = snmGfp graph f4
+
+
 f4 graph condNodes _ _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"

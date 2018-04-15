@@ -508,7 +508,7 @@ exampleSmnF4Gfp = Program {
          | n ∊ [1, 3, 4, 5] = "1"
          | otherwise = error "uknown node"
         entryOf "1" = 1
-        exitOf "4" = 4
+        exitOf "1" = 4
         tcfg =  mkGraph [(1,1),(3,3),(4,4),(5,5)] [(1,4,nop),(1,3,nop),(3,5,nop),(3,4,nop),(5,4,nop)]
 
 
@@ -531,6 +531,47 @@ exampleSmnF4Gfp2 = Program {
         entryOf "1" = 1
         exitOf "4" = 4
         tcfg =  mkGraph [(1,1),(3,3),(4,4),(5,5)] [(1,3,nop),(3,5,nop),(3,4,nop),(5,3,nop)]
+
+
+
+exampleSmnF4WithReachGfp :: Program Gr
+exampleSmnF4WithReachGfp = Program {
+    tcfg = tcfg,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads  = Set.fromList [1],
+    staticProcedures  =  Set.fromList ["1"],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticProcedureOf n
+         | n ∊ [8, 13, 6, 16, 17] = "1"
+         | otherwise = error "uknown node"
+        entryOf "1" = 17
+        exitOf "1" = undefined
+        tcfg =  mkGraph [(8,8),(13,13),(6,6),(16,16),(17,17)] [(8,13,nop),(8,16,nop),(16,6,nop),(6,16,nop), (17,8,nop),(17,13,nop)]
+
+
+exampleSmnF4WithReachGfp2 :: Program Gr
+exampleSmnF4WithReachGfp2 = Program {
+    tcfg = tcfg,
+    procedureOf = show,
+    staticProcedureOf = staticProcedureOf,
+    staticThreads  = Set.fromList [1],
+    staticProcedures  =  Set.fromList ["1"],
+    mainThread = 1,
+    entryOf = entryOf,
+    exitOf = exitOf,
+    observability = defaultObservabilityMap tcfg
+   }
+  where staticProcedureOf n
+         | n ∊ [8, 13, 6, 16, 17] = "1"
+         | otherwise = error "uknown node"
+        entryOf "1" = 17
+        exitOf "1" = undefined
+        tcfg =  mkGraph [(8,8),(13,13),(6,6),(16,16),(666,666), (17,17)] [(8,13,nop),(8,16,nop),(16,6,nop),(6,16,nop),(16,666,nop),(666,16,nop),(17,8,nop),(17,13,nop)]
 
 exampleNticd2SmnF5 :: Program Gr
 exampleNticd2SmnF5 = Program {

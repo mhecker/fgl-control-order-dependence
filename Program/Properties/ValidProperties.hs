@@ -73,6 +73,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
+    snmF4WithReachCheckGfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty,
@@ -1867,7 +1868,13 @@ indepsTests = testGroup "(concerning color algorithms)" $
 
 
 miscProps = testGroup "(misc)" [
-    testProperty  "trcOfTrrIsTrc"                     $ trcOfTrrIsTrc
+    testProperty  "trcOfTrrIsTrc"                     $ trcOfTrrIsTrc,
+    testProperty  "snmF4WithReachCheckGfp == snmF3Gfp "
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let graph     = generatedGraph
+                        snmF3Gfp                = NTICD.snmF3 graph
+                        snmF4WithReachCheckGfp  = NTICD.snmF4WithReachCheckGfp graph
+                    in snmF4WithReachCheckGfp ⊑ snmF3Gfp
   ]
 
 

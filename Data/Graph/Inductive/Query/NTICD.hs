@@ -361,10 +361,6 @@ ntscdF4 = ntXcd snmF4
 snmF4 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF4 graph = snmLfp graph f4
 
-snmF4Gfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snmF4Gfp graph = snmGfp graph f4
-
-
 f4 graph condNodes _ _ _ s
   | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
@@ -374,6 +370,28 @@ f4 graph condNodes _ _ _ s
                  ⊔ Map.fromList [ ((m,p), (∐) [ s ! (n,p) | n <- condNodes, p /= n,
                                                              (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                                ]
+                                  ) | m <- nodes graph, p <- condNodes ]
+
+
+
+snmF4WithReachCheckGfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF4WithReachCheckGfp graph = snmGfp graph f4withReachCheck
+
+f4withReachCheck graph condNodes reachable _ _ s
+  | (∃) [ (m,p,n) | m <- nodes graph, p <- condNodes, n <- condNodes, p /= n ]
+        (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
+  | otherwise = -- tr ("\n\nIteration:\n" ++ (show s)) $
+                   Map.fromList [ ((x,p), Set.fromList [ (p,x) ]) | p <- condNodes, x <- suc graph p ]
+                 ⊔ Map.fromList [ ((m,p), (∐) [ Set.fromList [ (p,x) | (p',x) <- Set.toList $ s ! (n,p),
+                                                                       assert (p == p') True,
+                                                                       m ∊ reachable x
+                                                ]
+                                              | n <- nodes graph, [ m ] == suc graph n])  | p <- condNodes, m <- nodes graph ]
+                 ⊔ Map.fromList [ ((m,p), (∐) [ Set.fromList [ (p,x) | (p',x) <- Set.toList $ s ! (n,p),
+                                                                       assert (p == p') True,
+                                                                       m ∊ reachable x
+                                                ]
+                                              | n <- condNodes, p /= n, (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)]
                                   ) | m <- nodes graph, p <- condNodes ]
 
 

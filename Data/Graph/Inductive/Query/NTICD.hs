@@ -209,8 +209,7 @@ f3'dual graph condNodes reachable nextCond toNextCond s
         (\(m,p,n) ->   (Set.size $ s ! (m,n)) > (Set.size $ Set.fromList $ suc graph n)) = error "rofl"
   | otherwise =
                    Map.fromList [ ((m,p), (
-                        Set.fromList  [ (p,x) | x <- (suc graph p), not $ m ∊ toNextCond x]
-                      ⊓ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x], (Set.size $ s ! (m,n)) /= 0 ]
+                        Set.fromList  [ (p,x) | x <- (suc graph p), not $ m ∊ toNextCond x, Just n <- [nextCond x], (Set.size $ s ! (m,n)) /= 0 ]
                     ) ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), not $ m ∊ reachable x ]
                    ) | m <- nodes graph, p <- condNodes]
   where all p m = [ (p,x) | x <- (suc graph p)]
@@ -227,6 +226,37 @@ nticdF3'dual = ntXcd snmF3'dual
 
 snmF3'dual :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF3'dual graph = snmLfp graph f3'dual
+
+
+nticdF3'dualWorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdF3'dualWorkListGraphP = cdepGraphP nticdF3'dualWorkListGraph
+
+nticdF3'dualWorkListGraph :: DynGraph gr => gr a b -> gr a Dependence
+nticdF3'dualWorkListGraph = cdepGraph nticdF3'dualWorkList
+
+nticdF3'dualWorkList :: DynGraph gr => gr a b -> Map Node (Set Node)
+nticdF3'dualWorkList = ntXcd snmF3'dualWorkListLfp
+
+snmF3'dualWorkListLfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
+snmF3'dualWorkListLfp graph = snmWorkList (Set.fromList [ (m,n,x) | p <- condNodes, m <- nodes graph, Set.size (smnInit ! (m,p)) /= 0, (n,x) <- prevCondsWithSucc p ]) smnInit
+  where snmWorkList :: Set (Node, Node, Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
+        snmWorkList workList s
+          | Set.null workList = s
+          | otherwise         = snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
+              where ((m,p,x), workList') = Set.deleteFindMin workList
+                    smp  = s ! (m,p)
+                    smp' = if (not $ m ∊ toNextCond x) then (Set.insert (p,x) smp) else smp
+                    influenced = if (Set.size smp == 0 && Set.size smp' > 0)
+                                   then Set.fromList [ (m,n,x') | (n,x') <- prevCondsWithSucc p ]
+                                   else Set.empty
+
+        smnInit =  Map.fromList [ ((m,p), Set.empty) | m <- condNodes, p <- condNodes]
+                 ⊔ Map.fromList [ ((m,p), Set.fromList [ (p,x) | x <- suc graph p, not $ m ∊ reachable x]) | p <- condNodes, m <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        toNextCond = toNextCondNode graph
+        prevCondsWithSucc = prevCondsWithSuccNode graph
+        trncl = trc graph
 
 
 {- the same, with less memory consumption -}
@@ -278,18 +308,21 @@ nticdF3WorkList :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3WorkList = ntXcd snmF3WorkListGfp
 
 snmF3WorkListGfp :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
-snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | m <- nodes graph, p <- condNodes ]) smnInit
+snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | p <- condNodes, m <- reachable p]) smnInit
   where snmWorkList :: Set (Node, Node) -> Map (Node, Node) (Set (T Node)) -> Map (Node, Node) (Set (T Node))
         snmWorkList workList s
           | Set.null workList = s
-          | otherwise         = snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
+          | otherwise         = assert (smp' ⊆  smp) $
+                                snmWorkList (influenced ⊔ workList') (Map.insert (m,p) smp' s)
               where ((m,p), workList') = Set.deleteFindMin workList
                     smp  = s ! (m,p)
-                    smp' =   Set.fromList  [ (p,x) | x <- (suc graph p), m ∊ toNextCond x]
-                           ⊔ Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
+                    smp' = lin  ⊔ cond
+                    lin  = Set.fromList  [ (p,x) | x <- (suc graph p), m ∊ toNextCond x]
+                    cond = Set.fromList  [ (p,x) | x <- (suc graph p), Just n <- [nextCond x],
                                                      (Set.size $ s ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)
                                            ]
-                    influenced = if (Set.size smp == Set.size smp')
+                    influenced = if  (Set.size smp /=  (Set.size $ Set.fromList $ suc graph p))
+                                   ∨ (Set.size smp == Set.size smp')
                                    then Set.empty
                                    else Set.fromList [ (m,n) | n <- prevConds p ]
 

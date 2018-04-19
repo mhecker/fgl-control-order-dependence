@@ -86,7 +86,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
     mDFLocal, mDFLocalDef, mDFLocalViaMdoms, mDFUpGivenX, 
     mDFFromUpLocalDefViaMdoms, mDF,
-    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,
+    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   ) 
 import qualified Data.Graph.Inductive.FA as FA
@@ -131,7 +131,7 @@ soundness  = defaultMain                               $ testGroup "soundness" [
 soundnessX = defaultMainWithIngredients [antXMLRunner] $ testGroup "soundness" [ mkTest [soundnessTests], mkProp [soundnessProps] ]
 preccex    = defaultMain                               $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
 preccexX   = defaultMainWithIngredients [antXMLRunner] $ testGroup "preccex"   [ mkTest [precisionCounterExampleTests] ]
-nticd      = defaultMain                               $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
+nticd      = defaultMain                               $ testGroup "nticd"     [ mkTest [{-nticdTests-}], mkProp [nticdProps]]
 nticdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "nticd"     [ mkTest [nticdTests], mkProp [nticdProps]]
 ntscd      = defaultMain                               $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 ntscdX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
@@ -1155,72 +1155,89 @@ colorTests = testGroup "(concerning color algorithms)" $
 
 
 nticdProps = testGroup "(concerning nticd )" [
-    testProperty  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdFig5GraphP p        == NTICD.nticdF5GraphP p,
-    testProperty  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdSinkContractionGraphP p == NTICD.nticdF3GraphP p,
-    testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  controlDependenceGraphP p      == NTICD.nticdF3GraphP p,
-    testProperty  "nticdF3'GraphP                == nticdF3GraphP"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3'GraphP p         == NTICD.nticdF3GraphP p,
-    testProperty  "nticdF3'dualGraphP            == nticdF3GraphP"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3'dualGraphP p     == NTICD.nticdF3GraphP p,
-    testProperty  "nticdF3WorkListGraphP         == nticdF3GraphP"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3WorkListGraphP p  == NTICD.nticdF3GraphP p,
-    testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
-    testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let (_, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.nticdFig5        g ==
-                       NTICD.nticdF5          g,
-    testProperty  "controlDependence      == nticdF3                for graphs with unique end node property"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in controlDependence      g exit ==
-                       NTICD.nticdF3          g,
-    testProperty  "nticdSinkContraction   == nticdF3"
+    -- testProperty  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               NTICD.nticdFig5GraphP p        == NTICD.nticdF5GraphP p,
+    -- testProperty  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               NTICD.nticdSinkContractionGraphP p == NTICD.nticdF3GraphP p,
+    -- testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               controlDependenceGraphP p      == NTICD.nticdF3GraphP p,
+    -- testProperty  "nticdF3'GraphP                == nticdF3GraphP"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               NTICD.nticdF3'GraphP p         == NTICD.nticdF3GraphP p,
+    -- testProperty  "nticdF3'dualGraphP            == nticdF3GraphP"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               NTICD.nticdF3'dualGraphP p     == NTICD.nticdF3GraphP p,
+    -- testProperty  "nticdF3'dualWorkListGraphP       == nticdF3GraphP"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               NTICD.nticdF3'dualWorkListGraphP p  == NTICD.nticdF3GraphP p,
+    -- testProperty  "nticdF3WorkListGraphP         == nticdF3GraphP"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               NTICD.nticdF3WorkListGraphP p  == NTICD.nticdF3GraphP p,
+    -- testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
+    --             $ \generated -> let  p :: Program Gr = toProgram generated in
+    --               NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
+    -- testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let (_, g) = withUniqueEndNode () () generatedGraph
+    --                 in NTICD.nticdFig5        g ==
+    --                    NTICD.nticdF5          g,
+    -- testProperty  "controlDependence      == nticdF3                for graphs with unique end node property"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let (exit, g) = withUniqueEndNode () () generatedGraph
+    --                 in controlDependence      g exit ==
+    --                    NTICD.nticdF3          g,
+    -- testProperty  "nticdSinkContraction   == nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.nticdSinkContraction  g ==
+    --                    NTICD.nticdF3               g,
+    -- testProperty  "nticdDef               == nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.nticdDef         g ==
+    --                    NTICD.nticdF3          g,
+    -- testProperty  "nticdF3'               == nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.nticdF3'         g ==
+    --                    NTICD.nticdF3          g,
+    testProperty  "snmF3'dual           == snmF3 (dual)"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdSinkContraction  g ==
-                       NTICD.nticdF3               g,
-    testProperty  "nticdDef               == nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.nticdDef         g ==
-                       NTICD.nticdF3          g,
-    testProperty  "nticdF3'               == nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.nticdF3'         g ==
-                       NTICD.nticdF3          g,
+                        snmF3      = NTICD.snmF3      g
+                        snmF3'dual = NTICD.snmF3'dual g
+                    in (∀) (Map.assocs snmF3) (\((m,p), mp) ->
+                         let mp' = snmF3'dual ! (m,p)
+                         in  mp == Set.fromList [ (p,x) | x <- suc g p] ∖ mp'
+                       ),
     testProperty  "nticdF3'dual           == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdF3'dual     g ==
                        NTICD.nticdF3          g,
+    testProperty  "nticdF3'dualWorkList        == nticdF3"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.nticdF3'dualWorkList  g ==
+                       NTICD.nticdF3          g,
     testProperty  "nticdF3WorkList        == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdF3WorkList  g ==
-                       NTICD.nticdF3          g,
-    testProperty  "nticdF3WorkListSymbolic== nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.nticdF3WorkListSymbolic g ==
-                       NTICD.nticdF3                 g,
-    testProperty  "nticdF3'dorkListSymbolic  == nticdF3"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.nticdF3'dualWorkListSymbolic g ==
-                       NTICD.nticdF3                      g
+                       NTICD.nticdF3          g
+    -- testProperty  "nticdF3WorkListSymbolic== nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.nticdF3WorkListSymbolic g ==
+    --                    NTICD.nticdF3                 g,
+    -- testProperty  "nticdF3'dorkListSymbolic  == nticdF3"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.nticdF3'dualWorkListSymbolic g ==
+    --                    NTICD.nticdF3                      g
   ]
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "nticdFig5GraphP           ==       nticdF5GraphP for " ++ exampleName)

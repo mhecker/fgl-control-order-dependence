@@ -983,6 +983,15 @@ mdomOfLfp graph = domOfLfp graph fSinkDom
 
 
 
+fSinkDomNaive graph _ _ nextCond toNextCond = f 
+  where f sinkdomOf =
+                      Map.fromList [ (y, Set.fromList [y])                          | y <- nodes graph]
+                    ⊔ Map.fromList [ (y,  (∏) [ sinkdomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
+sinkdomNaiveGfp graph = domOfGfp graph fSinkDomNaive
+mdomNaiveLfp graph = domOfLfp graph fSinkDomNaive
+
+
+
 fSinkDomDual graph _ reachable nextCond toNextCond = f 
   where f sinkdomOfCompl = Map.fromList [ (y, (
                              Set.fromList [ x | x <- nodes graph, x /= y]

@@ -25,7 +25,10 @@ controlDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 controlDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
     foldr mergeTwoGraphs callDependenceGraph
                          [ insEdge (entry,exit, ControlDependence) $
-                                 controlDependenceGraph (insEdge (entry, exit, false) $ nfilter (\node -> staticProcedureOf node == thread) tcfg)
+                                 controlDependenceGraph (insEdge (entry, exit, false) $ nfilter (\node -> staticProcedureOf node == thread)
+                                                                                      $ efilter (\(_,_,l) -> isIntraCFGEdge l)
+                                                                                      $ tcfg
+                                                        )
                                                         exit
                                  | thread <- Set.toList staticProcedures, let entry = entryOf thread, let exit = exitOf thread
                          ]

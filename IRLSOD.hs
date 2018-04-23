@@ -90,6 +90,12 @@ data CFGEdge = Guard  Bool BoolFunction
              deriving (Show, Eq, Ord)
 
 
+isIntraCFGEdge :: CFGEdge -> Bool
+isIntraCFGEdge Call    = False
+isIntraCFGEdge Return  = False
+isIntraCFGEdge Spawn   = False
+isIntraCFGEdge _       = True
+
 useE :: CFGEdge -> Set Var
 useE (Guard   _ bf) = useB bf
 useE (Assign  _ vf) = useV vf

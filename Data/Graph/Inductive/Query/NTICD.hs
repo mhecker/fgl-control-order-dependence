@@ -1144,8 +1144,8 @@ joinUpperBound graph = Map.delete dummyNode $ jub condNodes init
 
 
 onedomOf dom z = Set.fromList $ [ x | y <- Set.toList (dom ! z),
-                                      y /= z,
-                                      x <- Set.toList (dom ! y)
+                                      x <- Set.toList (dom ! y),
+                                      x /= y
                  ]
 
 
@@ -1675,7 +1675,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                           fmap toSet $ twoFinger 0 worklist0 imdom0
   where toSet Nothing  = Set.empty
         toSet (Just x) = Set.fromList [x]
-        imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x]]
+        imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], z /= x]
                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
         worklist0   = condNodes
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
@@ -1683,6 +1683,8 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
         nextCond    = nextCondNode graph
 
         solution = mdomOfLfp graph
+        dom = solution
+        onedom = onedomOf solution
         invariant worklist imdom = -- if (True) then True else
                                    -- (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $
                                    inv
@@ -1697,6 +1699,12 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                         )
                        ∧
                         (∀) (nodes graph) (\n -> let ms = imdom ! n  in
+                          case ms of
+                            Nothing -> True
+                            Just m  -> (m ∈ onedom n) ∧ (∀) (onedom n) (\m' -> m' ∈ solution ! m)
+                        )
+                       ∧
+                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in
                           (isNothing ms  ∧  (∃) (solution ! n) (\m -> m /= n)) → (
                             n ∈ worklistLfp
                           )
@@ -1704,17 +1712,15 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                 imdomTrc = trc $ (fromSuccMap (fmap toSet imdom) :: gr () ())
                 worklistLfp = (㎲⊒) Set.empty f
                   where f wl = worklist
-                             ⊔ Set.fromList [ p | p <- Set.toList condNodes,
+                             ⊔ Set.fromList [ n | n <- Set.toList condNodes,
                                                   w <- Set.toList wl,
-                                                  n <- nodes graph,
-                                                  (∃) (solution ! n) (\m -> m /= n),
-                                                  w ∈ solution ! n,
-                                                  (∀) (solution ! n) (\m -> m == n  ∨  (m ∈ solution ! w)),
-                                                  p ∊ prevConds n
+                                                  p <- nodes graph,
+                                                  (w ∈  onedom p ∧ (∀) (onedom p) (\w' -> w' ∈ solution ! w)) ∨ w == p,
+                                                  (∃) (suc graph n) (\y -> Just p == nextCond y)
                                             ]
                 imdomWorklist = fmap toSet imdom
-                              ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ solution ! w,
-                                                                      (∀) (solution ! w) (\m' -> m' == w  ∨  (m' ∈ solution ! m))
+                              ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ onedom w,
+                                                                      (∀) (onedom w) (\m' -> m' ∈ solution ! m)
                                                                 ]
                                                )
                                              | w <- Set.toList $ worklistLfp ]
@@ -1746,7 +1752,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
-                influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs imdom, n /= x, Just p <- [nextCond x | x <- suc graph n], reachableFromSeen imdom p x Set.empty ]
+                influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs imdom, n /= x, Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
                 lca :: Node -> Node -> Maybe Node
                 lca  n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
                 lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node

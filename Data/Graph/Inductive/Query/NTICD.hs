@@ -1680,6 +1680,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
         worklist0   = condNodes
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
         prevConds   = prevCondNodes graph
+        nextCond    = nextCondNode graph
 
         solution = mdomOfLfp graph
         invariant worklist imdom = -- if (True) then True else
@@ -1727,8 +1728,10 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                     imdom
             | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
                                     assert (invariant worklist imdom) $
-                                    if (not $ new) then twoFinger (i+1)               worklist'                                   imdom
-                                    else                twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)
+--                                    traceShow (x, influenced, influenced', imdom) $
+                                    assert (influenced == influenced') $ 
+                                    if (not $ new) then twoFinger (i+1)                worklist'                                   imdom
+                                    else                twoFinger (i+1) (influenced' ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
                 mz = foldM1 lca (suc graph x)
                 zs = case mz of
@@ -1743,20 +1746,33 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
+                influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs imdom, n /= x, Just p <- [nextCond x | x <- suc graph n], reachableFromSeen imdom p x Set.empty ]
                 lca :: Node -> Node -> Maybe Node
-                lca  n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m])
-                lca' :: Map Node (Maybe Node) -> (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca' c (n,ns) (m,ms)
+                lca  n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+                lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+                lca' (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                                Just m
                     | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
                                Just n
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (c ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (c ! m)) ∖ ms ) of
+                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
+                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
                                                 []   -> Nothing
-                                                [m'] -> lca' c ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
+                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
+                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
+                lca'' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+                lca'' (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
+                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
+                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
 
 
 
@@ -1785,6 +1801,16 @@ possibleIntermediateNodesFromiXdom graph ixdom = (㎲⊒) init f
                    | x == z    = ps
                    | otherwise = revPathFromToA next (x:ps)
                  where [next] = Set.toList $ ixdom ! x
+
+
+
+reachableFromSeen :: Map Node (Maybe Node) -> Node -> Node -> Set Node -> Bool
+reachableFromSeen imdom n m seen
+ | n == m   = True
+ | n ∈ seen = False
+ | otherwise = case imdom ! n of
+     Just n' -> reachableFromSeen imdom n' m (Set.insert n seen)
+     Nothing -> False
 
 
 
@@ -1838,7 +1864,7 @@ idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes g
 
 
 mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-mDFTwoFinger graph = idomToDFFast graph $ (fromSuccMap $ imdomOfTwoFinger6 graph :: gr () ())
+mDFTwoFinger graph = idomToDFFast graph $ (fromSuccMap $ imdomOfTwoFinger7 graph :: gr () ())
 
 imdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 imdomTwoFingerGraphP = cdepGraphP imdomTwoFingerGraph
@@ -2152,7 +2178,7 @@ myDodFast graph =
                                                 ]
                    ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        imdom = imdomOfTwoFinger6 graph
+        imdom = imdomOfTwoFinger7 graph
         imdomG = fromSuccMap imdom :: gr () ()
         imdomTrc = trc $ imdomG
         imdomCycles = scc imdomG
@@ -2177,7 +2203,7 @@ dodFast graph =
                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
                   ]
   where sMust = smmnFMustNoReachCheckDod graph
-        imdom = imdomOfTwoFinger6 graph
+        imdom = imdomOfTwoFinger7 graph
         -- allImdomReachable seen n ms
         --   | Set.null ms   = True
         --   | n ∈ ms        = allImdomReachable               seen  n (Set.delete n ms)
@@ -2204,7 +2230,7 @@ dodSuperFast graph =
                                       ]
                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2
                   ]
-  where imdom = imdomOfTwoFinger6 graph
+  where imdom = imdomOfTwoFinger7 graph
         pis   = possibleIntermediateNodesFromiXdom graph imdom
         imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
         mustBeforeAny (m1,m2,x) = mustBeforeAnySeen (Set.fromList [x]) x
@@ -2304,7 +2330,7 @@ dodColoredDagFixed graph =
   where trcGraph = trc graph
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         dependence = dependenceFor graph
-        imdom = imdomOfTwoFinger6 graph
+        imdom = imdomOfTwoFinger7 graph
         imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
 
 
@@ -2324,7 +2350,7 @@ dodColoredDagFixedFast graph =
                    ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         dependence = dependenceFor graph
-        imdom = imdomOfTwoFinger6 graph
+        imdom = imdomOfTwoFinger7 graph
         imdomG = fromSuccMap imdom :: gr () ()
         imdomTrc = trc $ imdomG
         imdomCycles = scc imdomG
@@ -3346,8 +3372,6 @@ pathsBetweenUpToBFS graph trc n m q =  Logic.observeAll $ pathsBetweenSeen (Set.
                                 | x <- sucs, not $ x ∈ loops
                               ]
                 where sucs = Set.toList $ Set.fromList $ suc graph n
-
-
 
 
 

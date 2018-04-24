@@ -590,7 +590,7 @@ sinkShrinkedGraph graph endNode   = mkGraph (  [ (s,())   | sink <- sinks, let s
                                             ++ [ (s,endNode,()) | sink <- sinks, let s = head sink ]
                                             ++ [ (n,m,()) | (n,m) <- edges graph, not $ n ∈ sinkNodes, not $ m ∈ sinkNodes ]
                                           )
-    where sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+    where sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
           sinks = controlSinks graph
 
 
@@ -1779,6 +1779,69 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                                 []   -> Nothing
                                                 [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
                                      [n'] -> lca' (m, ms) (n', Set.insert n' ns)
+
+
+
+isinkdomOfTwoFinger8 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
+                          fmap toSet $ twoFinger 0 worklist0 imdom0
+  where toSet Nothing  = Set.empty
+        toSet (Just x) = Set.fromList [x]
+        imdom0   =             Map.fromList [ (s1, Just s2)  | sink <- sinks, (s1,s2) <- zip (cycle sink) (tail sink ++ [head sink]) ]
+                   `Map.union` (Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], z /= x]
+                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
+                    )
+        worklist0   = condNodes ∖ sinkNodes
+        condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
+        prevConds   = prevCondNodes graph
+        nextCond    = nextCondNode graph
+        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+        sinks = controlSinks graph
+        
+        twoFinger :: Integer -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
+        twoFinger i worklist imdom
+            |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+                                    -- traceShow (Set.size worklist0, i) $ 
+                                    Map.fromList [ (x, z')       | (x, Just z)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes, let z' = if (foldM1 (lca x) (suc graph x) == Just z) then Just z else Nothing ]
+                       `Map.union`  imdom
+            | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
+                                    traceShow (x, influenced, influenced', imdom) $
+                                    assert (influenced == influenced') $ 
+                                    if (not $ changed) then twoFinger (i+1)                worklist'                                   imdom
+                                    else                    twoFinger (i+1) (influenced' ⊔ worklist')  (Map.insert x zs                imdom)
+          where (x, worklist')  = Set.deleteFindMin worklist
+                mz 
+                   | succs == [] = Just $ head $ suc graph x
+                   | otherwise   = foldM1 (lca x) succs
+                  where succs = [ y | y <- suc graph x, imdom ! y /= Nothing]
+                zs = case mz of
+                      Just z  -> if z/= x then
+                                   Just z
+                                 else
+                                   Nothing
+                      Nothing -> Nothing
+                changed  = zs /= imdom ! x
+                influenced = let imdomRev = invert' $ fmap maybeToList imdom
+                                 preds = predsSeenFor imdomRev [x] [x]
+                             in  -- traceShow (preds, imdomRev) $
+                                 Set.fromList $ [ n | n <- foldMap prevConds preds]
+                influenced' = Set.fromList [ n | n <- Set.toList $ condNodes ∖ sinkNodes, Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
+                lca :: Node -> Node -> Node -> Maybe Node
+                lca  x n m = lca' x (n,n, Set.fromList [n]) (m,m, Set.fromList [m])
+                lca' :: Node -> (Node,Node,Set Node) -> (Node,Node, Set Node) -> Maybe Node
+                lca' x (n0,n,ns) (m0,m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | n == x = Just m0
+                    | m == x = Just n0 
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
+                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' x (m0, m', Set.insert m' ms) (n0, n, ns)
+                                     [n'] -> lca' x (m0,m, ms) (n0,n', Set.insert n' ns)
 
 
 

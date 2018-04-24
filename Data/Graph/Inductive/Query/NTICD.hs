@@ -578,7 +578,7 @@ nticdSinkContraction graph              = Map.fromList [ (n, cdepClassic ! n) | 
     where [endNode] = newNodes 1 graph
           sinks = controlSinks graph
           cdepClassic = controlDependence (sinkShrinkedGraph graph endNode) endNode
-          sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+          sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
 
 sinkShrinkedGraph :: DynGraph gr => gr a b  -> Node -> gr () ()
 sinkShrinkedGraph graph endNode   = mkGraph (  [ (s,())   | sink <- sinks, let s = head sink]

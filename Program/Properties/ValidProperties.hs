@@ -74,7 +74,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
-    isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8,
+    isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty, sinkdomNaiveGfp,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
@@ -283,45 +283,28 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "idomToDFFast _ isinkdom == sinkDF _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
-                    in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                       NTICD.idomToDFFast g isinkdom ==
-                       NTICD.sinkDF       g),
+                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in NTICD.idomToDFFast g isinkdom ==
+                       NTICD.sinkDF       g,
     testProperty   "idomToDFFast _ isinkdom == idomToDF _ isinkdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
-                    in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                       NTICD.idomToDFFast g isinkdom ==
-                       NTICD.idomToDF     g isinkdom),
+                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in NTICD.idomToDFFast g isinkdom ==
+                       NTICD.idomToDF     g isinkdom,
     testProperty   "DF of isinkdom Cycles are all the same"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
-                        df1    = NTICD.idomToDF g isinkdom1
-                        idomSccs1 = scc isinkdom1
-                        cycles1 = [ cycle | cycle <- idomSccs1, length cycle > 1 ]
-                        df2    = NTICD.idomToDF g isinkdom2
-                        idomSccs2 = scc isinkdom2
-                        cycles2 = [ cycle | cycle <- idomSccs2, length cycle > 1 ]
-                    in (∀) [(isinkdom1, cycles1, df1), (isinkdom2, cycles2, df2)] (\(isinkdom, cycles, df) ->
-                       (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))),
+                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                        df    = NTICD.idomToDF g isinkdom
+                        idomSccs = scc isinkdom
+                        cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
+                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m))),
     testProperty   "isinkdomOfSinkContraction is intransitive"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
-                    in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                         (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1)),
-    testProperty   "isinkdomOf^*          == isinkdomOfTwoFinger8^*"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
-                       (trc $ fromSuccMap $
-                              NTICD.isinkdomOfTwoFinger8       g),
+                        isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in   (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1),
     testProperty   "isinkdomOf^*          == isinkdomOfSinkContraction^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -462,19 +445,15 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
-            $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
-                    in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                       NTICD.idomToDFFast g isinkdom ==
-                       NTICD.sinkDF       g) @? ""
+            $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in NTICD.idomToDFFast g isinkdom ==
+                       NTICD.sinkDF       g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
-            $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
-                    in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                        NTICD.idomToDFFast g isinkdom ==
-                       NTICD.idomToDF     g isinkdom) @? ""
+            $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                    in NTICD.idomToDFFast g isinkdom ==
+                       NTICD.idomToDF     g isinkdom @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "DF of isinkdom Cycles are all the same for " ++ exampleName)

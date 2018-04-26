@@ -103,7 +103,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program)
+import Program.Examples (testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -437,72 +437,80 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
   ]
 
 insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
-  [  testCase    (  "sinkDFLocal == sinkDFLocalDef for " ++ exampleName)
-            $          NTICD.sinkDFLocal    g ==
-                       NTICD.sinkDFLocalDef g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "sinkDFFromUpLocalDefViaSinkdoms == sinkDF for " ++ exampleName)
-            $          NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==
-                       NTICD.sinkDF                          g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "sinkDFUpGivenXViaMdoms == sinkDFUpGivenX for " ++ exampleName)
-            $          NTICD.sinkDFUpGivenXViaSinkdoms     g ==
-                       NTICD.sinkDFUpGivenX             g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    (  "sinkDFUpDefViaMdoms == sinkDFUpDef for " ++ exampleName)
-            $            NTICD.sinkDFUpDefViaSinkdoms     g ==
-                         NTICD.sinkDFUpDef             g
-                       @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
             $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
                         isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g isinkdom ==
                        NTICD.sinkDF       g) @? ""
-  | (exampleName, g) <- interestingDodWod
+  | (exampleName, g) <- interestingIsinkdomTwoFinger
   ] ++
-  [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
-            $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
-                    in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                        NTICD.idomToDFFast g isinkdom ==
-                       NTICD.idomToDF     g isinkdom) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "DF of isinkdom Cycles are all the same for " ++ exampleName)
-            $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        df    = NTICD.idomToDF g isinkdom
-                        idomSccs = scc isinkdom
-                        cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
-                    in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))  @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "sinkDFGraphP              ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFGraphP p            == NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [  testCase    ( "sinkDFFromUpLocalGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFFromUpLocalGraphP p == NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [  testCase    ( "sinkDFFromUpLocalDefGraphP==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFFromUpLocalDefGraphP p
-                                              ==
-                                                 NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
+  -- [  testCase    (  "sinkDFLocal == sinkDFLocalDef for " ++ exampleName)
+  --           $          NTICD.sinkDFLocal    g ==
+  --                      NTICD.sinkDFLocalDef g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "sinkDFFromUpLocalDefViaSinkdoms == sinkDF for " ++ exampleName)
+  --           $          NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==
+  --                      NTICD.sinkDF                          g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "sinkDFUpGivenXViaMdoms == sinkDFUpGivenX for " ++ exampleName)
+  --           $          NTICD.sinkDFUpGivenXViaSinkdoms     g ==
+  --                      NTICD.sinkDFUpGivenX             g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    (  "sinkDFUpDefViaMdoms == sinkDFUpDef for " ++ exampleName)
+  --           $            NTICD.sinkDFUpDefViaSinkdoms     g ==
+  --                        NTICD.sinkDFUpDef             g
+  --                      @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
+  --           $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+  --                       isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+  --                   in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
+  --                      NTICD.idomToDFFast g isinkdom ==
+  --                      NTICD.sinkDF       g) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
+  --           $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+  --                       isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+  --                   in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
+  --                       NTICD.idomToDFFast g isinkdom ==
+  --                      NTICD.idomToDF     g isinkdom) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "DF of isinkdom Cycles are all the same for " ++ exampleName)
+  --           $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+  --                       df    = NTICD.idomToDF g isinkdom
+  --                       idomSccs = scc isinkdom
+  --                       cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
+  --                   in (∀) cycles (\cycle ->  (∀) cycle (\n -> (∀) cycle (\m -> df ! n == df ! m)))  @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "sinkDFGraphP              ==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFGraphP p            == NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
+  -- [  testCase    ( "sinkDFFromUpLocalGraphP   ==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFFromUpLocalGraphP p == NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
+  -- [  testCase    ( "sinkDFFromUpLocalDefGraphP==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFFromUpLocalDefGraphP p
+  --                                             ==
+  --                                                NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
+  -- [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
+  --           $ NTICD.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
+  -- | (exampleName, p) <- testsuite
+  -- ] ++
   []
 
 

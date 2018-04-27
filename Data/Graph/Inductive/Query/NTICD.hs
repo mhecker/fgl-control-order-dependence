@@ -1789,11 +1789,20 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
         toSet (Just x) = Set.fromList [x]
         solution = sinkdomOfGfp graph
         imdom0   =             Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
-                   `Map.union` (Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x]]
+                   `Map.union` (Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], not $ x ∈ sinkNodes, assert (z/=x) True]
                     `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
                     )
         worklist0   = condNodes ∖ sinkNodes
-        processed0  = (㎲⊒) sinkNodes (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [nub $ suc graph x], z ∈ processed]))
+--        processed0  = (㎲⊒) sinkNodes (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [suc graph x], z ∈ processed]))
+        processed0  = Set.fold f Set.empty sinkNodes
+          where f s processed
+                    | s ∈ processed = processed
+                    | otherwise     = processed'From (Set.fromList [s]) (processed ∪ Set.fromList [s])
+        processed'From xs processed
+            | Set.null xs   = processed
+            | otherwise     = processed'From (xs' ∪ new) (processed ∪ new)
+                where (x, xs') = Set.deleteFindMin xs
+                      new      = Set.fromList [ x'| x' <- pre graph x, not $ x' ∈ condNodes, not $ x' ∈ processed]
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
         prevConds   = prevCondNodes graph
         nextCond    = nextCondNode graph
@@ -1820,8 +1829,7 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                     let z':_ = the (z ∊ ) sinks in Just z'
                                   else
                                     Just z
-                changed = -- assert ((imdom ! x == zs) ∨ (zs == Nothing)) $
-                          imdom ! x /= zs
+                changed = imdom ! x /= zs
                 influenced = let imdomRev = invert' $ fmap maybeToList imdom
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $
@@ -1856,12 +1864,13 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                     -- traceShow (changed, zs) $
                                     assert (influenced == influenced') $
                                     assert (imdom ! x == Nothing) $
-                                    if (not $ changed) then twoFinger (i+1)                worklist'                 processed                      imdom
-                                    else                    twoFinger (i+1) (influenced' ⊔ worklist')  (processed' ⊔ processed) (Map.insert x zs    imdom)
+                                    assert (not $ x ∈ processed) $
+                                    if (not $ new) then twoFinger (i+1)                worklist'    processed                      imdom
+                                    else                twoFinger (i+1) (influenced' ⊔ worklist')   processed' (Map.insert x zs    imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
                 processed'
                   | zs == Nothing = Set.empty
-                  | otherwise     = (㎲⊒) (Set.fromList [x])  (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [nub $ suc graph x], z ∈ processed]))
+                  | otherwise     = processed'From  (Set.fromList [x]) (processed ∪ Set.fromList [x])
                 zs = mz 
                 mz
                   | Set.null succs   = Nothing
@@ -1869,7 +1878,8 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                       Nothing -> Just $ head $ (Set.toList succs)
                       Just z  -> Just z
                   where succs    = processed ⊓ (Set.fromList (suc graph x))
-                changed  = zs /= imdom ! x
+                new     = assert (isNothing $ imdom ! x) $
+                          (not $ isNothing zs)
                 influenced = let imdomRev = invert' $ fmap maybeToList imdom
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $

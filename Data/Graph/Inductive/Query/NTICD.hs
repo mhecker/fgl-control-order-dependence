@@ -1874,7 +1874,7 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                 zs = mz 
                 mz
                   | Set.null succs   = Nothing
-                  | otherwise  = case foldM1 lcaX (Set.toList succs) of
+                  | otherwise  = case foldM1 lca (Set.toList succs) of
                       Nothing -> Just $ head $ (Set.toList succs)
                       Just z  -> Just z
                   where succs    = processed ⊓ (Set.fromList (suc graph x))
@@ -1885,22 +1885,20 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
                 influenced' = Set.fromList [ n |  (n,Nothing) <- Map.assocs imdom, n /= x,  Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
-                lcaX :: Node -> Node -> Maybe Node
-                lcaX  n m = lcaX' (n, n, Set.fromList [n]) (m, m, Set.fromList [m])
-                lcaX' :: (Node, Node,Set Node) -> (Node, Node, Set Node) -> Maybe Node
-                lcaX' (n0,n,ns) (m0,m,ms)
+                lca :: Node -> Node -> Maybe Node
+                lca n m = lca' (n, n, Set.fromList [n]) (m, m, Set.fromList [m])
+                lca' :: (Node, Node,Set Node) -> (Node, Node, Set Node) -> Maybe Node
+                lca' (n0,n,ns) (m0,m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                                Just m
                     | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
                                Just n
-                    | n == x = Just m0
-                    | m == x = Just n0 
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
                                   case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
                                      []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
                                                 []   -> Nothing
-                                                [m'] -> lcaX' (m0, m', Set.insert m' ms) (n0, n, ns)
-                                     [n'] -> lcaX' (m0, m, ms) (n0, n', Set.insert n' ns)
+                                                [m'] -> lca' (m0, m', Set.insert m' ms) (n0, n, ns)
+                                     [n'] -> lca' (m0, m, ms) (n0, n', Set.insert n' ns)
 
 
 

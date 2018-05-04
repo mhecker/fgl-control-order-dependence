@@ -53,7 +53,7 @@ import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
@@ -836,228 +836,249 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
-    testProperty  "myDodFast                 == myDod"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.myDodFast       g ==
-                       NTICD.myDod           g,
     testProperty  "myDod is contained in imdom sccs"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom  = NTICD.imdomOfTwoFinger6 g
-                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+                        imdom          = NTICD.imdomOfTwoFinger7 g
+                        imdomTrc       = trc $ (fromSuccMap $ imdom    :: Gr () ())
+                        isinkdomRev    = NTICD.isinkdomOfTwoFinger8 (grev g)
+                        isinkdomRevTrc = trc $ (fromSuccMap $ isinkdomRev :: Gr () ())
+                        imdomRev       = NTICD.imdomOfTwoFinger7 (grev g)
+                        imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
+                        sMust = NTICD.smmnFMustDod g
                         myDod = NTICD.myDod g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
-                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
-                          ))
-                        ∧ (∀) ns (\n ->
-                              not $
-                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
+                          (∀) ns (\n ->
+                              (∃) (suc g n) (\x -> (n,x) ∈ sMust ! (m1,m2,n))
+                            ∧ (∀) (suc g n) (\x ->
+                                  (m1 ∊ suc imdomTrc x)
+                                ∧ (m2 ∊ suc imdomTrc x)
+                                ∧ (((n,x) ∈ sMust ! (m1,m2,n)) → ((m1 ∊ (suc imdomRevTrc m2)) ∨ (m2 ∊ (suc imdomRevTrc m1))))
+                              )
                           )
-                        ),
-    testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        myDod = NTICD.myDod g
-                        ntscd = NTICD.ntscdF3 g
-                        ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
-                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
-                                        (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
-                          )
-                        ),
-    testProperty  "ntscdDodSlice == ntscdMyDodSlice"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        ntscdDodSlice     = NTICD.ntscdDodSlice g
-                        ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
-                    in  -- traceShow (length $ nodes g) $
-                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          ntscdDodSlice   m1 m2 ==
-                          ntscdMyDodSlice m1 m2
-                        )),
-    testProperty  "dod implies myDod"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        dod = NTICD.dod g
-                        myDod = NTICD.myDod g
-                    in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
-                          (∀) ns (\n -> n ∈ myDod ! (m1,m2) ∧
-                                        n ∈ myDod ! (m2,m1)
-                          )
-                        ),
-    testProperty  "myDod implies dod"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        dod = NTICD.dod g
-                        myDod = NTICD.myDod g
-                    in  (∀) (Map.keys myDod) (\(m1,m2) ->
-                          (∀) (myDod ! (m1,m2)  ⊓  myDod ! (m2,m1)) (\n -> n ∈ dod ! (m1,m2)
-                          )
-                        ),
-    testProperty  "dod is contained in imdom sccs "
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        imdom  = NTICD.imdomOfTwoFinger6 g
-                        dod = NTICD.dod g
-                        imdomSccs = scc (fromSuccMap imdom :: Gr () ())
-                        imdomCycleOf m =  the (m ∊) $ imdomSccs
-                    in  (∀) (nodes g) (\m1 ->
-                          (∀) (List.delete m1 $ nodes g) (\m2 ->
-                            let c1 = imdomCycleOf m1
-                                c2 = imdomCycleOf m2
-                            in (not (c1 == c2 ∧ length c1 > 1) ) → (Set.null $ dod ! (m1,m2))
-                          )
-                        ),
-    testProperty  "dod is contained in imdom sccs, and only possible for immediate entries into sccs"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        imdom  = NTICD.imdomOfTwoFinger6 g
-                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
-                        dod = NTICD.dod g
-                    in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
-                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
-                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
-                          ))
-                        ∧ (∀) ns (\n ->
-                              not $
-                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
-                          )
-                        ),
-    testProperty  "snmF3Lfp reachable          == imdom reachable "
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let graph     = generatedGraph
-                        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-                        s3        = NTICD.snmF3Lfp graph
-                        imdom     = NTICD.imdomOfTwoFinger6 graph
-                        imdomTrc  = trc $ (fromSuccMap imdom :: Gr () ())
-                    in (∀) (nodes graph) (\m ->
-                         (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
-                                               ↔ (m ∊ (suc imdomTrc n))
-                         )
-                       ),
-    testProperty  "dodColoredDagFixedFast     == dodDef"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.dodColoredDagFixedFast g ==
-                       NTICD.dodDef                 g,
-    testProperty  "dodColoredDagFixed         == dodDef"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.dodColoredDagFixed g ==
-                       NTICD.dodDef             g,
-    testProperty  "dod                       == dodDef"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.dod           g ==
-                       NTICD.dodDef        g,
-    testProperty  "dodFast                   == dodDef"
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.dodFast       g ==
-                       NTICD.dodDef        g,
-    testProperty  "lfp fWOMustNoReachCheck      == lfp fWOMust"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.smmnLfp g NTICD.fMustNoReachCheck        ==
-                       NTICD.smmnLfp g NTICD.fMust
+                        )
+    -- testProperty  "myDodFast                 == myDod"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.myDodFast       g ==
+    --                    NTICD.myDod           g,
+    -- testProperty  "myDod is contained in imdom sccs"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     imdom  = NTICD.imdomOfTwoFinger6 g
+    --                     imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+    --                     myDod = NTICD.myDod g
+    --                 in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+    --                       ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
+    --                     ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+    --                           (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
+    --                       ))
+    --                     ∧ (∀) ns (\n ->
+    --                           not $
+    --                           (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
+    --                       )
+    --                     ),
+    -- testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     myDod = NTICD.myDod g
+    --                     ntscd = NTICD.ntscdF3 g
+    --                     ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
+    --                 in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+    --                       (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
+    --                                     (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
+    --                       )
+    --                     ),
+    -- testProperty  "ntscdDodSlice == ntscdMyDodSlice"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     ntscdDodSlice     = NTICD.ntscdDodSlice g
+    --                     ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
+    --                 in  -- traceShow (length $ nodes g) $
+    --                     (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+    --                       ntscdDodSlice   m1 m2 ==
+    --                       ntscdMyDodSlice m1 m2
+    --                     )),
+    -- testProperty  "dod implies myDod"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     dod = NTICD.dod g
+    --                     myDod = NTICD.myDod g
+    --                 in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
+    --                       (∀) ns (\n -> n ∈ myDod ! (m1,m2) ∧
+    --                                     n ∈ myDod ! (m2,m1)
+    --                       )
+    --                     ),
+    -- testProperty  "myDod implies dod"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     dod = NTICD.dod g
+    --                     myDod = NTICD.myDod g
+    --                 in  (∀) (Map.keys myDod) (\(m1,m2) ->
+    --                       (∀) (myDod ! (m1,m2)  ⊓  myDod ! (m2,m1)) (\n -> n ∈ dod ! (m1,m2)
+    --                       )
+    --                     ),
+    -- testProperty  "dod is contained in imdom sccs "
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     imdom  = NTICD.imdomOfTwoFinger6 g
+    --                     dod = NTICD.dod g
+    --                     imdomSccs = scc (fromSuccMap imdom :: Gr () ())
+    --                     imdomCycleOf m =  the (m ∊) $ imdomSccs
+    --                 in  (∀) (nodes g) (\m1 ->
+    --                       (∀) (List.delete m1 $ nodes g) (\m2 ->
+    --                         let c1 = imdomCycleOf m1
+    --                             c2 = imdomCycleOf m2
+    --                         in (not (c1 == c2 ∧ length c1 > 1) ) → (Set.null $ dod ! (m1,m2))
+    --                       )
+    --                     ),
+    -- testProperty  "dod is contained in imdom sccs, and only possible for immediate entries into sccs"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     imdom  = NTICD.imdomOfTwoFinger6 g
+    --                     imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+    --                     dod = NTICD.dod g
+    --                 in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
+    --                       ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
+    --                     ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+    --                           (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
+    --                       ))
+    --                     ∧ (∀) ns (\n ->
+    --                           not $
+    --                           (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
+    --                       )
+    --                     ),
+    -- testProperty  "snmF3Lfp reachable          == imdom reachable "
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let graph     = generatedGraph
+    --                     condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+    --                     s3        = NTICD.snmF3Lfp graph
+    --                     imdom     = NTICD.imdomOfTwoFinger6 graph
+    --                     imdomTrc  = trc $ (fromSuccMap imdom :: Gr () ())
+    --                 in (∀) (nodes graph) (\m ->
+    --                      (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
+    --                                            ↔ (m ∊ (suc imdomTrc n))
+    --                      )
+    --                    ),
+    -- testProperty  "dodColoredDagFixedFast     == dodDef"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.dodColoredDagFixedFast g ==
+    --                    NTICD.dodDef                 g,
+    -- testProperty  "dodColoredDagFixed         == dodDef"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.dodColoredDagFixed g ==
+    --                    NTICD.dodDef             g,
+    -- testProperty  "dod                       == dodDef"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.dod           g ==
+    --                    NTICD.dodDef        g,
+    -- testProperty  "dodFast                   == dodDef"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.dodFast       g ==
+    --                    NTICD.dodDef        g,
+    -- testProperty  "lfp fWOMustNoReachCheck      == lfp fWOMust"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.smmnLfp g NTICD.fMustNoReachCheck        ==
+    --                    NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
-  [  testCase    ( "myDodFast                 == myDod for " ++ exampleName)
-            $ NTICD.myDodFast          g      == NTICD.myDod g @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "myDod is contained in imdom sccs  for " ++ exampleName)
-            $       let imdom  = NTICD.imdomOfTwoFinger6 g
-                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
-                        myDod = NTICD.myDod g
-                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
-                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
-                          ))
-                        ∧ (∀) ns (\n ->
-                              not $
-                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
-                          )
-                        ) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property for " ++ exampleName)
-            $       let myDod = NTICD.myDod g
-                        ntscd = NTICD.ntscdF3 g
-                        ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
-                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
-                                        (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
-                          )
-                        ) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice for " ++ exampleName)
-            $       let ntscdDodSlice     = NTICD.ntscdDodSlice g
-                        ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
-                    in  -- traceShow (length $ nodes g) $
-                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          ntscdDodSlice   m1 m2 ==
-                          ntscdMyDodSlice m1 m2
-                        )) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "dod implies myDod for " ++ exampleName)
-            $       let dod = NTICD.dod g
-                        myDod = NTICD.myDod g
-                    in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
-                          (∀) ns (\n -> n ∈ myDod ! (m1,m2) ∧
-                                        n ∈ myDod ! (m2,m1)
-                          )
-                        ) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "myDod implies dod for " ++ exampleName)
-            $       let dod = NTICD.dod g
-                        myDod = NTICD.myDod g
-                    in  (∀) (Map.keys myDod) (\(m1,m2) ->
-                          (∀) (myDod ! (m1,m2)  ⊓  myDod ! (m2,m1)) (\n -> n ∈ dod ! (m1,m2)
-                          )
-                        ) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "dod is contained in imdom sccs, and only possible for immediate entries into sccs for " ++ exampleName)
-            $       let imdom  = NTICD.imdomOfTwoFinger6 g
-                        imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
-                        dod = NTICD.dod g
-                    in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
-                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
-                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
-                          ))
-                        ∧ (∀) ns (\n ->
-                              not $
-                              (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
-                          )
-                        ) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "dodColoredDagFixedFast        == dodDef for " ++ exampleName)
-            $ NTICD.dodColoredDagFixedFast g      == NTICD.dodDef g @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "dodColoredDagFixed        == dodDef for " ++ exampleName)
-            $ NTICD.dodColoredDagFixed g      == NTICD.dodDef g @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "dod                       == dodDef for " ++ exampleName)
-            $ NTICD.dod                g      == NTICD.dodDef g @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "dodFast                   == dodDef for " ++ exampleName)
-            $ NTICD.dodFast            g      == NTICD.dodDef g @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
+  -- [  testCase    ( "myDodFast                 == myDod for " ++ exampleName)
+  --           $ NTICD.myDodFast          g      == NTICD.myDod g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "myDod is contained in imdom sccs  for " ++ exampleName)
+  --           $       let imdom  = NTICD.imdomOfTwoFinger6 g
+  --                       imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+  --                       myDod = NTICD.myDod g
+  --                   in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+  --                         ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
+  --                       ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+  --                             (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
+  --                         ))
+  --                       ∧ (∀) ns (\n ->
+  --                             not $
+  --                             (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
+  --                         )
+  --                       ) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property for " ++ exampleName)
+  --           $       let myDod = NTICD.myDod g
+  --                       ntscd = NTICD.ntscdF3 g
+  --                       ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
+  --                   in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+  --                         (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
+  --                                       (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
+  --                         )
+  --                       ) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice for " ++ exampleName)
+  --           $       let ntscdDodSlice     = NTICD.ntscdDodSlice g
+  --                       ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
+  --                   in  -- traceShow (length $ nodes g) $
+  --                       (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+  --                         ntscdDodSlice   m1 m2 ==
+  --                         ntscdMyDodSlice m1 m2
+  --                       )) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "dod implies myDod for " ++ exampleName)
+  --           $       let dod = NTICD.dod g
+  --                       myDod = NTICD.myDod g
+  --                   in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
+  --                         (∀) ns (\n -> n ∈ myDod ! (m1,m2) ∧
+  --                                       n ∈ myDod ! (m2,m1)
+  --                         )
+  --                       ) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "myDod implies dod for " ++ exampleName)
+  --           $       let dod = NTICD.dod g
+  --                       myDod = NTICD.myDod g
+  --                   in  (∀) (Map.keys myDod) (\(m1,m2) ->
+  --                         (∀) (myDod ! (m1,m2)  ⊓  myDod ! (m2,m1)) (\n -> n ∈ dod ! (m1,m2)
+  --                         )
+  --                       ) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "dod is contained in imdom sccs, and only possible for immediate entries into sccs for " ++ exampleName)
+  --           $       let imdom  = NTICD.imdomOfTwoFinger6 g
+  --                       imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
+  --                       dod = NTICD.dod g
+  --                   in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
+  --                         ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
+  --                       ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+  --                             (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
+  --                         ))
+  --                       ∧ (∀) ns (\n ->
+  --                             not $
+  --                             (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
+  --                         )
+  --                       ) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "dodColoredDagFixedFast        == dodDef for " ++ exampleName)
+  --           $ NTICD.dodColoredDagFixedFast g      == NTICD.dodDef g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "dodColoredDagFixed        == dodDef for " ++ exampleName)
+  --           $ NTICD.dodColoredDagFixed g      == NTICD.dodDef g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "dod                       == dodDef for " ++ exampleName)
+  --           $ NTICD.dod                g      == NTICD.dodDef g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "dodFast                   == dodDef for " ++ exampleName)
+  --           $ NTICD.dodFast            g      == NTICD.dodDef g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
   []
 
 

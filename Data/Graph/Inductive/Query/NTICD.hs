@@ -2085,6 +2085,37 @@ fMay' graph condNodes reachable nextCond toNextCond s =
 
 
 
+type MustFunctional = Map (Node, Node) (Set Node) ->  Map (Node, Node) (Set Node)
+type MustFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> MustFunctional
+
+mustOfLfp :: DynGraph gr => gr a b -> MustFunctionalGen gr a b -> Map (Node, Node) (Set Node)
+mustOfLfp graph f = (㎲⊒) init (f graph condNodes reachable nextCond toNextCond)
+  where init = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+ffMust :: DynGraph gr => MustFunctionalGen gr a b
+ffMust graph condNodes reachable nextCond toNextCond dom =
+                  Map.fromList [ ((m1,m2), Set.fromList  [ n | n <- nodes graph,
+                                                                let toNxtCondX = toNextCond n,
+                                                                m1 ∊ toNxtCondX,
+                                                                not $ m2 ∊ (m1 : (takeWhile (/= m1) $ reverse toNxtCondX))
+                                                          ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph]
+                ⊔ Map.fromList [ ((m1,m2), Set.fromList  [ n | n <- nodes graph,
+                                                               Just p <- [nextCond n],
+                                                               (∀) (suc graph p) (\x -> x ∈ dom ! (m1,m2)),
+                                                               let toNxtCondX = toNextCond n,
+                                                               not $ m2 ∊ toNxtCondX,
+                                                               m1 ∊ (reachable n)
+                                               ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph]
+
+
+
 combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Node -> Node -> Set Node
 combinedBackwardSlice graph cd od m1 m2 =  (㎲⊒) (Set.fromList [m1, m2]) f
   where f slice = slice
@@ -2242,6 +2273,26 @@ myXod smmnMust s graph =
                      ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 
                   ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+myXodDom must dom graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
+                                                  n /= m1, n /= m2,
+                                                  m1 ∈ dom ! n,
+                                                  m2 ∈ dom ! n,
+                                                  let s12n = Set.fromList [ x | x <- suc graph n, n ∈ (must ! (m1,m2)) ],
+                                                  Set.size s12n > 0,
+                                                  Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
+                                      ]
+                     ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 
+                  ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+
+myDodDom graph = myXodDom must mdom graph
+  where mdom  = mdomOf graph
+        must  = mustOfLfp graph ffMust
 
 
 myWod graph = myXod sMust s3 graph

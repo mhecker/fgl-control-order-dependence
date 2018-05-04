@@ -772,9 +772,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
                         myWod = NTICD.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
-                          (∀) ns (\n ->
-                              (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2)
-                          )
+                          ((not $ Set.null ns) → (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2))
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc isinkdomTrc n2) → (
                                    (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
@@ -821,9 +819,7 @@ wodTests = testGroup "(concerning weak order dependence)" $
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
                         myWod = NTICD.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
-                          (∀) ns (\n ->
-                              (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2)
-                          )
+                          ((not $ Set.null ns) → (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2))
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc isinkdomTrc n2) → (
                                    (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
@@ -852,9 +848,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         myDod = NTICD.myDod g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          (∀) ns (\n ->
-                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
-                          )
+                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
@@ -924,9 +918,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         dod = NTICD.dod g
                     in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
-                          (∀) ns (\n ->
-                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
-                          )
+                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
@@ -983,9 +975,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         myDod = NTICD.myDod g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          (∀) ns (\n ->
-                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
-                          )
+                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
@@ -1041,9 +1031,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         dod = NTICD.dod g
                     in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
-                          (∀) ns (\n ->
-                              (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2)
-                          )
+                          ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))

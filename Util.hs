@@ -115,3 +115,18 @@ sampleFrom seed n xs = evalRand (s n) (mkStdGen seed)
           return $ xs !! (i-1)
 
 
+roots idom
+  | Set.null ns0 = []
+  | otherwise    = rootsFrom x [x] unchecked
+  where ns0 = Map.keysSet idom
+        (x, unchecked) = Set.deleteFindMin ns0
+        rootsFrom n seen unchecked
+            | Set.null $ idom ! n = [n] : rest
+            | n' ∈ unchecked      = rootsFrom n' (n':seen) (Set.delete n' unchecked)
+            | otherwise           = if (afterN' /= []) then (n':beforeN') : rest else rest
+          where (beforeN',afterN') = span (/= n') seen
+                rest
+                   | Set.null unchecked = []
+                   | otherwise          = rootsFrom x' [x'] unchecked'
+                  where (x', unchecked') = Set.deleteFindMin unchecked
+                [n'] = Set.toList $ idom ! n

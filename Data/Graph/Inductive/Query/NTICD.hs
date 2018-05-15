@@ -27,7 +27,7 @@ import Data.List ((\\), nub)
 import IRLSOD
 import Program
 
-import Util(the, invert', foldM1)
+import Util(the, invert', invert'', foldM1)
 import Unicode
 
 
@@ -977,7 +977,40 @@ domOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
         trncl = trc graph
 
 
-
+roots idom
+  | Set.null ns0 = []
+  | otherwise    = rootsFrom x [x] unchecked
+  where ns0 = Map.keysSet idom
+        (x, unchecked) = Set.deleteFindMin ns0
+        rootsFrom n seen unchecked
+            | Set.null $ idom ! n = [n] : rest
+            | n' ∈ unchecked      = rootsFrom n' (n':seen) (Set.delete n' unchecked)
+            | otherwise           = if (afterN' /= []) then (n':beforeN') : rest else rest
+          where (beforeN',afterN') = span (/= n') seen
+                rest
+                   | Set.null unchecked = []
+                   | otherwise          = rootsFrom x' [x'] unchecked'
+                  where (x', unchecked') = Set.deleteFindMin unchecked
+                [n'] = Set.toList $ idom ! n
+joiniSinkDomAround n isinkdom isinkdomrev =
+       forward   n (Set.fromList [n])
+     ⊔ backward  n (Set.fromList [n])
+  where forward n seen 
+            | Set.null mn' = Map.empty
+            | n' ∈ seen    = Map.empty
+            | otherwise    = Map.fromList [(n', Set.fromList [n])] ⊔ (forward n' (Set.insert n' seen))
+          where [n'] = Set.toList mn'
+                mn' = isinkdom ! n
+        backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
+          where seen' = seen ∪ n's
+                n's = (isinkdomrevInv ! n) ∖ seen
+    -- assert ((Set.fromList $ (fmap Set.fromList) $ roots isinkdom) == (Set.fromList $ (fmap Set.fromList) $ roots isinkdomrev)) $
+    --              Map.fromList [(n, Set.empty)]
+    -- `Map.union`  ((Map.fromList [(m, Set.empty) | root <- roots isinkdom, m <- root] `Map.union` isinkdom) ⊔ isinkdomrev)
+    -- `Map.union`  ((Map.fromList [(m, isinkdomInv ! m) | root <- roots isinkdom, m <- root] `Map.union` isinkdom) ⊔ isinkdomrev)
+        isinkdomInv = invert'' isinkdom
+        isinkdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys isinkdomrev ]
+                       ⊔ invert'' isinkdomrev
 fSinkDom graph _ _ nextCond toNextCond = f 
   where f sinkdomOf =
                       Map.fromList [ (y, Set.fromList [y])                          | y <- nodes graph]
@@ -2096,6 +2129,18 @@ mustOfLfp graph f = (㎲⊒) init (f graph condNodes reachable nextCond toNextCo
         nextCond = nextCondNode graph
         toNextCond = toNextCondNode graph
         trncl = trc graph
+
+
+mustOfGfp :: DynGraph gr => gr a b -> MustFunctionalGen gr a b -> Map (Node, Node) (Set Node)
+mustOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
+  where init = Map.fromList [ ((m1,m2), Set.empty)                              | m1 <- nodes graph, m2 <- nodes graph]
+             ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- nodes graph ])  | m1 <- nodes graph, m2 <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
 
 ffMust :: DynGraph gr => MustFunctionalGen gr a b
 ffMust graph condNodes reachable nextCond toNextCond dom =

@@ -53,7 +53,7 @@ import Data.Graph.Inductive.Query.DFS (scc)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
@@ -836,27 +836,42 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
-    testProperty  "myDod is contained in imdom sccs"
+    testProperty  "rev sinkdom approximates pre-dom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom          = NTICD.imdomOfTwoFinger7 g
-                        imdomTrc       = trc $ (fromSuccMap $ imdom    :: Gr () ())
-                        isinkdomRev    = NTICD.isinkdomOfTwoFinger8 (grev g)
-                        isinkdomRevTrc = trc $ (fromSuccMap $ isinkdomRev :: Gr () ())
-                        imdomRev       = NTICD.imdomOfTwoFinger7 (grev g)
-                        imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
-                        sMust = NTICD.smmnFMustDod g
-                        myDod = NTICD.myDod g
-                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          (∀) ns (\n ->
-                              (∃) (suc g n) (\x -> (n,x) ∈ sMust ! (m1,m2,n))
-                            ∧ (∀) (suc g n) (\x ->
-                                  (m1 ∊ suc imdomTrc x)
-                                ∧ (m2 ∊ suc imdomTrc x)
-                                ∧ (((n,x) ∈ sMust ! (m1,m2,n)) → ((m1 ∊ (suc imdomRevTrc m2)) ∨ (m2 ∊ (suc imdomRevTrc m1))))
-                              )
-                          )
-                        )
+                        sinks = NTICD.controlSinks g
+                    in (∀) sinks (\sink ->
+                         let sinkGraph = subgraph sink g
+                             imdomRev       = NTICD.imdomOfTwoFinger7 (grev sinkGraph)
+                             imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
+                         in (∀) sink (\s ->
+                              let isinkdomRev     = NTICD.isinkdomOfTwoFinger8 $ grev $ efilter (\(n,m,_) -> m /= s) $ sinkGraph
+                                  isinkdomRevTrc  = trc $ (fromSuccMap $ isinkdomRev :: Gr () ())
+                              in    (Set.fromList $ [(n,m) | (n,m) <- edges isinkdomRevTrc, n /= s, m /= s])
+                                 ⊇ (Set.fromList $ [(n,m) | (n,m) <- edges imdomRevTrc,    n /= s, m /= s])
+                            )
+                       )
+    -- testProperty  "myDod is contained in imdom sccs"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     imdom          = NTICD.imdomOfTwoFinger7 g
+    --                     imdomTrc       = trc $ (fromSuccMap $ imdom    :: Gr () ())
+    --                     isinkdomRev    = NTICD.isinkdomOfTwoFinger8 (grev g)
+    --                     isinkdomRevTrc = trc $ (fromSuccMap $ isinkdomRev :: Gr () ())
+    --                     imdomRev       = NTICD.imdomOfTwoFinger7 (grev g)
+    --                     imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
+    --                     sMust = NTICD.smmnFMustDod g
+    --                     myDod = NTICD.myDod g
+    --                 in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+    --                       (∀) ns (\n ->
+    --                           (∃) (suc g n) (\x -> (n,x) ∈ sMust ! (m1,m2,n))
+    --                         ∧ (∀) (suc g n) (\x ->
+    --                               (m1 ∊ suc imdomTrc x)
+    --                             ∧ (m2 ∊ suc imdomTrc x)
+    --                             ∧ (((n,x) ∈ sMust ! (m1,m2,n)) → ((m1 ∊ (suc imdomRevTrc m2)) ∨ (m2 ∊ (suc imdomRevTrc m1))))
+    --                           )
+    --                       )
+    --                     )
     -- testProperty  "myDodFast                 == myDod"
     --             $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph

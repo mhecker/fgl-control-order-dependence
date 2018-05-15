@@ -124,11 +124,11 @@ trcOfTrrIsTrc g = trc g == (trc $ trr g)
 
 
 fromPredMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
-fromPredMap pred = mkGraph [(n,()) | n <- Map.keys pred]
+fromPredMap pred = mkGraph [(n,()) | n <- Set.toList $ Map.keysSet pred ∪ (∐) (Map.elems pred)]
                            [(m,n,()) | (n,ms) <- Map.assocs pred, m <- Set.toList ms]
 
 fromSuccMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
-fromSuccMap succ = mkGraph [(n,()) | n <- Map.keys succ]
+fromSuccMap succ = mkGraph [(n,()) | n <- Set.toList $ Map.keysSet succ ∪ (∐) (Map.elems succ)]
                            [(n,m,()) | (n,ms) <- Map.assocs succ, m <- Set.toList ms]
 
 toPredMap ::  Graph gr => gr a b -> Map Node (Set Node)

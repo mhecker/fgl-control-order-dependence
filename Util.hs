@@ -38,6 +38,10 @@ invert' m = Map.fromListWith (++) pairs
     where pairs = [(v, [k]) | (k, vs) <- Map.toList m, v <- vs]
 
 
+invert'' :: (Ord k, Ord v) => Map k (Set v) -> Map v (Set k)
+invert'' m = fmap Set.fromList $ invert' $ fmap Set.toList m
+
+
 meetFrom :: (Foldable.Foldable f,  MeetSemiLattice a) => a -> f a -> a
 meetFrom x l = Foldable.foldr (⊓) x l
                                

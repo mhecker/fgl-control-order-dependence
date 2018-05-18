@@ -977,13 +977,17 @@ domOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
         trncl = trc graph
 
 
-joiniSinkDomAround n isinkdom isinkdomrev =
-        backward n (Set.fromList [n])
+joiniSinkDomAround g n imdom imdomrev = -- fmap (\s -> if Set.null s then Set.fromList [n] else s) $
+        Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
+     ⊔  backward n (Set.fromList [n])
   where backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
           where seen' = seen ∪ n's
-                n's = (isinkdomrevInv ! n ∪ isinkdom ! n) ∖ seen
-        isinkdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys isinkdomrev ]
-                       ⊔ invert'' isinkdomrev
+                n's = (imdomrevInv ! n ∪ imdom ! n) ∖ seen
+        -- imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
+        --                ⊔ invert'' imdomrev
+        -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
+        --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
+        imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
 
 fSinkDom graph _ _ nextCond toNextCond = f 
   where f sinkdomOf =
@@ -1001,6 +1005,27 @@ fSinkDomNaive graph _ _ nextCond toNextCond = f
                     ⊔ Map.fromList [ (y,  (∏) [ sinkdomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
 sinkdomNaiveGfp graph = domOfGfp graph fSinkDomNaive
 mdomNaiveLfp graph = domOfLfp graph fSinkDomNaive
+
+
+fRoflDomNaive graph _ _ nextCond toNextCond = f 
+  where f rofldomOf =
+                      Map.fromList [ (y, Set.fromList [y])                           | y <- nodes graph]
+                    ⊔ Map.fromList [ (y, Set.fromList [ m | m <- nodes graph, (∀) (pre graph y) (\x -> m ∈ rofldomOf ! x   ∧  (not $ x `elem` pre graph m))])  | y <- nodes graph, pre graph y/= []]
+                    -- ⊔ Map.fromList [ (x,  (∏) [ rofldomOf ! p | p <- pre graph x])   | x <- nodes graph, pre graph x/= []]
+                    -- ⊔ Map.fromList [ (x, Set.fromList [p] ) | x <- nodes graph, [p] <- [nub $ pre graph x]]
+                    -- ⊔ Map.fromList [ (x,  (∏) [ rofldomOf ! p | p <- pre graph x, p ∈ rofldomOf ! x ]) | x <- nodes graph, [ p | p <- pre graph x, p ∈ rofldomOf ! x ] /= []]
+rofldomNaiveGfp graph = domOfGfp graph fRoflDomNaive
+rofldomNaiveLfp graph = domOfLfp graph fRoflDomNaive
+
+
+fLolDomNaive graph _ _ nextCond toNextCond = f 
+  where f loldomOf =
+                         Map.fromList [ (x, Set.fromList [ m | m <- nodes graph, (∃) (pre graph x) (\p -> p /= m   ∧   m ∈ loldomOf ! p)] ) | x <- nodes graph ]
+                    -- ⊔ Map.fromList [ (x,  (∏) [ loldomOf ! p | p <- pre graph x])   | x <- nodes graph, pre graph x/= []]
+                    -- ⊔ Map.fromList [ (x, Set.fromList [p] ) | x <- nodes graph, [p] <- [nub $ pre graph x]]
+                    -- ⊔ Map.fromList [ (x,  (∏) [ loldomOf ! p | p <- pre graph x, p ∈ loldomOf ! x ]) | x <- nodes graph, [ p | p <- pre graph x, p ∈ loldomOf ! x ] /= []]
+loldomNaiveGfp graph = domOfGfp graph fLolDomNaive
+loldomNaiveLfp graph = domOfLfp graph fLolDomNaive
 
 
 

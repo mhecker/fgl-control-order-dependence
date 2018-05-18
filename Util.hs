@@ -42,6 +42,10 @@ invert'' :: (Ord k, Ord v) => Map k (Set v) -> Map v (Set k)
 invert'' m = fmap Set.fromList $ invert' $ fmap Set.toList m
 
 
+reallyInvert m = fmap (base ∖) m
+  where base =      (Map.keysSet m)
+             ∪ (∐) (Map.elems   m)
+
 meetFrom :: (Foldable.Foldable f,  MeetSemiLattice a) => a -> f a -> a
 meetFrom x l = Foldable.foldr (⊓) x l
                                

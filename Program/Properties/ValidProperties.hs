@@ -845,8 +845,8 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     $ \(UNCONNECTED(generatedGraph)) ->
                     let g = delEdges [ e | e@(n,m) <- edges generatedGraph, n == m] generatedGraph
                         sinks = NTICD.controlSinks g
-                        isinkdom    = NTICD.imdomOfTwoFinger7 $        g
-                        isinkdomrev = NTICD.imdomOfTwoFinger7 $ grev $ g
+                        imdom    = NTICD.imdomOfTwoFinger7 $        g
+                        imdomrev = NTICD.imdomOfTwoFinger7 $ grev $ g
                     in (∀) (nodes g) (\n ->
                          let reachableForward  =  dfs [n] g
                              reachableBackward = rdfs [n] g
@@ -855,7 +855,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                 Set.fromList reachableForward  == Set.fromList (nodes g)
                               ∧ Set.fromList reachableBackward == Set.fromList (nodes g)
                          in (if allReachable then traceShow (allReachable, length $ nodes g) else id) $ 
-                            allReachable → (idom ==  NTICD.joiniSinkDomAround n isinkdom isinkdomrev)
+                            allReachable → (idom ==  NTICD.joiniSinkDomAround g n imdom imomrev)
                        )
     -- testProperty  "rev sinkdom approximates pre-dom"
     -- $ \(ARBITRARY(generatedGraph)) ->

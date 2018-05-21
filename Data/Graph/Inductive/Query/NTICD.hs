@@ -977,17 +977,40 @@ domOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
         trncl = trc graph
 
 
-joiniSinkDomAround g n imdom imdomrev = -- fmap (\s -> if Set.null s then Set.fromList [n] else s) $
+joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromList [m] else s) $
         Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
-     ⊔  backward n (Set.fromList [n])
-  where backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
+     ⊔  fwd ⊔ bwd
+  where forward n seen
+            | Set.null n's = (n, Map.empty,                                     seen     )
+            | otherwise    = (m, Map.fromList [ (n', Set.fromList [n]) ] ⊔ fwd, seenfinal)
           where seen' = seen ∪ n's
-                n's = (imdomrevInv ! n ∪ imdom ! n) ∖ seen
-        -- imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
-        --                ⊔ invert'' imdomrev
+                n's = (imdom ! n) ∖ seen
+                [n'] = Set.toList n's
+                (m,fwd,seenfinal) = forward n' seen' 
+        (m,fwd,seen) = forward n (Set.fromList [n])
+        bwd = backward m ((Set.fromList [m]) ⊔ seen)
+        backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
+          where seen' = seen ∪ n's
+                n's = (imdomrevInv ! n) ∖ seen
+        imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
+                    ⊔ invert'' imdomrev
         -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
         --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
-        imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
+        -- imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
+
+
+-- joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromList [n] else s) $
+--         Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
+--      ⊔  backward n (Set.fromList [n])
+--   where backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
+--           where seen' = seen ∪ n's
+--                 n's = (imdomrevInv ! n ∪ imdom ! n) ∖ seen
+--         imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
+--                     ⊔ invert'' imdomrev
+--         -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
+--         --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
+--         -- imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
+
 
 fSinkDom graph _ _ nextCond toNextCond = f 
   where f sinkdomOf =
@@ -1010,12 +1033,100 @@ mdomNaiveLfp graph = domOfLfp graph fSinkDomNaive
 fRoflDomNaive graph _ _ nextCond toNextCond = f 
   where f rofldomOf =
                       Map.fromList [ (y, Set.fromList [y])                           | y <- nodes graph]
-                    ⊔ Map.fromList [ (y, Set.fromList [ m | m <- nodes graph, (∀) (pre graph y) (\x -> m ∈ rofldomOf ! x   ∧  (not $ x `elem` pre graph m))])  | y <- nodes graph, pre graph y/= []]
+                    ⊔ Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
+                                                            before m  (Set.fromList $ pre graph y) (Set.fromList $ pre graph y ++ [y])
+                                                      ]
+                                     )
+                                   | y <- nodes graph, pre graph y/= []]
+                    -- ⊔ Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
+                    --                                         (∀) (pre graph y) (\x ->   (x == y)
+                    --                                                                  ∨ (m ∈ rofldomOf ! x   ∧  (m == x   ∨   (not $ x `elem` pre graph m)))
+                    --                                                           )
+                    --                                   ]
+                    --                  )
+                    --                | y <- nodes graph, pre graph y/= []]
                     -- ⊔ Map.fromList [ (x,  (∏) [ rofldomOf ! p | p <- pre graph x])   | x <- nodes graph, pre graph x/= []]
-                    -- ⊔ Map.fromList [ (x, Set.fromList [p] ) | x <- nodes graph, [p] <- [nub $ pre graph x]]
+                     ⊔ Map.fromList [ (x, Set.fromList [p] ) | x <- nodes graph, [p] <- [nub $ pre graph x]]
                     -- ⊔ Map.fromList [ (x,  (∏) [ rofldomOf ! p | p <- pre graph x, p ∈ rofldomOf ! x ]) | x <- nodes graph, [ p | p <- pre graph x, p ∈ rofldomOf ! x ] /= []]
+        before m xs seen = traceShow  (m, xs, seen, bef xs seen) $ bef xs seen
+          where bef xs seen
+                    | Set.null xs = True
+                    | m ∈ xs      = False
+                    | otherwise = bef new (seen ∪ new) 
+                  where new = Set.fromList [ x' | x <- Set.toList xs, x' <- suc graph x,  not  $ x' ∈ seen]
+
 rofldomNaiveGfp graph = domOfGfp graph fRoflDomNaive
 rofldomNaiveLfp graph = domOfLfp graph fRoflDomNaive
+
+
+
+rofldomOfTwoFinger7 :: forall gr a b. (DynGraph gr, Eq b) => gr a b -> Map Node (Set Node)
+rofldomOfTwoFinger7 graph0 = Map.mapWithKey (\n ms -> Set.delete n ms) $
+                          fmap toSet $ twoFinger 0 worklist0 rofldom0
+  where graph = removeDuplicateEdges $ delEdges [ e | e@(n,m) <- edges graph0, n == m] $ graph0
+        toSet Nothing  = Set.empty
+        toSet (Just x) = Set.fromList [x]
+        rofldom0   =           Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [pre graph x], z /= x]
+                   `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
+        worklist0   = condNodes
+        condNodes   = Set.fromList [ x | x <- nodes graph, length (pre graph x) > 1 ]
+        prevConds   = prevCondNodes graph
+        nextCond    = nextCondNode graph
+
+        twoFinger :: Integer -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
+        twoFinger i worklist rofldom
+            |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, rofldom) $
+                                    -- traceShow (Set.size worklist0, i) $ 
+                                    rofldom
+            | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, rofldom) $
+--                                    traceShow (x, influenced, influenced', rofldom) $
+                                    if (not $ new) then twoFinger (i+1)                worklist'                                   rofldom
+                                    else                twoFinger (i+1) (influenced' ⊔ worklist')  (Map.insert x zs                rofldom)
+          where (x, worklist')  = Set.deleteFindMin worklist
+                mz = foldM1 lca [ y | y <- pre graph x]
+                -- mz = foldM1 lca (pre graph x)
+                zs = case mz of
+                      Just z  -> if z/= x then
+                                   find z (Set.fromList [z])
+                                 else
+                                   Nothing
+                      Nothing ->  Nothing
+                  where find z seen
+                          | (∀) (pre graph x) (\y -> not $ y `elem` pre graph z) = Just z
+                          | otherwise = let z' = rofldom ! z in case z' of
+                              Nothing -> Nothing
+                              Just z' -> if z' ∈ seen then Nothing else find z' (Set.insert z' seen)
+                          
+                new     = assert (isNothing $ rofldom ! x) $
+                          (not $ isNothing zs)
+                influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs rofldom, n /= x]
+                lca :: Node -> Node -> Maybe Node
+                lca  n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+                lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+                lca' (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((toSet (rofldom ! n)) ∖ ns ) of
+                                     []   -> case Set.toList $ ((toSet (rofldom ! m)) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
+                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
+                lca'' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+                lca'' (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ ((toSet (rofldom ! n)) ∖ ns ) of
+                                     []   -> case Set.toList $ ((toSet (rofldom ! m)) ∖ ms ) of
+                                                []   -> Nothing
+                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
+                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
+
 
 
 fLolDomNaive graph _ _ nextCond toNextCond = f 

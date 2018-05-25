@@ -75,7 +75,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, 
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
@@ -743,59 +743,64 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
   []
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testPropertySized 40 "lfp fMay                 == lfp fMay'"
-    $ \(ARBITRARY(g)) ->
-                    let lfp      = NTICD.smmnLfp g NTICD.fMay
-                        lfp'     = NTICD.smmnLfp g NTICD.fMay'
-                    in  lfp                  == lfp',
-    testPropertySized 40 "wodDef                    == wodFast"
-    $ \(ARBITRARY(g)) ->
-                    let wodDef   = NTICD.wodDef  g
-                        wodFast  = NTICD.wodFast g
-                    in  wodDef == wodFast,
-    testProperty  "myWod ⊑ wodTEIL'"
+  --   testPropertySized 40 "lfp fMay                 == lfp fMay'"
+  --   $ \(ARBITRARY(g)) ->
+  --                   let lfp      = NTICD.smmnLfp g NTICD.fMay
+  --                       lfp'     = NTICD.smmnLfp g NTICD.fMay'
+  --                   in  lfp                  == lfp',
+  --   testPropertySized 40 "wodDef                    == wodFast"
+  --   $ \(ARBITRARY(g)) ->
+  --                   let wodDef   = NTICD.wodDef  g
+  --                       wodFast  = NTICD.wodFast g
+  --                   in  wodDef == wodFast,
+  --   testProperty  "myWod ⊑ wodTEIL'"
+  --   $ \(ARBITRARY(generatedGraph)) ->
+  --                   let g = generatedGraph
+  --                       myWod = NTICD.myWod g
+  --                       wodTEIL' = NTICD.wodTEIL' g
+  --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+  --                         ns ⊑ (wodTEIL' ! (m1,m2))
+  --                       ),
+  -- testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
+  --   $ \(ARBITRARY(generatedGraph)) ->
+  --                   let g = generatedGraph
+  --                       nticdWodSlice   = NTICD.nticdMyWodSlice g
+  --                       wodTEILSlice    = NTICD.wodTEILSlice g
+  --                   in  -- traceShow (length $ nodes g) $
+  --                       (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+  --                         wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+  --                       )),
+  --   testProperty  "myWod is contained in isinkdom sccs"
+  --   $ \(ARBITRARY(generatedGraph)) ->
+  --                   let g = generatedGraph
+  --                       isinkdom  = NTICD.isinkdomOfSinkContraction g
+  --                       isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
+  --                       myWod = NTICD.myWod g
+  --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+  --                         ((not $ Set.null ns) → (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2))
+  --                       ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+  --                             (n1 ∊ suc isinkdomTrc n2) → (
+  --                                  (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
+  --                             )
+  --                         ))
+  --                       ),
+  --   testProperty  "snmF3Gfp reachable          == isinkdom reachable "
+  --               $ \(ARBITRARY(generatedGraph)) ->
+  --                   let graph     = generatedGraph
+  --                       condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+  --                       s3        = NTICD.snmF3 graph
+  --                       isinkdom     = NTICD.isinkdomOfSinkContraction graph
+  --                       isinkdomTrc  = trc $ (fromSuccMap isinkdom :: Gr () ())
+  --                   in (∀) (nodes graph) (\m ->
+  --                        (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
+  --                                              ↔ (m ∊ (suc isinkdomTrc n))
+  --                        )
+  --                      ),
+    testProperty  "myWodFastPDom               == myWod"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        myWod = NTICD.myWod g
-                        wodTEIL' = NTICD.wodTEIL' g
-                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
-                          ns ⊑ (wodTEIL' ! (m1,m2))
-                        ),
-  testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        nticdWodSlice   = NTICD.nticdMyWodSlice g
-                        wodTEILSlice    = NTICD.wodTEILSlice g
-                    in  -- traceShow (length $ nodes g) $
-                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
-                        )),
-    testProperty  "myWod is contained in isinkdom sccs"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        isinkdom  = NTICD.isinkdomOfSinkContraction g
-                        isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        myWod = NTICD.myWod g
-                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
-                          ((not $ Set.null ns) → (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2))
-                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 ∊ suc isinkdomTrc n2) → (
-                                   (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
-                              )
-                          ))
-                        ),
-    testProperty  "snmF3Gfp reachable          == isinkdom reachable "
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let graph     = generatedGraph
-                        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-                        s3        = NTICD.snmF3 graph
-                        isinkdom     = NTICD.isinkdomOfSinkContraction graph
-                        isinkdomTrc  = trc $ (fromSuccMap isinkdom :: Gr () ())
-                    in (∀) (nodes graph) (\m ->
-                         (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
-                                               ↔ (m ∊ (suc isinkdomTrc n))
-                         )
-                       ),
+                    in NTICD.myWodFastPDom   g ==
+                       NTICD.myWod           g,
     testProperty  "myWodFast                 == myWod"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -803,38 +808,42 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        NTICD.myWod           g
   ]
 wodTests = testGroup "(concerning weak order dependence)" $
-  [  testCase    ( "myWod ⊑ wodTEIL' for " ++ exampleName)
-            $       let myWod = NTICD.myWod g
-                        wodTEIL' = NTICD.wodTEIL' g
-                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
-                          ns ⊑ (wodTEIL' ! (m1,m2))
-                        )@? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "wodTEILSlice is contained in nticdMyWodSlice for " ++ exampleName)
-            $       let nticdWodSlice   = NTICD.nticdMyWodSlice g
-                        wodTEILSlice    = NTICD.wodTEILSlice g
-                    in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
-                        )) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "myWod is contained in isinkdom sccs  for " ++ exampleName)
-            $       let isinkdom  = NTICD.isinkdomOfSinkContraction g
-                        isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        myWod = NTICD.myWod g
-                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
-                          ((not $ Set.null ns) → (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2))
-                        ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
-                              (n1 ∊ suc isinkdomTrc n2) → (
-                                   (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
-                              )
-                          ))
-                        ) @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
-  [  testCase    ( "myWodFast                   == myWod for " ++ exampleName)
+  -- [  testCase    ( "myWod ⊑ wodTEIL' for " ++ exampleName)
+  --           $       let myWod = NTICD.myWod g
+  --                       wodTEIL' = NTICD.wodTEIL' g
+  --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+  --                         ns ⊑ (wodTEIL' ! (m1,m2))
+  --                       )@? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "wodTEILSlice is contained in nticdMyWodSlice for " ++ exampleName)
+  --           $       let nticdWodSlice   = NTICD.nticdMyWodSlice g
+  --                       wodTEILSlice    = NTICD.wodTEILSlice g
+  --                   in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+  --                         wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+  --                       )) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "myWod is contained in isinkdom sccs  for " ++ exampleName)
+  --           $       let isinkdom  = NTICD.isinkdomOfSinkContraction g
+  --                       isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
+  --                       myWod = NTICD.myWod g
+  --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+  --                         ((not $ Set.null ns) → (m1 ∊ suc isinkdomTrc m2 ∧ m1 ∊ suc isinkdomTrc m2))
+  --                       ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
+  --                             (n1 ∊ suc isinkdomTrc n2) → (
+  --                                  (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
+  --                             )
+  --                         ))
+  --                       ) @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  [  testCase    ( "myWodFastPDom               == myWod for " ++ exampleName)
             $ NTICD.myWodFast g                 == NTICD.myWod g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "myWodFastPDom               == myWod for " ++ exampleName)
+            $ NTICD.myWodFastPDom g             == NTICD.myWod g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   []

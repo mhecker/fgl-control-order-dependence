@@ -27,7 +27,7 @@ import Data.List ((\\), nub)
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1)
+import Util(the, invert', invert'', foldM1, reachableFrom)
 import Unicode
 
 
@@ -1028,6 +1028,88 @@ fSinkDomNaive graph _ _ nextCond toNextCond = f
                     ⊔ Map.fromList [ (y,  (∏) [ sinkdomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
 sinkdomNaiveGfp graph = domOfGfp graph fSinkDomNaive
 mdomNaiveLfp graph = domOfLfp graph fSinkDomNaive
+
+
+traceIfFalse x b =
+  if b then b else traceShow x $ b
+
+roflDomDef graph = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
+                                                        -- (∀) (nodes graph) (\n ->
+                                                        --                             y ∈                                       doms ! n               ! m
+                                                        --                           ∨ m ∈ (reachableFrom (                      doms ! n) (Set.fromList [y]) Set.empty)
+                                                        -- )
+                                                        (∀) (nodes graph) (\n ->
+                                                                                    y ∈ (reachableFrom (                      doms ! n) (Set.fromList [m]) Set.empty)
+                                                                                  ∨ m ∈ (reachableFrom (                      doms ! n) (Set.fromList [y]) Set.empty)
+                                                        )
+                                                        -- (∃) (nodes graph) (\n -> (n /= m   ∧   m ∈ doms ! n ! y)),
+                                                        -- (∀) (nodes graph) (\n -> (n /= m   ∧   m ∈ doms ! n ! y)   ∨  (n == m)   ∨   y ∈ (reachableFrom (doms ! n) (Set.fromList [m]) Set.empty))
+                                                        -- (∃) (nodes graph) (\n -> m ∈ doms ! n ! y),
+                                                        -- (∀) (nodes graph) (\n -> m ∈ doms ! n ! y   ∨   y ∈ (reachableFrom (doms ! n) (Set.fromList [m]) Set.empty))
+                                                        -- (∀) (nodes graph) (\n -> y == n   ∨   m ∈ doms ! n ! y )
+                                                        -- (∃) (nodes graph) (\n -> n /= m   ∧   m ∈ doms ! n ! y ),
+                                                        -- (∀) (nodes graph) (\n -> y == n   ∨   m ∈ (reachableFrom (doms ! n) (Set.fromList [y]) Set.empty))
+                                                        -- (∀) (nodes graph) (\n -> y == n   ∨     (not $ y ∈ (reachableFrom (doms ! n) (Set.fromList [m]) Set.empty)))
+                                      ]
+                                  ) | y <- nodes graph ]
+   where doms = Map.fromList [ (n,  (Map.fromList [(n, Set.empty)])
+                                  ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom graph n)
+                               )
+                             | n <- nodes graph ]
+
+lolDomDef graph0 = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
+
+                                                        -- (∀) (nodes graph) (\n ->
+                                                        --                             n ∈ (reachableFrom (                      doms ! y) (Set.fromList [m]) Set.empty)
+                                                        --                           ∨ m ∈                                       doms ! y               ! n
+                                                        -- )
+                                                        (∀) (nodes graph) (\n ->
+                                                                                    n ∈ (reachableFrom (                      doms ! y) (Set.fromList [m]) Set.empty)
+                                                                                  ∨ m ∈ (reachableFrom (                      doms ! y) (Set.fromList [n]) Set.empty)
+                                                        )
+                                                        -- (∀) (nodes graph) (\n ->
+                                                        --                             n ∈ (reachableFrom (                      pdoms ! m) (Set.fromList [y]) Set.empty)
+                                                        --                             -- y ∈ (reachableFrom (fmap (Set.delete n) $ doms ! n) (Set.fromList [m]) Set.empty)
+                                                        --                           ∨ m ∈ (reachableFrom (                      pdoms ! n) (Set.fromList [y]) Set.empty)
+                                                        --                           -- ∨ m ∈ (reachableFrom (fmap (Set.delete n) $ doms ! n) (Set.fromList [y]) Set.empty)
+                                                        -- )
+                                                        -- (∃) (nodes graph) (\n -> (n /= m   ∧   m ∈ doms ! n ! y)),
+                                                        -- (∀) (nodes graph) (\n -> traceIfFalse (y,m,n, doms ! n) $ (n /= m   ∧   m ∈ doms ! n ! y)   ∨   ( n == y )  ∨    m ∈ (reachableFrom (doms ! n) (Set.fromList [y]) Set.empty))
+                                                        -- (∀) (nodes graph) (\n -> y == n   ∨   m ∈ doms ! n ! y )
+                                                        -- (∃) (nodes graph) (\n -> (n /= m   ∧   m ∈ doms ! n ! y)),
+                                                        -- (∀) (nodes graph) (\n -> (n /= m   ∧   m ∈ doms ! n ! y)   ∨  (n == m)   ∨   y ∈ (reachableFrom (doms ! n) (Set.fromList [m]) Set.empty))
+                                                        -- (∃) (nodes graph) (\n -> n /= m   ∧   m ∈ doms ! n ! y ),
+                                                        -- (∀) (nodes graph) (\n -> y == n   ∨   m ∈ (reachableFrom (doms ! n) (Set.fromList [y]) Set.empty))
+                                                        -- (∀) (nodes graph) (\n -> y == n   ∨     (not $ y ∈ (reachableFrom (doms ! n) (Set.fromList [m]) Set.empty)))
+                                      ]
+                                  ) | y <- nodes graph ]
+   where  graph = grev graph0
+          pdoms = Map.fromList [ (n,  (Map.fromList [(n, Set.empty)])
+                                  ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom graph n)
+                               )
+                             | n <- nodes graph ]
+          doms  = Map.fromList [ (n,  (Map.fromList [(n, Set.empty)])
+                                  ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom graph0 n)
+                               )
+                             | n <- nodes graph ]
+
+
+omegaLulDomDef graph = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
+                                                             -- (∃) (nodes graph) (\m' -> m ∈ doms ! y ! m')
+                                                              (∀) (suc graph y) (\x -> 
+                                                                                    m ∈ (reachableFrom (                      pdoms ! y) (Set.fromList [x]) Set.empty)
+                                                              )
+                                      ]
+                                  ) | y <- nodes graph ]
+   where  pdoms = Map.fromList [ (n,  (Map.fromList [(n, Set.empty)])
+                                  ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom graphRev n)
+                               )
+                             | n <- nodes graph ]
+            where graphRev = grev graph
+          doms  = Map.fromList [ (n,  (Map.fromList [(n, Set.empty)])
+                                  ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom graph n)
+                               )
+                             | n <- nodes graph ]
 
 
 fRoflDomNaive graph _ _ nextCond toNextCond = f 
@@ -2468,6 +2550,51 @@ myWodFast graph =
                                                            assert (m1 ∊ (suc isinkdomTrc n)) True,
                                                            assert (m2 ∊ (suc isinkdomTrc n)) True,
                                                                    myDependence color n
+                                                                  -- let s12n = sMust ! (m1,m2,n),
+                                                                  -- Set.size s12n > 0,
+                                                                  -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
+                                                ]
+                  ]
+  where sMust = smmnFMustWod graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
+        condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
+        myDependence = myDependenceFor graph
+
+
+
+myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDom graph =
+      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+    -- ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
+    --                                    m1 <- cycle,
+    --                                    m2 <- cycle,
+    --                                    m1 /= m2,
+    --                                    let color = colorLfpFor graph m1 m2,
+    --                                    assert (length cycle > 1) True,
+    --                                    let ns = Set.fromList [ n | n <- (entriesFor cycle),
+    --                                                                n /= m1 ∧ n /= m2,
+    --                                                        assert (m1 ∊ (suc isinkdomTrc n)) True,
+    --                                                        assert (m2 ∊ (suc isinkdomTrc n)) True,
+    --                                                                myDependence color n
+    --                                             ]
+    --               ]
+    ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
+                                       m2 <- cycle,
+                                       let pdom = fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev graph) m2,
+                                       m1 <- cycle,
+                                       m1 /= m2,
+                                       assert (length cycle > 1) True,
+                                       let ns = Set.fromList [ n | n <- (condsIn cycle) ++ (entriesFor cycle),
+                                                                   n /= m1 ∧ n /= m2,
+                                                                   (∃) (suc graph n) (\x ->       m1 ∈ (reachableFrom pdom   (Set.fromList [x])  Set.empty)),
+                                                                   (∃) (suc graph n) (\x -> not $ m1 ∈ (reachableFrom pdom   (Set.fromList [x] ) Set.empty)),
+                                                           assert (m1 ∊ (suc isinkdomTrc n)) True,
+                                                           assert (m2 ∊ (suc isinkdomTrc n)) True
                                                                   -- let s12n = sMust ! (m1,m2,n),
                                                                   -- Set.size s12n > 0,
                                                                   -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)

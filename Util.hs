@@ -82,6 +82,11 @@ updateAt n y (x:xs)
    | otherwise = x:(updateAt (n-1) y xs)
 
 
+reachableFrom :: Ord α => Map α (Set α) -> Set α -> Set α -> Set α
+reachableFrom m xs seen
+    | Set.null xs = seen
+    | otherwise = xs ∪ reachableFrom m new (seen ∪ xs)
+  where new = Set.fromList [ x' | x <- Set.toList xs, Just x's <- [ Map.lookup x m ], x' <- Set.toList $ m ! x, not $ x ∈ seen]
 
 reachableFromIn :: Ord a => Map a (Set (a, (Integer, Set a))) -> a -> a -> Set Integer
 reachableFromIn succs x y

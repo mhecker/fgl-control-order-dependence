@@ -110,6 +110,7 @@ trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
 
 trr :: DynGraph gr => gr a b -> gr a ()
 trr g =
+    assert (isTransitive g) $
     mkGraph (labNodes g)
             (    [(n, n', ())           | (_,e) <- labNodes g1t, (n,n') <- zip e (tail e)]
               ++ [(last e, head e,  ()) | (_,e) <- labNodes g1t, length e > 1            ]
@@ -121,6 +122,8 @@ trr g =
 
 trcOfTrrIsTrc ::  Gr String () -> Bool
 trcOfTrrIsTrc g = trc g == (trc $ trr g)
+
+isTransitive g = (∀) (nodes g) (\x -> (∀) (suc g x) (\y -> (∀) (suc g y) (\z -> hasEdge g (x,z))))
 
 
 fromPredMap :: DynGraph gr => Map Node (Set Node) -> gr () () 

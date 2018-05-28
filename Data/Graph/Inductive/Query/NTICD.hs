@@ -2557,8 +2557,7 @@ myWodFast graph =
                                                                   -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
                                                 ]
                   ]
-  where sMust = smmnFMustWod graph
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         isinkdom = isinkdomOfSinkContraction graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
@@ -2592,15 +2591,13 @@ myWodFastPDom graph =
                                                                   -- Set.size s12n > 0,
                                                                   -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
       ]
-  where sMust = smmnFMustWod graph
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         isinkdom = isinkdomOfSinkContraction graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
         condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
-        myDependence = myDependenceFor graph
         towardsCycle cycle n = dfs [n] (efilter (\(n,m,_) -> not $ m ∊ cycle) graph)
         lca :: Map Node (Set Node) -> Node -> Node -> Node
         lca  dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])

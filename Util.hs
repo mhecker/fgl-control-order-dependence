@@ -12,6 +12,7 @@ import qualified Data.Foldable as Foldable
 import Unicode
 import Algebra.Lattice
 
+import Control.Exception.Base (assert)
 import Control.Monad (foldM)
 import Control.Monad.Random hiding (join)
 the p = fromJust . find p 
@@ -139,3 +140,6 @@ roots idom
                    | otherwise          = rootsFrom x' [x'] unchecked'
                   where (x', unchecked') = Set.deleteFindMin unchecked
                 [n'] = Set.toList $ idom ! n
+
+
+require = assert

@@ -27,7 +27,7 @@ import Data.List ((\\), nub)
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1, reachableFrom)
+import Util(the, invert', invert'', foldM1, reachableFrom, require)
 import Unicode
 
 
@@ -2567,6 +2567,16 @@ myWodFast graph =
         myDependence = myDependenceFor graph
 
 
+
+rotatePDomAround  graph pdom e@(n,m) =
+      require(hasEdge graph e)
+    $ assert (Set.null $ pdom  ! n)
+    $ assert (Set.null $ pdom' ! m)
+    $ pdom'
+  where pdom' =  id
+               $ Map.insert m Set.empty 
+               $ Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre graph m ])
+               $ pdom
 
 myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDom graph =

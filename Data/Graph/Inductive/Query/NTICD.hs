@@ -1146,8 +1146,6 @@ rofldomOfTwoFinger7 :: forall gr a b. (DynGraph gr, Eq b) => gr a b -> Map Node 
 rofldomOfTwoFinger7 graph0 = Map.mapWithKey (\n ms -> Set.delete n ms) $
                           fmap toSet $ twoFinger 0 worklist0 rofldom0
   where graph = removeDuplicateEdges $ delEdges [ e | e@(n,m) <- edges graph0, n == m] $ graph0
-        toSet Nothing  = Set.empty
-        toSet (Just x) = Set.fromList [x]
         rofldom0   =           Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [pre graph x], z /= x]
                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
         worklist0   = condNodes
@@ -1898,9 +1896,7 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
 imdomOfTwoFinger7 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                           fmap toSet $ twoFinger 0 worklist0 imdom0
-  where toSet Nothing  = Set.empty
-        toSet (Just x) = Set.fromList [x]
-        imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], z /= x]
+  where imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], z /= x]
                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
         worklist0   = condNodes
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
@@ -2007,35 +2003,19 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
 
 
 
-isinkdomOfTwoFinger8 :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b -> Map Node (Set Node)
-isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
-                          fmap toSet $ twoFinger 0 worklist0 processed0 imdom0 
-  where toSet Nothing  = Set.empty
-        toSet (Just x) = Set.fromList [x]
-        solution = sinkdomOfGfp graph
-        imdom0   =             Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
-                   `Map.union` (Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], not $ x ∈ sinkNodes, assert (z/=x) True]
-                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
-                    )
-        worklist0   = condNodes ∖ sinkNodes
---        processed0  = (㎲⊒) sinkNodes (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [suc graph x], z ∈ processed]))
-        processed0  = Set.fold f Set.empty sinkNodes
-          where f s processed
-                    | s ∈ processed = processed
-                    | otherwise     = processed'From (Set.fromList [s]) (processed ∪ Set.fromList [s])
-        processed'From xs processed
-            | Set.null xs   = processed
-            | otherwise     = processed'From (xs' ∪ new) (processed ∪ new)
-                where (x, xs') = Set.deleteFindMin xs
-                      new      = Set.fromList [ x'| x' <- pre graph x, not $ x' ∈ condNodes, not $ x' ∈ processed]
-        condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
-        prevConds   = prevCondNodes graph
-        nextCond    = nextCondNode graph
-        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
-        sinks = controlSinks graph
-        
-        twoFingerDown :: Integer -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
-        twoFingerDown i worklist imdom
+isinkdomOfTwoFinger8Down :: forall gr a b. (Show (gr a b), DynGraph gr) =>
+     gr a b
+  -> Set Node
+  -> [[Node]]
+  -> (Node -> [Node])
+  -> (Node -> Maybe Node)
+  -> Set Node
+  -> Integer
+  -> Set Node
+  -> Map Node (Maybe Node)
+  -> Map Node (Maybe Node)
+isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i worklist imdom = twoFingerDown i worklist imdom
+  where twoFingerDown i worklist imdom
             |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $
                                     imdom
@@ -2076,13 +2056,45 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                      [n'] -> lcaDown' (m, ms) (n', Set.insert n' ns)
 
 
+toSet :: Ord a => Maybe a -> Set a
+toSet Nothing  = Set.empty
+toSet (Just x) = Set.fromList [x]
+
+
+isinkdomOfTwoFinger8 :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
+                          fmap toSet $ twoFinger 0 worklist0 processed0 imdom0 
+  where solution = sinkdomOfGfp graph
+        imdom0   =             Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
+                   `Map.union` (Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], not $ x ∈ sinkNodes, assert (z/=x) True]
+                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
+                    )
+        worklist0   = condNodes ∖ sinkNodes
+--        processed0  = (㎲⊒) sinkNodes (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [suc graph x], z ∈ processed]))
+        processed0  = Set.fold f Set.empty sinkNodes
+          where f s processed
+                    | s ∈ processed = processed
+                    | otherwise     = processed'From (Set.fromList [s]) (processed ∪ Set.fromList [s])
+        processed'From xs processed
+            | Set.null xs   = processed
+            | otherwise     = processed'From (xs' ∪ new) (processed ∪ new)
+                where (x, xs') = Set.deleteFindMin xs
+                      new      = Set.fromList [ x'| x' <- pre graph x, not $ x' ∈ condNodes, not $ x' ∈ processed]
+        condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
+        prevConds   = prevCondNodes graph
+        nextCond    = nextCondNode graph
+        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+        sinks = controlSinks graph
+
+
+
         twoFinger :: Integer -> Set Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
         twoFinger i worklist processed imdom
             |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $
                                     assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
                                             ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ()))) $
-                                    twoFingerDown i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
+                                    isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
             | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
                                     -- traceShow graph $ 
                                     -- traceShow (x,processed, influenced, influenced', imdom) $
@@ -3715,8 +3727,6 @@ timdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node
 timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
   where toMap Nothing  = Map.empty
         toMap (Just (x, sx)) = Map.fromList [(x,sx)]
-        toSet Nothing  = Set.empty
-        toSet (Just x) = Set.fromList [x]
         imdom0   =             Map.fromList [ (x, Just (z,1)) | x <- nodes graph, [z] <- [suc graph x]]
                    `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes graph]
         worklist0   = condNodes

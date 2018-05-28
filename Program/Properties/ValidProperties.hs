@@ -796,16 +796,21 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                                              ↔ (m ∊ (suc isinkdomTrc n))
   --                        )
   --                      ),
-    testProperty  "myWodFastPDom               == myWod"
+     testProperty  "myWodFastPDom             == myWodFast"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.myWodFastPDom   g ==
-                       NTICD.myWod           g,
-    testProperty  "myWodFast                 == myWod"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.myWodFast       g ==
-                       NTICD.myWod           g
+                       NTICD.myWodFast       g
+    -- testProperty  "myWodFastPDom             == myWod"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.myWodFastPDom   g ==
+    --                    NTICD.myWod           g,
+    -- testProperty  "myWodFast                 == myWod"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.myWodFast       g ==
+    --                    NTICD.myWod           g
   ]
 wodTests = testGroup "(concerning weak order dependence)" $
   -- [  testCase    ( "myWod ⊑ wodTEIL' for " ++ exampleName)
@@ -838,14 +843,18 @@ wodTests = testGroup "(concerning weak order dependence)" $
   --                       ) @? ""
   -- | (exampleName, g) <- interestingDodWod
   -- ] ++
-  [  testCase    ( "myWodFastPDom               == myWod for " ++ exampleName)
-            $ NTICD.myWodFast g                 == NTICD.myWod g @? ""
+  [  testCase    ( "myWodFastPDom               == myWodFast for " ++ exampleName)
+            $ NTICD.myWodFastPDom g             == NTICD.myWodFast g @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "myWodFastPDom               == myWod for " ++ exampleName)
-            $ NTICD.myWodFastPDom g             == NTICD.myWod g @? ""
-  | (exampleName, g) <- interestingDodWod
-  ] ++
+  -- [  testCase    ( "myWodFastPDom               == myWod for " ++ exampleName)
+  --           $ NTICD.myWodFast g                 == NTICD.myWod g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
+  -- [  testCase    ( "myWodFastPDom               == myWod for " ++ exampleName)
+  --           $ NTICD.myWodFastPDom g             == NTICD.myWod g @? ""
+  -- | (exampleName, g) <- interestingDodWod
+  -- ] ++
   []
 
 

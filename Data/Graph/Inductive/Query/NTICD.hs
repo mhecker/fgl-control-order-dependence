@@ -36,7 +36,7 @@ import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dependence
-import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort)
+import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs)
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -2540,12 +2540,14 @@ myWodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,
 myWodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
+                                       let conds   = condsIn    cycle,
+                                       let entries = entriesFor cycle,
                                        m1 <- cycle,
                                        m2 <- cycle,
                                        m1 /= m2,
                                        let color = colorLfpFor graph m1 m2,
                                        assert (length cycle > 1) True,
-                                       let ns = Set.fromList [ n | n <- (entriesFor cycle) ++ (condsIn cycle),
+                                       let ns = Set.fromList [ n | n <- entries  ++ cycle,
                                                                    n /= m1 ∧ n /= m2,
                                                            assert (m1 ∊ (suc isinkdomTrc n)) True,
                                                            assert (m2 ∊ (suc isinkdomTrc n)) True,
@@ -2570,36 +2572,26 @@ myWodFast graph =
 myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDom graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
-    -- ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
-    --                                    m1 <- cycle,
-    --                                    m2 <- cycle,
-    --                                    m1 /= m2,
-    --                                    let color = colorLfpFor graph m1 m2,
-    --                                    assert (length cycle > 1) True,
-    --                                    let ns = Set.fromList [ n | n <- (entriesFor cycle),
-    --                                                                n /= m1 ∧ n /= m2,
-    --                                                        assert (m1 ∊ (suc isinkdomTrc n)) True,
-    --                                                        assert (m2 ∊ (suc isinkdomTrc n)) True,
-    --                                                                myDependence color n
-    --                                             ]
-    --               ]
-    ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
-                                       m2 <- cycle,
-                                       let pdom = fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev graph) m2,
-                                       m1 <- cycle,
-                                       m1 /= m2,
-                                       assert (length cycle > 1) True,
-                                       let ns = Set.fromList [ n | n <- (condsIn cycle) ++ (entriesFor cycle),
-                                                                   n /= m1 ∧ n /= m2,
-                                                                   (∃) (suc graph n) (\x ->       m1 ∈ (reachableFrom pdom   (Set.fromList [x])  Set.empty)),
-                                                                   (∃) (suc graph n) (\x -> not $ m1 ∈ (reachableFrom pdom   (Set.fromList [x] ) Set.empty)),
-                                                           assert (m1 ∊ (suc isinkdomTrc n)) True,
-                                                           assert (m2 ∊ (suc isinkdomTrc n)) True
+    ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n] ) ]  | cycle <- isinkdomCycles,
+                                                              length cycle > 1,
+                                                              let conds   = condsIn    cycle,
+                                                              let entries = entriesFor cycle,
+                                                              let cycleGraph = subgraph ( cycle ++ [ m | n <- entries, m <- towardsCycle cycle n]) graph,
+                                                              m2 <- cycle,
+                                                              let pdom = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m2),
+                                                              n <- conds ++ entries,
+                                                              n /= m2,
+                                                              let z = foldr1 (lca pdom) (suc graph n),
+                                                              x <- suc graph n,
+                                                              m1 <- Set.toList $ (reachableFrom pdom   (Set.fromList [x])  (Set.fromList [z])) ∖ (Set.fromList [z]),
+                                                              m1 /= n,
+                                                              m1 ∊ cycle,
+                                                       assert (m1 ∊ (suc isinkdomTrc n)) True,
+                                                       assert (m2 ∊ (suc isinkdomTrc n)) True
                                                                   -- let s12n = sMust ! (m1,m2,n),
                                                                   -- Set.size s12n > 0,
                                                                   -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
-                                                ]
-                  ]
+      ]
   where sMust = smmnFMustWod graph
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         isinkdom = isinkdomOfSinkContraction graph
@@ -2609,6 +2601,21 @@ myWodFastPDom graph =
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
         condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
         myDependence = myDependenceFor graph
+        towardsCycle cycle n = dfs [n] (efilter (\(n,m,_) -> not $ m ∊ cycle) graph)
+        lca :: Map Node (Set Node) -> Node -> Node -> Node
+        lca  dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+           where lca' :: (Node,Set Node) -> (Node, Set Node) -> Node
+                 lca' (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  case Set.toList $ dom ! n of
+                                     []   -> case Set.toList $ dom ! m of
+                                                []   -> error "is no tree"
+                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
+                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
 
 
 dod graph = xod sMust s3 graph

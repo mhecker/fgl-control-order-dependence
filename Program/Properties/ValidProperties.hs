@@ -65,6 +65,7 @@ import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDepe
 import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdges, addImplicitAndTrivialSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdgesGfpLfp)
 
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
@@ -796,11 +797,32 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                                              ↔ (m ∊ (suc isinkdomTrc n))
   --                        )
   --                      ),
-     testProperty  "myWodFastPDom             == myWodFast"
+     testProperty  "rotatePDomAround g (pdom_n) (n->m)  == pdom_m"
     $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                    in NTICD.myWodFastPDom   g ==
-                       NTICD.myWodFast       g
+                    let bigG = generatedGraph
+                        sinks = NTICD.controlSinks bigG
+                    in traceShow (fmap length sinks) $
+                       (∀) sinks (\sink -> let g = subgraph sink bigG in
+                         (∀) (nodes g) (\n ->
+                           let gn   = efilter (\(x,y,_) -> x /= n) g
+                               pdom  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gn) n)
+                               pdomm = NTICD.isinkdomOfTwoFinger8 gn
+                           in   assert (pdom == pdomm)
+                              $ (∀) (suc g n) (\m -> 
+                                  let gm   = efilter (\(x,y,_) -> x /= m) g
+                                      pdom'  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gm) m)
+                                      pdomm' = NTICD.isinkdomOfTwoFinger8 gm
+                                      rpdom' = NTICD.rotatePDomAround g pdom (n,m)
+                                  in   assert (pdom' == pdomm')
+                                     $ pdom' == rpdom'
+                                 )
+                         )
+                       )
+    --  testProperty  "myWodFastPDom             == myWodFast"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in NTICD.myWodFastPDom   g ==
+    --                    NTICD.myWodFast       g
     -- testProperty  "myWodFastPDom             == myWod"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph

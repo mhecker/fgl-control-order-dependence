@@ -2060,6 +2060,12 @@ toSet :: Ord a => Maybe a -> Set a
 toSet Nothing  = Set.empty
 toSet (Just x) = Set.fromList [x]
 
+fromSet :: Ord a => Set a -> Maybe a
+fromSet s = case Set.toList s of
+  []  -> Nothing
+  [x] -> Just x
+  otherwise -> error "no singleton/empty"
+
 
 isinkdomOfTwoFinger8 :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b -> Map Node (Set Node)
 isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
@@ -2580,15 +2586,36 @@ myWodFast graph =
 
 
 
+rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set Node) -> (Node, Node) -> Map Node (Set Node) 
 rotatePDomAround  graph pdom e@(n,m) =
-      require(hasEdge graph e)
-    $ assert (Set.null $ pdom  ! n)
-    $ assert (Set.null $ pdom' ! m)
+      require (hasEdge graph e)
+    $ require (Set.null $ pdom  ! n)
+    $ assert  (Set.null $ pdom' ! m)
     $ pdom'
-  where pdom' =  id
+  where pdom'0 = id
                $ Map.insert m Set.empty 
                $ Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre graph m ])
                $ pdom
+        pdom' = id
+              -- $ traceShow pdom'0 
+              -- $ traceShow [ (n, sol, pd) | (n,sol) <- Map.assocs $ toSuccMap $ (immediateOf solution :: gr () ()),
+              --                              let pd = pdom'0 ! n, pd /= sol]
+              $ assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
+                        ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ())))
+              $ fmap toSet
+              $ isinkdomOfTwoFinger8Down graph' sinkNodes sinks  prevConds nextCond condNodes i worklist imdom
+          where graph' = efilter (\(x,y,_) -> x /= m) graph
+                sinkNodes  = Set.fromList [ m ]
+                sinks = [[m]]
+                prevConds = prevCondNodes graph'
+                nextCond = nextCondNode graph'
+                condNodes = Set.fromList [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+                i = 0
+                worklist = condNodes
+                imdom = fmap fromSet pdom'0
+
+                solution = sinkdomOfGfp graph'
+
 
 myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDom graph =

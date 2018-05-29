@@ -137,6 +137,9 @@ fromSuccMap succ = mkGraph [(n,()) | n <- Set.toList $ Map.keysSet succ ∪ (∐
 toPredMap ::  Graph gr => gr a b -> Map Node (Set Node)
 toPredMap gr = Map.fromList [(n, Set.fromList $ pre gr n ) | n <- nodes gr]
 
+toSuccMap ::  Graph gr => gr a b -> Map Node (Set Node)
+toSuccMap gr = Map.fromList [(n, Set.fromList $ suc gr n ) | n <- nodes gr]
+
 
 fromSuccMapWithEdgeAnnotation :: DynGraph gr => Map Node (Set (Node,b)) -> gr () b
 fromSuccMapWithEdgeAnnotation succ = mkGraph [(n,()) | n <- Map.keys succ]

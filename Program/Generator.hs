@@ -1,3 +1,6 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 module Program.Generator where
 
@@ -30,6 +33,9 @@ data IntraGeneratedProgram = IntraGeneratedProgram (Map StaticThread StaticProce
 data GeneratedProgram = GeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 data SimpleProgram    = SimpleProgram    (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 
+data SimpleCFG gr = SimpleCFG (gr () ())
+
+deriving instance (Show (gr () ())) => Show (SimpleCFG gr)
 
 
 toCodeIntra :: IntraGeneratedProgram -> (Map StaticThread  StaticProcedure, Map StaticProcedure For)
@@ -157,6 +163,11 @@ instance Arbitrary SimpleProgram where
       varsForbidden    = Set.fromList []
       varsAvailable    = vars
 
+instance DynGraph gr => Arbitrary (SimpleCFG gr) where
+  arbitrary = sized $ \n -> do
+      simple  <- resize n arbitrary
+      let p = toProgramSimple simple
+      return $ SimpleCFG (nmap (const ()) $ emap (const ()) $ tcfg p)
 
 instance Arbitrary IntraGeneratedProgram where
   arbitrary = sized $ \n -> do

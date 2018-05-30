@@ -2076,18 +2076,20 @@ isinkdomOfTwoFinger8DownTreeTraversal graph sinkNodes sinks  prevConds nextCond 
     -- $ traceShow result
     $ result
   where result = twoFingerDown i worklist imdom0
-        -- treeOrder :: Map Node Integer
-        -- treeOrder = Map.fromList $
-        --             zip (Set.toList sinkNodes ++ [ n | n <- treeDfs (fmap maybeToList imdom0) roots])
-        --                 [0..]
-        --   where roots = [ n | (n, Just m) <- Map.assocs imdom0, not $ n ∈ sinkNodes, m ∈ sinkNodes]
-        -- treeOrderOf n = treeOrder ! n
-        -- worklist = groupBy (\n m -> sucOrder n == sucOrder m) iterationOrder
-        --   where sucOrder n = minimum [ treeOrderOf x | x <- suc graph n]
-        --         iterationOrder = sortBy (comparing sucOrder) (Set.toList workset)
         sinkNodesToCanonical = Map.fromList [ (s, s1) | sink <- sinks, let (s1:_) = sink, s <- sink ]
-        worklist  =  [   [ (n, suc graph n) | n <- treeDfs (fmap maybeToList imdom0) roots, n ∈ workset]   ]
-          where roots = [ n | (n, Just m) <- Map.assocs imdom0, not $ n ∈ sinkNodes, m ∈ sinkNodes]
+
+        worklist =  [ [ (n, succs) | (n, succs, _) <- sortBy (comparing sucOrder) [ (n, succs, minimum [ treeOrderOf x | x <- succs] ) | n <- Set.toList workset, let succs = suc graph n ]]  ]
+          where sucOrder (n, succs, succOrder) = succOrder 
+                treeOrderOf n = treeOrder ! n
+                  where treeOrder :: Map Node Integer
+                        treeOrder = Map.fromList $ zip (Set.toList sinkNodes ++ [ n | n <- treeDfs (fmap maybeToList imdom0) roots]) [0..]
+                          where roots = [ n | (n, Just m) <- Map.assocs imdom0, not $ n ∈ sinkNodes, m ∈ sinkNodes]
+
+        -- worklist  =  [   [ (n, suc graph n) | n <- treeDfs (fmap maybeToList imdom0) roots, n ∈ workset]   ]
+        --   where roots = [ n | (n, Just m) <- Map.assocs imdom0, not $ n ∈ sinkNodes, m ∈ sinkNodes]
+
+        -- worklist  =  [   [ (n, suc graph n) | n <- Set.toList workset]   ]
+
         twoFingerDown i []             imdom = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                                -- traceShow (Set.size worklist0, i) $
                                                imdom

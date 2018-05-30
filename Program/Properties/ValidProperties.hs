@@ -13,7 +13,7 @@
 #define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
 #define INTER(g) (InterGraph g) :: (InterGraph () String)
 #define INTERCFG(g) (InterCFG _ g) :: (InterCFG (Node) (Node, Node))
-
+#define SIMPLECFG(g) (SimpleCFG g) :: (SimpleCFG Gr () ())
 
 module Program.Properties.ValidProperties where
 

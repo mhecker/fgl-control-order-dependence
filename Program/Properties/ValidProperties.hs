@@ -322,12 +322,19 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     --                     isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
     --                 in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
     --                      (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1)),
-    testProperty   "isinkdomOf^*          == isinkdomOfTwoFinger8^*"
+    testProperty   "isinkdomOfSinkContraction^*  == isinkdomOfTwoFinger8^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
+                    in (trc $ fromSuccMap $
+                              NTICD.isinkdomOfSinkContraction  g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               NTICD.isinkdomOfTwoFinger8       g)
+    -- testProperty   "isinkdomOf^*          == isinkdomOfTwoFinger8^*"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                 in (trc $ NTICD.isinkdomOf                 g :: Gr () ()) ==
+    --                    (trc $ fromSuccMap $
+    --                           NTICD.isinkdomOfTwoFinger8       g)
     -- testProperty   "isinkdomOf^*          == isinkdomOfSinkContraction^*"
     --             $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph
@@ -801,20 +808,23 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                     let bigG = generatedGraph
                         sinks = NTICD.controlSinks bigG
-                    in traceShow (fmap length sinks) $
+                    in (length sinks == 1) ==>
+                       traceShow (fmap length sinks, length $ nodes bigG) $
                        (∀) sinks (\sink -> let g = subgraph sink bigG in
                          (∀) (nodes g) (\n ->
                            let gn   = efilter (\(x,y,_) -> x /= n) g
                                pdom  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gn) n)
                                pdomm = NTICD.isinkdomOfTwoFinger8 gn
+                               condNodes = Set.fromList [ x | x <- nodes g, length (suc g x) > 1 ]
                            in   assert (pdom == pdomm)
                               $ (∀) (suc g n) (\m -> 
                                   let gm   = efilter (\(x,y,_) -> x /= m) g
                                       pdom'  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gm) m)
                                       pdomm' = NTICD.isinkdomOfTwoFinger8 gm
-                                      rpdom' = NTICD.rotatePDomAround g pdom (n,m)
-                                  in   assert (pdom' == pdomm')
-                                     $ pdom' == rpdom'
+                                      rpdom' = NTICD.rotatePDomAround g condNodes gm pdom (n,m)
+                                  in   assert ( pdom' == pdomm' )
+                                     $ (if pdom' == rpdom' then id else traceShow (g, n, m))
+                                     $     pdom' == rpdom'
                                  )
                          )
                        )

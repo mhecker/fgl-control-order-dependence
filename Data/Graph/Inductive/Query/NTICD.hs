@@ -2,8 +2,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Graph.Inductive.Query.NTICD where
 
+import Data.Ord (comparing)
 import Data.Maybe(fromJust)
-import Control.Monad (liftM)
+import Control.Monad (liftM, foldM)
 import Data.Functor.Identity (runIdentity)
 import qualified Control.Monad.Logic as Logic
 import Data.List(foldl', intersect,foldr1, partition)
@@ -21,13 +22,13 @@ import qualified Algebra.PartialOrd as PartialOrd
 
 import qualified Data.List as List
 
-import Data.List ((\\), nub)
+import Data.List ((\\), nub, sortBy, groupBy)
 
 
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1, reachableFrom, require)
+import Util(the, invert', invert'', foldM1, reachableFrom, require, treeDfs)
 import Unicode
 
 
@@ -2024,9 +2025,9 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i w
                                     -- traceShow ("DOWN", x, mz, zs, influenced, influenced', imdom) $
                                     assert (influenced == influenced') $ 
                                     if (not $ changed) then twoFingerDown (i+1)                worklist'                                   imdom
-                                    else                    twoFingerDown (i+1) (influenced' ⊔ worklist')  (Map.insert x zs                imdom)
+                                    else                    twoFingerDown (i+1) (influenced  ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
-                mz = foldM1 lcaDown ([ y | y <- suc graph x])
+                mz = foldM1 lcaDown (suc graph x)
                 zs = case mz of
                        Nothing -> Nothing
                        Just z  -> assert (z /= x) $
@@ -2054,6 +2055,79 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i w
                                                 []   -> Nothing
                                                 [m'] -> lcaDown' (m', Set.insert m' ms) (n, ns)
                                      [n'] -> lcaDown' (m, ms) (n', Set.insert n' ns)
+
+
+
+
+isinkdomOfTwoFinger8DownTreeTraversal :: forall gr a b. (Show (gr a b), DynGraph gr) =>
+     gr a b
+  -> Set Node
+  -> [[Node]]
+  -> (Node -> [Node])
+  -> (Node -> Maybe Node)
+  -> Set Node
+  -> Integer
+  -> Set Node
+  -> Map Node (Maybe Node)
+  -> Map Node (Maybe Node)
+isinkdomOfTwoFinger8DownTreeTraversal graph sinkNodes sinks  prevConds nextCond condNodes i workset imdom0 =
+      id
+    --   traceShow (workset, worklist, imdom0)
+    -- $ traceShow result
+    $ result
+  where result = twoFingerDown i worklist imdom0
+        -- treeOrder :: Map Node Integer
+        -- treeOrder = Map.fromList $
+        --             zip (Set.toList sinkNodes ++ [ n | n <- treeDfs (fmap maybeToList imdom0) roots])
+        --                 [0..]
+        --   where roots = [ n | (n, Just m) <- Map.assocs imdom0, not $ n ∈ sinkNodes, m ∈ sinkNodes]
+        -- treeOrderOf n = treeOrder ! n
+        -- worklist = groupBy (\n m -> sucOrder n == sucOrder m) iterationOrder
+        --   where sucOrder n = minimum [ treeOrderOf x | x <- suc graph n]
+        --         iterationOrder = sortBy (comparing sucOrder) (Set.toList workset)
+        sinkNodesToCanonical = Map.fromList [ (s, s1) | sink <- sinks, let (s1:_) = sink, s <- sink ]
+        worklist  =  [   [ (n, suc graph n) | n <- treeDfs (fmap maybeToList imdom0) roots, n ∈ workset]   ]
+          where roots = [ n | (n, Just m) <- Map.assocs imdom0, not $ n ∈ sinkNodes, m ∈ sinkNodes]
+        twoFingerDown i []             imdom = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+                                               -- traceShow (Set.size worklist0, i) $
+                                               imdom
+        twoFingerDown i (xs:worklist') imdom = -- traceShow (x, mz, zs, worklist, imdom) $
+                                               -- traceShow graph $
+                                               -- traceShow ("DOWN", x, mz, zs, imdom) $
+                                               iter xs worklist' i xs imdom False
+        iter xs0 worklist' i []     imdom False   = twoFingerDown i worklist' imdom
+        iter xs0 worklist' i []     imdom True    = iter xs0 worklist'  i    xs0                  imdom                 False
+        iter xs0 worklist' i ((x, succs):xs) imdom changed = iter xs0 worklist' (i+1) xs  (Map.insert x zs imdom)  (changed ∨ changed')
+          where changed' =  zs /= (imdom ! x)
+                mz = let (y:ys) = succs
+                     in foldM lcaDown y ys
+                zs = case mz of
+                       Nothing -> Nothing
+                       Just z  -> assert (z /= x) $
+                                  case Map.lookup z sinkNodesToCanonical of
+                                    Just s1 -> Just s1
+                                    Nothing -> Just z
+                lcaDown ::  Node -> Node -> Maybe Node
+                lcaDown n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
+                lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+                lcaDown' (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  caseM
+                  where caseM = case imdom ! m of
+                                  Nothing ->                 caseN
+                                  Just m' -> if m' ∈ ms then caseN   else lcaDown' (n, ns) (m', Set.insert m' ms)
+                        caseN = case imdom ! n of
+                                  Nothing ->                 Nothing
+                                  Just n' -> if n' ∈ ns then Nothing else lcaDown' (n', Set.insert n' ns) (m, ms)
+                                  -- case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
+                                  --    []   -> case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
+                                  --               []   -> Nothing
+                                  --               [n'] -> lcaDown' (n', Set.insert n' ns) (m, ms)
+                                  --    [m'] -> lcaDown' (n, ns) (m', Set.insert m' ms)
 
 
 toSet :: Ord a => Maybe a -> Set a
@@ -2586,10 +2660,11 @@ myWodFast graph =
 
 
 
-rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set Node) -> (Node, Node) -> Map Node (Set Node) 
-rotatePDomAround  graph pdom e@(n,m) =
+rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Set Node -> gr a b -> Map Node (Set Node) -> (Node, Node) -> Map Node (Set Node) 
+rotatePDomAround  graph condNodes graphm pdom e@(n,m) =
       require (hasEdge graph e)
     $ require (Set.null $ pdom  ! n)
+    $ require (graphm == efilter (\(x,y,_) -> x /= m) graph)
     $ assert  (Set.null $ pdom' ! m)
     $ pdom'
   where pdom'0 = id
@@ -2602,19 +2677,22 @@ rotatePDomAround  graph pdom e@(n,m) =
               --                              let pd = pdom'0 ! n, pd /= sol]
               $ assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
                         ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ())))
-              $ fmap toSet
-              $ isinkdomOfTwoFinger8Down graph' sinkNodes sinks  prevConds nextCond condNodes i worklist imdom
-          where graph' = efilter (\(x,y,_) -> x /= m) graph
-                sinkNodes  = Set.fromList [ m ]
+              $ if ((∀) (pre graph m) (\p -> p == n)) then
+                    traceShow (".") 
+                  $ pdom'0
+                else
+                    fmap toSet
+                  $ isinkdomOfTwoFinger8DownTreeTraversal graphm sinkNodes sinks  prevConds nextCond condNodesM i worklist imdom
+          where sinkNodes  = Set.fromList [ m ]
                 sinks = [[m]]
-                prevConds = prevCondNodes graph'
-                nextCond = nextCondNode graph'
-                condNodes = Set.fromList [ n | n <- nodes graph', length (suc graph' n) > 1 ]
+                prevConds = prevCondNodes graphm
+                nextCond = nextCondNode graphm
+                condNodesM = Set.delete m condNodes
                 i = 0
-                worklist = condNodes
+                worklist = condNodesM
                 imdom = fmap fromSet pdom'0
 
-                solution = sinkdomOfGfp graph'
+                solution = sinkdomOfGfp graphm
 
 
 myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)

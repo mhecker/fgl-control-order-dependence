@@ -34,6 +34,12 @@ invert m = Map.fromListWith (∪) pairs
 
 
 
+treeDfs :: (Ord k) => Map k [k] -> [k] -> [k]
+treeDfs m roots = dfs roots
+  where m' = invert' m `Map.union` (Map.fromList [(n, []) | n <- Map.keys m])
+        dfs [] = []
+        dfs (n:ns) = n : (dfs ( m' ! n ++ ns ))
+
 invert' :: (Ord k, Ord v) => Map k [v] -> Map v [k]
 invert' m = Map.fromListWith (++) pairs
     where pairs = [(v, [k]) | (k, vs) <- Map.toList m, v <- vs]

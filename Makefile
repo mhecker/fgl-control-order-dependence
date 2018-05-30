@@ -5,6 +5,9 @@ PROF=defined
 ifdef PROF
 PROF_GHC=-prof -fprof-auto -osuf p_o
 PROF_RTS=-p
+GHC_ASSERT=
+else
+GHC_ASSERT=-fno-ignore-asserts
 endif
 
 ifdef DEBUG
@@ -19,7 +22,7 @@ COLOR=--color always
 ROFL = Program/Tests
 CABAL_PREFIX=cabal exec --
 PATTERN=
-GHC_FLAGS=-rtsopts -O -fno-ignore-asserts
+GHC_FLAGS=-rtsopts -O $(GHC_ASSERT)
 
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE

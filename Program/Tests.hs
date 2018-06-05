@@ -31,6 +31,7 @@ import Program.CDom
 import Program.Analysis
 import Program.Generator (GeneratedProgram(..), toCode, toProgram,
                           SimpleProgram(..), toCodeSimple, toProgramSimple,
+                          SimpleCFG(..),
                           Generated(..))
 import Program.TransitionSystem
 

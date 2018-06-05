@@ -165,9 +165,11 @@ instance Arbitrary SimpleProgram where
 
 instance DynGraph gr => Arbitrary (SimpleCFG gr) where
   arbitrary = sized $ \n -> do
-      simple  <- resize n arbitrary
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
+      simple  <- resize n' arbitrary
       let p = toProgramSimple simple
       return $ SimpleCFG (nmap (const ()) $ emap (const ()) $ tcfg p)
+    where ratio = 1/1.7 :: Double -- attempt to generate a CFG with number of nodes ~~ n
 
 instance Arbitrary IntraGeneratedProgram where
   arbitrary = sized $ \n -> do
@@ -293,7 +295,7 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
                              (spawned')
                              (called')
    ),
-   (if (Set.null (varsAvailable ∖ varsForbidden)) then 0 else 1,
+   (if (Set.size (varsAvailable ∖ varsForbidden) <= 1) then 0 else 1,
        do var <- elements $ Set.toList (varsAvailable ∖ varsForbidden)
           Generated p'               _ spawned' called' <- forGenerator inChannels outChannels vars varsAvailable (varsForbidden ∪ Set.fromList [var]) threadsAvailable     proceduresAvailable (n-1)
           return $ Generated (ForV var p')
@@ -302,22 +304,22 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
                              (called')
    ),
    (1, do bexp <- bexpGenerator varsAvailable
-          Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable                           proceduresAvailable (n-1)
-          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable varsForbidden (threadsAvailable ∖ Map.keysSet spawned')  proceduresAvailable (n-1)
+          Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable                           proceduresAvailable (n `div` 2)
+          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable varsForbidden (threadsAvailable ∖ Map.keysSet spawned')  proceduresAvailable (n `div` 2)
           return $ Generated (If bexp p' p'')
                              (varsAvailable' ∩ varsAvailable'')
                              (spawned' `Map.union` spawned'')
                              (Map.unionsWith (∩) [ called', called'' ])
    ),
-   (3, do Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable  varsForbidden threadsAvailable                          proceduresAvailable (n-1)
-          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable' varsForbidden (threadsAvailable ∖ Map.keysSet spawned') proceduresAvailable (n-1)
+   (3, do Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable  varsForbidden threadsAvailable                          proceduresAvailable (n `div` 2)
+          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable' varsForbidden (threadsAvailable ∖ Map.keysSet spawned') proceduresAvailable (n `div` 2)
           return $ Generated (p' `Seq`p'')
                              (varsAvailable'')
                              (spawned' `Map.union` spawned'')
                              (Map.unionsWith (∩) [ called', called'' ])
    )
    ]
- where maxSize = 5
+ where maxSize = 10000
 
 {- randomly pick n elements out of a given list, without repetition -}
 pick :: Eq a => Int -> [a] -> Gen [a]

@@ -13,7 +13,7 @@
 #define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
 #define INTER(g) (InterGraph g) :: (InterGraph () String)
 #define INTERCFG(g) (InterCFG _ g) :: (InterCFG (Node) (Node, Node))
-#define SIMPLECFG(g) (SimpleCFG g) :: (SimpleCFG Gr () ())
+#define SIMPLECFG(g) (SimpleCFG g) :: (SimpleCFG Gr)
 
 module Program.Properties.ValidProperties where
 
@@ -57,7 +57,7 @@ import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
@@ -115,7 +115,7 @@ import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
 import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity, isSecureResumptionBasedSecurityFor)
 import Program.CDom
-import Program.Generator (toProgram, toProgramIntra, GeneratedProgram)
+import Program.Generator (toProgram, toProgramIntra, GeneratedProgram, SimpleCFG(..))
 
 main      = all
 
@@ -805,10 +805,14 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                        )
   --                      ),
      testProperty  "rotatePDomAround g (pdom_n) (n->m)  == pdom_m"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let bigG = generatedGraph
+    $ \(SIMPLECFG(generatedGraph)) ->
+                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                        bigG = insEdge (exit, entry, ()) generatedGraph
                         sinks = NTICD.controlSinks bigG
-                    in (length sinks == 1) ==>
+                    in
+                       -- (length sinks == 1) ==>
+                       assert (length sinks == 1) $ 
                        traceShow (fmap length sinks, length $ nodes bigG) $
                        (∀) sinks (\sink -> let g = subgraph sink bigG in
                          (∀) (nodes g) (\n ->

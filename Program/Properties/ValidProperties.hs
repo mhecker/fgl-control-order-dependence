@@ -804,39 +804,39 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                                              ↔ (m ∊ (suc isinkdomTrc n))
   --                        )
   --                      ),
-     testProperty  "rotatePDomAround g (pdom_n) (n->m)  == pdom_m"
-    $ \(SIMPLECFG(generatedGraph)) ->
-                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                        bigG = insEdge (exit, entry, ()) generatedGraph
-                        sinks = NTICD.controlSinks bigG
-                    in
-                       -- (length sinks == 1) ==>
-                       assert (length sinks == 1) $ 
-                       traceShow (fmap length sinks, length $ nodes bigG) $
-                       (∀) sinks (\sink -> let g = subgraph sink bigG in
-                         (∀) (nodes g) (\n ->
-                           let gn   = efilter (\(x,y,_) -> x /= n) g
-                               pdom  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gn) n)
-                               pdomm = NTICD.isinkdomOfTwoFinger8 gn
-                               condNodes = Set.fromList [ x | x <- nodes g, length (suc g x) > 1 ]
-                           in   assert (pdom == pdomm)
-                              $ (∀) (suc g n) (\m -> 
-                                  let gm   = efilter (\(x,y,_) -> x /= m) g
-                                      pdom'  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gm) m)
-                                      pdomm' = NTICD.isinkdomOfTwoFinger8 gm
-                                      rpdom' = NTICD.rotatePDomAround g condNodes gm pdom (n,m)
-                                  in   assert ( pdom' == pdomm' )
-                                     $ (if pdom' == rpdom' then id else traceShow (g, n, m))
-                                     $     pdom' == rpdom'
-                                 )
-                         )
-                       )
-    --  testProperty  "myWodFastPDom             == myWodFast"
-    -- $ \(ARBITRARY(generatedGraph)) ->
-    --                 let g = generatedGraph
-    --                 in NTICD.myWodFastPDom   g ==
-    --                    NTICD.myWodFast       g
+    --  testProperty  "rotatePDomAround g (pdom_n) (n->m)  == pdom_m"
+    -- $ \(SIMPLECFG(generatedGraph)) ->
+    --                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+    --                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+    --                     bigG = insEdge (exit, entry, ()) generatedGraph
+    --                     sinks = NTICD.controlSinks bigG
+    --                 in
+    --                    -- (length sinks == 1) ==>
+    --                    assert (length sinks == 1) $ 
+    --                    traceShow (fmap length sinks, length $ nodes bigG) $
+    --                    (∀) sinks (\sink -> let g = subgraph sink bigG in
+    --                      (∀) (nodes g) (\n ->
+    --                        let gn   = efilter (\(x,y,_) -> x /= n) g
+    --                            pdom  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gn) n)
+    --                            pdomm = NTICD.isinkdomOfTwoFinger8 gn
+    --                            condNodes = Set.fromList [ x | x <- nodes g, length (suc g x) > 1 ]
+    --                        in   assert (pdom == pdomm)
+    --                           $ (∀) (suc g n) (\m -> 
+    --                               let gm   = efilter (\(x,y,_) -> x /= m) g
+    --                                   pdom'  = Map.fromList [ (n, Set.empty) | n <- nodes g ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev gm) m)
+    --                                   pdomm' = NTICD.isinkdomOfTwoFinger8 gm
+    --                                   rpdom' = NTICD.rotatePDomAround g condNodes gm pdom (n,m)
+    --                               in   assert ( pdom' == pdomm' )
+    --                                  $ (if pdom' == rpdom' then id else traceShow (g, n, m))
+    --                                  $     pdom' == rpdom'
+    --                              )
+    --                      )
+    --                    )
+     testProperty  "myWodFastPDom             == myWodFast"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.myWodFastPDom   g ==
+                       NTICD.myWodFast       g
     -- testProperty  "myWodFastPDom             == myWod"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph

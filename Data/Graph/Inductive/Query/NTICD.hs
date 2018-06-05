@@ -2709,9 +2709,10 @@ myWodFastPDom graph =
                                                               let pdom = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m2),
                                                               n <- conds ++ entries,
                                                               n /= m2,
-                                                              let z = foldr1 (lca pdom) (suc graph n),
-                                                              x <- suc graph n,
-                                                              m1 <- Set.toList $ (reachableFrom pdom   (Set.fromList [x])  (Set.fromList [z])) ∖ (Set.fromList [z]),
+                                                              let (z,relevant) = foldr1 (lcaR pdom) [(x, Set.empty) | x <- suc graph n],
+                                                       assert (z == foldr1 (lca pdom) (suc graph n)) True,
+                                                       assert (relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom pdom  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
+                                                              m1 <- Set.toList $ relevant, m1 /= z,
                                                               m1 /= n,
                                                               m1 ∊ cycle,
                                                        assert (m1 ∊ (suc isinkdomTrc n)) True,
@@ -2728,6 +2729,25 @@ myWodFastPDom graph =
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
         condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
         towardsCycle cycle n = dfs [n] (efilter (\(n,m,_) -> not $ m ∊ cycle) graph)
+        lcaR :: Map Node (Set Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
+        lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
+           where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
+                 lca' relevant ns@(n:_) ms@(m:_)
+                    | mInNs = (m, relevant ∪ (Set.fromList ms) ∪ (Set.fromList beforeM))
+                    | nInMs = (n, relevant ∪ (Set.fromList ns) ∪ (Set.fromList beforeN))
+                    | otherwise = case Set.toList $ dom ! n of
+                                     []   -> case Set.toList $ dom ! m of
+                                                []   -> error "is no tree"
+                                                [m'] -> lca' relevant (m':ms) ns
+                                     [n'] -> lca' relevant ms (n':ns)
+                   where mInNs = not $ List.null $ foundM
+                         (afterM, foundM) = break (== m) ns
+                         (mm:beforeM) = foundM
+
+                         nInMs = not $ List.null $ foundN
+                         (afterN, foundN) = break (== n) ms
+                         (nn:beforeN) = foundN
+
         lca :: Map Node (Set Node) -> Node -> Node -> Node
         lca  dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
            where lca' :: (Node,Set Node) -> (Node, Set Node) -> Node

@@ -1,5 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+#define require assert
 module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Ord (comparing)
@@ -28,7 +30,7 @@ import Data.List ((\\), nub, sortBy, groupBy)
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1, reachableFrom, require, treeDfs)
+import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs)
 import Unicode
 
 
@@ -2662,14 +2664,16 @@ myWodFast graph =
 
 
 
-rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Set Node -> gr a b -> Map Node (Set Node) -> (Node, Node) -> Map Node (Set Node) 
-rotatePDomAround  graph condNodes graphm pdom e@(n,m) =
-      require (hasEdge graph e)
+rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Set Node -> Map Node (Set Node) -> (Node, Node) -> Map Node (Set Node)
+rotatePDomAround  graph condNodes pdom e@(n,m) =
+      id
+    $ require (hasEdge graph e)
     $ require (Set.null $ pdom  ! n)
-    $ require (graphm == efilter (\(x,y,_) -> x /= m) graph)
+    $ assert  (graphm == efilter (\(x,y,_) -> x /= m) graph)
     $ assert  (Set.null $ pdom' ! m)
     $ pdom'
-  where pdom'0 = id
+  where graphm = delSuccessorEdges graph m
+        pdom'0 = id
                $ Map.insert m Set.empty 
                $ Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre graph m ])
                $ pdom
@@ -2683,9 +2687,11 @@ rotatePDomAround  graph condNodes graphm pdom e@(n,m) =
                     traceShow (".") 
                   $ pdom'0
                 else
-                    fmap toSet
+                    id 
+                  $ fmap toSet
                   $ isinkdomOfTwoFinger8DownTreeTraversal graphm sinkNodes sinks  prevConds nextCond condNodesM i worklist imdom
-          where sinkNodes  = Set.fromList [ m ]
+          where 
+                sinkNodes  = Set.fromList [ m ]
                 sinks = [[m]]
                 prevConds = prevCondNodes graphm
                 nextCond = nextCondNode graphm
@@ -2697,17 +2703,29 @@ rotatePDomAround  graph condNodes graphm pdom e@(n,m) =
                 solution = sinkdomOfGfp graphm
 
 
-myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
-myWodFastPDom graph =
+myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDomForIterationStrategy strategy graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n] ) ]  | cycle <- isinkdomCycles,
                                                               length cycle > 1,
-                                                              let conds   = condsIn    cycle,
                                                               let entries = entriesFor cycle,
-                                                              let cycleGraph = subgraph ( cycle ++ [ m | n <- entries, m <- towardsCycle cycle n]) graph,
-                                                              m2 <- cycle,
-                                                              let pdom = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m2),
-                                                              n <- conds ++ entries,
+                                                              let nodesTowardsCycle = [ m | n <- entries, m <- towardsCycle  cycle n],
+                                                              let condsInCycle     = condsIn cycle,
+                                                              let condsTowardCycle = condsIn nodesTowardsCycle,
+                                                              let cycleGraph = subgraph ( cycle ++ nodesTowardsCycle) graph,
+                                                              let paths = strategy graph cycle,
+                                                              require ( (∐) [ Set.fromList path | path <- paths] == Set.fromList cycle ) True,
+                                                              traceShow paths True,
+                                                              (m20:others) <- paths,
+                                                              let edges = zip (m20:others) others,
+                                                              let pdom0 = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m20),
+                                                              let pdoms = zip (m20:others)
+                                                                              (scanl (rotatePDomAround cycleGraph (Set.fromList condsInCycle ∪ Set.fromList condsTowardCycle)) pdom0 edges),
+                                                              (m2, pdom) <- pdoms,
+                                                              let pdom' = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m2),
+                                                              -- if pdom == pdom' then True else traceShow (m2, pdom', pdoms, cycleGraph) True,
+                                                              assert (pdom == pdom') True,
+                                                              n <- condsInCycle ++ entries,
                                                               n /= m2,
                                                               let (z,relevant) = foldr1 (lcaR pdom) [(x, Set.empty) | x <- suc graph n],
                                                        assert (z == foldr1 (lca pdom) (suc graph n)) True,
@@ -2763,6 +2781,37 @@ myWodFastPDom graph =
                                                 [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
                                      [n'] -> lca' (m, ms) (n', Set.insert n' ns)
 
+
+myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDom graph = myWodFastPDomForIterationStrategy none graph
+  where none graph cycle = [ [n] | n <- cycle ]
+
+
+myWodFastPDomSimpleHeuristic :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDomSimpleHeuristic graph = myWodFastPDomForIterationStrategy simple graph
+  where simple :: gr a b -> [Node] -> [[Node]]
+        simple graph cycle = from (joinNodes ++ nonJoinNodes) Set.empty []
+          where (joinNodes, nonJoinNodes) = partition (\n -> length (pre graph n) > 1) cycle
+                joinNodesSet = Set.fromList joinNodes
+                from []        seen result = result
+                from (n:nodes) seen result = from [ n | n <- nodes, not $ n ∈ seen' ] seen' (app newPath result)
+                  where newPath = forward n seenN
+                          where seenN   = (Set.insert n seen)
+                        seen' = seen ∪ newSeen
+                          where newSeen = Set.fromList newPath
+                        app []      oldPaths = oldPaths
+                        app newPath oldPaths = app' oldPaths
+                          where newPathLast  = last newPath
+                                app' [] = [newPath]
+                                app' (oldPath@(oldPathFirst:oldPathRest) : oldPaths ) 
+                                  | hasEdge graph (newPathLast, oldPathFirst) = (newPath ++ oldPath) : oldPaths
+                                  | otherwise                                 = oldPath : app' oldPaths
+                forward n seen 
+                    | List.null succs        = [n]
+                    | List.null nonJoinSuccs = let n' = head    joinSuccs in n : (forward n' (Set.insert n' seen))
+                    | otherwise              = let n' = head nonJoinSuccs in n : (forward n' (Set.insert n' seen))
+                  where succs = [ m | m <- suc graph n, not $ m ∈ seen]
+                        (joinSuccs, nonJoinSuccs) = partition (∈ joinNodesSet) succs
 
 dod graph = xod sMust s3 graph
   where sMust = smmnFMustDod graph
@@ -3122,6 +3171,13 @@ nextCondNode graph n = nextCondSeen [n] n
             []    -> Nothing
             [ n'] -> if n' ∊ seen then Nothing else nextCondSeen (n':seen) n'
             (_:_) -> Just n
+
+
+nextLinearSinkNode graph sink n = next n
+    where next n = case suc graph n of
+            []    -> error $ "did not start from an 'entry' node for sink " ++ (show sink)
+            [ n'] -> if n' ∊ sink then n' else next n'
+            (_:_) -> error $ "reached a cond node before sink " ++ (show sink)
 
 
 

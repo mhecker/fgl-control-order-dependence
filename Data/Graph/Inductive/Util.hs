@@ -248,3 +248,10 @@ removeDuplicateEdges g = mkGraph (labNodes g)
 insNodeIfNecessary (n, l) g
   | n `elem` nodes g = assert (lab g n == Just l) $ g
   | otherwise        = insNode (n,l) g
+
+
+
+delSuccessorEdges :: DynGraph gr => gr a b -> Node -> gr a b
+delSuccessorEdges graph n = c' & graph'
+  where (Just c@(preds, _, a, _), graph') = match n graph
+        c' =    (preds, n, a, [])

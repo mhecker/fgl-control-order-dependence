@@ -148,4 +148,4 @@ roots idom
                 [n'] = Set.toList $ idom ! n
 
 
-require = assert
+

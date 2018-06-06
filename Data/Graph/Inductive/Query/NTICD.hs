@@ -2731,7 +2731,7 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
               $ assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
                         ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ())))
               $ if ((∀) (pre graph m) (\p -> p == n)) then
-                    traceShow (".") 
+                    id
                   $ pdom'0
                 else
                     id 
@@ -2755,31 +2755,31 @@ myWodFastPDomForIterationStrategy strategy graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n] ) ]  | cycle <- isinkdomCycles,
                                                               length cycle > 1,
+                                                              let cycleS = Set.fromList cycle,
                                                               let entries = entriesFor cycle,
-                                                              let nodesTowardsCycle = [ m | n <- entries, m <- towardsCycle  cycle n],
+                                                              let nodesTowardsCycle = [ m | n <- entries, m <- towardsCycle cycleS n],
                                                               let condsInCycle     = condsIn cycle,
                                                               let condsTowardCycle = condsIn nodesTowardsCycle,
                                                               let cycleGraph = subgraph ( cycle ++ nodesTowardsCycle) graph,
                                                               let paths = strategy graph cycle,
                                                               require ( (∐) [ Set.fromList path | path <- paths] == Set.fromList cycle ) True,
-                                                              traceShow paths True,
                                                               (m20:others) <- paths,
                                                               let edges = zip (m20:others) others,
                                                               let pdom0 = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m20),
                                                               let pdoms = zip (m20:others)
                                                                               (scanl (rotatePDomAround cycleGraph (Set.fromList condsInCycle ∪ Set.fromList condsTowardCycle)) pdom0 edges),
+                                                              n <- condsInCycle ++ entries,
                                                               (m2, pdom) <- pdoms,
                                                               let pdom' = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m2),
                                                               -- if pdom == pdom' then True else traceShow (m2, pdom', pdoms, cycleGraph) True,
                                                               assert (pdom == pdom') True,
-                                                              n <- condsInCycle ++ entries,
                                                               n /= m2,
                                                               let (z,relevant) = foldr1 (lcaR pdom) [(x, Set.empty) | x <- suc graph n],
                                                        assert (z == foldr1 (lca pdom) (suc graph n)) True,
                                                        assert (relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom pdom  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
                                                               m1 <- Set.toList $ relevant, m1 /= z,
                                                               m1 /= n,
-                                                              m1 ∊ cycle,
+                                                              m1 ∈ cycleS,
                                                        assert (m1 ∊ (suc isinkdomTrc n)) True,
                                                        assert (m2 ∊ (suc isinkdomTrc n)) True
                                                                   -- let s12n = sMust ! (m1,m2,n),
@@ -2792,8 +2792,8 @@ myWodFastPDomForIterationStrategy strategy graph =
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
-        condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
-        towardsCycle cycle n = dfs [n] (efilter (\(n,m,_) -> not $ m ∊ cycle) graph)
+        condsIn ns    = [ n | n <- ns, length (suc graph n) > 1]
+        towardsCycle cycleS n = dfs [n] (efilter (\(n,m,_) -> not $ m ∈ cycleS) graph)
         lcaR :: Map Node (Set Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
         lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
            where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)

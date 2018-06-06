@@ -833,26 +833,42 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                              )
     --                      )
     --                    )
-     testProperty  "myWodFastPDom             == myWodFast for arbitrary graphs"
+    --  testProperty  "myWodFastPDom*            == myWodFast for arbitrary graphs"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     myWodFastPDomSimpleHeuristic = NTICD.myWodFastPDomSimpleHeuristic  g
+    --                     myWodFastPDom                = NTICD.myWodFastPDom                 g
+    --                     myWodFast                    = NTICD.myWodFast                     g
+    --                 in   True
+    --                    ∧ myWodFastPDomSimpleHeuristic == myWodFast
+    --                    ∧ myWodFastPDom                == myWodFast,
+    -- testProperty  "myWodFastPDom*            == myWodFast for CFG-shaped graphs with exit->entry edge"
+    -- $ \(SIMPLECFG(generatedGraph)) ->
+    --                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+    --                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+    --                     g = insEdge (exit, entry, ()) generatedGraph
+    --                     myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
+    --                     myWodFastPDom                 = NTICD.myWodFastPDom                  g
+    --                     myWodFast                     = NTICD.myWodFast                      g
+    --                 in   True
+    --                    ∧ myWodFastPDomSimpleHeuristic  == myWodFast
+    --                    ∧ myWodFastPDom                 == myWodFast,
+     testProperty  "myWodFastPDom*            == myWodFastPDom* for arbitrary graphs"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         myWodFastPDomSimpleHeuristic = NTICD.myWodFastPDomSimpleHeuristic  g
                         myWodFastPDom                = NTICD.myWodFastPDom                 g
-                        myWodFast                    = NTICD.myWodFast                     g
                     in   True
-                       ∧ myWodFastPDomSimpleHeuristic == myWodFast
-                       ∧ myWodFastPDom                == myWodFast,
-    testProperty  "myWodFastPDom             == myWodFast for CFG-shaped graphs with exit->entry edge"
+                       ∧ myWodFastPDomSimpleHeuristic == myWodFastPDom,
+    testProperty  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                         g = insEdge (exit, entry, ()) generatedGraph
                         myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
                         myWodFastPDom                 = NTICD.myWodFastPDom                  g
-                        myWodFast                     = NTICD.myWodFast                      g
                     in   True
-                       ∧ myWodFastPDomSimpleHeuristic  == myWodFast
-                       ∧ myWodFastPDom                 == myWodFast
+                       ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom
     -- testProperty  "myWodFastPDom             == myWod"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph

@@ -2715,18 +2715,18 @@ myWodFast graph =
 
 
 
-rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Set Node -> Map Node (Set Node) -> (Node, Node) -> Map Node (Set Node)
+rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Set Node -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
 rotatePDomAround  graph condNodes pdom e@(n,m) =
       id
     $ require (hasEdge graph e)
-    $ require (Set.null $ pdom  ! n)
+    $ require (pdom  ! n == Nothing)
     $ assert  (graphm == efilter (\(x,y,_) -> x /= m) graph)
-    $ assert  (Set.null $ pdom' ! m)
+    $ assert  (pdom' ! m == Nothing)
     $ pdom'
   where graphm = delSuccessorEdges graph m
         pdom'0 = id
-               $ Map.insert m Set.empty 
-               $ Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre graph m ])
+               $ Map.insert m Nothing
+               $ Map.union (Map.fromList [(n', Just m) | n' <- pre graph m ])
                $ pdom
         pdom' = id
               -- $ traceShow pdom'0 
@@ -2739,7 +2739,6 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
                   $ pdom'0
                 else
                     id 
-                  $ fmap toSet
                   $ isinkdomOfTwoFinger8DownFixedTraversal graphm sinkNodes sinks  prevConds nextCond condNodesM i worklist imdom
           where 
                 sinkNodes  = Set.fromList [ m ]
@@ -2749,7 +2748,7 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
                 condNodesM = Set.delete m condNodes
                 i = 0
                 worklist = condNodesM
-                imdom = fmap fromSet pdom'0
+                imdom = pdom'0
 
                 solution = sinkdomOfGfp graphm
 
@@ -2769,18 +2768,18 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               require ( (∐) [ Set.fromList path | path <- paths] == Set.fromList cycle ) True,
                                                               (m20:others) <- paths,
                                                               let edges = zip (m20:others) others,
-                                                              let pdom0 = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m20),
+                                                              let pdom0 = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m20) `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
                                                               let pdoms = zip (m20:others)
                                                                               (scanl (rotatePDomAround cycleGraph (Set.fromList condsInCycle ∪ Set.fromList condsTowardCycle)) pdom0 edges),
                                                               n <- condsInCycle ++ entries,
                                                               (m2, pdom) <- pdoms,
-                                                              let pdom' = Map.fromList [ (m, Set.empty) | m <- nodes cycleGraph ] ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom (grev cycleGraph) m2),
+                                                              let pdom' = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m2)  `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
                                                               -- if pdom == pdom' then True else traceShow (m2, pdom', pdoms, cycleGraph) True,
                                                               assert (pdom == pdom') True,
                                                               n /= m2,
                                                               let (z,relevant) = foldr1 (lcaR pdom) [(x, Set.empty) | x <- suc graph n],
                                                        assert (z == foldr1 (lca pdom) (suc graph n)) True,
-                                                       assert (relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom pdom  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
+                                                       assert (relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
                                                               m1 <- Set.toList $ relevant, m1 /= z,
                                                               m1 /= n,
                                                               m1 ∈ cycleS,
@@ -2816,17 +2815,17 @@ myWodFastPDomForIterationStrategy strategy graph =
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
         condsIn ns    = [ n | n <- ns, length (suc graph n) > 1]
         towardsCycle cycleS n = dfs [n] (efilter (\(n,m,_) -> not $ m ∈ cycleS) graph)
-        lcaR :: Map Node (Set Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
+        lcaR :: Map Node (Maybe Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
         lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
            where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
                  lca' relevant ns@(n:_) ms@(m:_)
                     | mInNs = (m, relevant ∪ (Set.fromList ms) ∪ (Set.fromList beforeM))
                     | nInMs = (n, relevant ∪ (Set.fromList ns) ∪ (Set.fromList beforeN))
-                    | otherwise = case Set.toList $ dom ! n of
-                                     []   -> case Set.toList $ dom ! m of
-                                                []   -> error "is no tree"
-                                                [m'] -> lca' relevant (m':ms) ns
-                                     [n'] -> lca' relevant ms (n':ns)
+                    | otherwise = case dom ! n of
+                                     Nothing -> case dom ! m of
+                                                  Nothing -> error "is no tree"
+                                                  Just m' -> lca' relevant (m':ms) ns
+                                     Just n' -> lca' relevant ms (n':ns)
                    where mInNs = not $ List.null $ foundM
                          (afterM, foundM) = break (== m) ns
                          (mm:beforeM) = foundM
@@ -2835,7 +2834,7 @@ myWodFastPDomForIterationStrategy strategy graph =
                          (afterN, foundN) = break (== n) ms
                          (nn:beforeN) = foundN
 
-        lca :: Map Node (Set Node) -> Node -> Node -> Node
+        lca :: Map Node (Maybe Node) -> Node -> Node -> Node
         lca  dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
            where lca' :: (Node,Set Node) -> (Node, Set Node) -> Node
                  lca' (n,ns) (m,ms)
@@ -2844,11 +2843,11 @@ myWodFastPDomForIterationStrategy strategy graph =
                     | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
                                n
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ dom ! n of
-                                     []   -> case Set.toList $ dom ! m of
-                                                []   -> error "is no tree"
-                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
+                                  case dom ! n of
+                                     Nothing -> case dom ! m of
+                                                Nothing -> error "is no tree"
+                                                Just m' -> lca' ( m', Set.insert m' ms) (n, ns)
+                                     Just n' -> lca' (m, ms) (n', Set.insert n' ns)
 
 
 myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)

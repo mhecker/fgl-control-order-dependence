@@ -6,7 +6,11 @@ module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Ord (comparing)
 import Data.Maybe(fromJust)
-import Control.Monad (liftM, foldM)
+import Control.Monad (liftM, foldM, forM, forM_)
+
+import Control.Monad.ST
+import Data.STRef
+
 import Data.Functor.Identity (runIdentity)
 import qualified Control.Monad.Logic as Logic
 import Data.List(foldl', intersect,foldr1, partition)
@@ -2752,8 +2756,8 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
 
 myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDomForIterationStrategy strategy graph =
-      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
-    ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n] ) ]  | cycle <- isinkdomCycles,
+        convert $
+        [ (n,m1,m2)  |                                            cycle <- isinkdomCycles,
                                                               length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
                                                               let entries = entriesFor cycle,
@@ -2782,11 +2786,29 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               m1 ∈ cycleS,
                                                        assert (m1 ∊ (suc isinkdomTrc n)) True,
                                                        assert (m2 ∊ (suc isinkdomTrc n)) True
-                                                                  -- let s12n = sMust ! (m1,m2,n),
-                                                                  -- Set.size s12n > 0,
-                                                                  -- Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
       ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        convert :: [(Node, Node, Node)] ->  Map (Node,Node) (Set Node)
+        convert triples = runST $ do
+            let keys = [ (m1,m2) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2]
+
+            assocs <- forM keys (\(m1,m2) -> do
+              ns <- newSTRef Set.empty
+              return ((m1,m2),ns)
+             )
+
+            let m = assert (List.sort keys == keys)
+                  $ Map.fromDistinctAscList assocs
+
+            forM_ triples (\(n,m1,m2) -> do
+               let nsRef = m ! (m1,m2)
+               modifySTRef nsRef (Set.insert n)
+             )
+
+            m' <- forM m readSTRef
+
+            return m'
+
         isinkdom = isinkdomOfSinkContraction graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG

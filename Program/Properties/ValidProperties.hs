@@ -867,7 +867,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         g = insEdge (exit, entry, ()) generatedGraph
                         myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
                         myWodFastPDom                 = NTICD.myWodFastPDom                  g
-                    in   True
+                        n = length $ nodes g
+                    in traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDom, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDom) $
+                         True
                        ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom
     -- testProperty  "myWodFastPDom             == myWod"
     -- $ \(ARBITRARY(generatedGraph)) ->

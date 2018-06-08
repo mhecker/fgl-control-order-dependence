@@ -149,3 +149,12 @@ roots idom
 
 
 
+toSet :: Ord a => Maybe a -> Set a
+toSet Nothing  = Set.empty
+toSet (Just x) = Set.fromList [x]
+
+fromSet :: Ord a => Set a -> Maybe a
+fromSet s = case Set.toList s of
+  []  -> Nothing
+  [x] -> Just x
+  otherwise -> error "no singleton/empty"

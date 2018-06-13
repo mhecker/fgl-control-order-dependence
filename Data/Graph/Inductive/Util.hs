@@ -255,3 +255,8 @@ delSuccessorEdges :: DynGraph gr => gr a b -> Node -> gr a b
 delSuccessorEdges graph n = c' & graph'
   where (Just c@(preds, _, a, _), graph') = match n graph
         c' =    (preds, n, a, [])
+
+delPredecessorEdges :: DynGraph gr => gr a b -> Node -> gr a b
+delPredecessorEdges graph n = c' & graph'
+  where (Just c@(_ , _, a, succs), graph') = match n graph
+        c' =    ([], n, a, succs)

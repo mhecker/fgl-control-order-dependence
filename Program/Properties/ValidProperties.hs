@@ -75,7 +75,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, 
+    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -769,6 +769,15 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
   --                         ns ⊑ (wodTEIL' ! (m1,m2))
   --                       ),
+  testProperty  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
+                        wodTEILSlice    = NTICD.wodTEILSlice           g
+                    in  -- traceShow (length $ nodes g) $
+                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+                          wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+                        ))
   -- testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
   --   $ \(ARBITRARY(generatedGraph)) ->
   --                   let g = generatedGraph
@@ -804,73 +813,73 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                                              ↔ (m ∊ (suc isinkdomTrc n))
   --                        )
   --                      ),
-     testProperty  "rotatePDomAround g (pdom_n) (n->m)  == pdom_m"
-    $ \(SIMPLECFG(generatedGraph)) ->
-                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                        bigG = insEdge (exit, entry, ()) generatedGraph
-                        sinks = NTICD.controlSinks bigG
-                    in
-                       -- (length sinks == 1) ==>
-                       assert (length sinks == 1) $ 
-                       -- traceShow (fmap length sinks, length $ nodes bigG) $
-                       (∀) sinks (\sink -> let g = subgraph sink bigG in
-                         (∀) (nodes g) (\n ->
-                           let gn   = efilter (\(x,y,_) -> x /= n) g
-                               pdom  = (fmap Just $ Map.fromList $ iDom (grev gn) n) `Map.union` Map.fromList [ (n, Nothing) | n <- nodes g ]
-                               pdomm = NTICD.isinkdomOfTwoFinger8 gn
-                               condNodes = Set.fromList [ x | x <- nodes g, length (suc g x) > 1 ]
-                           in   assert (fmap toSet pdom == pdomm)
-                              $ (∀) (suc g n) (\m -> 
-                                  let pdom'  = (fmap Just $ Map.fromList $ iDom (grev gm) m) `Map.union` Map.fromList [ (n, Nothing) | n <- nodes g ]
-                                        where gm = delSuccessorEdges g m
-                                      pdomm' = NTICD.isinkdomOfTwoFinger8 gm
-                                        where gm = delSuccessorEdges g m
-                                      rpdom' = NTICD.rotatePDomAround g condNodes pdom (n,m)
-                                  in   assert ( fmap toSet pdom' == pdomm' )
-                                     $ (if pdom' == rpdom' then id else traceShow (g, n, m))
-                                     $     pdom' == rpdom'
-                                 )
-                         )
-                       ),
-     testProperty  "myWodFastPDom*            == myWodFast for arbitrary graphs"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        myWodFastPDomSimpleHeuristic = NTICD.myWodFastPDomSimpleHeuristic  g
-                        myWodFastPDom                = NTICD.myWodFastPDom                 g
-                        myWodFast                    = NTICD.myWodFast                     g
-                    in   True
-                       ∧ myWodFastPDomSimpleHeuristic == myWodFast
-                       ∧ myWodFastPDom                == myWodFast,
-    testProperty  "myWodFastPDom*            == myWodFast for CFG-shaped graphs with exit->entry edge"
-    $ \(SIMPLECFG(generatedGraph)) ->
-                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                        g = insEdge (exit, entry, ()) generatedGraph
-                        myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
-                        myWodFastPDom                 = NTICD.myWodFastPDom                  g
-                        myWodFast                     = NTICD.myWodFast                      g
-                    in   True
-                       ∧ myWodFastPDomSimpleHeuristic  == myWodFast
-                       ∧ myWodFastPDom                 == myWodFast,
-     testProperty  "myWodFastPDom*            == myWodFastPDom* for arbitrary graphs"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        myWodFastPDomSimpleHeuristic = NTICD.myWodFastPDomSimpleHeuristic  g
-                        myWodFastPDom                = NTICD.myWodFastPDom                 g
-                    in   True
-                       ∧ myWodFastPDomSimpleHeuristic == myWodFastPDom,
-    testProperty  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
-    $ \(SIMPLECFG(generatedGraph)) ->
-                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                        g = insEdge (exit, entry, ()) generatedGraph
-                        myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
-                        myWodFastPDom                 = NTICD.myWodFastPDom                  g
-                        n = length $ nodes g
-                    in -- traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDom, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDom) $
-                         True
-                       ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom
+    --  testProperty  "rotatePDomAround g (pdom_n) (n->m)  == pdom_m"
+    -- $ \(SIMPLECFG(generatedGraph)) ->
+    --                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+    --                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+    --                     bigG = insEdge (exit, entry, ()) generatedGraph
+    --                     sinks = NTICD.controlSinks bigG
+    --                 in
+    --                    -- (length sinks == 1) ==>
+    --                    assert (length sinks == 1) $ 
+    --                    -- traceShow (fmap length sinks, length $ nodes bigG) $
+    --                    (∀) sinks (\sink -> let g = subgraph sink bigG in
+    --                      (∀) (nodes g) (\n ->
+    --                        let gn   = efilter (\(x,y,_) -> x /= n) g
+    --                            pdom  = (fmap Just $ Map.fromList $ iDom (grev gn) n) `Map.union` Map.fromList [ (n, Nothing) | n <- nodes g ]
+    --                            pdomm = NTICD.isinkdomOfTwoFinger8 gn
+    --                            condNodes = Set.fromList [ x | x <- nodes g, length (suc g x) > 1 ]
+    --                        in   assert (fmap toSet pdom == pdomm)
+    --                           $ (∀) (suc g n) (\m -> 
+    --                               let pdom'  = (fmap Just $ Map.fromList $ iDom (grev gm) m) `Map.union` Map.fromList [ (n, Nothing) | n <- nodes g ]
+    --                                     where gm = delSuccessorEdges g m
+    --                                   pdomm' = NTICD.isinkdomOfTwoFinger8 gm
+    --                                     where gm = delSuccessorEdges g m
+    --                                   rpdom' = NTICD.rotatePDomAround g condNodes pdom (n,m)
+    --                               in   assert ( fmap toSet pdom' == pdomm' )
+    --                                  $ (if pdom' == rpdom' then id else traceShow (g, n, m))
+    --                                  $     pdom' == rpdom'
+    --                              )
+    --                      )
+    --                    ),
+    --  testProperty  "myWodFastPDom*            == myWodFast for arbitrary graphs"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     myWodFastPDomSimpleHeuristic = NTICD.myWodFastPDomSimpleHeuristic  g
+    --                     myWodFastPDom                = NTICD.myWodFastPDom                 g
+    --                     myWodFast                    = NTICD.myWodFast                     g
+    --                 in   True
+    --                    ∧ myWodFastPDomSimpleHeuristic == myWodFast
+    --                    ∧ myWodFastPDom                == myWodFast,
+    -- testProperty  "myWodFastPDom*            == myWodFast for CFG-shaped graphs with exit->entry edge"
+    -- $ \(SIMPLECFG(generatedGraph)) ->
+    --                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+    --                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+    --                     g = insEdge (exit, entry, ()) generatedGraph
+    --                     myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
+    --                     myWodFastPDom                 = NTICD.myWodFastPDom                  g
+    --                     myWodFast                     = NTICD.myWodFast                      g
+    --                 in   True
+    --                    ∧ myWodFastPDomSimpleHeuristic  == myWodFast
+    --                    ∧ myWodFastPDom                 == myWodFast,
+    --  testProperty  "myWodFastPDom*            == myWodFastPDom* for arbitrary graphs"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     myWodFastPDomSimpleHeuristic = NTICD.myWodFastPDomSimpleHeuristic  g
+    --                     myWodFastPDom                = NTICD.myWodFastPDom                 g
+    --                 in   True
+    --                    ∧ myWodFastPDomSimpleHeuristic == myWodFastPDom,
+    -- testProperty  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
+    -- $ \(SIMPLECFG(generatedGraph)) ->
+    --                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+    --                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+    --                     g = insEdge (exit, entry, ()) generatedGraph
+    --                     myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
+    --                     myWodFastPDom                 = NTICD.myWodFastPDom                  g
+    --                     n = length $ nodes g
+    --                 in -- traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDom, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDom) $
+    --                      True
+    --                    ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom
     -- testProperty  "myWodFastPDom             == myWod"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph

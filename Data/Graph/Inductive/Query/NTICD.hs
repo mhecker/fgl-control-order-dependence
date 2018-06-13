@@ -34,7 +34,7 @@ import Data.List ((\\), nub, sortBy, groupBy)
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet)
+import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet)
 import Unicode
 
 
@@ -2090,7 +2090,8 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks  prev
         twoFingerDown i ((x, succs):worklist') imdom changed = twoFingerDown (i+1) worklist' (Map.insert x zs imdom)  (changed ∨ changed')
           where changed' =  zs /= (imdom ! x)
                 mz = let (y:ys) = succs
-                     in foldM lcaDown y ys
+                     in require (succs == suc graph x) $
+                        foldM lcaDown y ys
                 zs = case mz of
                        Nothing -> Nothing
                        Just z  -> assert (z /= x) $
@@ -2480,6 +2481,13 @@ nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = nticdF3 graph
         w     = myWod graph
 
+
+wodMyEntryWodMyCDSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+wodMyEntryWodMyCDSlice graph = combinedBackwardSlice graph cd w
+  where cd    = nticdF3 graph ⊔ myCD graph
+        w     = myEntryWodFast graph
+
+
 wodTEILSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
 wodTEILSlice graph = combinedBackwardSlice graph empty w
   where empty = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
@@ -2614,25 +2622,146 @@ myXod smmnMust s graph =
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 
-myXodDom must dom graph =
+myEntryWodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myEntryWodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
-    ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
-                                                  n /= m1, n /= m2,
-                                                  m1 ∈ dom ! n,
-                                                  m2 ∈ dom ! n,
-                                                  let s12n = Set.fromList [ x | x <- suc graph n, n ∈ (must ! (m1,m2)) ],
-                                                  Set.size s12n > 0,
-                                                  Set.size s12n < (Set.size $ Set.fromList $ suc graph n)
-                                      ]
-                     ) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 
+    ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
+                                       let entries = entriesFor cycle,
+                                       m1 <- cycle,
+                                       m2 <- cycle,
+                                       m1 /= m2,
+                                       assert (length cycle > 1) True,
+                                       let color = colorLfpFor graph m1 m2,
+                                       let ns = Set.fromList [ n | n <- entries,
+                                                                   n /= m1 ∧ n /= m2,
+                                                           assert (m1 ∊ (suc isinkdomTrc n)) True,
+                                                           assert (m2 ∊ (suc isinkdomTrc n)) True,
+                                                                   myDependence color n
+                                                ]
                   ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
+        condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
+        myDependence = myDependenceFor graph
+
+symmetric m = (∐) [ Map.fromList [((m1,m2), ns), ((m2,m1),ns) ] |  ((m1,m2),ns) <- Map.assocs m ]
+
+mySinkWodFast  :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+mySinkWodFast graph = (∐) [ Map.fromList [ ((m1, m2), Set.fromList [ n ] ) ] |
+                                                                           cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes,
+                                                                           xl <- suc graph n,
+                                                                           xr <- suc graph n,
+                                                                           m1 <- Set.toList $ dom ! xl,
+                                                                           m1 /= n,
+                                                                           m2 <- cycle,
+                                                                           m2 /= n,
+                                                                           m2 /= m1,
+                                                                           not $ m2 ∈ dom ! xr
+                                                                           -- not $ m2 `elem` (suc cdG n)
+                      ]
+  where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
+        dom = myDom graph
+        cd  = myCD graph
+        cdG = fromSuccMap cd :: gr () ()
+        cdGTrc = trc cdG
 
 
-myDodDom graph = myXodDom must mdom graph
-  where mdom  = mdomOf graph
-        must  = mustOfLfp graph ffMust
 
+myDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+myDom graph =  Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+            ⊔ (∐) [ Map.fromList [ (n, Set.fromList [ m ] ) ]
+            | cycle <- isinkdomCycles,
+              length cycle > 1,
+              n <- cycle,
+              let gn  = delSuccessorEdges graph n,
+              let isinkdomN  = isinkdomOfSinkContraction gn,
+              let (z,_) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n, x /= n],
+              m <- Set.toList $ reachableFrom isinkdomN (Set.fromList [z]) Set.empty
+ ]
+  where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
+        lcaR :: Map Node (Maybe Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
+        lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
+           where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
+                 lca' relevant ns@(n:_) ms@(m:_)
+                    | mInNs = (m, relevant ∪ (Set.fromList ms) ∪ (Set.fromList beforeM))
+                    | nInMs = (n, relevant ∪ (Set.fromList ns) ∪ (Set.fromList beforeN))
+                    | otherwise = case dom ! n of
+                                     Nothing -> case dom ! m of
+                                                  Nothing -> error "is no tree"
+                                                  Just m' -> lca' relevant (m':ms) ns
+                                     Just n' -> lca' relevant ms (n':ns)
+                   where mInNs = not $ List.null $ foundM
+                         (afterM, foundM) = break (== m) ns
+                         (mm:beforeM) = foundM
+
+                         nInMs = not $ List.null $ foundN
+                         (afterN, foundN) = break (== n) ms
+                         (nn:beforeN) = foundN
+
+myCDFromMyDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+myCDFromMyDom graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+                    ⊔ Map.fromList [ (n, Set.fromList [ m |                xl <- suc graph n,
+                                                                           xr <- suc graph n,
+                                                                           m <- Set.toList $ dom ! xl,
+                                                                           m /= n,
+                                                                           not $ m ∈ dom ! xr
+                                         ]
+                                      )
+                                    | n <- condNodes ]
+  where dom       = myDom graph
+        condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
+
+myCD :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+myCD graph =
+       Map.fromList [ (n, myCDForNode graph n) | cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes ]
+  where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
+
+myCDForNode :: forall gr a b. DynGraph gr => gr a b -> Node -> (Set Node)
+myCDForNode graph n = Set.fromList [ m |       -- m <- Set.toList $ reachableFrom isinkdom (Set.fromList [n]) Set.empty,
+                                                  let gn  = delSuccessorEdges graph n,
+                                                  let isinkdomN  = isinkdomOfSinkContraction gn,
+                                                  let (z,relevant) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n, x /= n],
+                                                  m <- Set.toList relevant, m /= z
+                                                  -- (∃) (suc graph n) (\x ->       m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty),
+                                                  -- (∃) (suc graph n) (\x -> not $ m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty)
+                                   ]
+  where 
+        lcaR :: Map Node (Maybe Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
+        lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
+           where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
+                 lca' relevant ns@(n:_) ms@(m:_)
+                    | mInNs = (m, relevant ∪ (Set.fromList ms) ∪ (Set.fromList beforeM))
+                    | nInMs = (n, relevant ∪ (Set.fromList ns) ∪ (Set.fromList beforeN))
+                    | otherwise = case dom ! n of
+                                     Nothing -> case dom ! m of
+                                                  Nothing -> error "is no tree"
+                                                  Just m' -> lca' relevant (m':ms) ns
+                                     Just n' -> lca' relevant ms (n':ns)
+                   where mInNs = not $ List.null $ foundM
+                         (afterM, foundM) = break (== m) ns
+                         (mm:beforeM) = foundM
+
+                         nInMs = not $ List.null $ foundN
+                         (afterN, foundN) = break (== n) ms
+                         (nn:beforeN) = foundN
 
 myWod graph = myXod sMust s3 graph
   where sMust = smmnFMustWod graph

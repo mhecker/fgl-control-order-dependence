@@ -3,8 +3,19 @@
 
 module Program.Properties.InvalidProperties where
 
+-- #define UNCONNECTED
+#ifdef UNCONNECTED
+#define ARBITRARY(g) (g) :: (Gr () ())
+#else
+#define ARBITRARY(g) (CG _ g) :: (Connected Gr () ())
+#endif
+
+#define UNCONNECTED(g) (g) :: (Gr () ())
+#define CONNECTED(g) (CG _ g) :: (Connected Gr () ())
+#define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
 #define INTER(g) (InterGraph g) :: (InterGraph () String)
 #define INTERCFG(g) (InterCFG _ g) :: (InterCFG (Node) (Node, Node))
+#define SIMPLECFG(g) (SimpleCFG g) :: (SimpleCFG Gr)
 
 
 import Prelude hiding (all)
@@ -59,7 +70,7 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive (Node)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    myWod, isinkdomOfSinkContraction, myDod,
+    myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast,
     dodDef, dodSuperFast, wodDef,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
@@ -320,6 +331,15 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty  "wodFast ⊑ myWodFast"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        wod   = NTICD.wodFast g
+                        myWod = NTICD.myWodFast g
+                    in  wod ⊑ myWod,
+                        -- (∀) (Map.assocs wod) (\((m1,m2), ns) ->
+                        --   ns ⊑ (myWod ! (m1,m2))
+                        -- ),
     testProperty  "myWod is only possible for entries into sccs"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

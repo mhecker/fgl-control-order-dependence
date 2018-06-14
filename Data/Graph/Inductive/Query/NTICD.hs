@@ -2691,15 +2691,22 @@ mySinkWodFast graph = (∐) [ Map.fromList [ ((m1, m2), Set.fromList [ n ] ) ] |
 
 
 myDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-myDom graph =  Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+myDom graph =
+              toSuccMap $
+              (trc :: gr () () -> gr () ()) $
+              fromSuccMap $
+              Map.fromList [ (n, Set.empty)        | n <- nodes graph ]
+            ⊔ Map.fromList [ (n, Set.fromList [m]) | n <- nodes graph, not $ n `elem` condNodes, [m] <- [suc graph n] ]
             ⊔ (∐) [ Map.fromList [ (n, Set.fromList [ m ] ) ]
             | cycle <- isinkdomCycles,
               length cycle > 1,
               n <- cycle,
+              n `elem` condNodes,
               let gn  = delSuccessorEdges graph n,
               let isinkdomN  = isinkdomOfSinkContraction gn,
               let (z,_) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n],
-              m <- Set.toList $ reachableFrom isinkdomN (Set.fromList [z]) Set.empty
+              let m = z
+              -- m <- Set.toList $ reachableFrom isinkdomN (Set.fromList [z]) Set.empty
  ]
   where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
         isinkdom = isinkdomOfSinkContraction graph
@@ -2742,6 +2749,7 @@ myCDFromMyDom graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
+
 
 myCD :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 myCD graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]

@@ -125,6 +125,8 @@ trcOfTrrIsTrc g = trc g == (trc $ trr g)
 
 isTransitive g = (∀) (nodes g) (\x -> (∀) (suc g x) (\y -> (∀) (suc g y) (\z -> hasEdge g (x,z))))
 
+immediateOf :: DynGraph gr => Map Node (Set Node) -> gr () ()
+immediateOf succs = trr $ fromSuccMap $ succs
 
 fromPredMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
 fromPredMap pred = mkGraph [(n,()) | n <- Set.toList $ Map.keysSet pred ∪ (∐) (Map.elems pred)]
@@ -260,3 +262,4 @@ delPredecessorEdges :: DynGraph gr => gr a b -> Node -> gr a b
 delPredecessorEdges graph n = c' & graph'
   where (Just c@(_ , _, a, succs), graph') = match n graph
         c' =    ([], n, a, succs)
+

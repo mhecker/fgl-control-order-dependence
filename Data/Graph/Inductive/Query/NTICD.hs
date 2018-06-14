@@ -1623,10 +1623,6 @@ xDFcd xDF graph                  = Map.fromList [ (n, Set.empty)       | n <- no
   where df = xDF graph
 
 
-
-immediateOf :: DynGraph gr => Map Node (Set Node) -> gr () ()
-immediateOf succs = trr $ fromSuccMap $ succs
-
 isinkdomOf    graph = immediateOf $ sinkdomOf    graph
 isinkdomOfGfp graph = immediateOf $ sinkdomOfGfp graph
 

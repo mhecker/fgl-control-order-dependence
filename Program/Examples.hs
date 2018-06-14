@@ -3118,6 +3118,12 @@ wodDodInteresting2 = mkGraph [(-16,()),(2,()),(9,()),(12,()),(28,()),(29,())] [(
 wodDodInteresting3 :: DynGraph gr => gr () ()
 wodDodInteresting3 = mkGraph [(-15,()),(-12,()),(-10,()),(-8,()),(-7,())] [(-15,-10,()),(-15,-8,()),(-15,-8,()),(-12,-15,()),(-12,-12,()),(-12,-10,()),(-10,-12,()),(-10,-10,()),(-8,-10,()),(-7,-15,()),(-7,-12,()),(-7,-10,()),(-7,-8,())]
 
+wodDodInteresting4 :: DynGraph gr => gr () ()
+wodDodInteresting4 = mkGraph [(-21,()),(-18,()),(-16,()),(-15,()),(-14,()),(-12,()),(-11,()),(-9,()),(2,()),(4,()),(14,()),(17,()),(21,()),(22,())] [(-21,17,()),(-18,-9,()),(-16,-11,()),(-16,-9,()),(-16,21,()),(-14,-9,()),(-12,-16,()),(-11,4,()),(-9,-16,()),(-9,-16,()),(2,-15,()),(2,-9,()),(4,-12,()),(4,-9,()),(14,-15,()),(14,14,()),(14,17,()),(17,-14,()),(17,21,()),(21,-14,()),(22,-21,()),(22,-18,()),(22,-16,()),(22,-15,()),(22,-14,()),(22,-12,()),(22,-11,()),(22,-9,()),(22,2,()),(22,4,()),(22,14,()),(22,17,()),(22,21,())]
+
+wodDodInteresting5 :: DynGraph gr => gr () ()
+wodDodInteresting5 = mkGraph [(-23,()),(-20,()),(-18,()),(-16,()),(-11,()),(-8,()),(7,()),(24,()),(25,())] [(-23,-18,()),(-20,-8,()),(-18,7,()),(-16,-20,()),(-11,-16,()),(-8,-16,()),(-8,-8,()),(-8,24,()),(-8,24,()),(7,-20,()),(7,-11,()),(24,-23,()),(25,-23,()),(25,-20,()),(25,-18,()),(25,-16,()),(25,-11,()),(25,-8,()),(25,7,()),(25,24,())]
+
 dFUpInteresting1 :: DynGraph gr => gr () ()
 dFUpInteresting1 = mkGraph [(-7,()),(-2,()),(2,()),(3,())] [(-7,-2,()),(-2,2,()),(2,-7,()),(2,-7,()),(2,-2,()),(2,-2,()),(3,-7,()),(3,-2,()),(3,2,())]
 
@@ -3246,12 +3252,21 @@ failingSnmF3F5 = [
             ]
 
 
+myCDvsMyDom :: [(String, Gr () ())]
+myCDvsMyDom = [
+              $(withName 'wodDodInteresting3),
+              $(withName 'wodDodInteresting4),
+              $(withName 'wodDodInteresting5)
+            ]
+
 interestingDodWod :: [(String, Gr () ())]
 interestingDodWod = [
               $(withName 'dFUpInteresting1),
               $(withName 'dFUpInteresting2),
               $(withName 'wodDodInteresting1),
               $(withName 'wodDodInteresting2),
+              $(withName 'wodDodInteresting3),
+              $(withName 'wodDodInteresting4),
               $(withName 'dodSuperFastCounterExample),
               $(withName 'dodSuperFastCounterExample2),
               $(withName 'dodSuperFastCounterExample3),

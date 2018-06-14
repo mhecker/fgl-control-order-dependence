@@ -71,7 +71,7 @@ import Data.Graph.Inductive (Node)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast,
-    dodDef, dodSuperFast, wodDef,
+    dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF3, snmF5
@@ -106,8 +106,8 @@ misc       = defaultMain                               $ expectFail $ testGroup 
 miscX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
 dod        = defaultMain                               $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
 dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
-wod        = defaultMain                               $ expectFail $ testGroup "wod"       [ mkProp [wodProps]]
-wodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "wod"       [ mkProp [wodProps]]
+wod        = defaultMain                               $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
+wodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 
 mkTest = testGroup "Unit tests"
 mkProp = testGroup "Properties"
@@ -365,6 +365,24 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         )
   ] 
 
+wodTests = testGroup "(concerning weak order dependence)" $
+  [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
+                   let  myCDFromMyDom    = NTICD.myCDFromMyDom g
+                        myCD             = NTICD.myCD          g
+                        myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
+                        myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
+                   in  (Set.fromList $ edges myCDFromMyDomTrc) ==  (Set.fromList $ edges myCDTrc) @? ""
+  | (exampleName, g) <- myCDvsMyDom
+  ] ++
+  [  testCase    ( "myCDFromMyDom ⊆ myCD for " ++ exampleName) $
+                   let  myCDFromMyDom    = NTICD.myCDFromMyDom g
+                        myCD             = NTICD.myCD          g
+                        myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
+                        myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
+                   in (Set.fromList $ edges myCDFromMyDomTrc) ⊆ (Set.fromList $ edges myCDTrc) @? ""
+  | (exampleName, g) <- myCDvsMyDom
+  ] ++
+  []
 
 
 

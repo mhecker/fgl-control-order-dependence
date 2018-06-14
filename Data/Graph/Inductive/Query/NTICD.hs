@@ -1063,6 +1063,10 @@ roflDomDef graph = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
                                   ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom graph n)
                                )
                              | n <- nodes graph ]
+         pdoms = Map.fromList [ (n,  (Map.fromList [(n, Set.empty)])
+                                  ⊔ (fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom graph n)
+                               )
+                             | n <- nodes graph ]
 
 lolDomDef graph0 = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
 
@@ -1074,6 +1078,12 @@ lolDomDef graph0 = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
                                                                                     n ∈ (reachableFrom (                      doms ! y) (Set.fromList [m]) Set.empty)
                                                                                   ∨ m ∈ (reachableFrom (                      doms ! y) (Set.fromList [n]) Set.empty)
                                                         )
+                                                     -- (∀) (nodes graph) (\n ->
+                                                     --                                (                                m ∈ (reachableFrom (                      pdoms ! n) (Set.fromList [y]) Set.empty))
+                                                     --                              ∨ ( (∃) (suc graph y) (\x -> not $ n ∈ (reachableFrom (                      pdoms ! y) (Set.fromList [x]) Set.empty)))
+                                                     --                                 ∧                  (      not $ n ∈ (reachableFrom (                      pdoms ! m) (Set.fromList [y]) Set.empty))
+                                                     --                              ∨ ( y == n)
+                                                     -- )
                                                         -- (∀) (nodes graph) (\n ->
                                                         --                             n ∈ (reachableFrom (                      pdoms ! m) (Set.fromList [y]) Set.empty)
                                                         --                             -- y ∈ (reachableFrom (fmap (Set.delete n) $ doms ! n) (Set.fromList [m]) Set.empty)

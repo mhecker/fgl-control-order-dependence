@@ -793,11 +793,11 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         g = insEdge (exit, entry, ()) generatedGraph
                         nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice           g
-                    in  traceShow ("=====", length $ nodes g, "======") $
+                    in  -- traceShow ("=====", length $ nodes g, "======") $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           let s  = wodTEILSlice m1 m2
                               s' = nticdWodSlice m1 m2
-                          in (if (m1 /= m2) then
+                          in (if (m1 /= m2 ∧ False) then
                                  traceShow (length $ nodes g, Set.size s, Set.size s', ((fromInteger $ toInteger $ Set.size s') * 1.0 / (fromInteger $ toInteger $ Set.size s)))
                               else
                                  id

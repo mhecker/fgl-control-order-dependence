@@ -75,7 +75,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice,
+    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -769,6 +769,14 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
   --                         ns ⊑ (wodTEIL' ! (m1,m2))
   --                       ),
+  -- testProperty  "myCDFromMyDom == myCD"
+  --   $ \(ARBITRARY(generatedGraph)) ->
+  --                   let g = generatedGraph
+  --                       myCDFromMyDom    = NTICD.myCDFromMyDom g
+  --                       myCD             = NTICD.myCD          g
+  --                       myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
+  --                       myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
+  --                   in  (Set.fromList $ edges myCDFromMyDomTrc)  ⊇ (Set.fromList $ edges myCDTrc),
   testProperty  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -777,6 +785,24 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     in  -- traceShow (length $ nodes g) $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+                        )),
+  testProperty  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice for CFG-shaped graphs with exit->entry edge " 
+    $ \(SIMPLECFG(generatedGraph)) ->
+                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                        g = insEdge (exit, entry, ()) generatedGraph
+                        nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
+                        wodTEILSlice    = NTICD.wodTEILSlice           g
+                    in  traceShow ("=====", length $ nodes g, "======") $
+                        (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
+                          let s  = wodTEILSlice m1 m2
+                              s' = nticdWodSlice m1 m2
+                          in (if (m1 /= m2) then
+                                 traceShow (length $ nodes g, Set.size s, Set.size s', ((fromInteger $ toInteger $ Set.size s') * 1.0 / (fromInteger $ toInteger $ Set.size s)))
+                              else
+                                 id
+                             ) $
+                             s ⊆ s'
                         ))
   -- testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
   --   $ \(ARBITRARY(generatedGraph)) ->

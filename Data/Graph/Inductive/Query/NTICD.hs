@@ -2482,10 +2482,19 @@ nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
         w     = myWod graph
 
 
-wodMyEntryWodMyCDSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
-wodMyEntryWodMyCDSlice graph = combinedBackwardSlice graph cd w
-  where cd    = nticdF3 graph ⊔ myCD graph
+wodMyEntryWodMyCDSlice :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
+                                   -- traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd))
+                                  id
+                                else
+                                   traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd), graph)
+                               ) $
+                               combinedBackwardSlice graph (nticdF3 graph ⊔ cd) w
+  where cdFromDom    = myCDFromMyDom graph
+        cd           = myCD graph
         w     = myEntryWodFast graph
+        cdEdges        = Set.fromList $ edges $ trc $ (fromSuccMap cd        :: gr () ())
+        cdFromDomEdges = Set.fromList $ edges $ trc $ (fromSuccMap cdFromDom :: gr () ())
 
 
 wodTEILSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
@@ -2683,10 +2692,10 @@ myDom graph =  Map.fromList [ (n, Set.empty) | n <- nodes graph ]
               n <- cycle,
               let gn  = delSuccessorEdges graph n,
               let isinkdomN  = isinkdomOfSinkContraction gn,
-              let (z,_) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n, x /= n],
+              let (z,_) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n],
               m <- Set.toList $ reachableFrom isinkdomN (Set.fromList [z]) Set.empty
  ]
-  where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
+  where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
         isinkdom = isinkdomOfSinkContraction graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
@@ -2720,14 +2729,18 @@ myCDFromMyDom graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
                                                                            not $ m ∈ dom ! xr
                                          ]
                                       )
-                                    | n <- condNodes ]
+                                    |  cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes ]
   where dom       = myDom graph
-        condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
+        condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
 
 myCD :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-myCD graph =
-       Map.fromList [ (n, myCDForNode graph n) | cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes ]
-  where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
+myCD graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+           ⊔ Map.fromList [ (n, myCDForNode graph n) | cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes ]
+  where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
         isinkdom = isinkdomOfSinkContraction graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
@@ -2738,7 +2751,7 @@ myCDForNode :: forall gr a b. DynGraph gr => gr a b -> Node -> (Set Node)
 myCDForNode graph n = Set.fromList [ m |       -- m <- Set.toList $ reachableFrom isinkdom (Set.fromList [n]) Set.empty,
                                                   let gn  = delSuccessorEdges graph n,
                                                   let isinkdomN  = isinkdomOfSinkContraction gn,
-                                                  let (z,relevant) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n, x /= n],
+                                                  let (z,relevant) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n],
                                                   m <- Set.toList relevant, m /= z
                                                   -- (∃) (suc graph n) (\x ->       m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty),
                                                   -- (∃) (suc graph n) (\x -> not $ m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty)

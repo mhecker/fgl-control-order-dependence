@@ -2710,6 +2710,32 @@ allDomNaiveGfp graph = (𝝂) init (fAllDomNaive graph all)
         trncl = trc graph
         all = Set.fromList $ nodes graph
 
+myDomNaiveGFP graph =
+                      Map.fromList [ (y, Set.fromList [ m | m <- nodes graph, (∀) (suc graph y) (\x -> Map.member m (allDom ! x)  ∧  y ∈ allDom ! x ! m ) ]) | y <- condNodes ]
+                    -- ⊔ Map.fromList [ (y, Set.fromList [ m | m <- toNextCond y])                                                                              | y <- nodes graph, not $ y `elem` condNodes]
+                    -- ⊔ Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,                          Map.member m (allDom ! y)  ∧  y ∈ allDom ! x ! m   ]) | y <- nodes graph,
+                    --                                                                                                                                      not $ y `elem` condNodes,
+                    --                                                                                                                                           [x] <- [suc graph y]
+                    --   ]
+
+  where allDom = allDomNaiveGfp graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        -- nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+
+
+-- fMyDomNaive graph my = f 
+--   where f mydomOf =
+--                       Map.fromList [ (y, Map.fromList [ (y, my) ]             )  | y <- nodes graph]
+--                     ⊔ Map.fromList [ (y, fmap (Set.delete y) $ (∏) [ mydomOf ! x | x <- suc graph y ])  | y <- nodes graph, suc graph y /= []]
+
+-- myDomNaiveGfp graph = (𝝂) init (fMyDomNaive graph my)
+--   where init = Map.fromList [ (y, Map.empty                                  ) | y <- nodes graph]
+--              ⊔ Map.fromList [ (y, Map.fromList [ (m, my) | m <- reachable y]) | y <- nodes graph]
+--         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+--         reachable x = suc trncl x
+--         trncl = trc graph
+--         my = Set.fromList $ nodes graph
 
 
 myDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)

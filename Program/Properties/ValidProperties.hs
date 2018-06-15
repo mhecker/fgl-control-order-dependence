@@ -75,7 +75,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom,
+    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -769,16 +769,24 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
   --                         ns ⊑ (wodTEIL' ! (m1,m2))
   --                       ),
-  testProperty  "isTransitive myDom"
+  testProperty  "allDom ! n == pdom ! n"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in  isTransitive $ (fromSuccMap $ NTICD.myDom g :: Gr () ()),
-  testProperty  "isTransitive myDom  for CFG-shaped graphs with exit->entry edge"
-    $ \(SIMPLECFG(generatedGraph)) ->
-                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                        g = insEdge (exit, entry, ()) generatedGraph
-                    in  isTransitive $ (fromSuccMap $ NTICD.myDom g :: Gr () ()),
+                        allDom = NTICD.allDomNaiveGfp g
+                    in  (∀) (nodes g) (\n ->
+                         let pdom = NTICD.sinkdomOfGfp (delSuccessorEdges g n)
+                         in (∀) (nodes g) (\m -> (m ∈ pdom ! n)   ==   (Map.member m (allDom ! n)   ∧   n ∈ allDom ! n ! m))
+                        ),
+  -- testProperty  "isTransitive myDom"
+  --   $ \(ARBITRARY(generatedGraph)) ->
+  --                   let g = generatedGraph
+  --                   in  isTransitive $ (fromSuccMap $ NTICD.myDom g :: Gr () ()),
+  -- testProperty  "isTransitive myDom  for CFG-shaped graphs with exit->entry edge"
+  --   $ \(SIMPLECFG(generatedGraph)) ->
+  --                   let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+  --                       [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+  --                       g = insEdge (exit, entry, ()) generatedGraph
+  --                   in  isTransitive $ (fromSuccMap $ NTICD.myDom g :: Gr () ()),
   testProperty  "myCDFromMyDom == myCD"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -804,7 +812,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                       wodTEILSlice    = NTICD.wodTEILSlice           g
   --                   in  -- traceShow (length $ nodes g) $
   --                       (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-  --                         wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+  --                         wodTEILSlice m1 m2 ⊆ nticdWodSlice m1 m2
   --                       )),
   -- testProperty  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice for CFG-shaped graphs with exit->entry edge " 
   --   $ \(SIMPLECFG(generatedGraph)) ->

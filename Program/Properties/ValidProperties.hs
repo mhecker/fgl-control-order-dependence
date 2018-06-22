@@ -76,7 +76,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
@@ -804,7 +804,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myCD             = NTICD.myCD          g
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
-                    in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc)
+                    in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc),
   -- testProperty  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice"
   --   $ \(ARBITRARY(generatedGraph)) ->
   --                   let g = generatedGraph
@@ -896,7 +896,20 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                              )
     --                      )
     --                    ),
-    --  testProperty  "myWodFastPDom*            == myWodFast for arbitrary graphs"
+     testProperty  "myWodFromMay            == myWodFast for arbitrary graphs"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        myWodFromMay = NTICD.myWodFromMay g
+                        myWodFast    = NTICD.myWodFast                     g
+                    in myWodFromMay == myWodFast,
+    testProperty  "myWodFromMay            == myWodFast for CFG-shaped graphs with exit->entry edge"
+    $ \(SIMPLECFG(generatedGraph)) ->
+                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                        g = insEdge (exit, entry, ()) generatedGraph
+                        myWodFromMay = NTICD.myWodFromMay g
+                        myWodFast    = NTICD.myWodFast                     g
+                    in myWodFromMay == myWodFast
     -- $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph
     --                     myWodFastPDomSimpleHeuristic = NTICD.myWodFastPDomSimpleHeuristic  g

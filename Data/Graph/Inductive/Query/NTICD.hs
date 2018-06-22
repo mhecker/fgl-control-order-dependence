@@ -2515,6 +2515,8 @@ wodTEIL graph = xodTEIL smmnMust smmnMay graph
         smmnMay  = smmnFMayWod graph
 
 
+
+
 wodTEIL' :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 wodTEIL' graph = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
                ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList wTEIL )
@@ -2604,6 +2606,7 @@ xodTEIL smmnMust smmnMay graph =
                      ) | n <- condNodes
                   ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
 
 {- a combinator to generate order dependencies in the style of [1] -}
 xod smmnMust s graph =
@@ -2711,7 +2714,7 @@ allDomNaiveGfp graph = (𝝂) init (fAllDomNaive graph all)
         all = Set.fromList $ nodes graph
 
 myDomNaiveGFP graph =
-                      Map.fromList [ (y, Set.fromList [ m | m <- nodes graph, (∀) (suc graph y) (\x -> Map.member m (allDom ! x)  ∧  y ∈ allDom ! x ! m ) ]) | y <- condNodes ]
+                      Map.fromList [ (y, Set.fromList [ m | m <- nodes graph, (∀) (suc graph y) (\x -> Map.member m (allDom ! x)  ∧  y ∈ allDom ! x ! m ) ]) | y <- nodes graph ]
                     -- ⊔ Map.fromList [ (y, Set.fromList [ m | m <- toNextCond y])                                                                              | y <- nodes graph, not $ y `elem` condNodes]
                     -- ⊔ Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,                          Map.member m (allDom ! y)  ∧  y ∈ allDom ! x ! m   ]) | y <- nodes graph,
                     --                                                                                                                                      not $ y `elem` condNodes,
@@ -2722,6 +2725,93 @@ myDomNaiveGFP graph =
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         -- nextCond = nextCondNode graph
         toNextCond = toNextCondNode graph
+
+
+fMyDomNaive' graph = f 
+  where f mydomOf = -- traceShow mydomOf $
+                      Map.fromList [ (y, Set.fromList [y])                                               | y <- nodes graph]
+                    -- ⊔ Map.fromList [ (y, mydomOf ! m ) | y <- nodes graph, [m] <- [nub $ suc graph y] ]
+                    -- ⊔ Map.fromList [ (y, mydomOf ! m ) | y <- nodes graph, [m] <- [nub $ pre graph y] ]
+                    ⊔ Map.fromList [ (y, Set.fromList [ m |  m <- nodes graph,
+                                                             let inner = [ x | x <- suc graph y,       y ∈ allMay ! x ! m ],
+                                                             let outer = [ x | x <- suc graph y, not $ y ∈ allMay ! x ! m ],
+                                                             (∀) (suc graph y) (\x ->
+                                                                  m ∈ mydomOf ! x
+                                                               -- ∧ y ∈ allMay ! x ! m
+                                                               -- ∧  (m `elem` (suc graph y)) → ((∀) (suc graph y) (\x' -> (not $ x' `elem` (suc graph m))))
+                                                               -- -- ∧  (m `elem` (pre graph y)) → ((length $ nub $ pre graph y) == 1)
+                                                             )
+                                                          -- ∧  (∀) inner (\i ->
+                                                          --      (∀) outer (\o -> not $ y ∈ allMay ! i ! o)
+                                                          --    )
+                                                          ∧  (∀) inner (\i ->
+                                                               (∀) outer (\o -> not $ y ∈ allMay ! i ! o)
+                                                             )
+                                                      ])  | y <- nodes graph, suc graph y /= []]
+                    -- ⊔ Map.fromList [ (y, Set.fromList [ m |  m <- nodes graph, (∀) (suc graph y) (\x -> m ∈ mydomOf ! x   ∧   (∀) (pre graph x) (\y' -> m ∈ mydomOf ! y') ) ])  | y <- nodes graph, suc graph y /= []]
+        allMay = allMayNaiveLfp graph
+
+myDomNaive'Gfp graph = (𝝂) init (fMyDomNaive' graph)
+  where init = Map.fromList [ (y, all)       | y <- nodes graph]
+        all =  Set.fromList $ nodes graph
+
+
+
+fMayNaive graph _ _ nextCond toNextCond = f 
+  where f maydomOf =
+                      Map.fromList [ (y, Set.fromList [y])                          | y <- nodes graph]
+                    ⊔ Map.fromList [ (y, (∐) [ maydomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
+mayNaiveGfp graph = domOfGfp graph fMayNaive
+
+
+fAllMayNaive graph all = f 
+  where f alldomOf =
+                      Map.fromList [ (y, Map.fromList [ (y, all) ]             )  | y <- nodes graph]
+                    ⊔ Map.fromList [ (y, fmap (Set.delete y) $ (∐) [ alldomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
+
+allMayNaiveLfp graph =  -- (𝝂) init (fAllMayNaive graph all)
+                       (㎲⊒) empty (fAllMayNaive graph all)
+  where empty = Map.fromList [ (y, Map.fromList [ (m, Set.empty) | m <- nodes graph ]) | y <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+        all = Set.fromList $ nodes graph
+
+
+myMayNaiveLfp graph =
+                      Map.fromList [ (y, Set.fromList [ m | m <- nodes graph, (∀) (suc graph y) (\x -> Map.member m (allMay ! x)  ∧  y ∈ allMay ! x ! m ) ]) | y <- nodes graph ]
+                    -- ⊔ Map.fromList [ (y, Set.fromList [ m | m <- toNextCond y])                                                                              | y <- nodes graph, not $ y `elem` condNodes]
+                    -- ⊔ Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,                          Map.member m (allDom ! y)  ∧  y ∈ allDom ! x ! m   ]) | y <- nodes graph,
+                    --                                                                                                                                      not $ y `elem` condNodes,
+                    --                                                                                                                                           [x] <- [suc graph y]
+                    --   ]
+
+  where allMay = allMayNaiveLfp graph
+
+fMayNotNaive graph _ _ nextCond toNextCond = f 
+  where f maynotdomOf = Map.fromList [ (y, Set.delete y $ all)                                        | y <- nodes graph, suc graph y == []]
+                      ⊔ Map.fromList [ (y, Set.delete y $ (∏) [ maynotdomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
+        all = Set.fromList $ nodes graph
+
+notOfGfp :: DynGraph gr => gr a b -> DomFunctionalGen gr a b -> Map Node (Set Node)
+notOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
+  where init = Map.fromList [ (y, Set.empty) | y <- nodes graph]
+             ⊔ Map.fromList [ (y, all ∖ (Set.fromList $ reachable y)) | y <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+        all = Set.fromList $ nodes graph
+
+        
+mayNotNaiveGfp graph = notOfGfp graph fMayNotNaive
+
+
+
+
 
 
 -- fMyDomNaive graph my = f 
@@ -2779,6 +2869,52 @@ myDom graph =
                                                 []   -> Nothing
                                                 [m'] -> lca' (m', Set.insert m' ms) (n, ns)
                                      [n'] -> lca' (m, ms) (n', Set.insert n' ns)
+
+
+cdFromDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
+cdFromDom graph dom = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+                    ⊔ Map.fromList [ (n, Set.fromList [ m |                xl <- suc graph n,
+                                                                           xr <- suc graph n,
+                                                                           m <- Set.toList $ dom ! xl,
+                                                                           m /= n,
+                                                                           not $ m ∈ dom ! xr
+                                         ]
+                                      )
+                                    | n <- condNodes ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+myWodFromMay :: forall gr a b. (DynGraph gr, Show (gr a b)) =>  gr a b -> Map (Node, Node) (Set Node)
+myWodFromMay graph =  --      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+                      myEntryWodFast graph
+                   ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n]) ] | (n, m1, m2) <- mywod ]
+  where mywod =  [ (n, m1, m2) | cycle <- isinkdomCycles,
+                                 length cycle > 1,
+                                 let condsInCycle     = condsIn cycle,
+                                 let cycleGraph = subgraph cycle graph,
+                                 n <- condsInCycle,
+                                 let gn   = delSuccessorEdges cycleGraph n,
+                                 let pdom = sinkdomOfGfp gn,
+                                 let pmay = mayNaiveGfp gn,
+                                 let zs = (∏) [ pdom ! x | x <- suc cycleGraph n ],
+                                 let ys = (∏) [ pmay ! x | x <- suc cycleGraph n ],
+                                 -- traceShow (n, cycleGraph, pdom, pmay, zs, ys) True,
+                                 x <- suc cycleGraph n,
+                                 m1 <- Set.toList $ pdom ! x,
+                                 m1 `elem` cycle,
+                                 m1 /= n,
+                                 m2 <- cycle,
+                                 m2 /= m1, m2 /= n,
+                                 (not $ m2 ∈ pmay ! x)  ∨  ((not $ m1 ∈ zs)  ∧  (m2 ∈ ys))
+                 ]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        isinkdom = isinkdomOfSinkContraction graph
+        isinkdomG = fromSuccMap isinkdom :: gr () ()
+        isinkdomTrc = trc $ isinkdomG
+        isinkdomCycles = scc isinkdomG
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
+        condsIn cycle    = [ n | n <- cycle, length (suc graph n) > 1]
+
+cdFromMyWod graph =  (∐) [ Map.fromList [ (n, Set.fromList [m] ) ]  | ((m1,m2),ns) <- Map.assocs $ myWodFast graph, n <- Set.toList ns, m <- [m1,m2] ]
 
 myCDFromMyDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 myCDFromMyDom graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
@@ -2919,7 +3055,7 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
                                                               let entries = entriesFor cycle,
-                                                              let nodesTowardsCycle = [ m | n <- entries, m <- towardsCycle cycleS n],
+                                                              let nodesTowardsCycle = [ m | n <- entries, m <- towardsCycle graph cycleS n],
                                                               let condsInCycle     = condsIn cycle,
                                                               let condsTowardCycle = condsIn nodesTowardsCycle,
                                                               let cycleGraph = subgraph ( cycle ++ nodesTowardsCycle) graph,
@@ -2973,7 +3109,6 @@ myWodFastPDomForIterationStrategy strategy graph =
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
         condsIn ns    = [ n | n <- ns, length (suc graph n) > 1]
-        towardsCycle cycleS n = dfs [n] (efilter (\(n,m,_) -> not $ m ∈ cycleS) graph)
         lcaR :: Map Node (Maybe Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
         lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
            where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
@@ -3007,6 +3142,9 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                 Nothing -> error "is no tree"
                                                 Just m' -> lca' ( m', Set.insert m' ms) (n, ns)
                                      Just n' -> lca' (m, ms) (n', Set.insert n' ns)
+
+
+towardsCycle graph cycleS n = dfs [n] (efilter (\(n,m,_) -> not $ m ∈ cycleS) graph)
 
 
 myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)

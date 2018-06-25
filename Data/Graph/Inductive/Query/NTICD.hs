@@ -2883,6 +2883,28 @@ cdFromDom graph dom = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
                                     | n <- condNodes ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
+
+someprop g =  smmnmay' == smmnmay
+  where trcg = trc g
+        smmnmay  = Set.fromList [ ((m1,m2,n),(nn,x)) | ((m1,m2,n),nx) <- Map.assocs $ smmnFMustWod g, m1 /= m2, m1 /= n, m2 /= n, (nn,x) <- Set.toList nx, m2 `elem` suc trcg m1 ]
+        smmnmay' = Set.fromList [ ((m1,m2,n),(n,x))  | n <- nodes g, (length $ suc g n) > 1,
+                                                       let gn  =        delSuccessorEdges   g n,
+                                                       let gn' = grev $ delPredecessorEdges g n,
+                                                          
+                                                       let pdom = sinkdomOfGfp gn,
+                                                       let pmay = mayNaiveGfp  gn,
+
+                                                       let dom  = sinkdomOfGfp gn',
+                                                       let may  = mayNaiveGfp  gn',
+                                                       m1 <- nodes g,  x <- suc g n, m2 <- suc trcg m1, m1 /= m2, n /= m1, n /= m2,
+                                                       ((m1 ∈ pdom ! x) ∧ (not $ m1 ∈ pmay ! m2))
+                                                 ∨     ((m1 ∈ dom ! m2) ∧ (not $ m2 ∈ pmay ! x))
+                                                 ∨     ((m1 ∈ pdom ! m2) ∧ (m1 ∈ dom ! m2))
+                   ]
+
+        -- pr = exampleSimpleNoUniqueEndNodeWithChoice2
+        -- g0 = tcfg pr
+        -- g = insEdge (10,1,NoOp)  $ insEdge (6,9,NoOp) g0
 myWodFromMay :: forall gr a b. (DynGraph gr, Show (gr a b)) =>  gr a b -> Map (Node, Node) (Set Node)
 myWodFromMay graph =  --      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
                       myEntryWodFast graph

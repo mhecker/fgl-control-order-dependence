@@ -771,57 +771,61 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                       ),
     testProperty  "pdom swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
-                    let g0 = generatedGraph
-                        sinks = NTICD.controlSinks g0
-                    in traceShow ("===============") $ 
-                       -- (∃) [1,2,3] (\nindex  -> (∃) (List.permutations $ List.delete nindex  [1,2,3,4]) (\permutation  ->
-                       -- (∃) [1,2,3] (\nindex2 -> (∃) (List.permutations $ List.delete nindex2 [1,2,3,4]) (\permutation2 ->
-                       -- (∃) [1,2,3] (\nindex3 -> (∃) (List.permutations $ List.delete nindex3 [1,2,3,4]) (\permutation3 ->
-                       -- (∃) [1,2,3] (\nindex4 -> (∃) (List.permutations $ List.delete nindex4 [1,2,3,4]) (\permutation4 ->
-                       -- let pmap  = Map.fromList $ [(1,nindex)]  ++ (zip [2..] permutation)  in
-                       let pmap =  Map.fromList [(1,2),(2,4),(3,3),(4,1)]  in
-                       -- let pmap2 = Map.fromList $ [(1,nindex2)] ++ (zip [2..] permutation2) in
-                       let pmap2 = Map.fromList [(1,2),(2,1),(3,3),(4,4)] in
-                       -- let pmap3 = Map.fromList $ [(1,nindex3)] ++ (zip [2..] permutation3) in
-                       let pmap3 = Map.fromList [(1,2),(2,4),(3,1),(4,3)] in
-                       -- let pmap4 = Map.fromList $ [(1,nindex4)] ++ (zip [2..] permutation4) in
-                       (∀) sinks (\sink ->
-                         let g = subgraph sink g0
-                             gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
-                             gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
-                             pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
-                             pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
-                         in (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if ((Set.size $ Set.fromList  [x,n,m2,m1]) == 4) then True else
-                               let nodemap  = Map.fromList [(pmap  ! 1,n), (pmap  ! 2,x), (pmap  ! 3,m1), (pmap  ! 4, m2)] in
-                               let nodemap2 = Map.fromList [(pmap2 ! 1,n), (pmap2 ! 2,x), (pmap2 ! 3,m1), (pmap2 ! 4, m2)] in
-                               let nodemap3 = Map.fromList [(pmap3 ! 1,n), (pmap3 ! 2,x), (pmap3 ! 3,m1), (pmap3 ! 4, m2)] in
-                               -- let nodemap4 = Map.fromList [(pmap4 ! 1,n), (pmap4 ! 2,x), (pmap4 ! 3,m1), (pmap4 ! 4, m2)] in
-                               (not $ n ∈ (pmay ! m1) ! x ) →
-                                     let equiv =  (    False
-                                                    ∨ (  (      (nodemap  ! 1) ∈ (pdom ! (nodemap  ! 2)) ! (nodemap  ! 3) )
-                                                       ∨ (not $ (nodemap2 ! 1) ∈ (pdom ! (nodemap2 ! 2)) ! (nodemap2 ! 3) )
-                                                      )
-                                                    ∧ (  (      (nodemap3 ! 1) ∈ (pdom ! (nodemap3 ! 2)) ! (nodemap3 ! 3) ) )
-                                                  )  ↔  (m2 ∈ (pmay ! m1) ! x) in if equiv then traceShow (pmap, pmap2, pmap3) equiv else equiv
-                            ))))
-                       ),
                     -- let g0 = generatedGraph
                     --     sinks = NTICD.controlSinks g0
-                    -- in (∀) sinks (\sink ->
+                    -- in traceShow ("===============") $ 
+                    --    -- (∃) [1,2,3] (\nindex  -> (∃) (List.permutations $ List.delete nindex  [1,2,3,4]) (\permutation  ->
+                    --    -- (∃) [1,2,3] (\nindex2 -> (∃) (List.permutations $ List.delete nindex2 [1,2,3,4]) (\permutation2 ->
+                    --    -- (∃) [1,2,3] (\nindex3 -> (∃) (List.permutations $ List.delete nindex3 [1,2,3,4]) (\permutation3 ->
+                    --    -- let pmap  = Map.fromList $ [(1,nindex)]  ++ (zip [2..] permutation)  in
+                    --    let pmap =  Map.fromList [(1,2),(2,4),(3,3),(4,1)]  in
+                    --    -- let pmap2 = Map.fromList $ [(1,nindex2)] ++ (zip [2..] permutation2) in
+                    --    let pmap2 = Map.fromList [(1,2),(2,1),(3,3),(4,4)] in
+                    --    -- let pmap3 = Map.fromList $ [(1,nindex3)] ++ (zip [2..] permutation3) in
+                    --    let pmap3 = Map.fromList [(1,2),(2,4),(3,1),(4,3)] in
+                    --    (∀) sinks (\sink ->
                     --      let g = subgraph sink g0
                     --          gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
                     --          gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
                     --          pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
                     --          pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
-                    --          dom  = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
-                    --          may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
                     --      in (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if ((Set.size $ Set.fromList  [x,n,m2,m1]) == 4) then True else
-                    --            (n ∈ (pmay ! m1) ! x ) →
-                    --                  let equiv =  (   (      m2             ∈ (pmay ! m1            ) ! n              )
-                    --                                 ∨ (not $ n              ∈ (pdom ! m2            ) ! x             )
-                    --                               )  ↔  (m2 ∈ (pmay ! m1) ! x) in equiv
+                    --            let nodemap  = Map.fromList [(pmap  ! 1,n), (pmap  ! 2,x), (pmap  ! 3,m1), (pmap  ! 4, m2)] in
+                    --            let nodemap2 = Map.fromList [(pmap2 ! 1,n), (pmap2 ! 2,x), (pmap2 ! 3,m1), (pmap2 ! 4, m2)] in
+                    --            let nodemap3 = Map.fromList [(pmap3 ! 1,n), (pmap3 ! 2,x), (pmap3 ! 3,m1), (pmap3 ! 4, m2)] in
+                    --            (not $ n ∈ (pmay ! m1) ! x ) →
+                    --                  let equiv =  (    False
+                    --                                 ∨ (  (      (nodemap  ! 1) ∈ (pdom ! (nodemap  ! 2)) ! (nodemap  ! 3) )
+                    --                                    ∨ (not $ (nodemap2 ! 1) ∈ (pdom ! (nodemap2 ! 2)) ! (nodemap2 ! 3) )
+                    --                                   )
+                    --                                 ∧ (  (      (nodemap3 ! 1) ∈ (pdom ! (nodemap3 ! 2)) ! (nodemap3 ! 3) ) )
+                    --                               )  ↔  (m2 ∈ (pmay ! m1) ! x) in if equiv then traceShow (pmap, pmap2, pmap3) equiv else equiv
                     --         ))))
                     --    ),
+                    let g0 = generatedGraph
+                        sinks = NTICD.controlSinks g0
+                    in (∀) sinks (\sink ->
+                         let g = subgraph sink g0
+                             gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
+                             gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
+                             pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
+                             pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
+                             dom  = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
+                             may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
+                         in (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if ((Set.size $ Set.fromList  [x,n,m2,m1]) == 4) then True else
+                               (m2 ∈ (pmay ! m1) ! x)
+                               ↔
+                               if n ∈ (pmay ! m1) ! x then
+                                                      (   (      m2 ∈ (pmay ! m1) ! n )
+                                                        ∨ (not $ n  ∈ (pdom ! m2) ! x )
+                                                      )
+                               else               (
+                                                      (   (      m2 ∈ (pdom ! n ) ! m1)
+                                                        ∨ (not $ x  ∈ (pdom ! n ) ! m1))
+                                                    ∧ (   (      m1 ∈ (pdom ! n ) ! m2))
+                                                  )
+                            ))))
+                       ),
     testProperty  "dom/may swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g0 = generatedGraph

@@ -771,12 +771,31 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                       ),
     testProperty  "pdom swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
+                    -- let g0 = generatedGraph
+                    --     sinks = NTICD.controlSinks g0
+                    -- in traceShow ("===============") $ 
+                    --    -- (∃) [1,2,3] (\nindex -> (∃) (List.permutations $ List.delete nindex [1,2,3,4]) (\permutation ->
+                    --    -- let pmap = Map.fromList $ [(1,nindex)] ++ (zip [2..] permutation) in
+                    --    let pmap = Map.fromList [(1,1),(2,3),(3,4),(4,2)] in
+                    --    (∀) sinks (\sink ->
+                    --      let g = subgraph sink g0
+                    --          gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
+                    --          gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
+                    --          pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
+                    --          pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
+                    --          dom  = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
+                    --          may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
+                    --      in (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if ((Set.size $ Set.fromList  [x,n,m2,m1]) == 4) then True else
+                    --            let nodemap = Map.fromList [(pmap ! 1,n), (pmap ! 2,x), (pmap ! 3,m1), (pmap ! 4, m2)] in
+                    --            (n ∈ (pmay ! m1) ! x ) →
+                    --                  let equiv =  (   (      m2             ∈ (pmay ! m1            ) ! n              )
+                    --                                 ∨ (not $ (nodemap ! 1) ∈ (pdom ! (nodemap ! 2)) ! (nodemap ! 3) )
+                    --                               )  ↔  (m2 ∈ (pmay ! m1) ! x) in if equiv then traceShow (pmap) equiv else equiv
+                    --         ))))
+                    --    ),
                     let g0 = generatedGraph
                         sinks = NTICD.controlSinks g0
-                    in traceShow ("===============") $ 
-                       (∃) [1,2,3] (\nindex -> (∃) (List.permutations $ List.delete nindex [1,2,3,4]) (\permutation ->
-                       let pmap = Map.fromList $ [(1,nindex)] ++ (zip [2..] permutation) in
-                       (∀) sinks (\sink ->
+                    in (∀) sinks (\sink ->
                          let g = subgraph sink g0
                              gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
                              gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
@@ -785,13 +804,12 @@ wodProps = testGroup "(concerning weak order dependence)" [
                              dom  = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
                              may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
                          in (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if ((Set.size $ Set.fromList  [x,n,m2,m1]) == 4) then True else
-                               let nodemap = Map.fromList [(pmap ! 1,n), (pmap ! 2,x), (pmap ! 3,m1), (pmap ! 4, m2)] in
                                (n ∈ (pmay ! m1) ! x ) →
                                      let equiv =  (   (      m2             ∈ (pmay ! m1            ) ! n              )
-                                                    ∨ (not $ (nodemap ! 1) ∈ (pdom ! (nodemap ! 2)) ! (nodemap ! 3) )
-                                                  )  ↔  (m2 ∈ (pmay ! m1) ! x) in if equiv then traceShow (pmap) equiv else equiv
+                                                    ∨ (not $ n              ∈ (pdom ! m2            ) ! x             )
+                                                  )  ↔  (m2 ∈ (pmay ! m1) ! x) in equiv
                             ))))
-                       ))),
+                       ),
     testProperty  "dom/may swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g0 = generatedGraph
@@ -810,14 +828,14 @@ wodProps = testGroup "(concerning weak order dependence)" [
                              ∧ (  (m1 ∈ ( dom ! n) ! m2)     ↔     (not $ n  ∈ ( may ! m1) ! m2)  )
                             )))
                        ),
-  testProperty  "allDom ! n == pdom ! n"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g = generatedGraph
-                        allDom = NTICD.allDomNaiveGfp g
-                    in  (∀) (nodes g) (\n ->
-                         let pdom = NTICD.sinkdomOfGfp (delSuccessorEdges g n)
-                         in (∀) (nodes g) (\m -> (m ∈ pdom ! n)   ==   (Map.member m (allDom ! n)   ∧   n ∈ allDom ! n ! m))
-                        ),
+  -- testProperty  "allDom ! n == pdom ! n"
+  --   $ \(ARBITRARY(generatedGraph)) ->
+  --                   let g = generatedGraph
+  --                       allDom = NTICD.allDomNaiveGfp g
+  --                   in  (∀) (nodes g) (\n ->
+  --                        let pdom = NTICD.sinkdomOfGfp (delSuccessorEdges g n)
+  --                        in (∀) (nodes g) (\m -> (m ∈ pdom ! n)   ==   (Map.member m (allDom ! n)   ∧   n ∈ allDom ! n ! m))
+  --                       ),
   -- testProperty  "isTransitive myDom"
   --   $ \(ARBITRARY(generatedGraph)) ->
   --                   let g = generatedGraph
@@ -835,17 +853,17 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myCD             = NTICD.myCD          g
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
-                    in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc),
-  testProperty  "myCDFromMyDom == myCD  for CFG-shaped graphs with exit->entry edge"
-    $ \(SIMPLECFG(generatedGraph)) ->
-                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                        g = insEdge (exit, entry, ()) generatedGraph
-                        myCDFromMyDom    = NTICD.myCDFromMyDom g
-                        myCD             = NTICD.myCD          g
-                        myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
-                        myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                     in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc)
+  -- testProperty  "myCDFromMyDom == myCD  for CFG-shaped graphs with exit->entry edge"
+  --   $ \(SIMPLECFG(generatedGraph)) ->
+  --                   let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+  --                       [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+  --                       g = insEdge (exit, entry, ()) generatedGraph
+  --                       myCDFromMyDom    = NTICD.myCDFromMyDom g
+  --                       myCD             = NTICD.myCD          g
+  --                       myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
+  --                       myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
+  --                   in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc)
   -- testProperty  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice"
   --   $ \(ARBITRARY(generatedGraph)) ->
   --                   let g = generatedGraph

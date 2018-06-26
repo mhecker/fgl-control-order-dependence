@@ -769,6 +769,29 @@ wodProps = testGroup "(concerning weak order dependence)" [
   --                   in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
   --                         ns ⊑ (wodTEIL' ! (m1,m2))
   --                       ),
+    testProperty  "pdom swap properties in control sinks"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g0 = generatedGraph
+                        sinks = NTICD.controlSinks g0
+                    in traceShow ("===============") $ 
+                       (∃) [1,2,3] (\nindex -> (∃) (List.permutations $ List.delete nindex [1,2,3,4]) (\permutation ->
+                       let pmap = Map.fromList $ [(1,nindex)] ++ (zip [2..] permutation) in
+                       (∀) sinks (\sink ->
+                         let g = subgraph sink g0
+                             gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
+                             gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
+                             pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
+                             pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
+                             dom  = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
+                             may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
+                         in (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if ((Set.size $ Set.fromList  [x,n,m2,m1]) == 4) then True else
+                               let nodemap = Map.fromList [(pmap ! 1,n), (pmap ! 2,x), (pmap ! 3,m1), (pmap ! 4, m2)] in
+                               (n ∈ (pmay ! m1) ! x ) →
+                                     let equiv =  (   (      m2             ∈ (pmay ! m1            ) ! n              )
+                                                    ∨ (not $ (nodemap ! 1) ∈ (pdom ! (nodemap ! 2)) ! (nodemap ! 3) )
+                                                  )  ↔  (m2 ∈ (pmay ! m1) ! x) in if equiv then traceShow (pmap) equiv else equiv
+                            ))))
+                       ))),
     testProperty  "dom/may swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g0 = generatedGraph

@@ -774,6 +774,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "pdom swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
+                    -- g0 = mkGraph [(-16,()),(-14,()),(9,()),(10,()),(11,()),(18,())] [(-16,-14,()),(-16,10,()),(-14,-14,()),(-14,9,()),(9,-16,()),(10,-14,()),(10,11,()),(11,-14,()),(11,11,()),(18,-16,()),(18,-14,()),(18,9,()),(18,10,()),(18,11,())] :: Gr () ()
                     -- g0 = mkGraph [(-13,()),(-11,()),(-9,()),(-4,()),(-2,()),(17,()),(18,())] [(-13,-2,()),(-13,-2,()),(-11,-13,()),(-11,-11,()),(-11,-11,()),(-11,-11,()),(-11,-4,()),(-9,-4,()),(-9,-4,()),(-4,-11,()),(-4,-9,()),(-2,17,()),(17,-11,()),(17,-9,()),(18,-13,()),(18,-11,()),(18,-9,()),(18,-4,()),(18,-2,()),(18,17,())] :: Gr () () 
 
                     sinks = [ (sink, pdom, pmay) | sink <-  NTICD.controlSinks g0,
@@ -782,76 +783,68 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                    let pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ],
                                                    let pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
                             ]
-                    blength = 3
+                    blength = 4
                     showFailure b = if b then b else traceShow b b
                 in
                    (→) ((∃) (sinks) (\(sink, _, _) -> length sink >= 4))  $
                    traceShow ("===============") $
                    showFailure $
                    -- (∃) [176, 8 :: Integer] (\bfun ->
-                   (∃) [25 :: Integer] (\bfun ->
+                   -- (∃) [25 :: Integer] (\bfun ->
                    -- (∃) [7 :: Integer] (\bfun ->
-                   -- (∃) [0..2^(2^blength) - 1 :: Integer] (\bfun -> (if (bfun `mod` 8) `elem` [0] then traceShow bfun else id) $ 
-                   -- (∃) [1,2,3] (\nindex4 -> (∃) (List.permutations $ List.delete nindex4 [1,2,3,4]) (\permutation4 ->
-                   -- (∃) [1,2,3] (\nindex  -> (∃) (List.permutations $ List.delete nindex  [1,2,3,4]) (\permutation  ->
-                   -- (∃) [1,2,3] (\nindex2 -> (∃) (List.permutations $ List.delete nindex2 [1,2,3,4]) (\permutation2 ->
-                   -- (∃) [1,2,3] (\nindex3 -> (∃) (List.permutations $ List.delete nindex3 [1,2,3,4]) (\permutation3 ->
-                   -- let pmap  = Map.fromList $ [(1,nindex)]  ++ (zip [2..] permutation)  in
-                   -- let pmap2 = Map.fromList $ [(1,nindex2)] ++ (zip [2..] permutation2) in
-                   -- let pmap3 = Map.fromList $ [(1,nindex3)] ++ (zip [2..] permutation3) in
-                   -- let pmap4 = Map.fromList $ [(1,nindex4)] ++ (zip [2..] permutation4) in
+                   (∃) [0..2^(2^blength) - 1 :: Integer] (\bfun -> (if (bfun `mod` 4096) `elem` [0] then traceShow bfun else id) $ 
+                   (∃) [1,2,3] (\nindex  -> (∃) (List.permutations $ List.delete nindex  [1,2,3,4]) (\permutation  ->
+                   (∃) [1,2,3] (\nindex2 -> (∃) (List.permutations $ List.delete nindex2 [1,2,3,4]) (\permutation2 ->
+                   (∃) [1,2,3] (\nindex3 -> (∃) (List.permutations $ List.delete nindex3 [1,2,3,4]) (\permutation3 ->
+                   (∃) [1,2,3] (\nindex4 -> (∃) (List.permutations $ List.delete nindex4 [1,2,3,4]) (\permutation4 ->
+                   let pmap  = Map.fromList $ [(1,nindex)]  ++ (zip [2..] permutation)  in
+                   let pmap2 = Map.fromList $ [(1,nindex2)] ++ (zip [2..] permutation2) in
+                   let pmap3 = Map.fromList $ [(1,nindex3)] ++ (zip [2..] permutation3) in
+                   let pmap4 = Map.fromList $ [(1,nindex4)] ++ (zip [2..] permutation4) in
 
-                   let pmap4 = Map.fromList [(1,1),(2,4),(3,3),(4,2)] in
-                   if pmap4 ∈ Set.fromList [
-                                             Map.fromList [(1,2),(2,4),(3,3),(4,1)], -- False
-                                             Map.fromList [(1,3),(2,4),(3,1),(4,2)], -- False
-                                             Map.fromList [(1,3),(2,4),(3,2),(4,1)], -- False
-                                             Map.fromList [(1,2),(2,1),(3,3),(4,4)], -- False
-                                             Map.fromList [(1,3),(2,1),(3,2),(4,4)], -- False
-                                             Map.fromList [(1,1),(2,2),(3,3),(4,4)], -- False
-                                             Map.fromList [(1,2),(2,3),(3,1),(4,4)], -- False
+                   -- if pmap4 ∈ Set.fromList [
+                   --                           Map.fromList [(1,3),(2,2),(3,4),(4,1)], -- False
+                   --                           Map.fromList [(1,1),(2,4),(3,2),(4,3)], -- False
+                   --                           Map.fromList [(1,2),(2,4),(3,1),(4,3)], -- False
+                   --                           Map.fromList [(1,2),(2,1),(3,4),(4,3)], -- False
+                   --                           Map.fromList [(1,2),(2,4),(3,3),(4,1)], -- False
+                   --                           Map.fromList [(1,3),(2,4),(3,1),(4,2)], -- False
+                   --                           Map.fromList [(1,3),(2,4),(3,2),(4,1)], -- False
+                   --                           Map.fromList [(1,2),(2,1),(3,3),(4,4)], -- False
+                   --                           Map.fromList [(1,3),(2,1),(3,2),(4,4)], -- False
+                   --                           Map.fromList [(1,1),(2,2),(3,3),(4,4)], -- False
+                   --                           Map.fromList [(1,2),(2,3),(3,1),(4,4)], -- False
 
-                                             Map.fromList [(1,1),(2,3),(3,2),(4,4)], -- n  m1 x
-                                             Map.fromList [(1,1),(2,3),(3,4),(4,2)], -- n  m2 x
-                                             Map.fromList [(1,3),(2,1),(3,4),(4,2)], -- x  m2 n
-                                             Map.fromList [(1,2),(2,3),(3,4),(4,1)]  -- m2 n  x
-                      ] then False else
-                   -- if pmap4 ! 1 <= 2 then False else
+                   --                           Map.fromList [(1,1),(2,4),(3,3),(4,2)], -- n  m2 m1
+                   --                           Map.fromList [(1,1),(2,3),(3,2),(4,4)], -- n  m1 x
+                   --                           Map.fromList [(1,1),(2,3),(3,4),(4,2)], -- n  m2 x
+                   --                           Map.fromList [(1,3),(2,1),(3,4),(4,2)], -- x  m2 n
+                   --                           Map.fromList [(1,2),(2,3),(3,4),(4,1)]  -- m2 n  x
+                   --    ] then False else
+                   -- -- if pmap4 ! 1 <= 2 then False else
                    -- let { fromList = Map.fromList ; (pmap, pmap2, pmap3) = (fromList [(1,1),(2,3),(3,4),(4,2)],fromList [(1,2),(2,3),(3,1),(4,4)],fromList [(1,1),(2,3),(3,2),(4,4)]) } in
                    -- let { fromList = Map.fromList ; (pmap, pmap2, pmap3) = (fromList [(1,2),(2,3),(3,1),(4,4)],fromList [(1,2),(2,3),(3,1),(4,4)],fromList [(1,3),(2,4),(3,1),(4,2)]) } in
-                   let { fromList = Map.fromList ; (pmap, pmap2, pmap3) = (fromList [(1,1),(2,3),(3,4),(4,2)],fromList [(1,1),(2,3),(3,4),(4,2)],fromList [(1,2),(2,3),(3,1),(4,4)]) } in
+                   -- let { fromList = Map.fromList ; (pmap, pmap2, pmap3) = (fromList [(1,1),(2,3),(3,4),(4,2)],fromList [(1,1),(2,3),(3,4),(4,2)],fromList [(1,2),(2,3),(3,1),(4,4)]) } in
                    let equiv = (∀) sinks (\(sink, pdom, pmay) ->
                             (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if ((Set.size $ Set.fromList  [x,m2,m1]) < 3) then True else
                                let nodemap  = Map.fromList [(pmap  ! 1,n), (pmap  ! 2,x), (pmap  ! 3,m1), (pmap  ! 4, m2)] in
                                let nodemap2 = Map.fromList [(pmap2 ! 1,n), (pmap2 ! 2,x), (pmap2 ! 3,m1), (pmap2 ! 4, m2)] in
                                let nodemap3 = Map.fromList [(pmap3 ! 1,n), (pmap3 ! 2,x), (pmap3 ! 3,m1), (pmap3 ! 4, m2)] in
                                let nodemap4 = Map.fromList [(pmap4 ! 1,n), (pmap4 ! 2,x), (pmap4 ! 3,m1), (pmap4 ! 4, m2)] in
-                               ( (nodemap4 ! 1) ∈ (pdom ! (nodemap4 ! 2)) ! (nodemap4 ! 3) ) →
-                               -- ((      x ∈ (pdom ! m1) ! n)) →
-                               -- ((      n ∈ (pdom ! m1) ! x)) →
-                                  -- ((not $ n  ∈ (pdom ! m2) ! x)  ∧ (not $ n ∈ (pdom ! m1) ! x) ∧
-                                  --  (not $ m2 ∈ (pdom ! n)  ! x)  ∧ (     m1 ∈ (pdom !  n) ! x) ∧
-                                  --  (not $ n  ∈ (pdom ! m1) ! m2) ∧
-                                  --  (not $ n ∈ Set.fromList [x,m1,m2])) →
-                               -- ((not $ n ∈ (pdom ! m2) ! x) ∧ (not $ n ∈ (pdom ! m1) ! x)  ∧ (not $ n ∈ Set.fromList [x,m1,m2])) →
-                               -- ((not $ n ∈ (pdom ! m2) ! x) ∧ (      n ∈ (pdom ! m1) ! x)  ∧ (not $ n ∈ Set.fromList [x,m1,m2])) →
-                               -- ((      n ∈ (pdom ! m2) ! x) ∧ (      n ∈ (pdom ! m1) ! x)  ∧ (not $ n ∈ Set.fromList [x,m1,m2])) →
-                               -- ((      n ∈ (pdom ! m2) ! x) ∧ (not $ n ∈ (pdom ! m1) ! x)  ∧ (not $ n ∈ Set.fromList [x,m1,m2])) →
-
-                               -- ((      m1 ∈ (pdom ! n) ! x)) →
-                               -- ((      m1 ∈ (pdom ! n) ! x) ∨ (      m1 ∈ (pdom ! m2) ! n)) →
-                               -- ((not $ m2 ∈ (pdom ! n) ! x) ∧ (not $ n ∈ (pdom ! m1) ! x)  ∧ (not $ n ∈ Set.fromList [x,m1,m2])) →
-                               -- ((not $ m2 ∈ (pdom ! n) ! x) ∧ (not $ n ∈ (pdom ! m1) ! x)  ∧ (not $ n ∈ Set.fromList [x,m1,m2]) ∧ ( not $ n ∈ (pdom ! m2) ! m1 ) ∧ ( n ∈ (pdom ! m1) ! m2 )  ) →
+                                  ((not $ n  ∈ (pdom ! m1) !  x)  ∧  (not $ m2 ∈ (pdom ! n ) ! x) ∧
+                                   (not $ n  ∈ (pdom ! m2) !  x)  ∧  (not $ x  ∈ (pdom ! m2) ! n) ∧
+                                   (not $ n  ∈ (pdom ! m2) ! m1)  ∧
+                                   (not $ n ∈ Set.fromList [x,m1,m2])) →
                                                   (( let b0 = ((nodemap  ! 1) ∈ (pdom ! (nodemap  ! 2)) ! (nodemap  ! 3))
                                                          b1 = ((nodemap2 ! 1) ∈ (pdom ! (nodemap2 ! 2)) ! (nodemap2 ! 3))
                                                          b2 = ((nodemap3 ! 1) ∈ (pdom ! (nodemap3 ! 2)) ! (nodemap3 ! 3))
-                                                         -- b3 = ((nodemap4 ! 1) ∈ (pdom ! (nodemap4 ! 2)) ! (nodemap4 ! 3))
-                                                         result =  evalBfun bfun [b2,b1,b0]
+                                                         b3 = ((nodemap4 ! 1) ∈ (pdom ! (nodemap4 ! 2)) ! (nodemap4 ! 3))
+                                                         result =  evalBfun bfun [b3,b2,b1,b0]
                                                       in result
                                                    )  ↔  (m2 ∈ (pmay ! m1) ! x))
                             )))))
                    in if equiv then {- traceShow (fmap (\(sink,_,_) -> length sink) sinks) $ -} traceShow (bfun, pmap, pmap2, pmap3, pmap4) equiv else equiv
-                   ),
+                   ))))))))),
                 -- let g0 = generatedGraph
                 --     sinks = [ (sink, pdom, pmay) | sink <-  NTICD.controlSinks g0,
                 --                                    let g = subgraph sink g0,

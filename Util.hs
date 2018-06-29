@@ -8,6 +8,9 @@ import Data.Map (Map, (!))
 import qualified Data.Set as Set
 import Data.Set (Set)
 
+import Data.Bits.Bitwise (fromListBE,fromListLE)
+import Data.Bits (testBit)
+
 import qualified Data.Foldable as Foldable
 import Unicode
 import Algebra.Lattice
@@ -158,3 +161,6 @@ fromSet s = case Set.toList s of
   []  -> Nothing
   [x] -> Just x
   otherwise -> error "no singleton/empty"
+
+
+evalBfun f bs  = testBit f (fromListBE bs)

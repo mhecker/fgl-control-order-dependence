@@ -850,7 +850,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g0 = generatedGraph
                     sinks = [ (sink, pdom, pmay) | sink <-  NTICD.controlSinks g0,
                                                    let g = subgraph sink g0,
-                                                   let gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ],
+                                                   let gn   = Map.fromList [ (n, delSuccessorEdges g n)           | n <- sink ],
                                                    let pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ],
                                                    let pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
                             ]
@@ -859,29 +859,27 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                ((n ∈ (pdom ! m2) ! m1) →
                                                   (( let b0 = n  ∈ (pdom ! m2) ! x
                                                          b1 = m1 ∈ (pdom !  n) ! x
-                                                     in  (not b0) ∨ (not $ b1)
+                                                     in (not b0) ∨ (not b1)
                                                    )  ↔  (m2 ∈ (pmay ! m1) ! x)))
                              ∧ ((x ∈ (pdom ! m2) ! n) →
                                                   (( let b0 = x  ∈ (pdom ! m1) ! n
                                                          b1 = m1 ∈ (pdom ! m2) ! n
-                                                         b2 = m2 ∈ (pdom !  x) ! n
-                                                     in (not b2) ∧ (not $ b0 ∧ b1)
+                                                     in (not b0) ∨ (not b1)
                                                    )  ↔  (m2 ∈ (pmay ! m1) ! x)))
                              ∧ ((n ∈ (pdom ! m2) ! x) →
                                                    ((let b0 = m1  ∈ (pdom ! n ) ! x
                                                          b1 = m1  ∈ (pdom ! m2) ! n
-                                                     in (not b0) ∧ (not $ b1)
+                                                     in (not b0) ∧ (not b1)
                                                    )  ↔  (m2 ∈ (pmay ! m1) ! x)))
                              ∧ ((n ∈ (pdom ! m1) ! x) →
                                                    ((let b0 = n   ∈ (pdom ! m2) ! x
                                                          b1 = m1  ∈ (pdom ! m2) ! n
-                                                      in (not b0) ∨ (not $ b1)
+                                                     in (not b0) ∨ (not b1)
                                                    )  ↔  (m2 ∈ (pmay ! m1) ! x)))
                              ∧ ((m2 ∈ (pdom ! n) ! x) →
                                                   (( let b0 = m1 ∈ (pdom ! n) ! x
                                                          b1 = m2 ∈ (pdom ! n) ! m1
-                                                         b2 = x  ∈ (pdom ! n) ! m2
-                                                      in (not b2) ∧ (not $ b0 ∧ b1)
+                                                     in (not b0) ∨ (not b1)
                                                    )  ↔  (m2 ∈ (pmay ! m1) ! x)))
                     ))))),
     testProperty  "dom/may swap properties in control sinks"

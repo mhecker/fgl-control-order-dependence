@@ -859,28 +859,28 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                ((n ∈ (pdom ! m2) ! m1) →
                                                   (( let b0 = n  ∈ (pdom ! m2) ! x
                                                          b1 = m1 ∈ (pdom !  n) ! x
-                                                     in (not b0) ∨ (not b1)
-                                                   )  ↔  (m2 ∈ (pmay ! m1) ! x)))
+                                                     in b0 ∧ b1
+                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
                              ∧ ((x ∈ (pdom ! m2) ! n) →
                                                   (( let b0 = x  ∈ (pdom ! m1) ! n
                                                          b1 = m1 ∈ (pdom ! m2) ! n
-                                                     in (not b0) ∨ (not b1)
-                                                   )  ↔  (m2 ∈ (pmay ! m1) ! x)))
+                                                     in b0 ∧ b1
+                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
                              ∧ ((n ∈ (pdom ! m2) ! x) →
                                                    ((let b0 = m1  ∈ (pdom ! n ) ! x
                                                          b1 = m1  ∈ (pdom ! m2) ! n
-                                                     in (not b0) ∧ (not b1)
-                                                   )  ↔  (m2 ∈ (pmay ! m1) ! x)))
+                                                     in b0 ∨ b1
+                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
                              ∧ ((n ∈ (pdom ! m1) ! x) →
                                                    ((let b0 = n   ∈ (pdom ! m2) ! x
                                                          b1 = m1  ∈ (pdom ! m2) ! n
-                                                     in (not b0) ∨ (not b1)
-                                                   )  ↔  (m2 ∈ (pmay ! m1) ! x)))
+                                                     in b0 ∧ b1
+                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
                              ∧ ((m2 ∈ (pdom ! n) ! x) →
                                                   (( let b0 = m1 ∈ (pdom ! n) ! x
                                                          b1 = m2 ∈ (pdom ! n) ! m1
-                                                     in (not b0) ∨ (not b1)
-                                                   )  ↔  (m2 ∈ (pmay ! m1) ! x)))
+                                                     in b0 ∧ b1
+                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
                     ))))),
     testProperty  "dom/may swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->

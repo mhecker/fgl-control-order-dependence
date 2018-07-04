@@ -852,11 +852,12 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
                     sinks = NTICD.controlSinks g0
-                in (∀) sinks (\sink ->
+                in
+                   (∀) sinks (\sink ->
                      let g = subgraph sink g0
                          mywod = NTICD.myWodFast g
                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-                          (MyWodSlice.myWodFromSliceStep g m1 m2) == mywod ! (m1,m2)
+                          (MyWodSlice.myWodFromSliceStep g m1 m2) == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
                         ))
                    ),
     testProperty  "pdom swap properties in control sinks"

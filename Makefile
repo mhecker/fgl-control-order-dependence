@@ -5,7 +5,7 @@
 ifdef PROF
 PROF_GHC=-prof -fprof-auto -osuf p_o
 PROF_RTS=-p
-GHC_ASSERT=
+GHC_ASSERT=-fno-ignore-asserts
 else
 GHC_ASSERT=-fno-ignore-asserts
 endif

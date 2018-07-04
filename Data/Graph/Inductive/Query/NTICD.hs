@@ -2488,6 +2488,12 @@ nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
         w     = myWod graph
 
 
+myWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+myWodFastSlice graph =  combinedBackwardSlice graph empty w
+  where empty = Map.empty
+        w     = myWodFast graph
+
+
 wodMyEntryWodMyCDSlice :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
 wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
                                    -- traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd))

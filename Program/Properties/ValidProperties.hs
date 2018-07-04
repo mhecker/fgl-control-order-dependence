@@ -76,7 +76,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
+    myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -848,75 +848,99 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                         )))))
     --                in if equiv then {- traceShow (fmap (\(sink,_,_) -> length sink) sinks) $ -} traceShow (bfun, pmap, pmap2, pmap3, pmap4) equiv else equiv
     --                )))))))))
-    testProperty  "myWodFromSliceStep == myWodFast"
+    testProperty  "myWodSlice == myWodFastSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
                     sinks = NTICD.controlSinks g0
                 in
                    (∀) sinks (\sink ->
                      let g = subgraph sink g0
-                         mywod = NTICD.myWodFast g
+                         mywodslicer     = MyWodSlice.myWodSlice g
+                         mywodfastslicer = NTICD.myWodFastSlice g
                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-                          (MyWodSlice.myWodFromSliceStep g m1 m2) == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
+                          mywodslicer m1 m2 == mywodfastslicer m1 m2
                         ))
                    ),
-    testProperty  "pdom swap properties in control sinks"
-    $ \(ARBITRARY(generatedGraph)) ->
-                let g0 = generatedGraph
-                    sinks = [ (sink, pdom, pmay, dom) | sink <-  NTICD.controlSinks g0,
-                                                   let g = subgraph sink g0,
-                                                   let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
-                                                   let gn'  = Map.fromList [ (n, delSuccessorEdges (grev g) n)    | n <- sink ],
-                                                   let pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ],
-                                                   let  dom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ],
-                                                   let pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
-                            ]
-                in (∀) sinks (\(sink, pdom, pmay, dom) ->
-                            (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if (m1 == m2 ∨ m1 == x ∨ m2 == x) ∨ (m2 == n) then True else
-                               ((not $ m2 ∈ (pmay ! n) ! m1) →
-                                                  (( let b0 = m2 ∈ (pmay ! n) ! x
-                                                         b1 = m1 ∈ (pdom ! n) ! x
-                                                     in (not b0) ∧ b1
-                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
-                             ∧ ((       x ∈ ( dom ! n) ! m2) →
-                                                  (( let b0 = x  ∈ ( dom ! n) ! m1
-                                                         b1 = m1 ∈ ( dom ! n) ! m2
-                                                     in b0 ∧ b1
-                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
-                             ∧ ((not $ m2 ∈ (pmay ! n) ! x) →                       -- useless??
-                                                   ((let b0 = m1 ∈ (pdom ! n) ! x
-                                                         b1 = m1 ∈ ( dom ! n) ! m2
-                                                     in b0 ∨ b1
-                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
-                             ∧ ((not $ m1 ∈ (pmay ! n) ! x) →
-                                                   ((let b0 = m2 ∈ (pmay ! n) ! x
-                                                         b1 = m1 ∈ ( dom ! n) ! m2
-                                                     in (not b0) ∧ b1
-                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
-                             ∧ ((      m2 ∈ (pdom ! n) ! x) →
-                                                  (( let b0 = m1 ∈ (pdom ! n) ! x
-                                                         b1 = m2 ∈ (pdom ! n) ! m1
-                                                     in b0 ∧ b1
-                                                   )  ↔  (m1 ∈ (pdom ! m2) ! x)))
-                    ))))),
-    testProperty  "dom/may swap properties in control sinks"
-    $ \(ARBITRARY(generatedGraph)) ->
-                    let g0 = generatedGraph
-                        sinks = NTICD.controlSinks g0
-                    in (∀) sinks (\sink ->
-                         let g = subgraph sink g0
-                             gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
-                             gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
-                             pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
-                             pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
-                             dom  = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
-                             may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
-                         in (∀) sink (\n -> (∀) sink (\m1 -> (∀) sink (\m2 -> if (n == m1 ∨ n == m2 ∨ m1 == m2) then True else
-                               (  (m1 ∈ (pdom ! n) ! m2)     ↔     (      m1 ∈ ( dom ! m2) ! n )  )
-                             ∧ (  (m1 ∈ (pdom ! n) ! m2)     ↔     (not $ n  ∈ (pmay ! m1) ! m2)  )
-                             ∧ (  (m1 ∈ ( dom ! n) ! m2)     ↔     (not $ n  ∈ ( may ! m1) ! m2)  )
-                            )))
-                       )
+    testProperty  "myWodSlice == myWodFastSlice for CFG-shaped graphs with exit->entry edge"
+    $ \(SIMPLECFG(generatedGraph)) ->
+                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                    g = insEdge (exit, entry, ()) generatedGraph
+                    mywodslicer     = MyWodSlice.myWodSlice g
+                    mywodfastslicer = NTICD.myWodFastSlice g
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
+                        mywodslicer m1 m2 == mywodfastslicer m1 m2
+                    ))
+    -- testProperty  "myWodSlice == myWodFastSlice"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --             let g0 = generatedGraph
+    --                 sinks = NTICD.controlSinks g0
+    --             in
+    --                (∀) sinks (\sink ->
+    --                  let g = subgraph sink g0
+    --                      mywodslicer     = MyWodSlice.myWodSlice g
+    --                      mywodfastslicer = NTICD.myWodFastSlice g
+    --                  in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+    --                       mywodslicer m1 m2 == mywodfastslicer m1 m2
+    --                     ))
+    --                ),
+    -- testProperty  "pdom swap properties in control sinks"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --             let g0 = generatedGraph
+    --                 sinks = [ (sink, pdom, pmay, dom) | sink <-  NTICD.controlSinks g0,
+    --                                                let g = subgraph sink g0,
+    --                                                let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
+    --                                                let gn'  = Map.fromList [ (n, delSuccessorEdges (grev g) n)    | n <- sink ],
+    --                                                let pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ],
+    --                                                let  dom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ],
+    --                                                let pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
+    --                         ]
+    --             in (∀) sinks (\(sink, pdom, pmay, dom) ->
+    --                         (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if (m1 == m2 ∨ m1 == x ∨ m2 == x) ∨ (m2 == n) then True else
+    --                            ((not $ m2 ∈ (pmay ! n) ! m1) →
+    --                                               (( let b0 = m2 ∈ (pmay ! n) ! x
+    --                                                      b1 = m1 ∈ (pdom ! n) ! x
+    --                                                  in (not b0) ∧ b1
+    --                                                )  ↔  (m1 ∈ (pdom ! m2) ! x)))
+    --                          ∧ ((       x ∈ ( dom ! n) ! m2) →
+    --                                               (( let b0 = x  ∈ ( dom ! n) ! m1
+    --                                                      b1 = m1 ∈ ( dom ! n) ! m2
+    --                                                  in b0 ∧ b1
+    --                                                )  ↔  (m1 ∈ (pdom ! m2) ! x)))
+    --                          ∧ ((not $ m2 ∈ (pmay ! n) ! x) →                       -- useless??
+    --                                                ((let b0 = m1 ∈ (pdom ! n) ! x
+    --                                                      b1 = m1 ∈ ( dom ! n) ! m2
+    --                                                  in b0 ∨ b1
+    --                                                )  ↔  (m1 ∈ (pdom ! m2) ! x)))
+    --                          ∧ ((not $ m1 ∈ (pmay ! n) ! x) →
+    --                                                ((let b0 = m2 ∈ (pmay ! n) ! x
+    --                                                      b1 = m1 ∈ ( dom ! n) ! m2
+    --                                                  in (not b0) ∧ b1
+    --                                                )  ↔  (m1 ∈ (pdom ! m2) ! x)))
+    --                          ∧ ((      m2 ∈ (pdom ! n) ! x) →
+    --                                               (( let b0 = m1 ∈ (pdom ! n) ! x
+    --                                                      b1 = m2 ∈ (pdom ! n) ! m1
+    --                                                  in b0 ∧ b1
+    --                                                )  ↔  (m1 ∈ (pdom ! m2) ! x)))
+    --                 ))))),
+    -- testProperty  "dom/may swap properties in control sinks"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g0 = generatedGraph
+    --                     sinks = NTICD.controlSinks g0
+    --                 in (∀) sinks (\sink ->
+    --                      let g = subgraph sink g0
+    --                          gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
+    --                          gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
+    --                          pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
+    --                          pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
+    --                          dom  = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
+    --                          may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
+    --                      in (∀) sink (\n -> (∀) sink (\m1 -> (∀) sink (\m2 -> if (n == m1 ∨ n == m2 ∨ m1 == m2) then True else
+    --                            (  (m1 ∈ (pdom ! n) ! m2)     ↔     (      m1 ∈ ( dom ! m2) ! n )  )
+    --                          ∧ (  (m1 ∈ (pdom ! n) ! m2)     ↔     (not $ n  ∈ (pmay ! m1) ! m2)  )
+    --                          ∧ (  (m1 ∈ ( dom ! n) ! m2)     ↔     (not $ n  ∈ ( may ! m1) ! m2)  )
+    --                         )))
+    --                    )
   -- testProperty  "allDom ! n == pdom ! n"
   --   $ \(ARBITRARY(generatedGraph)) ->
   --                   let g = generatedGraph

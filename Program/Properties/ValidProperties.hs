@@ -848,6 +848,18 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                         )))))
     --                in if equiv then {- traceShow (fmap (\(sink,_,_) -> length sink) sinks) $ -} traceShow (bfun, pmap, pmap2, pmap3, pmap4) equiv else equiv
     --                )))))))))
+     testProperty  "myWodFromSliceStep == myWodFast"
+     $ \(ARBITRARY(generatedGraph)) ->
+                 let g0 = generatedGraph
+                     sinks = NTICD.controlSinks g0
+                 in
+                    (∀) sinks (\sink ->
+                      let g = subgraph sink g0
+                          mywod = NTICD.myWodFast g
+                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+                           (MyWodSlice.myWodFromSliceStep g m1 m2) == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
+                         ))
+                    ),
     testProperty  "myWodSlice == myWodFastSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
@@ -871,19 +883,6 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                         mywodslicer m1 m2 == mywodfastslicer m1 m2
                     ))
-    -- testProperty  "myWodSlice == myWodFastSlice"
-    -- $ \(ARBITRARY(generatedGraph)) ->
-    --             let g0 = generatedGraph
-    --                 sinks = NTICD.controlSinks g0
-    --             in
-    --                (∀) sinks (\sink ->
-    --                  let g = subgraph sink g0
-    --                      mywodslicer     = MyWodSlice.myWodSlice g
-    --                      mywodfastslicer = NTICD.myWodFastSlice g
-    --                  in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-    --                       mywodslicer m1 m2 == mywodfastslicer m1 m2
-    --                     ))
-    --                ),
     -- testProperty  "pdom swap properties in control sinks"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --             let g0 = generatedGraph
@@ -922,7 +921,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                                                      b1 = m2 ∈ (pdom ! n) ! m1
     --                                                  in b0 ∧ b1
     --                                                )  ↔  (m1 ∈ (pdom ! m2) ! x)))
-    --                 ))))),
+    --                 )))))
     -- testProperty  "dom/may swap properties in control sinks"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --                 let g0 = generatedGraph

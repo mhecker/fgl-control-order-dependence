@@ -47,7 +47,7 @@ import Control.Exception.Base (assert)
 
 
 
-type MyWodSliceState = (Set Node, Map Node (Map Node (Set Node), Map Node (Set Node)))
+type MyWodSliceState = (Set Node, Map Node (Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)))
 
 myWodFromSliceStep graph m1 m2 =
     assert (Set.null new1) $
@@ -65,9 +65,10 @@ myWodSlice graph m1 m2 = slice s0 ms0
         ms0 = Set.fromList [m1, m2]
         step = myWodSliceStep graph 
         slice s@(sliceNodes, ndoms) ms
-          | Set.null ms = -- traceShow (length $ nodes graph, Set.size sliceNodes, Map.size ndoms ) $
+          | Set.null ms = -- traceShow ( (-1) + ceiling ( (100 * fromIntegral (Map.size ndoms) / fromIntegral (Set.size sliceNodes) :: Double)), Set.size sliceNodes, Map.size ndoms, length $ nodes graph ) $
                           sliceNodes
-          | otherwise   = slice s' ms'
+          | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
+                          slice s' ms'
               where (m, ms0)  = Set.deleteFindMin ms
                     (new, s') = step s m
                     ms' = ms0 ∪ new 
@@ -75,54 +76,56 @@ myWodSlice graph m1 m2 = slice s0 ms0
 
 myWodSliceStep :: DynGraph gr => gr a b ->  MyWodSliceState -> Node -> (Set Node, MyWodSliceState)
 myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) else
-    require ((∀) ms (\m -> (∀) unknownCond0 (\c -> (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, (pdom, dom)) ->   x ∈ dom ! m    ∨    m ∈ pdom ! x   ))))) $
-    let covered      = (∀) unknownCond0 (\c -> c == m ∨  (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, (pdom, dom)) ->   x ∈ dom ! m    ∨    m ∈ pdom ! x   )))
+    require ((∀) ms (\m -> (∀) unknownCond0 (\c ->           (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, (pdom, dom, pmay)) ->   x ∈ dom ! m  ∨  m ∈ pdom ! x  ∨  (not $ m ∈ pmay ! x) ))) )) $
+    let covered           = (∀) unknownCond0 (\c -> c == m ∨ (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, (pdom, dom, pmay)) ->   x ∈ dom ! m  ∨  m ∈ pdom ! x   ∨  (not $ m ∈ pmay ! x ))) )
 
         (unknownCondM2, wodM2, ndomsM2) = if covered then
-              let wod    =    wod2 ∪    wodFromMust
-                  notwod = notwod2 ∪ notwodFromMust
-                  ((unknownCond1, wod1, notwod1), (must1, notmust1)) = foldr (fromPdomM2 m) ((unknownCond0, Set.empty, Set.empty), (Map.empty, Map.empty)) (Map.assocs ndoms)
-                  ((unknownCond2, wod2, notwod2), (must2, notmust2)) = foldr (fromDomM2  m) ((unknownCond1, wod1,      notwod1),   (must1,     notmust1))  (Map.assocs ndoms)
-                  wodFromMust    = Set.fromList [ c | c <- Set.toList unknownCond2,
-                              (∃) ms (\m1 -> (∃) (suc graph c) (\xl -> Map.member xl    must2  ∧ (∃) (suc graph c) (\xr -> Map.member xr notmust2  ∧  m1 ∈    must2 ! xl  ∧  m1 ∈ notmust2 ! xr)))]
-                  notwodFromMust = Set.fromList [ c | c <- Set.toList unknownCond2,
-                              (∀) ms (\m1 -> (∀) (suc graph c) (\xl -> (Map.member xl    must2 ∧ (∀) (suc graph c) (\xr -> Map.member xr    must2  ∧  m1 ∈    must2 ! xl  ∧  m1 ∈    must2 ! xr))
-                                                                      ∨ (Map.member xl notmust2 ∧ (∀) (suc graph c) (\xr -> Map.member xr notmust2  ∧  m1 ∈ notmust2 ! xl  ∧  m1 ∈ notmust2 ! xr))))]
+              let wod    =    wod3 ∪    wodFromMust
+                  notwod = notwod3 ∪ notwodFromMust
+                  ((unknownCond1, wod1, notwod1), (must1, notmust1)) = foldr (fromPdomM2  m) ((unknownCond0, Set.empty, Set.empty), (Map.empty, Map.empty)) (Map.assocs ndoms)
+                  ((unknownCond2, wod2, notwod2), (must2, notmust2)) = foldr (fromDomM2   m) ((unknownCond1, wod1,      notwod1),   (must1,     notmust1))  (Map.assocs ndoms)
+                  ((unknownCond3, wod3, notwod3), (must3, notmust3)) = foldr (fromPmayM2  m) ((unknownCond2, wod2,      notwod2),   (must2,     notmust2))  (Map.assocs ndoms)
+                  wodFromMust    = Set.fromList [ c | c <- Set.toList unknownCond3,
+                              (∃) ms (\m1 -> (∃) (suc graph c) (\xl -> Map.member xl    must3  ∧ (∃) (suc graph c) (\xr -> Map.member xr notmust3  ∧  m1 ∈    must3 ! xl  ∧  m1 ∈ notmust3 ! xr)))]
+                  notwodFromMust = Set.fromList [ c | c <- Set.toList unknownCond3,
+                              (∀) ms (\m1 -> (∀) (suc graph c) (\xl -> (Map.member xl    must3 ∧ (∀) (suc graph c) (\xr -> Map.member xr    must3  ∧  m1 ∈    must3 ! xl  ∧  m1 ∈    must3 ! xr))
+                                                                      ∨ (Map.member xl notmust3 ∧ (∀) (suc graph c) (\xr -> Map.member xr notmust3  ∧  m1 ∈ notmust3 ! xl  ∧  m1 ∈ notmust3 ! xr))))]
               in
                  -- traceShow (wod1, must1, notmust1) $
                  -- traceShow (wod2, must2, notmust2) $ 
-                 assert (unknownCond0 ⊇ unknownCond1  ∧  unknownCond1  ⊇ unknownCond2) $
-                 assert (                                        wod1  ⊆         wod2) $
-                 assert (                                     notwod1  ⊆      notwod2) $
-                 assert (                                       must1  ⊑        must2) $
-                 assert (                                    notmust1  ⊑     notmust2) $
+                 assert (unknownCond0 ⊇ unknownCond1  ∧  unknownCond1 ⊇ unknownCond2  ∧  unknownCond2 ⊇ unknownCond3) $
+                 assert (                                        wod1 ⊆         wod2  ∧          wod2 ⊆    wod3) $
+                 assert (                                     notwod1 ⊆      notwod2  ∧       notwod2 ⊆ notwod3) $
+                 assert (                                       must1 ⊑        must2  ∧         must2 ⊑    must3) $
+                 assert (                                    notmust1 ⊑     notmust2  ∧      notmust2 ⊑ notmust3) $
                  (unknownCond2 ∖ (wod ∪ notwod), wod, ndoms)
             else
               let (wod, notwod)   = Set.partition (\c -> (∃) ms (\m1 -> (∃) (suc graph c) (\xl ->  m1 ∈ pdom ! xl)  ∧ (∃) (suc graph c) (\xr -> not $ m1 ∈ pdom ! xr))) unknownCond0
-                  ndoms' = Map.insert m (pdom, dom) ndoms
-                  (pdom, dom)  = ( sinkdomOfGfp $ delSuccessorEdges graph m, sinkdomOfGfp $ delSuccessorEdges (grev graph) m)
+                  ndoms' = Map.insert m (pdom, dom, pmay) ndoms
+                  (pdom, dom, pmay)  = ( sinkdomOfGfp $ delSuccessorEdges graph m, sinkdomOfGfp $ delSuccessorEdges (grev graph) m, mayNaiveGfp $ delSuccessorEdges graph m)
               in (unknownCond0 ∖ (wod ∪ notwod), wod, ndoms')
 
         (unknownCondM1, wodM1) =
               let unknownCond0' = unknownCond0 ∖ wodM2
-                  wod    =    wod2 ∪    wodFromMust
-                  notwod = notwod2 ∪ notwodFromMust
+                  wod    =    wod3 ∪    wodFromMust
+                  notwod = notwod3 ∪ notwodFromMust
                   ((unknownCond1, wod1, notwod1), (must1, notmust1)) = foldr (fromPdomM1 m) ((unknownCond0', Set.empty, Set.empty), (Map.empty, Map.empty)) (Map.assocs ndomsM2)
                   ((unknownCond2, wod2, notwod2), (must2, notmust2)) = foldr (fromDomM1  m) ((unknownCond1,  wod1,      notwod1),   (must1,     notmust1))  (Map.assocs ndomsM2)
-                  wodFromMust    = Set.fromList [ c | c <- Set.toList unknownCond2,
-                              (∃) ms (\m2 -> (∃) (suc graph c) (\xl -> Map.member xl    must2  ∧ (∃) (suc graph c) (\xr -> Map.member xr notmust2  ∧  m2 ∈    must2 ! xl  ∧  m2 ∈ notmust2 ! xr)))]
-                  notwodFromMust = Set.fromList [ c | c <- Set.toList unknownCond2,
-                              (∀) ms (\m2 -> (∀) (suc graph c) (\xl -> (Map.member xl    must2 ∧ (∀) (suc graph c) (\xr -> Map.member xr    must2  ∧  m2 ∈    must2 ! xl  ∧  m2 ∈    must2 ! xr))
-                                                                      ∨ (Map.member xl notmust2 ∧ (∀) (suc graph c) (\xr -> Map.member xr notmust2  ∧  m2 ∈ notmust2 ! xl  ∧  m2 ∈ notmust2 ! xr))))]
+                  ((unknownCond3, wod3, notwod3), (must3, notmust3)) = foldr (fromPmayM1 m) ((unknownCond2,  wod2,      notwod2),   (must2,     notmust2))  (Map.assocs ndomsM2)
+                  wodFromMust    = Set.fromList [ c | c <- Set.toList unknownCond3,
+                              (∃) ms (\m2 -> (∃) (suc graph c) (\xl -> Map.member xl    must3  ∧ (∃) (suc graph c) (\xr -> Map.member xr notmust3  ∧  m2 ∈    must3 ! xl  ∧  m2 ∈ notmust3 ! xr)))]
+                  notwodFromMust = Set.fromList [ c | c <- Set.toList unknownCond3,
+                              (∀) ms (\m2 -> (∀) (suc graph c) (\xl -> (Map.member xl    must3 ∧ (∀) (suc graph c) (\xr -> Map.member xr    must3  ∧  m2 ∈    must3 ! xl  ∧  m2 ∈    must3 ! xr))
+                                                                      ∨ (Map.member xl notmust3 ∧ (∀) (suc graph c) (\xr -> Map.member xr notmust3  ∧  m2 ∈ notmust3 ! xl  ∧  m2 ∈ notmust3 ! xr))))]
               in
                  -- traceShow (wod1, must1, notmust1) $
                  -- traceShow (wod2, must2, notmust2) $ 
-                 assert (unknownCond0' ⊇ unknownCond1  ∧  unknownCond1  ⊇ unknownCond2) $
-                 assert (                                         wod1  ⊆         wod2) $
-                 assert (                                      notwod1  ⊆      notwod2) $
-                 assert (                                        must1  ⊑        must2) $
-                 assert (                                     notmust1  ⊑     notmust2) $
-                 (unknownCond2 ∖ (wod ∪ notwod), wod)
+                 assert (unknownCond0' ⊇ unknownCond1  ∧  unknownCond1 ⊇ unknownCond2  ∧  unknownCond2 ⊇ unknownCond3) $
+                 assert (                                         wod1 ⊆         wod2  ∧          wod2 ⊆    wod3) $
+                 assert (                                      notwod1 ⊆      notwod2  ∧       notwod2 ⊆ notwod3) $
+                 assert (                                        must1 ⊑        must2  ∧         must2 ⊑    must3) $
+                 assert (                                     notmust1 ⊑     notmust2  ∧      notmust2 ⊑ notmust3) $
+                 (unknownCond3 ∖ (wod ∪ notwod), wod)
 
     in
        -- traceShow ((ms, ndoms), m, unknownCond0) $ 
@@ -138,7 +141,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
        (Set.delete m $ wodM2 ∪ wodM1, (Set.insert m ms, ndomsM2))
   where condNodes    = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1, not $ c ∈ ms, c /= m ]
         unknownCond0 = Set.filter  (\c -> (not $ c ∈ ms) ∧ (c /= m)) condNodes
-        fromDomM2 m2 (n,(_,dom)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
+        fromDomM2 m2 (n,(_,dom,_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
           where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
                                                   (∀) (suc graph c) (\x -> x ∈ dom ! m2),
@@ -148,7 +151,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                             not $ (∃) ms (\m1 -> (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ dom ! xl ∧ m1 /= xl)   ∧  (not $ m1 ∈ dom ! xr ∧ m1 /= xr)     ) ))]
                 mustNew      = Map.fromList [ (x, Set.fromList [ m1 |  m1 <- Set.toList ms, m1 ∈ dom ! m2,       x ∈ dom ! m1])  | c <- Set.toList unknownCond', x <- suc graph c, x ∈ dom ! m2]
                 notmustNew   = Map.fromList [ (x, Set.fromList [ m1 |  m1 <- Set.toList ms, m1 ∈ dom ! m2, not $ x ∈ dom ! m1])  | c <- Set.toList unknownCond', x <- suc graph c, x ∈ dom ! m2]
-        fromDomM1 m1 (n,(_,dom)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
+        fromDomM1 m1 (n,(_,dom,_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
           where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
                                                   m2 <- Set.toList ms,
@@ -160,7 +163,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                             not $ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ dom ! xl ∧ m1 /= xl)   ∧  (not $ m1 ∈ dom ! xr ∧ m1 /= xr)     ) )]
                 mustNew      = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms, x ∈ dom ! m2, m1 ∈ dom ! m2,       x ∈ dom ! m1])  | c <- Set.toList unknownCond', x <- suc graph c]
                 notmustNew   = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms, x ∈ dom ! m2, m1 ∈ dom ! m2, not $ x ∈ dom ! m1])  | c <- Set.toList unknownCond', x <- suc graph c]
-        fromPdomM2 m2 (n,(pdom,_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
+        fromPdomM2 m2 (n,(pdom,_,_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
           where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
                                                   (∀) (suc graph c) (\x -> m2 ∈ pdom ! x),
@@ -173,7 +176,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 mustNew      = Map.fromList [ (x, Set.fromList [ m1 |  m1 <- Set.toList $ pdom ! x, not $ m1 ∈ pdom ! m2, m1 ∈ ms ])  | c <- Set.toList unknownCond', x <- suc graph c, m2 ∈ pdom ! x]
                 notmustNew   = Map.fromList [ (x, notmusts)                                                                           | c <- Set.toList unknownCond', x <- suc graph c, m2 ∈ pdom ! x]
                   where notmusts = pdom ! m2  ∩  ms
-        fromPdomM1 m1  (n,(pdom,_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
+        fromPdomM1 m1  (n,(pdom,_,_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
           where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
                                                   m2 <- Set.toList ms,
@@ -187,3 +190,25 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                ]
                 mustNew      = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList $ pdom ! m1, m2 ∈ ms          ])  | c <- Set.toList unknownCond', x <- suc graph c,       m1 ∈ pdom ! x]
                 notmustNew   = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList $ pdom !  x, m2 ∈ ms          ])  | c <- Set.toList unknownCond', x <- suc graph c, not $ m1 ∈ pdom ! x ]
+        fromPmayM2 m2 (n,(pdom, dom, pmay)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
+          where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
+                wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
+                                                  (∀) (suc graph c) (\x -> not $ m2 ∈ pmay ! x),
+                                                  (∃) ms (\m1 -> (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ pdom ! xl ∨ m1 ∈ dom ! m2)   ∧  (not $ m1 ∈ pdom ! xr ∨ m1 ∈ dom ! m2))))]
+                notwodNew    = Set.fromList [ c | c <- Set.toList unknownCond,
+                                                  (∀) (suc graph c) (\x -> not $ m2 ∈ pmay ! x),
+                                            not $ (∃) ms (\m1 -> (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ pdom ! xl ∨ m1 ∈ dom ! m2)   ∧  (not $ m1 ∈ pdom ! xr ∨ m1 ∈ dom ! m2))))]
+                mustNew      = Map.fromList [ (x, Set.fromList [ m1 | m1 <- Set.toList ms,       m1 ∈ pdom ! x  ∨       m1 ∈ dom ! m2])  | c <- Set.toList unknownCond', x <- suc graph c, not $ m2 ∈ pmay ! x]
+                notmustNew   = Map.fromList [ (x, Set.fromList [ m1 | m1 <- Set.toList ms, not $ m1 ∈ pdom ! x,   not $ m1 ∈ dom ! m2])  | c <- Set.toList unknownCond', x <- suc graph c, not $ m2 ∈ pmay ! x]
+        fromPmayM1 m1 (n,(pdom, dom, pmay)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
+          where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
+                wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
+                                                  m2 <- Set.toList ms,
+                                                  (∀) (suc graph c) (\x -> not $ m2 ∈ pmay ! x),
+                                                  (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ pdom ! xl ∨ m1 ∈ dom ! m2)   ∧  (not $ m1 ∈ pdom ! xr ∨ m1 ∈ dom ! m2)))]
+                notwodNew    = Set.fromList [ c | c <- Set.toList unknownCond,
+                                                  m2 <- Set.toList ms,
+                                                  (∀) (suc graph c) (\x -> not $ m2 ∈ pmay ! x),
+                                            not $ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ pdom ! xl ∨ m1 ∈ dom ! m2)   ∧  (not $ m1 ∈ pdom ! xr ∨ m1 ∈ dom ! m2)))]
+                mustNew      = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms, not $ m2 ∈ pmay ! x,       m1 ∈ pdom ! x  ∨       m1 ∈ dom ! m2])  | c <- Set.toList unknownCond', x <- suc graph c]
+                notmustNew   = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms, not $ m2 ∈ pmay ! x, not $ m1 ∈ pdom ! x,   not $ m1 ∈ dom ! m2])  | c <- Set.toList unknownCond', x <- suc graph c]

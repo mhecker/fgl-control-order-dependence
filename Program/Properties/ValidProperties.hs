@@ -880,7 +880,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     g = insEdge (exit, entry, ()) generatedGraph
                     mywodslicer     = MyWodSlice.myWodSlice g
                     mywodfastslicer = NTICD.myWodFastSlice g
-                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
+                in  traceShow (length $ nodes g) $ 
+                    (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                         mywodslicer m1 m2 == mywodfastslicer m1 m2
                     ))
     -- testProperty  "pdom swap properties in control sinks"

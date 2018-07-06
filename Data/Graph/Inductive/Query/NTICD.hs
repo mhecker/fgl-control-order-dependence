@@ -2016,7 +2016,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
 
 
 
-isinkdomOfTwoFinger8Down :: forall gr a b. (Show (gr a b), DynGraph gr) =>
+isinkdomOfTwoFinger8Down :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Set Node
   -> [[Node]]
@@ -2071,7 +2071,7 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i w
 
 
 
-isinkdomOfTwoFinger8DownFixedTraversalForOrder :: forall gr a b. (Show (gr a b), DynGraph gr) =>
+isinkdomOfTwoFinger8DownFixedTraversalForOrder :: forall gr a b. (DynGraph gr) =>
      (gr a b -> Set Node -> [[Node]] -> Set Node -> Map Node (Maybe Node) -> [(Node, [Node])])
   -> gr a b
   -> Set Node
@@ -2121,7 +2121,7 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks  prev
                                   Nothing ->                 Nothing
                                   Just n' -> if n' ∈ ns then Nothing else lcaDown' (n', Set.insert n' ns) (m, ms)
 
-isinkdomOfTwoFinger8DownTreeTraversal :: forall gr a b. (Show (gr a b), DynGraph gr) =>
+isinkdomOfTwoFinger8DownTreeTraversal :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Set Node
   -> [[Node]]
@@ -2141,7 +2141,7 @@ isinkdomOfTwoFinger8DownTreeTraversal = isinkdomOfTwoFinger8DownFixedTraversalFo
                           where roots = [ n | (n, Just m) <- Map.assocs imdom0, not $ n ∈ sinkNodes, m ∈ sinkNodes]
 
 
-isinkdomOfTwoFinger8DownFixedTraversal :: forall gr a b. (Show (gr a b), DynGraph gr) =>
+isinkdomOfTwoFinger8DownFixedTraversal :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Set Node
   -> [[Node]]
@@ -2158,7 +2158,7 @@ isinkdomOfTwoFinger8DownFixedTraversal = isinkdomOfTwoFinger8DownFixedTraversalF
 
 
 
-isinkdomOfTwoFinger8 :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger8 :: forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set Node)
 isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                           fmap toSet $ twoFinger 0 worklist0 processed0 imdom0 
   where solution = sinkdomOfGfp graph
@@ -2492,6 +2492,12 @@ myWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set
 myWodFastSlice graph =  combinedBackwardSlice graph empty w
   where empty = Map.empty
         w     = myWodFast graph
+
+
+myWodFastPDomSimpleHeuristicSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+myWodFastPDomSimpleHeuristicSlice graph =  combinedBackwardSlice graph empty w
+  where empty = Map.empty
+        w     = myWodFastPDomSimpleHeuristic graph
 
 
 wodMyEntryWodMyCDSlice :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
@@ -3038,12 +3044,13 @@ myWodFast graph =
 
 
 
-rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Set Node -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Set Node -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
 rotatePDomAround  graph condNodes pdom e@(n,m) =
       id
     $ require (hasEdge graph e)
     $ require (pdom  ! n == Nothing)
-    $ assert  (graphm == efilter (\(x,y,_) -> x /= m) graph)
+    $ assert  (nodes graphm == (nodes $ efilter (\(x,y,_) -> x /= m) graph))
+    $ assert  (edges graphm == (edges $ efilter (\(x,y,_) -> x /= m) graph))
     $ assert  (pdom' ! m == Nothing)
     $ pdom'
   where graphm = delSuccessorEdges graph m
@@ -3076,7 +3083,7 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
                 solution = sinkdomOfGfp graphm
 
 
-myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr, Show (gr a b)) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDomForIterationStrategy strategy graph =
         convert $
         [ (n,m1,m2)  |                                            cycle <- isinkdomCycles,
@@ -3180,7 +3187,7 @@ myWodFastPDom graph = myWodFastPDomForIterationStrategy none graph
   where none graph cycle = [ [n] | n <- cycle ]
 
 
-myWodFastPDomSimpleHeuristic :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDomSimpleHeuristic :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDomSimpleHeuristic graph = myWodFastPDomForIterationStrategy simple graph
   where simple :: gr a b -> [Node] -> [[Node]]
         simple graph cycle = from (joinNodes ++ nonJoinNodes) Set.empty []

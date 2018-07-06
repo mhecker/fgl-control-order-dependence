@@ -98,6 +98,48 @@ reachableFrom m xs seen
     | otherwise = xs ∪ reachableFrom m new (seen ∪ xs)
   where new = Set.fromList [ x' | x <- Set.toList xs, Just x's <- [ Map.lookup x m ], x' <- Set.toList $ m ! x, not $ x ∈ seen]
 
+
+reachableFromTree :: Ord α => Map α (Set α) -> α -> Set α
+reachableFromTree m x = reachFrom (Set.fromList [x]) Set.empty
+  where reachFrom xs seen 
+          | Set.null xs = seen
+          | otherwise = xs ∪ reachFrom new (seen ∪ xs)
+              where new = Set.fromList [ x' | x <- Set.toList xs, Just x's <- [ Map.lookup x m ], x' <- Set.toList $ m ! x]
+
+
+
+
+isReachableFromTree :: Ord α => Map α (Set α) -> α -> α -> Bool
+isReachableFromTree m x y = isReach y
+  where isReach y
+          | x == y    = True
+          | otherwise = case Set.toList $ m ! y of
+                          []  -> False
+                          [z] -> isReach z
+                          _   -> error "no tree"
+
+
+allReachableFromTree :: Ord α => Map α (Set α) -> Set α -> α -> Bool
+allReachableFromTree m xs y = allReach (Set.delete y xs) y
+  where allReach notseen y
+          | Set.null notseen = True
+          | otherwise = case Set.toList $ m ! y of
+                          []  -> False
+                          [z] -> allReach (Set.delete z notseen) z
+                          _   -> error "no tree"
+
+
+isReachableBeforeFromTree :: Ord α => Map α (Set α) -> α -> α -> α -> Bool
+isReachableBeforeFromTree m a x y = isReach y
+  where isReach y
+          | a == y    = True
+          | x == y    = False
+          | otherwise = case Set.toList $ m ! y of
+                          []  -> False
+                          [z] -> isReach z
+                          _   -> error "no tree"
+
+
 reachableFromIn :: Ord a => Map a (Set (a, (Integer, Set a))) -> a -> a -> Set Integer
 reachableFromIn succs x y
     | x == y    = Set.fromList [0]
@@ -164,3 +206,15 @@ fromSet s = case Set.toList s of
 
 
 evalBfun f bs  = testBit f (fromListBE bs)
+
+
+findMs dom ms xs n =  find (n ∈ xs) (Set.delete n xs) n
+  where find inXs xs n
+            | inXs ∧ n ∈ ms = True
+            | otherwise = case Set.toList $ dom ! n of
+                            []  -> False
+                            [z] -> Set.null xs'
+                            _   -> error "no tree"
+          where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
+                 xs' = Set.delete n xs
+

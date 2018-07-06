@@ -76,7 +76,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
+    myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -873,14 +873,16 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           mywodslicer m1 m2 == mywodfastslicer m1 m2
                         ))
                    ),
-    testProperty  "myWodSlice == myWodFastSlice for CFG-shaped graphs with exit->entry edge"
+    testProperty  "myWodSlice == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                     g = insEdge (exit, entry, ()) generatedGraph
                     mywodslicer     = MyWodSlice.myWodSlice g
                     mywodfastslicer = NTICD.myWodFastSlice g
-                in  traceShow (length $ nodes g) $ 
+                    -- mywodfastslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
+                in  -- if (length $ nodes g) <= 200 then True else
+                    traceShow (length $ nodes g) $ 
                     (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                         mywodslicer m1 m2 == mywodfastslicer m1 m2
                     ))

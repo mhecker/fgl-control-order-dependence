@@ -131,11 +131,11 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
   where condNodes    = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1, not $ c ∈ ms, c /= m ]
         unknownCond0 = Set.filter  (\c -> (not $ c ∈ ms) ∧ (c /= m)) condNodes
         fromDomM2 m2 (n,((_,dom,_),(_,idom,_))) ((unknownCond, wod, notwod), (must, notmust))  =
-                   (if wodNew == wodNewFast then id else traceShow (graph, m2, ms, idom, ".....", wodNew, "--------", wodNewFast)) $ 
+          (if mustNew == mustNewFast then id else traceShow (graph, m2, ms, idom, ".....", mustNew, "--------", mustNewFast)) $ 
                    assert (    wodNew ==     wodNewFast ) $
                    assert ( notwodNew ==  notwodNewFast ) $
-                   -- assert (   mustNew ==    mustNewFast ) $
-                   -- assert (notmustNew == notmustNewFast ) $
+                   assert (   mustNew ==    mustNewFast ) $
+                   assert (notmustNew == notmustNewFast ) $
                    ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
           where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
@@ -144,8 +144,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 notwodNew    = Set.fromList [ c | c <- Set.toList unknownCond,
                                                   (∀) (suc graph c) (\x -> x ∈ dom ! m2),
                                             not $ (∃) ms (\m1 -> (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ dom ! xl ∧ m1 /= xl)   ∧  (not $ m1 ∈ dom ! xr ∧ m1 /= xr)     ) ))]
-                mustNew      = Map.fromList [ (x, Set.fromList [ m1 |  m1 <- Set.toList ms, m1 ∈ dom ! m2,       x ∈ dom ! m1])  | c <- Set.toList unknownCond', x <- suc graph c, x ∈ dom ! m2]
-                notmustNew   = Map.fromList [ (x, Set.fromList [ m1 |  m1 <- Set.toList ms, m1 ∈ dom ! m2, not $ x ∈ dom ! m1])  | c <- Set.toList unknownCond', x <- suc graph c, x ∈ dom ! m2]
+                mustNew      = Map.fromList [ (x, Set.fromList [ m1 |  m1 <- Set.toList ms,        m1 ∈ dom ! m2,          x ∈ dom ! m1 ])  | c <- Set.toList unknownCond', x <- suc graph c, x ∈ dom ! m2]
+                notmustNew   = Map.fromList [ (x, Set.fromList [ m1 |  m1 <- Set.toList ms, (not $ m1 ∈ dom ! m2) ∨ (not $ x ∈ dom ! m1)])  | c <- Set.toList unknownCond', x <- suc graph c, x ∈ dom ! m2]
 
                 allReachableIDomFrom = allReachableFromTree idom
                 isReachableIDomFrom = isReachableFromTree idom
@@ -153,6 +153,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 cWithM1s = [ (c, findBoth idom ms (Set.fromList $ suc graph c) m2) | c <- Set.toList unknownCond ]
                 wodNewFast    = Set.fromList [ c | (c,(foundMs,_        )) <- cWithM1s, foundMs   ]
                 notwodNewFast = Set.fromList [ c | (c,(_      ,foundNoMs)) <- cWithM1s, foundNoMs ]
+                (mustNewFast, notmustNewFast)  = findMustNotMust idom ms ((∐) [Set.fromList $ suc graph c | c <- Set.toList unknownCond' ]) m2
 
         fromDomM1 m1 (n,((_,dom,_),_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
           where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)
@@ -274,3 +275,27 @@ lcaRKnown dom c successors = case Set.toList $ dom ! c of
                                | otherwise = relevant n' (Set.insert n' ns)
                                    where [n'] = Set.toList $ dom ! n
                      _   -> error "no tree"
+
+
+findMustNotMust dom ms xs n = find found0 notfound0 must0 notmust0 n
+  where found0    = Set.empty
+        notfound0 = ms
+        
+        must0     = Map.empty
+        notmust0  = Map.empty
+        
+        find found notfound must notmust n = case Set.toList $ dom ! n of
+                             []  -> (must', notmust')
+                             [z] -> find found' notfound' must' notmust' z
+                             _   -> error "no tree"
+          where  nInMs     = n ∈ ms
+                 nInXs     = n ∈ xs
+                 found'    = if nInMs then Set.insert n    found else    found
+                 notfound' = if nInMs then Set.delete n notfound else notfound
+                 must'     = if nInXs then
+                                 Map.insert n     found'  must
+                               else                       must
+                 notmust'  = if nInXs then
+                                 Map.insert n  notfound'  notmust
+                               else                       notmust
+

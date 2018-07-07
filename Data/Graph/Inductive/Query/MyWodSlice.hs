@@ -30,7 +30,7 @@ import qualified Data.List as List
 
 import Data.List ((\\), nub, sortBy, groupBy)
 
-import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableBeforeFromTree, allReachableFromTree, findMs)
+import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableBeforeFromTree, allReachableFromTree, findMs, findNoMs, findBoth)
 import Unicode
 
 
@@ -133,7 +133,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
         fromDomM2 m2 (n,((_,dom,_),(_,idom,_))) ((unknownCond, wod, notwod), (must, notmust))  =
                    (if wodNew == wodNewFast then id else traceShow (graph, m2, ms, idom, ".....", wodNew, "--------", wodNewFast)) $ 
                    assert (    wodNew ==     wodNewFast ) $
-                   -- assert ( notwodNew ==  notwodNewFast ) $
+                   assert ( notwodNew ==  notwodNewFast ) $
                    -- assert (   mustNew ==    mustNewFast ) $
                    -- assert (notmustNew == notmustNewFast ) $
                    ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
@@ -150,9 +150,9 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 allReachableIDomFrom = allReachableFromTree idom
                 isReachableIDomFrom = isReachableFromTree idom
                 isReachableIDomBefore = isReachableBeforeFromTree idom
-                wodNewFast   = Set.fromList [ c | c <- Set.toList unknownCond,
-                                                  findMs idom ms (Set.fromList $ suc graph c) m2
-                               ]
+                cWithM1s = [ (c, findBoth idom ms (Set.fromList $ suc graph c) m2) | c <- Set.toList unknownCond ]
+                wodNewFast    = Set.fromList [ c | (c,(foundMs,_        )) <- cWithM1s, foundMs   ]
+                notwodNewFast = Set.fromList [ c | (c,(_      ,foundNoMs)) <- cWithM1s, foundNoMs ]
 
         fromDomM1 m1 (n,((_,dom,_),_)) ((unknownCond, wod, notwod), (must, notmust))  = ((unknownCond', wod ∪ wodNew, notwod ∪ notwodNew), ( must ⊔ mustNew, notmust ⊔ notmustNew))
           where unknownCond' = unknownCond ∖ (wodNew ∪ notwodNew)

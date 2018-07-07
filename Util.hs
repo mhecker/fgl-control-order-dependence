@@ -219,3 +219,28 @@ findMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n
                  xs' = Set.delete n xs
                  found' = found ∨ (inXs ∧ n ∈ ms)
 
+
+findNoMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
+  where find inXs xs found n
+            | inXs ∧ found' = False
+            | Set.null xs' = True
+            | otherwise = case Set.toList $ dom ! n of
+                            []  -> False
+                            [z] -> find inXs' xs' found' z
+                            _   -> error "no tree"
+          where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
+                 xs' = Set.delete n xs
+                 found' = found ∨ (inXs ∧ n ∈ ms)
+
+
+findBoth dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
+  where find inXs xs found n
+            | Set.null xs' = (found', not $ found')
+            | otherwise = case Set.toList $ dom ! n of
+                            []  -> (False, False)
+                            [z] -> find inXs' xs' found' z
+                            _   -> error "no tree"
+          where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
+                 xs' = Set.delete n xs
+                 found' = found ∨ (inXs ∧ n ∈ ms)
+

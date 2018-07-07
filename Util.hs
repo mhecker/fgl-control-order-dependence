@@ -208,13 +208,14 @@ fromSet s = case Set.toList s of
 evalBfun f bs  = testBit f (fromListBE bs)
 
 
-findMs dom ms xs n =  find (n ∈ xs) (Set.delete n xs) n
-  where find inXs xs n
-            | inXs ∧ n ∈ ms = True
+findMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
+  where find inXs xs found n
+            | Set.null xs' = found'
             | otherwise = case Set.toList $ dom ! n of
                             []  -> False
-                            [z] -> Set.null xs'
+                            [z] -> find inXs' xs' found' z
                             _   -> error "no tree"
           where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
                  xs' = Set.delete n xs
+                 found' = found ∨ (inXs ∧ n ∈ ms)
 

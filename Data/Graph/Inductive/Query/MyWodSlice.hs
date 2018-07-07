@@ -74,7 +74,7 @@ myWodSlice graph m1 m2 = slice s0 ms0
                     ms' = ms0 ∪ new 
 
 
-myWodSliceStep :: forall gr a b. DynGraph gr => gr a b ->  MyWodSliceState -> Node -> (Set Node, MyWodSliceState)
+myWodSliceStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSliceState -> Node -> (Set Node, MyWodSliceState)
 myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) else
     require ((∀) ms (\m -> (∀) unknownCond0 (\c ->           (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->   x ∈ dom ! m  ∨  m ∈ pdom ! x  ∨  (not $ m ∈ pmay ! x) ))) )) $
     let covered           = (∀) unknownCond0 (\c -> c == m ∨ (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->   x ∈ dom ! m  ∨  m ∈ pdom ! x   ∨  (not $ m ∈ pmay ! x ))) )
@@ -131,7 +131,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
   where condNodes    = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1, not $ c ∈ ms, c /= m ]
         unknownCond0 = Set.filter  (\c -> (not $ c ∈ ms) ∧ (c /= m)) condNodes
         fromDomM2 m2 (n,((_,dom,_),(_,idom,_))) ((unknownCond, wod, notwod), (must, notmust))  =
-                   (if wodNew == wodNewFast then id else traceShow (m2, ms, idom, ".....", wodNew, "--------", wodNewFast)) $ 
+                   (if wodNew == wodNewFast then id else traceShow (graph, m2, ms, idom, ".....", wodNew, "--------", wodNewFast)) $ 
                    assert (    wodNew ==     wodNewFast ) $
                    -- assert ( notwodNew ==  notwodNewFast ) $
                    -- assert (   mustNew ==    mustNewFast ) $

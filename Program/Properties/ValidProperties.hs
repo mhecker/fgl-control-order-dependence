@@ -848,31 +848,31 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                         )))))
     --                in if equiv then {- traceShow (fmap (\(sink,_,_) -> length sink) sinks) $ -} traceShow (bfun, pmap, pmap2, pmap3, pmap4) equiv else equiv
     --                )))))))))
-     testProperty  "myWodFromSliceStep == myWodFast"
-     $ \(ARBITRARY(generatedGraph)) ->
-                 let g0 = generatedGraph
-                     sinks = NTICD.controlSinks g0
-                 in
-                    (∀) sinks (\sink ->
-                      let g = subgraph sink g0
-                          mywod = NTICD.myWodFast g
-                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-                           (MyWodSlice.myWodFromSliceStep g m1 m2) == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
-                         ))
-                    ),
-    testProperty  "myWodSlice == myWodFastSlice"
-    $ \(ARBITRARY(generatedGraph)) ->
-                let g0 = generatedGraph
-                    sinks = NTICD.controlSinks g0
-                in
-                   (∀) sinks (\sink ->
-                     let g = subgraph sink g0
-                         mywodslicer     = MyWodSlice.myWodSlice g
-                         mywodfastslicer = NTICD.myWodFastSlice g
-                     in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-                          mywodslicer m1 m2 == mywodfastslicer m1 m2
-                        ))
-                   ),
+    --  testProperty  "myWodFromSliceStep == myWodFast"
+    --  $ \(ARBITRARY(generatedGraph)) ->
+    --              let g0 = generatedGraph
+    --                  sinks = NTICD.controlSinks g0
+    --              in
+    --                 (∀) sinks (\sink ->
+    --                   let g = subgraph sink g0
+    --                       mywod = NTICD.myWodFast g
+    --                   in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+    --                        (MyWodSlice.myWodFromSliceStep g m1 m2) == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
+    --                      ))
+    --                 ),
+    -- testProperty  "myWodSlice == myWodFastSlice"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --             let g0 = generatedGraph
+    --                 sinks = NTICD.controlSinks g0
+    --             in
+    --                (∀) sinks (\sink ->
+    --                  let g = subgraph sink g0
+    --                      mywodslicer     = MyWodSlice.myWodSlice g
+    --                      mywodfastslicer = NTICD.myWodFastSlice g
+    --                  in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+    --                       mywodslicer m1 m2 == mywodfastslicer m1 m2
+    --                     ))
+    --                ),
     testProperty  "myWodSlice == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
@@ -881,11 +881,28 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodslicer     = MyWodSlice.myWodSlice g
                     mywodfastslicer = NTICD.myWodFastSlice g
                     -- mywodfastslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
-                in  -- if (length $ nodes g) <= 200 then True else
+                in  if (length $ nodes g) <= 200 then True else
                     traceShow (length $ nodes g) $ 
                     (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                         mywodslicer m1 m2 == mywodfastslicer m1 m2
                     ))
+    -- testProperty  "pmay properties in control sinks"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --             let g0 = generatedGraph
+    --                 sinks = [ (g, sink, pdom, pmay, dom, condNodes) | sink <-  NTICD.controlSinks g0,
+    --                                                let g = subgraph sink g0,
+    --                                                let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
+    --                                                let gn'  = Map.fromList [ (n, delSuccessorEdges (grev g) n)    | n <- sink ],
+    --                                                let pdom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn  ! n)    | n <- sink ],
+    --                                                let  dom = Map.fromList [ (n, NTICD.sinkdomOfGfp $ gn' ! n)    | n <- sink ],
+    --                                                let pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ],
+    --                                                let condNodes = Set.fromList [ n | n <- sink, length (suc g n) > 1]
+    --                         ]
+    --             in (∀) sinks (\(g,sink, pdom, pmay, dom, condNodes) ->
+    --                         (∀) sink (\n -> (∀) condNodes (\c -> (∀) sink (\m2 -> if (c == m2) then True else
+    --                            ((∀) (suc g c) (\x -> not $ m2 ∈ (pmay ! n) ! x))   ↔   ((n /= m2) ∧ (n /= c) ∧ (not $ m2 ∈ (pmay ! n) ! c))
+    --                         )))
+    --                )
     -- testProperty  "pdom swap properties in control sinks"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --             let g0 = generatedGraph

@@ -881,7 +881,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodslicer     = MyWodSlice.myWodSlice g
                     mywodfastslicer = NTICD.myWodFastSlice g
                     -- mywodfastslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
-                in  if (length $ nodes g) <= 200 then True else
+                in  -- if (length $ nodes g) <= 500 then True else
                     traceShow (length $ nodes g) $ 
                     (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                         mywodslicer m1 m2 == mywodfastslicer m1 m2

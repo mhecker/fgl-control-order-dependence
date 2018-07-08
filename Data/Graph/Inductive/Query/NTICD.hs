@@ -3013,7 +3013,7 @@ myWod graph = myXod sMust s3 graph
         s3    = snmF3 graph
 
 myWodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
-myWodFast graph =
+myWodFast graph = traceShow ("Graph size: ", length $ nodes $ graph) $
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
                                        let conds   = condsIn    cycle,

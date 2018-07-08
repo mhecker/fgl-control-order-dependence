@@ -20,6 +20,7 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Graph.Inductive.Query.DFS (reachable)
 import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
@@ -78,7 +79,7 @@ myWodSliceStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWo
 myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) else
     -- require ((∀) ms (\m -> (∀) unknownCond0 (\c ->           (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->   x ∈ dom ! m  ∨  m ∈ pdom ! x     ∨  (not $ m ∈ pmay ! x)   ))) )) $
     -- let covered           = (∀) unknownCond0 (\c -> c == m ∨ (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->   x ∈ dom ! m  ∨  m ∈ pdom ! x  {- ∨  (not $ m ∈ pmay ! x) -}) ) )
-    let covered           = (∀) unknownCond0 (\c -> c == m ∨ (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom, _))) ->   x ∈ reachableFromTree idom m  ∨  m ∈ reachableFromTree ipdom x  ∨  (not $ m ∈ pmay ! x) ) ) )
+    let covered           = (∀) unknownCond0 (\c -> c == m ∨ (∀) (suc graph c) (\x -> (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom, _))) ->   x ∈ reachableFromTree idom m  ∨  m ∈ reachableFromTree ipdom x  ∨  (not $ m `elem` reachable x (delSuccessorEdges graph n)) ) ) )
 
         (unknownCondM2, wodM2, ndomsM2) = if covered then
               let wod    =    wod3 ∪    wodFromMust
@@ -281,22 +282,23 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 isReachableIPDomFrom = isReachableFromTree ipdom
                 m1sBehindM2    = reachableFromTree idom m2 ∩ ms
                 m1sNotBehindM2 = ms ∖ m1sBehindM2
+                gn = delSuccessorEdges graph n
                 wodNewFast   = Set.fromList [ c | (n /= m2),
                                                   c <- Set.toList unknownCond, 
                                                   assert (m2 /= c) True,
-                                                  (n /= c) ∧ (not $ m2 ∈ pmay ! c),
+                                                  (n /= c) ∧ (not $ m2 `elem` reachable c gn),
                                                   let (z, relevant) = lcaRKnown ipdom c (suc graph c),
                                                   (∃) ms (\m1 -> m1 ∈ relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2))
                               ]
                 notwodNewFast   = Set.fromList [ c | (n /= m2),
                                                   c <- Set.toList unknownCond, 
                                                   assert (m2 /= c) True,
-                                                  (n /= c) ∧ (not $ m2 ∈ pmay ! c),
+                                                  (n /= c) ∧ (not $ m2 `elem` reachable c gn),
                                                   let (z, relevant) = lcaRKnown ipdom c (suc graph c),
                                             not $ (∃) ms (\m1 -> m1 ∈ relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2))
                               ]
-                mustNewFast    = Map.fromList [ (x, m1sBehindM2 ∪ Set.fromList [ m1 | m1 <- Set.toList m1sNotBehindM2,       m1 `isReachableIPDomFrom` x])  | c <- Set.toList unknownCond', x <- suc graph c, not $ m2 ∈ pmay ! x]
-                notmustNewFast = Map.fromList [ (x,               Set.fromList [ m1 | m1 <- Set.toList m1sNotBehindM2, not $ m1 `isReachableIPDomFrom` x])  | c <- Set.toList unknownCond', x <- suc graph c, not $ m2 ∈ pmay ! x]
+                mustNewFast    = Map.fromList [ (x, m1sBehindM2 ∪ Set.fromList [ m1 | m1 <- Set.toList m1sNotBehindM2,       m1 `isReachableIPDomFrom` x])  | c <- Set.toList unknownCond', x <- suc graph c, (not $ m2 `elem` reachable x gn)]
+                notmustNewFast = Map.fromList [ (x,               Set.fromList [ m1 | m1 <- Set.toList m1sNotBehindM2, not $ m1 `isReachableIPDomFrom` x])  | c <- Set.toList unknownCond', x <- suc graph c, (not $ m2 `elem` reachable x gn)]
 
 
 
@@ -326,10 +328,11 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
 
                 isReachableIDomFrom  = isReachableFromTree idom
                 isReachableIPDomFrom = isReachableFromTree ipdom
+                gn = delSuccessorEdges graph n
                 wodNewFast   = Set.fromList [ c | c <- Set.toList unknownCond,
                                                   (∃) ms (\m2 -> assert (m2 /= c) $ 
                                                     (n /= m2) ∧ 
-                                                    (n /= c) ∧ (not $ m2 ∈ pmay ! c) ∧ 
+                                                    (n /= c) ∧ (not $ m2 `elem` reachable c gn) ∧ 
                                                     let (z, relevant) = lcaRKnown ipdom c (suc graph c) in
                                                     m1 ∈ relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2)
                                                   )
@@ -337,13 +340,13 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 notwodNewFast= Set.fromList [ c | c <- Set.toList unknownCond,
                                                   (∀) ms (\m2 -> assert (m2 /= c) $ 
                                                     (n /= m2) ∧ 
-                                                    (n /= c) ∧ (not $ m2 ∈ pmay ! c) ∧ 
+                                                    (n /= c) ∧ (not $ m2 `elem` reachable c gn) ∧ 
                                                     let (z, relevant) = lcaRKnown ipdom c (suc graph c) in
                                               not $ (m1 ∈ relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2))
                                                   )
                               ]
-                mustNewFast   = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms, not $ m2 ∈ pmay ! x,       m1 `isReachableIPDomFrom` x  ∨       m1 `isReachableIDomFrom` m2])  | c <- Set.toList unknownCond', x <- suc graph c]
-                notmustNewFast= Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms, not $ m2 ∈ pmay ! x, not $ m1 `isReachableIPDomFrom` x,   not $ m1 `isReachableIDomFrom `m2])  | c <- Set.toList unknownCond', x <- suc graph c]
+                mustNewFast   = Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms,       m1 `isReachableIPDomFrom` x  ∨     m1 `isReachableIDomFrom` m2, (not $ m2 `elem` reachable x gn)])  | c <- Set.toList unknownCond', x <- suc graph c]
+                notmustNewFast= Map.fromList [ (x, Set.fromList [ m2 | m2 <- Set.toList ms, not $ m1 `isReachableIPDomFrom` x, not $ m1 `isReachableIDomFrom `m2, (not $ m2 `elem` reachable x gn)])  | c <- Set.toList unknownCond', x <- suc graph c]
 
 
 

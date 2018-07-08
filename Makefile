@@ -1,5 +1,5 @@
 # uncomment for profiling builds
-PROF=defined
+# PROF=defined
 # DEBUG=defined
 
 ifdef PROF

@@ -83,11 +83,11 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
           ∨ (∀) (suc graph c) (\x ->       m ∈ pdom ! x)
           ∨ (∀) (suc graph c) (\x -> not $ m ∈ pmay ! x)
       )))) $
-    let covered    = (∀) unknownCond0 (\c -> c == m ∨ (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom))) ->
-            (∀) (suc graph c) (\x ->  isReachableFromTree idom  x m)
-          ∨ (∀) (suc graph c) (\x ->  isReachableFromTree ipdom m x)
-          ∨ (∀) (suc graph c) (\x -> (not $ m `elem` reachable x (delSuccessorEdges graph n)))
-          ))
+    let covered    = (∀) unknownCond0 (\c -> c == m ∨ 
+            (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom))) -> (∀) (suc graph c) (\x ->  isReachableFromTree idom  x m))
+          ∨ (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom))) -> (∀) (suc graph c) (\x ->  isReachableFromTree ipdom m x))
+          ∨ (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom))) -> (∀) (suc graph c) (\x ->  not $ m `elem` reachable x (delSuccessorEdges graph n)))
+          )
         coveredDom  = Set.filter (\c ->  (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->       (∀) (suc graph c) (\x ->        x ∈  dom ! m ))) unknownCond0
         coveredPDom = Set.filter (\c ->  (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->       (∀) (suc graph c) (\x ->        m ∈ pdom ! x ))) unknownCond0
         coveredPMay = Set.filter (\c ->  (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->       (∀) (suc graph c) (\x ->  not $ m ∈ pmay ! x ))) unknownCond0
@@ -237,7 +237,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                ]
                 notwodNewFast= Set.fromList [ c | (c,z,relevant) <- withJoin,
                                                   (m1 == z)  ∨  (not $ m1 ∈ relevant),
-                                                  (∀) ms (\m2 -> m2 `isReachableIPDomFrom` z)
+                                                  allReachableFromTree ipdom ms z
                                ]
 
         fromPmayM2 m2 (n,((pdom, dom, pmay),(ipdom,idom))) (unknownCond, wod, notwod) =
@@ -292,25 +292,24 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                ]
 
                 isReachableIDomFrom  = isReachableFromTree idom
-                gn = delSuccessorEdges graph n
-                wodNewFast   = Set.fromList [ c | c <- Set.toList unknownCond,
+                withReachRelevant = [ (c, reachable c gn, lcaRKnown ipdom c (suc graph c)) | c <- Set.toList unknownCond ]
+                  where gn = delSuccessorEdges graph n
+                wodNewFast   = Set.fromList [ c | (c, reach, (z,relevant)) <- withReachRelevant,
                                                   (∃) ms (\m2 -> assert (m2 /= c) $ 
-                                                    let (z, relevant) = lcaRKnown ipdom c (suc graph c) in
                                                     (n /= m2) ∧ 
                                                     (n /= c) ∧
                                                     m1 /= z  ∧
                                                     (not $ m1 `isReachableIDomFrom` m2) ∧
                                                     m1 ∈ relevant ∧
-                                                    (not $ m2 `elem` reachable c gn)
+                                                    (not $ m2 `elem` reach)
                                                   )
                               ]
-                notwodNewFast= Set.fromList [ c | c <- Set.toList unknownCond,
+                notwodNewFast= Set.fromList [ c | (c, reach, (z,relevant)) <- withReachRelevant,
                                                   (∀) ms (\m2 -> assert (m2 /= c) $ 
-                                                    let (z, relevant) = lcaRKnown ipdom c (suc graph c) in
                                                     (n /= m2) ∧ 
                                                     (n /= c) ∧
                                              (not $ m1 /= z ∧ (not $ m1 `isReachableIDomFrom` m2) ∧ m1 ∈ relevant  ) ∧
-                                                    (not $ m2 `elem` reachable c gn)
+                                                    (not $ m2 `elem` reach)
                                                   )
                               ]
 

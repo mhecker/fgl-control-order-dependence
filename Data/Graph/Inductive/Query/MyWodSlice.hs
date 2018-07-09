@@ -183,8 +183,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                              (not $ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ dom ! xl ∧ m1 /= xl)   ∧  (not $ m1 ∈ dom ! xr ∧ m1 /= xr)     ) ))
                                                   )]
 
-                wodNewFast    = Set.fromList [ c | c <- Set.toList unknownCond, (∃) ms (\m2 -> findMs   idom (Set.fromList [m1]) (Set.fromList $ suc graph c) m2)  ]
-                notwodNewFast = Set.fromList [ c | c <- Set.toList unknownCond, (∀) ms (\m2 -> findNoMs idom (Set.fromList [m1]) (Set.fromList $ suc graph c) m2)  ]
+                wodNewFast    = Set.fromList [ c | c <- Set.toList unknownCond,                       (∃) ms (\m2 -> findMs   idom (Set.fromList [m1]) (Set.fromList $ suc graph c) m2)  ]
+                notwodNewFast = Set.fromList [ c | c <- Set.toList unknownCond, not $ c ∈ wodNewFast, (∀) ms (\m2 -> findNoMs idom (Set.fromList [m1]) (Set.fromList $ suc graph c) m2)  ]
                 
         fromPdomM2 m2 (n,((pdom,_,_),(ipdom,_))) ((unknownCond, wod, notwod){-, (must, notmust)-})  =
                    assert (    wodNew ==     wodNewFast ) $
@@ -206,7 +206,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                                   (∃) ms (\m1 -> (m1 ∈ relevant)  ∧  (m1 /= z))
                                ]
                 notwodNewFast= Set.fromList [ c | (c,z,relevant) <- withJoin,
-                                            not $ (∃) ms (\m1 -> (m1 ∈ relevant)  ∧  (m1 /= z))
+                                                  not $ c ∈ wodNewFast
+                                            -- not $ (∃) ms (\m1 -> (m1 ∈ relevant)  ∧  (m1 /= z))
                                ]
 
 
@@ -236,6 +237,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                                   (∃) ms (\m2 -> m2 `isReachableIPDomFrom` m1)
                                ]
                 notwodNewFast= Set.fromList [ c | (c,z,relevant) <- withJoin,
+                                                  not $ c ∈ wodNewFast,
                                                   (m1 == z)  ∨  (not $ m1 ∈ relevant),
                                                   allReachableFromTree ipdom ms z
                                ]
@@ -263,6 +265,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                               ]
                 notwodNewFast   = Set.fromList [ c | (n /= m2),
                                                   c <- Set.toList unknownCond, 
+                                                  not $ c ∈ wodNewFast,
                                                   assert (m2 /= c) True,
                                                   (n /= c) ∧ (not $ m2 `elem` reachable c gn),
                                                   let (z, relevant) = lcaRKnown ipdom c (suc graph c),
@@ -275,21 +278,21 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
         fromPmayM1 m1 (n,((pdom, dom, pmay),(ipdom, idom))) (unknownCond, wod, notwod) =
                    assert (Set.null    wodNew) $ 
                    assert (    wodNew ==     wodNewFast ) $
-                   assert ( notwodNew ==  notwodNewFast ) $
-                   (unknownCond', wod ∪ wodNewFast, notwod ∪ notwodNewFast)
-          where unknownCond' = unknownCond ∖ (wodNewFast ∪ notwodNewFast)
+                   -- assert ( notwodNew ==  notwodNewFast ) $
+                   (unknownCond', wod ∪ wodNewFast, notwod) -- do not use notwodNewFast at all
+          where unknownCond' = unknownCond ∖ wodNewFast
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
                                                   (∃) ms (\m2 ->
                                                     (∀) (suc graph c) (\x -> not $ m2 ∈ pmay ! x) ∧ 
                                                     (not $ m1 ∈ dom ! m2) ∧ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ pdom ! xl)   ∧  (not $ m1 ∈ pdom ! xr )))
                                                   )
                                ]
-                notwodNew    = Set.fromList [ c | c <- Set.toList unknownCond,
-                                                  (∀) ms (\m2 -> 
-                                                    (∀) (suc graph c) (\x -> not $ m2 ∈ pmay ! x) ∧ 
-                                             (not $ (not $ m1 ∈ dom ! m2) ∧ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ pdom ! xl)   ∧  (not $ m1 ∈ pdom ! xr ))))
-                                                  )
-                               ]
+                -- notwodNew    = Set.fromList [ c | c <- Set.toList unknownCond,
+                --                                   (∀) ms (\m2 -> 
+                --                                     (∀) (suc graph c) (\x -> not $ m2 ∈ pmay ! x) ∧ 
+                --                              (not $ (not $ m1 ∈ dom ! m2) ∧ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ pdom ! xl)   ∧  (not $ m1 ∈ pdom ! xr ))))
+                --                                   )
+                --                ]
 
                 isReachableIDomFrom  = isReachableFromTree idom
                 withReachRelevant = [ (c, reachable c gn, lcaRKnown ipdom c (suc graph c)) | c <- Set.toList unknownCond ]
@@ -304,14 +307,15 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                                     (not $ m2 `elem` reach)
                                                   )
                               ]
-                notwodNewFast= Set.fromList [ c | (c, reach, (z,relevant)) <- withReachRelevant,
-                                                  (∀) ms (\m2 -> assert (m2 /= c) $ 
-                                                    (n /= m2) ∧ 
-                                                    (n /= c) ∧
-                                             (not $ m1 /= z ∧ (not $ m1 `isReachableIDomFrom` m2) ∧ m1 ∈ relevant  ) ∧
-                                                    (not $ m2 `elem` reach)
-                                                  )
-                              ]
+                -- notwodNewFast= Set.fromList [ c | (c, reach, (z,relevant)) <- withReachRelevant,
+                --                                   not $ c ∈ wodNewFast,
+                --                                   (∀) ms (\m2 -> assert (m2 /= c) $ 
+                --                                     (n /= m2) ∧ 
+                --                                     (n /= c) ∧
+                --                              (not $ m1 /= z ∧ (not $ m1 `isReachableIDomFrom` m2) ∧ m1 ∈ relevant  ) ∧
+                --                                     (not $ m2 `elem` reach)
+                --                                   )
+                --               ]
 
 
 

@@ -302,8 +302,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                                     (n /= m2) ∧ 
                                                     (n /= c) ∧
                                                     m1 /= z  ∧
-                                                    (not $ m1 `isReachableIDomFrom` m2) ∧
                                                     m1 ∈ relevant ∧
+                                                    (not $ isReachableBeforeFromTree idom m1 z m2) ∧
                                                     (not $ m2 `elem` reach)
                                                   )
                               ]

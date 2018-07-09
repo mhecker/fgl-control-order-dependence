@@ -84,12 +84,12 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
           ∨ (∀) (suc graph c) (\x -> not $ m ∈ pmay ! x)
       )))) $
     let covered    = (∀) unknownCond0 (\c -> c == m ∨ 
-            (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom))) -> (∀) (suc graph c) (\x ->  isReachableFromTree idom  x m))
-          ∨ (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom))) -> (∀) (suc graph c) (\x ->  isReachableFromTree ipdom m x))
-          ∨ (∃) (Map.assocs ndoms) (\(n, ((_,_,pmay),(ipdom, idom))) -> (∀) (suc graph c) (\x ->  not $ m `elem` reachable x (delSuccessorEdges graph n)))
+            (∃) (Map.assocs ndoms) (\(n, (_,(ipdom, _   ))) -> let Just z = fromSet $ ipdom ! c in isReachableFromTree ipdom m z)
+          ∨ (∃) (Map.assocs ndoms) (\(n, (_,(_,     idom))) -> (∀) (suc graph c) (\x ->  isReachableFromTree idom  x m))
+          ∨ (∃) (Map.assocs ndoms) (\(n, _                ) -> (n /= m) ∧ (n /= c) ∧ (not $ m `elem` reachable c (delSuccessorEdges graph n)))
           )
-        coveredDom  = Set.filter (\c ->  (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->       (∀) (suc graph c) (\x ->        x ∈  dom ! m ))) unknownCond0
         coveredPDom = Set.filter (\c ->  (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->       (∀) (suc graph c) (\x ->        m ∈ pdom ! x ))) unknownCond0
+        coveredDom  = Set.filter (\c ->  (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->       (∀) (suc graph c) (\x ->        x ∈  dom ! m ))) unknownCond0
         coveredPMay = Set.filter (\c ->  (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->       (∀) (suc graph c) (\x ->  not $ m ∈ pmay ! x ))) unknownCond0
 
         (unknownCondM2, wodM2, ndomsM2) = if covered then

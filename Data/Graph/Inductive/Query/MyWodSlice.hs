@@ -183,7 +183,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                              (not $ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ dom ! xl ∧ m1 /= xl)   ∧  (not $ m1 ∈ dom ! xr ∧ m1 /= xr)     ) ))
                                                   )]
 
-                wodNewFast    = Set.fromList [ c | c <- Set.toList unknownCond,                       (∃) ms (\m2 -> findMs   idom (Set.fromList [m1]) (Set.fromList $ suc graph c) m2)  ]
+                wodNewFast    = Set.fromList [ c | c <- Set.toList unknownCond, findM2s idom ms (Set.fromList $ suc graph c) m1  ]
                 notwodNewFast = Set.fromList [ c | c <- Set.toList unknownCond, not $ c ∈ wodNewFast, (∀) ms (\m2 -> findNoMs idom (Set.fromList [m1]) (Set.fromList $ suc graph c) m2)  ]
                 
         fromPdomM2 m2 (n,((pdom,_,_),(ipdom,_))) ((unknownCond, wod, notwod){-, (must, notmust)-})  =
@@ -355,3 +355,20 @@ findMustNotMust dom ms xs n = find found0 notfound0 must0 notmust0 n
                                  Map.insert n  notfound'  notmust
                                else                       notmust
 
+
+
+
+findM2s dom ms xs n
+    | List.null topmost = False
+    | otherwise         = find n
+  where topmost = [ x |  x <- Set.toList xs, allReachableFromTree dom xs' x]
+          where xs' = Set.insert n xs
+        [x0]    = topmost
+        find n
+            | n == x0 = False
+            | n ∈ xs  = (∃) ms (\m2 -> isReachableFromTree dom x0 m2)
+            | otherwise = case Set.toList $ dom ! n of
+                            []  -> False
+                            [z] -> find z
+                            _   -> error "no tree"
+                 

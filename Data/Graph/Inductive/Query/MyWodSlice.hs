@@ -66,7 +66,7 @@ myWodSlice graph m1 m2 = slice s0 ms0
         ms0 = Set.fromList [m1, m2]
         step = myWodSliceStep graph 
         slice s@(sliceNodes, ndoms) ms
-          | Set.null ms = traceShow ( (-1) + ceiling ( (100 * fromIntegral (Map.size ndoms) / fromIntegral (Set.size sliceNodes) :: Double)), Set.size sliceNodes, Map.size ndoms, length $ nodes graph ) $
+          | Set.null ms = -- traceShow ( (-1) + ceiling ( (100 * fromIntegral (Map.size ndoms) / fromIntegral (Set.size sliceNodes) :: Double)), Set.size sliceNodes, Map.size ndoms, length $ nodes graph ) $
                           sliceNodes
           | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
                           slice s' ms'
@@ -183,7 +183,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                              (not $ (∃) (suc graph c) (\xl -> (∃) (suc graph c) (\xr -> (m1 ∈ dom ! xl ∧ m1 /= xl)   ∧  (not $ m1 ∈ dom ! xr ∧ m1 /= xr)     ) ))
                                                   )]
 
-                wodNewFast    = Set.fromList [ c | c <- Set.toList unknownCond, findM2s idom ms (Set.fromList $ suc graph c) m1  ]
+                wodNewFast    = Set.fromList [ c | c <- Set.toList unknownCond, findM2sFast idom ms (Set.fromList $ suc graph c) m1  ]
                 notwodNewFast = Set.fromList [ c | c <- Set.toList unknownCond, not $ c ∈ wodNewFast, (∀) ms (\m2 -> findNoMs idom (Set.fromList [m1]) (Set.fromList $ suc graph c) m2)  ]
                 
         fromPdomM2 m2 (n,((pdom,_,_),(ipdom,_))) ((unknownCond, wod, notwod){-, (must, notmust)-})  =
@@ -371,4 +371,29 @@ findM2s dom ms xs n
                             []  -> False
                             [z] -> find z
                             _   -> error "no tree"
+                 
+findM2sFast dom ms xs n = assert (result == findM2s dom ms xs n) $
+                          result
+  where result = case findTop xs (Set.insert n xs) of
+          Nothing -> False
+          Just x0 -> find n
+            where find n
+                    | n == x0 = False
+                    | n ∈ xs  = (∃) ms (\m2 -> isReachableFromTree dom x0 m2)
+                    | otherwise = case Set.toList $ dom ! n of
+                                    []  -> False
+                                    [z] -> find z
+                                    _   -> error "no tree"
+                            
+        findTop candidates toFind
+            | Set.null candidates = Nothing
+            | Set.null toFind'    = Just x
+            | otherwise           = findTop candidates' (Set.insert x toFind')
+          where (x,candidates') = Set.deleteFindMin candidates
+                toFind' = find x (Set.delete x toFind)
+                  where find x toFind = case Set.toList $ dom ! x of
+                                          []  -> toFind
+                                          [z] -> find z (Set.delete z toFind)
+                                          _   -> error "no tree"
+         
                  

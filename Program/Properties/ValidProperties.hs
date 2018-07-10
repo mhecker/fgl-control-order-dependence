@@ -928,8 +928,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in  -- if (length $ nodes g) <= 10000 then True else
                     -- (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        -- (m1 == m2) ∨
-                       mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
-                       -- (Set.size $ mywodslicer m1 m2) >= 2
+                       -- mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
+                       (Set.size $ mywodsimpleslicer m1 m2) >= 2
                     -- ))
     -- testProperty  "pmay properties in control sinks"
     -- $ \(ARBITRARY(generatedGraph)) ->

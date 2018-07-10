@@ -439,18 +439,18 @@ myWodSliceSimple graph m1 m2 = slice s0 ms0
 
 myWodSliceSimpleStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSimpleSliceState -> Node -> (Set Node, MyWodSimpleSliceState)
 myWodSliceSimpleStep graph (ms, condNodes, ready) m
-    | m ∈ ms    = (Set.empty,                     (ms,               condNodes,              ready ))
-    | otherwise = ((fromReady ∪ fromIpdom) ∖ ms', (ms', Set.delete m condNodes, Map.delete m ready'))
+    | m ∈ ms    = (Set.empty,                     (ms,  condNodes ,              ready ))
+    | otherwise = ((fromReady ∪ fromIpdom) ∖ ms', (ms', condNodes', Map.delete m ready'))
   where ms' = Set.insert m ms
+        condNodes' =  Set.delete m condNodes
         fromReady = Map.findWithDefault (Set.empty) m ready
-        fromIpdom = Set.fromList [ c | c <- Set.toList condNodes, c /= m,
-                          let (z, relevant) = lcaRKnown ipdom c (suc graph c),
-                          (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant)
+        cWithRelevant = [ (c, lcaRKnown ipdom c (suc graph c)) |  c <- Set.toList condNodes']
+        fromIpdom = Set.fromList [ c | (c, (z,relevant)) <- cWithRelevant,
+                                       (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant)
                     ]
         ready' = ready
-               ⊔ (∐) [ Map.fromList [ (m1, Set.fromList [ c ]) ] | c <- Set.toList condNodes, c /= m,
-                                                                   let (z, relevant) = lcaRKnown ipdom c (suc graph c),
-                                                                   m1 <- Set.toList relevant, m1 /= z
+               ⊔ (∐) [ Map.fromList [ (m1, Set.fromList [ c ]) ] | (c, (z,relevant)) <- cWithRelevant,
+                                                                    m1 <- Set.toList relevant, m1 /= z
                  ]
         ipdom = fromIdom m $ iDom (grev $ delSuccessorEdges   graph m) m
           where fromIdom m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]

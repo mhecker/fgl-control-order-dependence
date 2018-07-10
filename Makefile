@@ -1,5 +1,5 @@
 # uncomment for profiling builds
-PROF=defined
+# PROF=defined
 # DEBUG=defined
 
 ifdef PROF
@@ -7,8 +7,7 @@ PROF_GHC=-prof -fprof-auto -osuf p_o
 PROF_RTS=-p
 GHC_ASSERT=
 else
-GHC_ASSERT=
-# GHC_ASSERT=-fno-ignore-asserts
+GHC_ASSERT=-fno-ignore-asserts
 endif
 
 ifdef DEBUG

@@ -397,3 +397,58 @@ findM2sFast dom ms xs n = assert (result == findM2s dom ms xs n) $
                                           _   -> error "no tree"
          
                  
+
+
+
+
+
+
+
+
+
+type MyWodSimpleSliceState = (Set Node, Map Node (Set Node))
+
+myWodFromSimpleSliceStep graph m1 m2 =
+    assert (Set.null new1) $
+    assert (fst s1 == Set.fromList [m1]) $
+    assert (fst s2 == Set.fromList [m1, m2]) $
+    -- traceShow (snd s1) $
+    -- traceShow (snd s2) $
+    new2
+  where s0 = (Set.empty, Map.empty)
+        (new1, s1) = myWodSliceSimpleStep graph s0 m1
+        (new2, s2) = myWodSliceSimpleStep graph s1 m2
+
+
+myWodSliceSimple graph m1 m2 = slice s0 ms0
+  where s0  = (Set.empty, Map.empty)
+        ms0 = Set.fromList [m1, m2]
+        step = myWodSliceSimpleStep graph 
+        slice s@(sliceNodes, ready) ms
+          | Set.null ms = traceShow (Set.size sliceNodes, length $ nodes graph ) $
+                          sliceNodes
+          | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
+                          slice s' ms'
+              where (m, ms0)  = Set.deleteFindMin ms
+                    (new, s') = step s m
+                    ms' = ms0 ∪ new 
+
+
+myWodSliceSimpleStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSimpleSliceState -> Node -> (Set Node, MyWodSimpleSliceState)
+myWodSliceSimpleStep graph (ms, ready) m
+    | m ∈ ms    = (Set.empty,                     (ms,               ready ))
+    | otherwise = ((fromReady ∪ fromIpdom) ∖ ms', (ms', Map.delete m ready'))
+  where ms' = Set.insert m ms
+        fromReady = Map.findWithDefault (Set.empty) m ready
+        fromIpdom = Set.fromList [ c | c <- Set.toList condNodes,
+                          let (z, relevant) = lcaRKnown ipdom c (suc graph c),
+                          (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant)
+                    ]
+        ready' = ready
+               ⊔ (∐) [ Map.fromList [ (m1, Set.fromList [ c ]) ] | c <- Set.toList condNodes,
+                                                                   let (z, relevant) = lcaRKnown ipdom c (suc graph c),
+                                                                   m1 <- Set.toList relevant, m1 /= z
+                 ]
+        ipdom = fromIdom m $ iDom (grev $ delSuccessorEdges   graph m) m
+          where fromIdom m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]
+        condNodes    = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1, not $ c ∈ ms, c /= m ]

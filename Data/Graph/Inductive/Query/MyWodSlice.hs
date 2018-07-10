@@ -440,7 +440,8 @@ myWodSliceSimple graph m1 m2 = slice s0 ms0
 myWodSliceSimpleStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSimpleSliceState -> Node -> (Set Node, MyWodSimpleSliceState)
 myWodSliceSimpleStep graph (ms, condNodes, ready) m
     | m ∈ ms    = (Set.empty,                     (ms,  condNodes ,              ready ))
-    | otherwise = ((fromReady ∪ fromIpdom) ∖ ms', (ms', condNodes', Map.delete m ready'))
+    | otherwise = assert (ready' == ready'Fast) $
+                  ((fromReady ∪ fromIpdom) ∖ ms', (ms', condNodes', Map.delete m ready'Fast))
   where ms' = Set.insert m ms
         condNodes' =  Set.delete m condNodes
         fromReady = Map.findWithDefault (Set.empty) m ready
@@ -452,5 +453,8 @@ myWodSliceSimpleStep graph (ms, condNodes, ready) m
                ⊔ (∐) [ Map.fromList [ (m1, Set.fromList [ c ]) ] | (c, (z,relevant)) <- cWithRelevant,
                                                                     m1 <- Set.toList relevant, m1 /= z
                  ]
+        ready'Fast = foldr (\(c,m1) ready -> Map.alter (f c) m1 ready) ready [ (c,m1) | (c, (z,relevant)) <- cWithRelevant, m1 <- Set.toList relevant, m1 /= z ]
+          where f c Nothing   = Just $ Set.singleton c
+                f c (Just cs) = Just $ Set.insert c cs
         ipdom = fromIdom m $ iDom (grev $ delSuccessorEdges   graph m) m
           where fromIdom m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]

@@ -892,7 +892,48 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                    --  mywodslicer m1 m2 == mywodfastslicer m1 m2
     --                    (Set.size $ mywodslicer m1 m2) >= 2
     --                 -- ))
-    -- testProperty  "myWodFromSimpleSliceStep == myWodFast"
+     testProperty  "myWodFromSimpleSliceStep cutNPasteIfPossible == myWodFast"
+     $ \(ARBITRARY(generatedGraph)) ->
+                 let g0 = generatedGraph
+                     sinks = NTICD.controlSinks g0
+                 in
+                    (∀) sinks (\sink ->
+                      let g = subgraph sink g0
+                          mywod = NTICD.myWodFast g
+                          mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.cutNPasteIfPossible g
+                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+                           mywodslicestep m1 m2 == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
+                         ))
+                    ),
+    testProperty  "myWodSliceSimple cutNPasteIfPossible == myWodFastSlice"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g0 = generatedGraph
+                    sinks = NTICD.controlSinks g0
+                in
+                   (∀) sinks (\sink ->
+                     let g = subgraph sink g0
+                         mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+                         mywodfastslicer   = NTICD.myWodFastSlice g
+                     in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+                          mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
+                        ))
+                   ),
+    testProperty  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    $ \(SIMPLECFG(generatedGraph)) ->
+                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                    g = insEdge (exit, entry, ()) generatedGraph
+                    mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+                    mywodpdomslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
+                    m1 = (cycle $ nodes g) !! 3194
+                    m2 = (cycle $ nodes g) !! 5247
+                in  -- if (length $ nodes g) <= 10000 then True else
+                    -- (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
+                       -- (m1 == m2) ∨
+                       -- mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
+                       (Set.size $ mywodsimpleslicer m1 m2) >= 2,
+                    -- ))
+    -- testProperty  "myWodFromSimpleSliceStep recompute == myWodFast"
     --  $ \(ARBITRARY(generatedGraph)) ->
     --              let g0 = generatedGraph
     --                  sinks = NTICD.controlSinks g0
@@ -900,29 +941,30 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                 (∀) sinks (\sink ->
     --                   let g = subgraph sink g0
     --                       mywod = NTICD.myWodFast g
+    --                       mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.recompute g
     --                   in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-    --                        (MyWodSlice.myWodFromSimpleSliceStep g m1 m2) == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
+    --                        mywodslicestep m1 m2 == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
     --                      ))
     --                 ),
-    -- testProperty  "myWodSliceSimple == myWodFastSlice"
+    -- testProperty  "myWodSliceSimple recompute == myWodFastSlice"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --             let g0 = generatedGraph
     --                 sinks = NTICD.controlSinks g0
     --             in
     --                (∀) sinks (\sink ->
     --                  let g = subgraph sink g0
-    --                      mywodsimpleslicer = MyWodSlice.myWodSliceSimple g
+    --                      mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
     --                      mywodfastslicer   = NTICD.myWodFastSlice g
     --                  in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
     --                       mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
     --                     ))
     --                ),
-    -- testProperty  "myWodSliceSimple == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    -- testProperty  "myWodSliceSimple recompute == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     -- $ \(SIMPLECFG(generatedGraph)) ->
     --             let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
     --                 [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
     --                 g = insEdge (exit, entry, ()) generatedGraph
-    --                 mywodsimpleslicer = MyWodSlice.myWodSliceSimple g
+    --                 mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
     --                 mywodpdomslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
     --                 m1 = (cycle $ nodes g) !! 3194
     --                 m2 = (cycle $ nodes g) !! 5247
@@ -930,7 +972,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                 -- (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
     --                    -- (m1 == m2) ∨
     --                    -- mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
-    --                    (Set.size $ mywodsimpleslicer m1 m2) >= 2
+    --                    (Set.size $ mywodsimpleslicer m1 m2) >= 2,
     --                 -- ))
     testProperty  "cut and re-validate property in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->

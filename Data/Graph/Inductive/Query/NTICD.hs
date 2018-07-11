@@ -2125,16 +2125,19 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks  prev
 isinkdomOfTwoFinger8DownUniqueExitNode :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Node
-  -> Set Node
+  -> Map Node [Node]
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
       id
+    $ require (imdom0 ! nx == Nothing)
+    $ require ((∀) (Map.assocs imdom0) (\(n, m) -> n == nx  ∨  (m /= Nothing  ∧  m /= Just n)))
+    $ require (not $ Map.member nx condNodes)
     --   traceShow (workset, worklist, imdom0)
     -- $ traceShow result
     $ result
   where result = twoFingerDown worklist imdom0 False
-        worklist = [ (n, succs) | n <- Set.toList condNodes, let succs = suc graph n ]
+        worklist = Map.assocs condNodes
         twoFingerDown []                     imdom False   = imdom
         twoFingerDown []                     imdom True    = twoFingerDown worklist                   imdom    False
         twoFingerDown ((x, succs):worklist') imdom changed = twoFingerDown worklist' (Map.insert x mz imdom)  (changed ∨ changed')
@@ -2154,12 +2157,12 @@ isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
                                   caseM
                   where caseM = case imdom ! m of
                                   Nothing -> assert (m == nx) $
-                                             caseN
-                                  Just m' -> lcaDown' (n, ns) (m', Set.insert m' ms)
-                        caseN = case imdom ! n of
-                                  Nothing -> assert (n == nx) $
-                                             Nothing
-                                  Just n' -> lcaDown' (n', Set.insert n' ns) (m, ms)
+                                             lcaDownLin ms n
+                                  Just m' -> lcaDown' (m', Set.insert m' ms) (n, ns)
+                lcaDownLin ms n = assert (not $ n ∈ ms) $ lcaDown'' n
+                  where lcaDown'' n = case imdom ! n of
+                                        Nothing -> Nothing
+                                        Just n' -> if n' ∈ ms then Just n' else lcaDown'' n'
 
 
 

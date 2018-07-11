@@ -418,7 +418,7 @@ findM2sFast dom ms xs n = assert (result == findM2s dom ms xs n) $
 
 
 
-type MyWodSimpleSliceState = (Set Node, Set Node, Maybe (Node, Map Node (Maybe Node)),Map Node (Set Node))
+type MyWodSimpleSliceState = (Set Node, Map Node [Node], Maybe (Node, Map Node (Maybe Node)),Map Node (Set Node))
 
 myWodFromSimpleSliceStep newIPDomFor graph m1 m2 =
     assert (Set.null new1) $
@@ -428,7 +428,7 @@ myWodFromSimpleSliceStep newIPDomFor graph m1 m2 =
     -- traceShow (snd s2) $
     new2
   where s0 = (Set.empty, condNodes, Nothing, Map.empty)
-        condNodes = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1]
+        condNodes = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
         (new1, s1) = myWodSliceSimpleStep graph newIPDom s0 m1
         (new2, s2) = myWodSliceSimpleStep graph newIPDom s1 m2
         first (a,_,_,_) = a
@@ -437,7 +437,7 @@ myWodFromSimpleSliceStep newIPDomFor graph m1 m2 =
 
 myWodSliceSimple newIPDomFor graph m1 m2 = slice s0 ms0
   where s0 = (Set.empty, condNodes, Nothing, Map.empty)
-        condNodes = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1]
+        condNodes = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
         newIPDom = newIPDomFor graph condNodes
         ms0 = Set.fromList [m1, m2]
         step = myWodSliceSimpleStep graph newIPDom
@@ -465,9 +465,9 @@ myWodSliceSimpleStep graph newIPDom (ms, condNodes, nAndIpdom, ready) m
     | otherwise = assert (ready' == ready'Fast) $
                   ((fromReady ∪ fromIpdom) ∖ ms', (ms', condNodes', Just (m, ipdom'), Map.delete m ready'Fast))
   where ms' = Set.insert m ms
-        condNodes' =  Set.delete m condNodes
+        condNodes' =  Map.delete m condNodes
         fromReady = Map.findWithDefault (Set.empty) m ready
-        cWithRelevant = [ (c, lcaRKnownM ipdom' c (suc graph c)) |  c <- Set.toList condNodes']
+        cWithRelevant = [ (c, lcaRKnownM ipdom' c succs) |  (c, succs) <- Map.assocs condNodes']
         fromIpdom = Set.fromList [ c | (c, (z,relevant)) <- cWithRelevant,
                                        (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant)
                     ]
@@ -481,7 +481,7 @@ myWodSliceSimpleStep graph newIPDom (ms, condNodes, nAndIpdom, ready) m
         ipdom' = newIPDom nAndIpdom m
 
 
-cutNPasteIfPossible :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
+cutNPasteIfPossible :: DynGraph gr => gr a b -> Map Node [Node] -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 cutNPasteIfPossible graph condNodes          Nothing  m = recompute graph undefined undefined m
 cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
     | List.null succs = recompute graph undefined undefined m
@@ -496,9 +496,9 @@ cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
                     Map.insert n z ipdomM''
 
         graphm = delSuccessorEdges graph m
-        condNodesM = Set.delete m condNodes
+        condNodesM = Map.delete m condNodes
 
-recompute :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
+recompute :: DynGraph gr => gr a b -> Map Node [Node] -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 recompute graph _ _ m = ipdom
   where ipdom = fromIdom m $ iDom (grev $ delSuccessorEdges   graph m) m
           where fromIdom m idom = Map.insert m Nothing $ Map.fromList [ (n, Just m) | (n,m) <- idom ]

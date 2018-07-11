@@ -485,7 +485,7 @@ cutNPasteIfPossible :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Nod
 cutNPasteIfPossible graph condNodes          Nothing  m = recompute graph undefined undefined m
 cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
     | List.null succs = recompute graph undefined undefined m
-    | otherwise       = isinkdomOfTwoFinger8DownFixedTraversal graphm sinkNodes sinks  prevConds nextCond condNodesM 0 ipdomM'''
+    | otherwise       = isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM ipdomM'''
 
   where -- ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) ipdom
         ipdomM''  = Map.insert m Nothing ipdom
@@ -496,10 +496,6 @@ cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
                     Map.insert n z ipdomM''
 
         graphm = delSuccessorEdges graph m
-        sinkNodes  = Set.fromList [ m ]
-        sinks = [[m]]
-        prevConds = prevCondNodes graphm
-        nextCond = nextCondNode graphm
         condNodesM = Set.delete m condNodes
 
 recompute :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)

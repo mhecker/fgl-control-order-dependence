@@ -2121,6 +2121,48 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks  prev
                                   Nothing ->                 Nothing
                                   Just n' -> if n' ∈ ns then Nothing else lcaDown' (n', Set.insert n' ns) (m, ms)
 
+
+isinkdomOfTwoFinger8DownUniqueExitNode :: forall gr a b. (DynGraph gr) =>
+     gr a b
+  -> Node
+  -> Set Node
+  -> Map Node (Maybe Node)
+  -> Map Node (Maybe Node)
+isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
+      id
+    --   traceShow (workset, worklist, imdom0)
+    -- $ traceShow result
+    $ result
+  where result = twoFingerDown worklist imdom0 False
+        worklist = [ (n, succs) | n <- Set.toList condNodes, let succs = suc graph n ]
+        twoFingerDown []                     imdom False   = imdom
+        twoFingerDown []                     imdom True    = twoFingerDown worklist                   imdom    False
+        twoFingerDown ((x, succs):worklist') imdom changed = twoFingerDown worklist' (Map.insert x mz imdom)  (changed ∨ changed')
+          where changed' =  mz /= (imdom ! x)
+                mz = let (y:ys) = succs
+                     in assert (succs == suc graph x) $
+                        foldM lcaDown y ys
+                lcaDown ::  Node -> Node -> Maybe Node
+                lcaDown n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
+                lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+                lcaDown' (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  caseM
+                  where caseM = case imdom ! m of
+                                  Nothing -> assert (m == nx) $
+                                             caseN
+                                  Just m' -> lcaDown' (n, ns) (m', Set.insert m' ms)
+                        caseN = case imdom ! n of
+                                  Nothing -> assert (n == nx) $
+                                             Nothing
+                                  Just n' -> lcaDown' (n', Set.insert n' ns) (m, ms)
+
+
+
 isinkdomOfTwoFinger8DownTreeTraversal :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Set Node

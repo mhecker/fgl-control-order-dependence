@@ -118,6 +118,14 @@ isReachableFromTree m x y = isReach y
                           [z] -> isReach z
                           _   -> error "no tree"
 
+isReachableFromTreeM :: Ord α => Map α (Maybe α) -> α -> α -> Bool
+isReachableFromTreeM m x y = isReach y
+  where isReach y
+          | x == y    = True
+          | otherwise = case m ! y of
+                          Nothing  -> False
+                          Just z -> isReach z
+
 
 allReachableFromTree :: Ord α => Map α (Set α) -> Set α -> α -> Bool
 allReachableFromTree m xs y = allReach (Set.delete y xs) y

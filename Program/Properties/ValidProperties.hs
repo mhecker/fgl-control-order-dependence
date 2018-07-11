@@ -892,32 +892,32 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                    --  mywodslicer m1 m2 == mywodfastslicer m1 m2
     --                    (Set.size $ mywodslicer m1 m2) >= 2
     --                 -- ))
-     testProperty  "myWodFromSimpleSliceStep cutNPasteIfPossible == myWodFast"
-     $ \(ARBITRARY(generatedGraph)) ->
-                 let g0 = generatedGraph
-                     sinks = NTICD.controlSinks g0
-                 in
-                    (∀) sinks (\sink ->
-                      let g = subgraph sink g0
-                          mywod = NTICD.myWodFast g
-                          mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.cutNPasteIfPossible g
-                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-                           mywodslicestep m1 m2 == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
-                         ))
-                    ),
-    testProperty  "myWodSliceSimple cutNPasteIfPossible == myWodFastSlice"
-    $ \(ARBITRARY(generatedGraph)) ->
-                let g0 = generatedGraph
-                    sinks = NTICD.controlSinks g0
-                in
-                   (∀) sinks (\sink ->
-                     let g = subgraph sink g0
-                         mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
-                         mywodfastslicer   = NTICD.myWodFastSlice g
-                     in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-                          mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
-                        ))
-                   ),
+    --  testProperty  "myWodFromSimpleSliceStep cutNPasteIfPossible == myWodFast"
+    --  $ \(ARBITRARY(generatedGraph)) ->
+    --              let g0 = generatedGraph
+    --                  sinks = NTICD.controlSinks g0
+    --              in
+    --                 (∀) sinks (\sink ->
+    --                   let g = subgraph sink g0
+    --                       mywod = NTICD.myWodFast g
+    --                       mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.cutNPasteIfPossible g
+    --                   in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+    --                        mywodslicestep m1 m2 == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
+    --                      ))
+    --                 ),
+    -- testProperty  "myWodSliceSimple cutNPasteIfPossible == myWodFastSlice"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --             let g0 = generatedGraph
+    --                 sinks = NTICD.controlSinks g0
+    --             in
+    --                (∀) sinks (\sink ->
+    --                  let g = subgraph sink g0
+    --                      mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+    --                      mywodfastslicer   = NTICD.myWodFastSlice g
+    --                  in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+    --                       mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
+    --                     ))
+    --                ),
     testProperty  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
@@ -931,7 +931,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     -- (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        -- (m1 == m2) ∨
                        -- mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
-                       (Set.size $ mywodsimpleslicer m1 m2) >= 2,
+                       (Set.size $ mywodsimpleslicer m1 m2) >= 2
                     -- ))
     -- testProperty  "myWodFromSimpleSliceStep recompute == myWodFast"
     --  $ \(ARBITRARY(generatedGraph)) ->
@@ -974,31 +974,31 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                    -- mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
     --                    (Set.size $ mywodsimpleslicer m1 m2) >= 2,
     --                 -- ))
-    testProperty  "cut and re-validate property in control sinks"
-    $ \(ARBITRARY(generatedGraph)) ->
-                let g0 = generatedGraph
-                    sinks = [ (g, sink, ipdom) | sink <-  NTICD.controlSinks g0,
-                                                let g = subgraph sink g0,
-                                                let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
-                                                let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- sink ]
-                            ]
-                in (∀) sinks (\(g,sink, ipdom) ->
-                            (∀) sink (\m -> 
-                              (∀) sink (\n ->
-                                   if (m == n) then True else
-                                   let ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) (ipdom ! n)
-                                       ipdomM''  = Map.insert m Set.empty (ipdom ! n)
-                                       succs    = [ x | x <- suc g n, isReachableFromTree ipdomM'' m x]
-                                       mz = foldM1 (NTICD.lca (fmap fromSet ipdomM'')) succs
-                                       ipdomM''' = Map.insert n (toSet mz) ipdomM''
-                                  in if List.null succs then True else
-                                       assert (mz /= Nothing) $
-                                       (∀) sink (\y ->
-                                             reachableFromTree  ipdomM'''  y
-                                          ⊇  reachableFromTree (ipdom ! m) y
-                                       )
-                              ))
-                   )
+    -- testProperty  "cut and re-validate property in control sinks"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --             let g0 = generatedGraph
+    --                 sinks = [ (g, sink, ipdom) | sink <-  NTICD.controlSinks g0,
+    --                                             let g = subgraph sink g0,
+    --                                             let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
+    --                                             let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- sink ]
+    --                         ]
+    --             in (∀) sinks (\(g,sink, ipdom) ->
+    --                         (∀) sink (\m -> 
+    --                           (∀) sink (\n ->
+    --                                if (m == n) then True else
+    --                                let ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) (ipdom ! n)
+    --                                    ipdomM''  = Map.insert m Set.empty (ipdom ! n)
+    --                                    succs    = [ x | x <- suc g n, isReachableFromTree ipdomM'' m x]
+    --                                    mz = foldM1 (NTICD.lca (fmap fromSet ipdomM'')) succs
+    --                                    ipdomM''' = Map.insert n (toSet mz) ipdomM''
+    --                               in if List.null succs then True else
+    --                                    assert (mz /= Nothing) $
+    --                                    (∀) sink (\y ->
+    --                                          reachableFromTree  ipdomM'''  y
+    --                                       ⊇  reachableFromTree (ipdom ! m) y
+    --                                    )
+    --                           ))
+    --                )
     -- testProperty  "pmay properties in control sinks"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --             let g0 = generatedGraph

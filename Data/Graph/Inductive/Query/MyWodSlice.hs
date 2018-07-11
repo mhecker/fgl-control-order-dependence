@@ -31,7 +31,7 @@ import qualified Data.List as List
 
 import Data.List ((\\), nub, sortBy, groupBy)
 
-import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableBeforeFromTree, allReachableFromTree, findMs, findNoMs, findBoth, reachableFromTree)
+import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableFromTreeM, isReachableBeforeFromTree, allReachableFromTree, findMs, findNoMs, findBoth, reachableFromTree)
 import Unicode
 
 
@@ -332,6 +332,18 @@ lcaRKnown dom c successors = case Set.toList $ dom ! c of
                                    where [n'] = Set.toList $ dom ! n
                      _   -> error "no tree"
 
+lcaRKnownM :: Map Node (Maybe Node) -> Node -> [Node] -> (Node, Set Node)
+lcaRKnownM dom c successors = case dom ! c of
+                     Nothing -> assert (successors == []) $
+                                (c, Set.fromList [c])
+                     Just z  -> assert (successors /= []) $ 
+                                (z, foldr relevant (Set.fromList successors) successors)
+                       where relevant :: Node -> Set Node -> Set Node
+                             relevant n ns
+                               | n == z = ns
+                               | otherwise = relevant n' (Set.insert n' ns)
+                                   where Just n' = dom ! n
+
 
 findMustNotMust dom ms xs n = find found0 notfound0 must0 notmust0 n
   where found0    = Set.empty
@@ -406,7 +418,7 @@ findM2sFast dom ms xs n = assert (result == findM2s dom ms xs n) $
 
 
 
-type MyWodSimpleSliceState = (Set Node, Set Node, Maybe (Node, Map Node (Set Node)),Map Node (Set Node))
+type MyWodSimpleSliceState = (Set Node, Set Node, Maybe (Node, Map Node (Maybe Node)),Map Node (Set Node))
 
 myWodFromSimpleSliceStep newIPDomFor graph m1 m2 =
     assert (Set.null new1) $
@@ -444,7 +456,7 @@ myWodSliceSimple newIPDomFor graph m1 m2 = slice s0 ms0
 
 myWodSliceSimpleStep :: forall gr a b. (Show (gr a b), DynGraph gr) =>
   gr a b ->
-  (Maybe (Node, Map Node (Set Node)) -> Node -> Map Node (Set Node)) ->
+  (Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) ->
   MyWodSimpleSliceState ->
   Node ->
   (Set Node, MyWodSimpleSliceState)
@@ -455,7 +467,7 @@ myWodSliceSimpleStep graph newIPDom (ms, condNodes, nAndIpdom, ready) m
   where ms' = Set.insert m ms
         condNodes' =  Set.delete m condNodes
         fromReady = Map.findWithDefault (Set.empty) m ready
-        cWithRelevant = [ (c, lcaRKnown ipdom' c (suc graph c)) |  c <- Set.toList condNodes']
+        cWithRelevant = [ (c, lcaRKnownM ipdom' c (suc graph c)) |  c <- Set.toList condNodes']
         fromIpdom = Set.fromList [ c | (c, (z,relevant)) <- cWithRelevant,
                                        (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant)
                     ]
@@ -469,18 +481,19 @@ myWodSliceSimpleStep graph newIPDom (ms, condNodes, nAndIpdom, ready) m
         ipdom' = newIPDom nAndIpdom m
 
 
-cutNPasteIfPossible :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Node (Set Node)) -> Node -> Map Node (Set Node)
+cutNPasteIfPossible :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 cutNPasteIfPossible graph condNodes          Nothing  m = recompute graph undefined undefined m
 cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
     | List.null succs = recompute graph undefined undefined m
-    | otherwise       = fmap toSet $ isinkdomOfTwoFinger8DownFixedTraversal graphm sinkNodes sinks  prevConds nextCond condNodesM 0 (fmap fromSet ipdomM''')
+    | otherwise       = isinkdomOfTwoFinger8DownFixedTraversal graphm sinkNodes sinks  prevConds nextCond condNodesM 0 ipdomM'''
 
   where -- ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) ipdom
-        ipdomM''  = Map.insert m Set.empty ipdom
-        succs     = [ x | x <- suc graph n, isReachableFromTree ipdomM'' m x]
+        ipdomM''  = Map.insert m Nothing ipdom
+        succs     = [ x | x <- suc graph n, isReachableFromTreeM ipdomM'' m x]
 
-        mz = foldM1 (lca (fmap fromSet ipdomM'')) succs
-        ipdomM''' = Map.insert n (toSet mz) ipdomM''
+        z = foldM1 (lca ipdomM'') succs
+        ipdomM''' = assert (z /= Nothing) $ 
+                    Map.insert n z ipdomM''
 
         graphm = delSuccessorEdges graph m
         sinkNodes  = Set.fromList [ m ]
@@ -489,7 +502,7 @@ cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
         nextCond = nextCondNode graphm
         condNodesM = Set.delete m condNodes
 
-recompute :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Node (Set Node)) -> Node -> Map Node (Set Node)
+recompute :: DynGraph gr => gr a b -> Set Node -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 recompute graph _ _ m = ipdom
   where ipdom = fromIdom m $ iDom (grev $ delSuccessorEdges   graph m) m
-          where fromIdom m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]
+          where fromIdom m idom = Map.insert m Nothing $ Map.fromList [ (n, Just m) | (n,m) <- idom ]

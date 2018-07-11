@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, toSet, evalBfun)
+import Util(the, reachableFromIn, sampleFrom, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -66,6 +66,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    lca,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -916,21 +917,46 @@ wodProps = testGroup "(concerning weak order dependence)" [
     --                       mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
     --                     ))
     --                ),
-    testProperty  "myWodSliceSimple == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
-    $ \(SIMPLECFG(generatedGraph)) ->
-                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                    g = insEdge (exit, entry, ()) generatedGraph
-                    mywodsimpleslicer = MyWodSlice.myWodSliceSimple g
-                    mywodpdomslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
-                    m1 = (cycle $ nodes g) !! 3194
-                    m2 = (cycle $ nodes g) !! 5247
-                in  -- if (length $ nodes g) <= 10000 then True else
-                    -- (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
-                       -- (m1 == m2) ∨
-                       -- mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
-                       (Set.size $ mywodsimpleslicer m1 m2) >= 2
-                    -- ))
+    -- testProperty  "myWodSliceSimple == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    -- $ \(SIMPLECFG(generatedGraph)) ->
+    --             let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+    --                 [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+    --                 g = insEdge (exit, entry, ()) generatedGraph
+    --                 mywodsimpleslicer = MyWodSlice.myWodSliceSimple g
+    --                 mywodpdomslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
+    --                 m1 = (cycle $ nodes g) !! 3194
+    --                 m2 = (cycle $ nodes g) !! 5247
+    --             in  -- if (length $ nodes g) <= 10000 then True else
+    --                 -- (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
+    --                    -- (m1 == m2) ∨
+    --                    -- mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
+    --                    (Set.size $ mywodsimpleslicer m1 m2) >= 2
+    --                 -- ))
+    testProperty  "cut and re-validate property in control sinks"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g0 = generatedGraph
+                    sinks = [ (g, sink, ipdom) | sink <-  NTICD.controlSinks g0,
+                                                let g = subgraph sink g0,
+                                                let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
+                                                let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- sink ]
+                            ]
+                in (∀) sinks (\(g,sink, ipdom) ->
+                            (∀) sink (\m -> 
+                              (∀) sink (\n ->
+                                   if (m == n) then True else
+                                   let ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) (ipdom ! n)
+                                       ipdomM''  = Map.insert m Set.empty (ipdom ! n)
+                                       succs    = [ x | x <- suc g n, isReachableFromTree ipdomM'' m x]
+                                       mz = foldM1 (NTICD.lca (fmap fromSet ipdomM'')) succs
+                                       ipdomM''' = Map.insert n (toSet mz) ipdomM''
+                                  in if List.null succs then True else
+                                       assert (mz /= Nothing) $
+                                       (∀) sink (\y ->
+                                             reachableFromTree  ipdomM'''  y
+                                          ⊇  reachableFromTree (ipdom ! m) y
+                                       )
+                              ))
+                   )
     -- testProperty  "pmay properties in control sinks"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --             let g0 = generatedGraph

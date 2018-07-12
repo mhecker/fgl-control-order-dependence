@@ -67,10 +67,11 @@ import Program.Generator (toProgram, GeneratedProgram)
 
 import Data.Graph.Inductive.Arbitrary
 
-import Data.Graph.Inductive (Node)
+import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast,
+    controlSinks,
+    myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay,
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
@@ -352,6 +353,15 @@ wodProps = testGroup "(concerning weak order dependence)" [
                               (n  ∊ suc isinkdomTrc m1 ∨ n  ∊ suc isinkdomTrc m2)
                           )
                         ),
+    testProperty  "myWodFromMay            == myWodFast in arbitrary control sinks"
+    $ \(ARBITRARY(generatedGraph)) ->
+               let sinks = NTICD.controlSinks generatedGraph
+               in (∀) sinks (\sink ->
+                    let g = subgraph sink generatedGraph
+                        myWodFromMay = NTICD.myWodFromMay g
+                        myWodFast    = NTICD.myWodFast    g
+                    in myWodFromMay == myWodFast
+               ),
     testProperty  "myWod has no comparable all-max-path-reachable pairs of controlling nodes"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph

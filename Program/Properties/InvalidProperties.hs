@@ -40,6 +40,8 @@ import Test.Tasty.ExpectedFailure
 import Test.QuickCheck (Testable, property)
 import Test.QuickCheck.Property (Property(..))
 
+import Debug.Trace (traceShow)
+
 import Data.Ord
 
 import qualified Data.Set as Set
@@ -48,8 +50,10 @@ import Data.Map ( Map, (!) )
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, edges, suc)
+import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
+import Data.Graph.Inductive.Query.DFS (dfs, rdfs)
+import Data.Graph.Inductive.Query.Dominators (iDom)
 
 import Program (Program, tcfg)
 import Program.Defaults
@@ -70,6 +74,7 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
     controlSinks,
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay,
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
@@ -105,8 +110,8 @@ ntscdX     = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup 
 
 misc       = defaultMain                               $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
 miscX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
-dod        = defaultMain                               $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
-dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "dod"       [ mkTest [dodTests]]
+dod        = defaultMain                               $ expectFail $ testGroup "dod"       [ mkTest [dodTests], mkProp [dodProps]]
+dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "dod"       [ mkTest [dodTests], mkProp [dodProps]]
 wod        = defaultMain                               $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 wodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 
@@ -313,6 +318,25 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 miscProps = testGroup "(misc)" [
   ]
 
+dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "rev sinkdom approximates pre-dom"
+    $ \(UNCONNECTED(generatedGraph)) ->
+                    let g = delEdges [ e | e@(n,m) <- edges generatedGraph, n == m] generatedGraph
+                        sinks = NTICD.controlSinks g
+                        imdom    = NTICD.imdomOfTwoFinger7    $        g
+                        imdomrev = NTICD.imdomOfTwoFinger7    $ grev $ g
+                        rofldom  = NTICD.rofldomOfTwoFinger7  $        g     
+                    in (∀) (nodes g) (\n ->
+                         let reachableForward  =  dfs [n] g
+                             reachableBackward = rdfs [n] g
+                             idom = fmap (\m -> Set.fromList [m]) $ Map.fromList $ iDom g n
+                             allReachable =
+                                Set.fromList reachableForward  == Set.fromList (nodes g)
+                              ∧ Set.fromList reachableBackward == Set.fromList (nodes g)
+                         in -- (if allReachable then traceShow (allReachable, length $ nodes g) else id) $ 
+                            allReachable → (idom ==  NTICD.joiniSinkDomAround g n imdom rofldom)
+                       )
+  ]
 dodTests = testGroup "(concerning decisive order dependence)" $
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property strong for " ++ exampleName)
             $       let myDod = NTICD.myDod g

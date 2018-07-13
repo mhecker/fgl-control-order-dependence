@@ -211,24 +211,6 @@ lcaRMyCDForNode dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' rele
                          (nn:beforeN) = foundN
 
 
-lcaRMyWodFastPDomForIterationStrategy dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
-           where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
-                 lca' relevant ns@(n:_) ms@(m:_)
-                    | mInNs = (m, relevant ∪ (Set.fromList ms) ∪ (Set.fromList beforeM))
-                    | nInMs = (n, relevant ∪ (Set.fromList ns) ∪ (Set.fromList beforeN))
-                    | otherwise = case dom ! n of
-                                     Nothing -> case dom ! m of
-                                                  Nothing -> error "is no tree"
-                                                  Just m' -> lca' relevant (m':ms) ns
-                                     Just n' -> lca' relevant ms (n':ns)
-                   where mInNs = not $ List.null $ foundM
-                         (afterM, foundM) = break (== m) ns
-                         (mm:beforeM) = foundM
-
-                         nInMs = not $ List.null $ foundN
-                         (afterN, foundN) = break (== n) ms
-                         (nn:beforeN) = foundN
-
 
 lcaMyWodFastPDomForIterationStrategy dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
            where lca' :: (Node,Set Node) -> (Node, Set Node) -> Node

@@ -34,7 +34,7 @@ import qualified Data.List as List
 -- import Program
 
 -- import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet)
-import Util(toSet)
+import Util(toSet, fromSet)
 import Unicode
 
 
@@ -52,7 +52,7 @@ import Control.Exception.Base (assert)
 
 
 lcaRofldomOfTwoFinger7 :: Map Node (Maybe Node) -> Node -> Node -> Maybe Node
-lcaRofldomOfTwoFinger7 rofldom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+lcaRofldomOfTwoFinger7 rofldom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca rofldom n m) $ result
          where
                 lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
                 lca' (n,ns) (m,ms)
@@ -69,7 +69,7 @@ lcaRofldomOfTwoFinger7 rofldom n m = lca' (n, Set.fromList [n]) (m, Set.fromList
 
 
 
-lcaImdomOfTwoFinger6 imdom n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m])
+lcaImdomOfTwoFinger6 imdom n m = let result = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca (fmap fromSet imdom) n m) $ result
           where
                 lca' c (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
@@ -85,7 +85,7 @@ lcaImdomOfTwoFinger6 imdom n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromLi
                                      [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
                                      _    -> error "more than one successor in imdom" 
 
-lcaImdomOfTwoFinger7 imdom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+lcaImdomOfTwoFinger7 imdom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca imdom n m) $ result
           where 
                 lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
                 lca' (n,ns) (m,ms)
@@ -102,7 +102,7 @@ lcaImdomOfTwoFinger7 imdom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m]
 
 
 
-lcaIsinkdomOfTwoFinger8Down imdom n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
+lcaIsinkdomOfTwoFinger8Down imdom n m = let result = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca imdom n m) $ result
           where
                 lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
                 lcaDown' (n,ns) (m,ms)
@@ -176,7 +176,7 @@ lca idom n m = lca' (n, n, Set.fromList [n]) (m, m, Set.fromList [m])
 
 
 
-lcaMyDom dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+lcaMyDom dom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca (fmap fromSet dom) n m) $ result
           where lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
                 lca' (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $

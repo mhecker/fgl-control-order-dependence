@@ -65,8 +65,8 @@ import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDepe
 import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdges, addImplicitAndTrivialSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdgesGfpLfp)
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
+import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    lca,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -895,7 +895,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                    let -- ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) (ipdom ! n)
                                        ipdomM''  = Map.insert m Set.empty (ipdom ! n)
                                        succs    = [ x | x <- suc g n, isReachableFromTree ipdomM'' m x]
-                                       mz = foldM1 (NTICD.lca (fmap fromSet ipdomM'')) succs
+                                       mz = foldM1 (LCA.lca (fmap fromSet ipdomM'')) succs
                                        ipdomM''' = Map.insert n (toSet mz) ipdomM''
                                   in if List.null succs then True else
                                        assert (mz /= Nothing) $
@@ -1121,7 +1121,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myWodFastPDom                = NTICD.myWodFastPDom                 g
                     in   True
                        ∧ myWodFastPDomSimpleHeuristic == myWodFastPDom,
-    testPropertySized 40  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 20  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]

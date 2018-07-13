@@ -531,7 +531,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
-    testProperty   "mDFFromUpLocalDefViaSMdoms == mDF"
+    testPropertySized 80   "mDFFromUpLocalDefViaSMdoms == mDF"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.mDFFromUpLocalDefViaMdoms g ==
                        NTICD.mDF                       g,
@@ -577,12 +577,12 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     in (trc $ NTICD.imdomOfLfp             g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                         NTICD.imdomOfTwoFinger6            g),
-    testProperty   "mdomOf             == mdomNaiveLfp "
+    testPropertySized 50   "mdomOf             == mdomNaiveLfp "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mdomOf              g ==
                        NTICD.mdomNaiveLfp        g,
-    testProperty   "mdomOf             == mdomOfLfp "
+    testPropertySized 50   "mdomOf             == mdomOfLfp "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.mdomOf              g ==
@@ -597,15 +597,11 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     let g = generatedGraph
                     in NTICD.mdomOfLfp            g ==
                        NTICD.mdomOfimdomProperty  g,
-    testProperty   "mDFFromUpLocalDefViaSMdoms == mDF"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
-                       NTICD.mDFFromUpLocalDefViaMdoms g ==
-                       NTICD.mDF                       g,
-    testProperty   "mDFUpGivenXViaMdoms == mDFUpGivenX"
+    testPropertySized 50   "mDFUpGivenXViaMdoms == mDFUpGivenX"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.mDFUpGivenXViaMdoms     g ==
                        NTICD.mDFUpGivenX             g,
-    testProperty   "mDFUpDefViaMdoms == mDFUpDef"
+    testPropertySized 50   "mDFUpDefViaMdoms == mDFUpDef"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.mDFUpDefViaMdoms     g ==
                        NTICD.mDFUpDef             g,
@@ -633,7 +629,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                 $ \(ARBITRARY(g)) ->
                        NTICD.mDFUp                g ==
                        NTICD.mDFUpDef             g,
-    testProperty   "mDFLocalViaMdoms   == mDFLocalDef"
+    testPropertySized 50   "mDFLocalViaMdoms   == mDFLocalDef"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.mDFLocalViaMdoms     g ==
                        NTICD.mDFLocalDef          g,
@@ -834,7 +830,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
                         ))
                    ),
-    testPropertySized 35  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 50  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -870,7 +866,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
                         ))
                    ),
-    testPropertySized 35 "myWodSliceSimple recompute == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 50  "myWodSliceSimple recompute           == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -1121,7 +1117,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myWodFastPDom                = NTICD.myWodFastPDom                 g
                     in   True
                        ∧ myWodFastPDomSimpleHeuristic == myWodFastPDom,
-    testPropertySized 20  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
+    testProperty  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -1131,7 +1127,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         n = length $ nodes g
                     in -- traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDom, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDom) $
                          True
-                       ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom,
+                       ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom
     testProperty  "myWodFastPDom             == myWod"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

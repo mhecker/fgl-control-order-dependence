@@ -1073,7 +1073,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          (∀) (nodes g) (\n ->
                            let gn   = efilter (\(x,y,_) -> x /= n) g
                                pdom = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 gn
-                               condNodes = Set.fromList [ x | x <- nodes g, length (suc g x) > 1 ]
+                               condNodes = Map.fromList [ (x, succs) | x <- nodes g, let succs = suc g x, length succs  > 1 ]
                            in    (∀) (suc g n) (\m -> 
                                   let pdom' = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 gm
                                         where gm = delSuccessorEdges g m
@@ -1127,7 +1127,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         n = length $ nodes g
                     in -- traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDom, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDom) $
                          True
-                       ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom
+                       ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom,
     testProperty  "myWodFastPDom             == myWod"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

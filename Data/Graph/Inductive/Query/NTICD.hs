@@ -38,6 +38,9 @@ import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromS
 import Unicode
 
 
+
+import Data.Graph.Inductive.Query.LCA
+
 import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
@@ -1197,33 +1200,7 @@ rofldomOfTwoFinger7 graph0 = Map.mapWithKey (\n ms -> Set.delete n ms) $
                 new     = assert (isNothing $ rofldom ! x) $
                           (not $ isNothing zs)
                 influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs rofldom, n /= x]
-                lca :: Node -> Node -> Maybe Node
-                lca  n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
-                lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (rofldom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (rofldom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
-                lca'' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca'' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (rofldom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (rofldom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
-
+                lca = lcaRofldomOfTwoFinger7 rofldom
 
 
 fLolDomNaive graph _ _ nextCond toNextCond = f 
@@ -1889,21 +1866,7 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $ 
                                  Set.fromList $ foldMap prevConds preds
-                lca  n m = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m])
-                lca' c (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((c ! n) ∖ ns ) of
-                                     []   -> case Set.toList $ ((c ! m) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' c ( m', Set.insert m' ms) (n, ns)
-                                                _    -> error "more than one successor in imdom" 
-                                     [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
-                                     _    -> error "more than one successor in imdom" 
-
+                lca = lcaImdomOfTwoFinger6 imdom
 
 
 imdomOfTwoFinger7 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
@@ -1987,32 +1950,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
                 influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs imdom, n /= x, Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
-                lca :: Node -> Node -> Maybe Node
-                lca  n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
-                lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
-                lca'' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca'' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
+                lca = lcaImdomOfTwoFinger7 imdom
 
 
 
@@ -2053,20 +1991,7 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i w
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, not $ n ∈ sinkNodes]
                 influenced' = Set.fromList [ n | n <- Set.toList $ condNodes ∖ sinkNodes, Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
-                lcaDown ::  Node -> Node -> Maybe Node
-                lcaDown n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
-                lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lcaDown' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lcaDown' (m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lcaDown' (m, ms) (n', Set.insert n' ns)
+                lcaDown = lcaIsinkdomOfTwoFinger8Down imdom
 
 
 
@@ -2104,22 +2029,7 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks  prev
                                   case Map.lookup z sinkNodesToCanonical of
                                     Just s1 -> Just s1
                                     Nothing -> Just z
-                lcaDown ::  Node -> Node -> Maybe Node
-                lcaDown n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
-                lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lcaDown' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  caseM
-                  where caseM = case imdom ! m of
-                                  Nothing ->                 caseN
-                                  Just m' -> if m' ∈ ms then caseN   else lcaDown' (n, ns) (m', Set.insert m' ms)
-                        caseN = case imdom ! n of
-                                  Nothing ->                 Nothing
-                                  Just n' -> if n' ∈ ns then Nothing else lcaDown' (n', Set.insert n' ns) (m, ms)
+                lcaDown = lcaIsinkdomOfTwoFinger8DownFixedTraversalForOrder imdom
 
 
 isinkdomOfTwoFinger8DownUniqueExitNode :: forall gr a b. (DynGraph gr) =>
@@ -2145,24 +2055,7 @@ isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
                 mz = let (y:ys) = succs
                      in assert (succs == suc graph x) $
                         foldM lcaDown y ys
-                lcaDown ::  Node -> Node -> Maybe Node
-                lcaDown n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
-                lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lcaDown' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  caseM
-                  where caseM = case imdom ! m of
-                                  Nothing -> assert (m == nx) $
-                                             lcaDownLin ms n
-                                  Just m' -> lcaDown' (m', Set.insert m' ms) (n, ns)
-                lcaDownLin ms n = assert (not $ n ∈ ms) $ lcaDown'' n
-                  where lcaDown'' n = case imdom ! n of
-                                        Nothing -> Nothing
-                                        Just n' -> if n' ∈ ms then Just n' else lcaDown'' n'
+                lcaDown = lcaIsinkdomOfTwoFinger8DownUniqueExitNode imdom nx
 
 
 
@@ -2264,22 +2157,6 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
                 influenced' = Set.fromList [ n |  (n,Nothing) <- Map.assocs imdom, n /= x,  Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
-
-lca :: Map Node (Maybe Node) -> Node -> Node -> Maybe Node
-lca idom n m = lca' (n, n, Set.fromList [n]) (m, m, Set.fromList [m])
-  where lca' :: (Node, Node,Set Node) -> (Node, Node, Set Node) -> Maybe Node
-        lca' (n0,n,ns) (m0,m,ms)
-          | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                     Just m
-          | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                     Just n
-          | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                       case Set.toList $ ((toSet (idom ! n)) ∖ ns ) of
-                         []   -> case Set.toList $ ((toSet (idom ! m)) ∖ ms ) of
-                                   []   -> Nothing
-                                   [m'] -> lca' (m0, m', Set.insert m' ms) (n0, n, ns)
-                         [n'] -> lca' (m0, m, ms) (n0, n', Set.insert n' ns)
-
 
 
 withPossibleIntermediateNodesFromiXdom :: forall gr a b x. (Ord x, DynGraph gr) => gr a b -> Map Node (Set (Node, x)) -> Map Node (Set (Node, (x, Set Node)))
@@ -2912,22 +2789,8 @@ myDom graph =
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
-
-        lca ::  Map Node (Set Node) -> Node -> Node -> Maybe Node
-        lca dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
-          where lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ (dom ! n) ∖ ns of
-                                     []   -> case Set.toList $ (dom ! m) ∖ ms of
-                                                []   -> Nothing
-                                                [m'] -> lca' (m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
-
+        lca isinkdomN = lcaMyDom isinkdomN
+      
 
 cdFromDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
 cdFromDom graph dom = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
@@ -3034,25 +2897,7 @@ myCDForNode graph n = Set.fromList [ m |       -- m <- Set.toList $ reachableFro
                                                   (∃) (suc graph n) (\x ->       m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty),
                                                   (∃) (suc graph n) (\x -> not $ m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty)
                                    ]
-  where 
-        lcaR :: Map Node (Maybe Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
-        lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
-           where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
-                 lca' relevant ns@(n:_) ms@(m:_)
-                    | mInNs = (m, relevant ∪ (Set.fromList ms) ∪ (Set.fromList beforeM))
-                    | nInMs = (n, relevant ∪ (Set.fromList ns) ∪ (Set.fromList beforeN))
-                    | otherwise = case dom ! n of
-                                     Nothing -> case dom ! m of
-                                                  Nothing -> error "is no tree"
-                                                  Just m' -> lca' relevant (m':ms) ns
-                                     Just n' -> lca' relevant ms (n':ns)
-                   where mInNs = not $ List.null $ foundM
-                         (afterM, foundM) = break (== m) ns
-                         (mm:beforeM) = foundM
-
-                         nInMs = not $ List.null $ foundN
-                         (afterN, foundN) = break (== n) ms
-                         (nn:beforeN) = foundN
+  where lcaR = lcaRMyCDForNode
 
 myWod graph = myXod sMust s3 graph
   where sMust = smmnFMustWod graph
@@ -3190,39 +3035,9 @@ myWodFastPDomForIterationStrategy strategy graph =
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
         condsIn ns    = [ n | n <- ns, length (suc graph n) > 1]
-        lcaR :: Map Node (Maybe Node) -> (Node, Set Node) -> (Node, Set Node) -> (Node, Set Node)
-        lcaR  dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' relevant [n] [m]
-           where lca' :: Set Node -> [Node] -> [Node] -> (Node, Set Node)
-                 lca' relevant ns@(n:_) ms@(m:_)
-                    | mInNs = (m, relevant ∪ (Set.fromList ms) ∪ (Set.fromList beforeM))
-                    | nInMs = (n, relevant ∪ (Set.fromList ns) ∪ (Set.fromList beforeN))
-                    | otherwise = case dom ! n of
-                                     Nothing -> case dom ! m of
-                                                  Nothing -> error "is no tree"
-                                                  Just m' -> lca' relevant (m':ms) ns
-                                     Just n' -> lca' relevant ms (n':ns)
-                   where mInNs = not $ List.null $ foundM
-                         (afterM, foundM) = break (== m) ns
-                         (mm:beforeM) = foundM
 
-                         nInMs = not $ List.null $ foundN
-                         (afterN, foundN) = break (== n) ms
-                         (nn:beforeN) = foundN
-
-        lca :: Map Node (Maybe Node) -> Node -> Node -> Node
-        lca  dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
-           where lca' :: (Node,Set Node) -> (Node, Set Node) -> Node
-                 lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case dom ! n of
-                                     Nothing -> case dom ! m of
-                                                Nothing -> error "is no tree"
-                                                Just m' -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     Just n' -> lca' (m, ms) (n', Set.insert n' ns)
+        lcaR = lcaRMyWodFastPDomForIterationStrategy
+        lca  =  lcaMyWodFastPDomForIterationStrategy
 
 
 towardsCycle graph cycleS n = dfs [n] (efilter (\(n,m,_) -> not $ m ∈ cycleS) graph)
@@ -4385,32 +4200,7 @@ timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
-                lca :: (Node, Integer, Set Node) -> (Node, Integer, Set Node) -> Maybe (Node, Integer, Set Node)
-                lca  (n, sn, forbiddenNs) (m, sm, forbiddenMs) = lca' imdom (n, sn, Map.fromList [(n,sn)], forbiddenNs) (m, sm, Map.fromList [(m,sm)], forbiddenMs)
-                lca' :: Map Node (Maybe (Node, Integer)) -> (Node, Integer, Map Node Integer, Set Node) -> (Node, Integer, Map Node Integer, Set Node ) -> Maybe (Node, Integer, Set Node)
-                lca' c (n, sn, ns, forbiddenNs) (m, sm, ms, forbiddenMs)
-                    | m ∈ Map.keysSet ns ∧ ((ns ! m) == sm) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
-                                                           assert (ms ! m == sm) $
-                                                           let left  = Set.fromList [ v | (v,s) <- Map.assocs ns, s <= sm ]
-                                                               right = Map.keysSet ms
-                                                           in
-                                                           assert (left ∩ right == Set.fromList [m]) $
-                                                           Just (m, sm, left ∪ right)
-                    | n ∈ Map.keysSet ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
-                                                           assert (ns ! n == sn) $
-                                                           let left  = Set.fromList [ v | (v,s) <- Map.assocs ms, s <= sn ]
-                                                               right = Map.keysSet ns
-                                                           in
-                                                           assert (left ∩ right == Set.fromList [n]) $
-                                                           Just (n, sn, left ∪ right)
-                    | otherwise = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
-                                  case Set.toList $ (Set.map fst $ toSet $ (c ! n)) ∖ (Map.keysSet ns ∪ forbiddenNs) of
-                                     []   -> case Set.toList $ (Set.map fst $ toSet (c ! m)) ∖ (Map.keysSet ms ∪ forbiddenMs) of
-                                                []   -> Nothing
-                                                [_] -> let Just (m',sm') = c ! m
-                                                       in lca' c ( m', sm + sm', Map.insert m' (sm+sm') ms, forbiddenMs) (n, sn, ns, forbiddenNs)
-                                     [_] -> let Just (n',sn') = c ! n
-                                            in lca' c (m, sm, ms, forbiddenMs) (n', sn + sn', Map.insert n' (sn+sn') ns, forbiddenNs)
+                lca = lcaTimdomOfTwoFinger imdom
 
 
 alternativeTimingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Set Node)

@@ -34,7 +34,7 @@ import Data.List ((\\), nub, sortBy, groupBy)
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet)
+import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom)
 import Unicode
 
 
@@ -2935,7 +2935,7 @@ myWodFast graph =
 
 
 
-rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Set Node -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
 rotatePDomAround  graph condNodes pdom e@(n,m) =
       id
     $ require (hasEdge graph e)
@@ -2953,25 +2953,21 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
               -- $ traceShow pdom'0 
               -- $ traceShow [ (n, sol, pd) | (n,sol) <- Map.assocs $ toSuccMap $ (immediateOf solution :: gr () ()),
               --                              let pd = pdom'0 ! n, pd /= sol]
-              $ assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
-                        ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ())))
+              $ assert ((∀) (nodes graph) (\n ->
+                                             reachableFromTree  (fmap toSet pdom'0) n
+                                          ⊇  reachableFromTree             solution n
+                                       )
+                       )
               $ if ((∀) (pre graph m) (\p -> p == n)) then
                     id
                   $ pdom'0
                 else
                     id 
-                  $ isinkdomOfTwoFinger8DownFixedTraversal graphm sinkNodes sinks  prevConds nextCond condNodesM i imdom
+                  $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM pdom'0
           where 
-                sinkNodes  = Set.fromList [ m ]
-                sinks = [[m]]
-                prevConds = prevCondNodes graphm
-                nextCond = nextCondNode graphm
-                condNodesM = Set.delete m condNodes
-                i = 0
-                worklist = condNodesM
-                imdom = pdom'0
+                condNodesM = Map.delete m condNodes
 
-                solution = sinkdomOfGfp graphm
+                solution = fromIdom m $ iDom (grev graphm) m
 
 
 myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr, Show (gr a b)) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
@@ -2991,8 +2987,8 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               let edges = zip (m20:others) others,
                                                               let pdom0 = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m20) `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
                                                               let pdoms = zip (m20:others)
-                                                                              (scanl (rotatePDomAround cycleGraph (Set.fromList condsInCycle ∪ Set.fromList condsTowardCycle)) pdom0 edges),
-                                                              n <- condsInCycle ++ entries,
+                                                                              (scanl (rotatePDomAround cycleGraph (condsInCycle `Map.union` condsTowardCycle)) pdom0 edges),
+                                                              n <- [ n | (n,_) <- Map.assocs condsInCycle] ++ entries,
                                                               (m2, pdom) <- pdoms,
                                                               let pdom' = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m2)  `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
                                                               -- if pdom == pdom' then True else traceShow (m2, pdom', pdoms, cycleGraph) True,
@@ -3034,7 +3030,7 @@ myWodFastPDomForIterationStrategy strategy graph =
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
-        condsIn ns    = [ n | n <- ns, length (suc graph n) > 1]
+        condsIn ns    = Map.fromList [ (n, succs) | n <- ns, let succs = suc graph n, length succs > 1]
 
         lca  =  lcaMyWodFastPDomForIterationStrategy
 

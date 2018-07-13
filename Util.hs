@@ -252,3 +252,5 @@ findBoth dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n
                  xs' = Set.delete n xs
                  found' = found ∨ (inXs ∧ n ∈ ms)
 
+
+fromIdom m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]

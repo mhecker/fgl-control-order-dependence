@@ -40,8 +40,11 @@ import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
-import Data.Graph.Inductive.Query.NTICD
 import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs)
+
+import Data.Graph.Inductive.Query.NTICD
+import Data.Graph.Inductive.Query.LCA
+
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -317,32 +320,6 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 --                                   )
                 --               ]
 
-
-
-lcaRKnown :: Map Node (Set Node) -> Node -> [Node] -> (Node, Set Node)
-lcaRKnown dom c successors = case Set.toList $ dom ! c of
-                     []  -> assert (successors == []) $
-                                (c, Set.fromList [c])
-                     [z] -> assert (successors /= []) $ 
-                                (z, foldr relevant (Set.fromList successors) successors)
-                       where relevant :: Node -> Set Node -> Set Node
-                             relevant n ns
-                               | n == z = ns
-                               | otherwise = relevant n' (Set.insert n' ns)
-                                   where [n'] = Set.toList $ dom ! n
-                     _   -> error "no tree"
-
-lcaRKnownM :: Map Node (Maybe Node) -> Node -> [Node] -> (Node, Set Node)
-lcaRKnownM dom c successors = case dom ! c of
-                     Nothing -> assert (successors == []) $
-                                (c, Set.fromList [c])
-                     Just z  -> assert (successors /= []) $ 
-                                (z, foldr relevant (Set.fromList successors) successors)
-                       where relevant :: Node -> Set Node -> Set Node
-                             relevant n ns
-                               | n == z = ns
-                               | otherwise = relevant n' (Set.insert n' ns)
-                                   where Just n' = dom ! n
 
 
 findMustNotMust dom ms xs n = find found0 notfound0 must0 notmust0 n

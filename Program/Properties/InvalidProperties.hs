@@ -50,7 +50,7 @@ import Data.Map ( Map, (!) )
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes)
+import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs)
 import Data.Graph.Inductive.Query.Dominators (iDom)
@@ -74,6 +74,8 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    smmnFMustDod,
+    isinkdomOfTwoFinger8,
     imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
     controlSinks,
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay,
@@ -319,6 +321,43 @@ miscProps = testGroup "(misc)" [
   ]
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    -- TODO: select a counter examples, since counter examples arent realiably found within 100 graphs
+    -- testProperty  "some myDod-outside-of-imdom-sccs-property"
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     imdom          = NTICD.imdomOfTwoFinger7 g
+    --                     imdomTrc       = trc $ (fromSuccMap $ imdom    :: Gr () ())
+    --                     isinkdomRev    = NTICD.isinkdomOfTwoFinger8 (grev g)
+    --                     isinkdomRevTrc = trc $ (fromSuccMap $ isinkdomRev :: Gr () ())
+    --                     imdomRev       = NTICD.imdomOfTwoFinger7 (grev g)
+    --                     imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
+    --                     sMust = NTICD.smmnFMustDod g
+    --                     myDod = NTICD.myDod g
+    --                 in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+    --                       (∀) ns (\n ->
+    --                           (∃) (suc g n) (\x -> (n,x) ∈ sMust ! (m1,m2,n))
+    --                         ∧ (∀) (suc g n) (\x ->
+    --                               (m1 ∊ suc imdomTrc x)
+    --                             ∧ (m2 ∊ suc imdomTrc x)
+    --                             ∧ (((n,x) ∈ sMust ! (m1,m2,n)) → ((m1 ∊ (suc imdomRevTrc m2)) ∨ (m2 ∊ (suc imdomRevTrc m1))))
+    --                           )
+    --                       )
+    --                     ),
+    testProperty  "rev sinkdom approximates pre-dom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinks = NTICD.controlSinks g
+                    in (∀) sinks (\sink ->
+                         let sinkGraph = subgraph sink g
+                             imdomRev       = NTICD.imdomOfTwoFinger7 (grev sinkGraph)
+                             imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
+                         in (∀) sink (\s ->
+                              let isinkdomRev     = NTICD.isinkdomOfTwoFinger8 $ grev $ efilter (\(n,m,_) -> m /= s) $ sinkGraph
+                                  isinkdomRevTrc  = trc $ (fromSuccMap $ isinkdomRev :: Gr () ())
+                              in    (Set.fromList $ [(n,m) | (n,m) <- edges isinkdomRevTrc, n /= s, m /= s])
+                                 ⊇ (Set.fromList $ [(n,m) | (n,m) <- edges imdomRevTrc,    n /= s, m /= s])
+                            )
+                       ),
     testProperty  "rev sinkdom approximates pre-dom"
     $ \(UNCONNECTED(generatedGraph)) ->
                     let g = delEdges [ e | e@(n,m) <- edges generatedGraph, n == m] generatedGraph

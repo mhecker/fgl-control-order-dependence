@@ -74,6 +74,7 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    timingSolvedF3sparseDependence,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
     imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
@@ -96,6 +97,8 @@ balanced   = defaultMain                               $ expectFail $ testGroup 
 balancedX  = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
 timing     = defaultMain                               $ expectFail $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
 timingX    = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
+timingDep  = defaultMain                               $ expectFail $ testGroup "timingDep" [ mkProp [timingDepProps] ]
+timingDepX = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "timingDep" [ mkProp [timingDepProps] ]
 giffhorn   = defaultMain                               $ expectFail $ testGroup "giffhorn"  [ mkTest [giffhornTests], mkProp [giffhornProps] ]
 giffhornX  = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "giffhorn"  [ mkTest [giffhornTests], mkProp [giffhornProps] ]
 soundness  = defaultMain                               $ expectFail $ testGroup "soundness" [ mkTest [soundnessTests], mkProp [soundnessProps] ]
@@ -126,7 +129,7 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps ]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps, timingDepProps ]
 
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
@@ -153,6 +156,30 @@ soundnessTests =  testGroup "(concerning soundness)" $
 
 precisionCounterExampleTests = testGroup "(counterxamples to: timingClassification(-DomPaths) is at least as precise as minimalClassification)" $
   []
+
+
+timingDepProps = testGroup "(concerning timingDependence)" [
+      testProperty  "timingSolvedF3sparseDependence is intransitive for graphs with unique end Node"
+                $ \(ARBITRARY(generatedGraph)) ->
+                       let (_, g) = withUniqueEndNode () () generatedGraph
+                           tdepsparse= NTICD.timingSolvedF3sparseDependence g
+                       in  (∀) (Map.assocs tdepsparse) (\(n,n's) ->
+                             (∀) (n's) (\n' ->
+                               (∀) (tdepsparse ! n') (\n'' -> not $ n'' ∈ n's)
+                             )
+                           ),
+    testProperty  "timingSolvedF3sparseDependence is intransitive for  For-Programs, which by construction are reducible"
+                $ \generated ->
+                       let p = toProgram generated  :: Program Gr
+                           g = tcfg p
+                           tdepsparse = NTICD.timingSolvedF3sparseDependence g
+                       in  (∀) (Map.assocs tdepsparse) (\(n,n's) ->
+                             (∀) (n's) (\n' ->
+                               (∀) (tdepsparse ! n') (\n'' -> not $ n'' ∈ n's)
+                             )
+                           )
+  ]
+       
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $

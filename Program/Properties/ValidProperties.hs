@@ -1876,25 +1876,6 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        let tdep            = NTICD.timingSolvedF3dependence g
                            alternativetdep = NTICD.alternativeTimingSolvedF3dependence g
                        in  alternativetdep == tdep,
-    -- testProperty  "timingSolvedF3sparseDependence is intransitive for graphs with unique end Node"
-    --             $ \(ARBITRARY(generatedGraph)) ->
-    --                    let (_, g) = withUniqueEndNode () () generatedGraph
-    --                        tdepsparse= NTICD.timingSolvedF3sparseDependence g
-    --                    in  (∀) (Map.assocs tdepsparse) (\(n,n's) ->
-    --                          (∀) (n's) (\n' ->
-    --                            (∀) (tdepsparse ! n') (\n'' -> not $ n'' ∈ n's)
-    --                          )
-    --                        ),
-    -- testProperty  "timingSolvedF3sparseDependence is intransitive for  For-Programs, which by construction are reducible"
-    --             $ \generated ->
-    --                    let p = toProgram generated  :: Program Gr
-    --                        g = tcfg p
-    --                        tdepsparse = NTICD.timingSolvedF3sparseDependence g
-    --                    in  (∀) (Map.assocs tdepsparse) (\(n,n's) ->
-    --                          (∀) (n's) (\n' ->
-    --                            (∀) (tdepsparse ! n') (\n'' -> not $ n'' ∈ n's)
-    --                          )
-    --                        ),
     testProperty  "timingSolvedF3sparseDependence^*    == timingSolvedF3dependence ∪ {(n,n) | n ∈ nodes}"
                 $ \(ARBITRARY(g)) ->
                        let tdep             = NTICD.timingSolvedF3dependence g

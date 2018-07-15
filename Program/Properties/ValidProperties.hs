@@ -1753,7 +1753,7 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
-    testProperty  "the  solved timingF3EquationSystem is correct"
+    testPropertySized 30  "the  solved timingF3EquationSystem is correct"
                 $ \(ARBITRARY(g)) ->
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
                            trcG = trc g
@@ -1782,23 +1782,23 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        (List.sort $ NTICD.prevCondsWithSuccNode' g n)
                   ),
     testProperty  "timingSnSolvedDependence         == enumerateTimingDependence"
-                $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
+                $ \(ARBITRARY(g)) ->
                        NTICD.timingSnSolvedDependence  g ==
-                       NTICD.enumerateTimingDependence  g,
+                       NTICD.enumerateTimingDependence g,
     testProperty  "timingSnSolvedDependence         == timingSnSolvedDependenceWorklist"
-                $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
+                $ \(ARBITRARY(g)) ->
                        NTICD.timingSnSolvedDependence          g ==
                        NTICD.timingSnSolvedDependenceWorklist  g,
     testProperty  "timingSnSolvedDependence         == timingSnSolvedDependenceWorklist2"
-                $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
+                $ \(ARBITRARY(g)) ->
                        NTICD.timingSnSolvedDependence          g ==
                        NTICD.timingSnSolvedDependenceWorklist2 g,
     testProperty  "timingSolvedF3dependence == timingSnSolvedDependenceWorklist"
-                $ \(ARBITRARY(g)) -> traceShow (length $ nodes g) $
+                $ \(ARBITRARY(g)) ->
                        NTICD.timingSolvedF3dependence g ==
                        NTICD.timingSnSolvedDependenceWorklist g,
     testProperty  "timingSolvedF3dependence == timingSnSolvedDependence"
-                $ \(ARBITRARY(g)) ->  traceShow (length $ nodes g) $
+                $ \(ARBITRARY(g)) -> 
                        NTICD.timingSolvedF3dependence g ==
                        NTICD.timingSnSolvedDependence g,
     testProperty  "timmaydomOfLfp            relates to solved timingF3EquationSystem"

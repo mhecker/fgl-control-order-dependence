@@ -3917,6 +3917,7 @@ enumerateTimingDependence graph =
                                                                                        let steps = (toInteger $ length $ toNextCondX) - 1
                                 ]
         condsOf = (∐) [ Map.fromList [ (x, Set.fromList [ p ]) ] | p <- condNodes, x <- suc graph p ]
+                ⊔       Map.fromList [ (x, Set.empty         )   | x <- nodes graph ]
         condNodes = [ n | n <- nodes graph, isCond graph n ]
         toNextCond = toNextCondNode graph
 
@@ -3930,6 +3931,7 @@ enumerateTimingFor graph = enumerateTimingForUsing graph prevCondsWithSucc conds
                                                                                        let steps = (toInteger $ length $ toNextCondX) - 1
                                 ]
         condsOf = (∐) [ Map.fromList [ (x, Set.fromList [ p ]) ] | p <- condNodes, x <- suc graph p ]
+                ⊔       Map.fromList [ (x, Set.empty         )   | x <- nodes graph ]
         condNodes = [ n | n <- nodes graph, isCond graph n ]
         toNextCond = toNextCondNode graph
 enumerateTimingForUsing ::  DynGraph gr => gr a b -> (Map Node (Set (Node,Node,Integer))) -> Map Node (Set Node) -> Node -> Set Node

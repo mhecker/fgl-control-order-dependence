@@ -73,6 +73,8 @@ endif
 %.test.xml : %.test-xml.bin
 	./$< $(RTS) $(PATTERN) --xml $@
 
+%.test.xml.html : %.test.xml
+	ant -buildfile test-xml-to-html.xml -Dxmlfile=$<
 
 %.fail : %.fail.bin .FORCE
 	./$< $(RTS) $(PATTERN) $(COLOR)

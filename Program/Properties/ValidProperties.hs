@@ -275,9 +275,16 @@ simonClassificationTests = testGroup "(concerning timingClassificationDomPaths)"
   []
 
 giffhornProps = testGroup "(concerning Giffhorns LSOD)" [
-    testProperty  "giffhornLSOD == isSecureGiffhornClassification "
-                $ \generated -> let  p :: Program Gr = toProgram generated in
-                  giffhornLSOD p == isSecureGiffhornClassification p
+    testPropertySized 45  "giffhornLSOD == isSecureGiffhornClassification for procedure-less programs"
+                $ \generated ->
+                    let  p :: Program Gr = toProgramIntra generated
+                         pc = precomputedUsing undefined p
+                    in giffhornLSODUsing pc p == isSecureGiffhornClassificationUsing pc p,
+    testPropertySized 15  "giffhornLSOD == isSecureGiffhornClassification "
+                $ \generated ->
+                    let  p :: Program Gr = toProgram      generated
+                         pc = precomputedUsing undefined p
+                    in giffhornLSODUsing pc p == isSecureGiffhornClassificationUsing pc p
   ]
 giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
   [  testCase    ("giffhornLSOD == isSecureGiffhornClassification for " ++ exampleName)

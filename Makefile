@@ -17,7 +17,7 @@ endif
 
 
 THREADED=-threaded
-RTS=+RTS -N $(PROF_RTS) $(DEBUG_RTS) -RTS
+RTS=+RTS $(PROF_RTS) $(DEBUG_RTS) -RTS
 COLOR=--color always
 ROFL = Program/Tests
 CABAL_PREFIX=cabal exec --

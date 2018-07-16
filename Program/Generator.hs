@@ -78,7 +78,7 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
                                                           (threadsAvailable ∖ (Set.fromList [thread]))
                                                           proceduresAvailable
                                                           n
-      programGenerator n
+      programGenerator (n `div` 2)
                        ((threadsAvailable ∖ (Map.keysSet spawned')) ∖ (Set.fromList [thread]) )
                        proceduresAvailable 
                        (Map.insert thread    procedure generated)
@@ -116,6 +116,8 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
 
 instance Arbitrary GeneratedProgram where
   arbitrary = sized $ \n -> do
+      let ratio = 1/1.7 :: Double -- attempt to generate a CFG with procedure cfgs of size ~~ [n, n, n/2, n/4, n/8...]
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
       f@(Generated p _ spawned called) <- forGenerator inChannels
                                                        outChannels
                                                        vars
@@ -123,8 +125,8 @@ instance Arbitrary GeneratedProgram where
                                                        varsForbidden
                                                        threadsAvailable
                                                        proceduresAvailable
-                                                       n
-      (generated, generatedProcedures) <- programGenerator n
+                                                       n'
+      (generated, generatedProcedures) <- programGenerator n'
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
                                     (Map.fromList [(1, "main")])
@@ -144,6 +146,8 @@ instance Arbitrary GeneratedProgram where
 
 instance Arbitrary SimpleProgram where
   arbitrary = sized $ \n -> do
+      let ratio = 1/1.7 :: Double -- attempt to generate a CFG with one procedure of size ~~ n
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
       f@(Generated p vars spawned called) <- forGenerator inChannels
                                                           outChannels
                                                           vars
@@ -151,7 +155,7 @@ instance Arbitrary SimpleProgram where
                                                           varsForbidden
                                                           threadsAvailable
                                                           proceduresAvailable
-                                                          n
+                                                          n'
       return $ SimpleProgram (Map.fromList [(1,"main")]) (Map.fromList [("main", Generated (Skip `Seq` p) vars spawned called)])
     where
       threadsAvailable = Set.fromList []
@@ -165,14 +169,14 @@ instance Arbitrary SimpleProgram where
 
 instance DynGraph gr => Arbitrary (SimpleCFG gr) where
   arbitrary = sized $ \n -> do
-      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
-      simple  <- resize n' arbitrary
+      simple  <- resize n arbitrary
       let p = toProgramSimple simple
       return $ SimpleCFG (nmap (const ()) $ emap (const ()) $ tcfg p)
-    where ratio = 1/1.7 :: Double -- attempt to generate a CFG with number of nodes ~~ n
 
 instance Arbitrary IntraGeneratedProgram where
   arbitrary = sized $ \n -> do
+      let ratio = 1/1.7 :: Double -- attempt to generate a CFG with thread cfgs of size ~~ [n, n, n/2, n/4, n/8...]
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
       f@(Generated p _ spawned called) <- forGenerator inChannels
                                                        outChannels
                                                        vars
@@ -180,8 +184,8 @@ instance Arbitrary IntraGeneratedProgram where
                                                        varsForbidden
                                                        threadsAvailable
                                                        proceduresAvailable
-                                                       n
-      (generated, generatedProcedures) <- programGenerator n
+                                                       n'
+      (generated, generatedProcedures) <- programGenerator n'
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
                                     (Map.fromList [(1, "main")])

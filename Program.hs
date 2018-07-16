@@ -5,6 +5,7 @@ import Data.Graph.Inductive.Graph  -- TODO: check if this needs to be hidden, or
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Query.TransClos (trc)
 
+import qualified Data.Graph.Inductive.Query.DFS as DFS (reachable)
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -41,10 +42,10 @@ vars (Program { tcfg }) = Set.unions [ def tcfg n ∪ use tcfg n | n <- nodes tc
 cfgOfThread :: DynGraph gr => Program gr -> StaticThread -> gr CFGNode CFGEdge
 cfgOfThread (Program { tcfg, entryOf, procedureOf }) thread = subgraph reachable inThreadOnly
   where inThreadOnly = labefilter (\(n,m,e) -> not $ e ∊ [Spawn, Return]) tcfg
-        reachable = suc (trc inThreadOnly) (entryOf $ procedureOf $ thread)
+        reachable = DFS.reachable (entryOf $ procedureOf $ thread) inThreadOnly
 
 
 cfgOfProcedure :: DynGraph gr => Program gr -> StaticProcedure -> gr CFGNode CFGEdge
 cfgOfProcedure (Program { tcfg, entryOf }) procedure = subgraph reachable inProcedureOnly
   where inProcedureOnly = labefilter (\(n,m,e) -> not $ e ∊ [Spawn, Call, Return]) tcfg
-        reachable = suc (trc inProcedureOnly) (entryOf $ procedure)
+        reachable = DFS.reachable (entryOf $ procedure) inProcedureOnly

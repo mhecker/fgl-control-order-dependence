@@ -30,6 +30,7 @@ import Program.MHP
 import Program.CDom
 import Program.Analysis
 import Program.Generator (GeneratedProgram(..), toCode, toProgram,
+                          IntraGeneratedProgram(..), toCodeIntra, toProgramIntra,
                           SimpleProgram(..), toCodeSimple, toProgramSimple,
                           SimpleCFG(..),
                           Generated(..))
@@ -92,7 +93,8 @@ showGraph g = do
   runInteractiveCommand $ "xdot " ++ file
 
 showPDG p = showGraph $ programDependenceGraphP p
-showcPDG p = showGraph $ concurrentProgramDependenceGraphP p
+showcPDG p = showGraph $ concurrentProgramDependenceGraphP p mhp
+  where mhp = mhpSetFor p
 showCFG p = showGraph $ tcfg p
 -- showSDGSimp sdg = showGraph $ efilter f sdg
 --   where f (_,_, SummaryDependence) = True

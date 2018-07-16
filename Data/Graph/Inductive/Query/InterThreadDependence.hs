@@ -32,18 +32,17 @@ import IRLSOD
 
 
 
-interThreadDependence :: DynGraph gr => Program gr -> Map Node (Set Node)
-interThreadDependence p@(Program {tcfg}) = Map.fromList $
+interThreadDependence :: DynGraph gr => Program gr -> Set (Node,Node) -> Map Node (Set Node)
+interThreadDependence p@(Program {tcfg}) mhp = Map.fromList $
     [ (n, Set.fromList [ m | x@(Global _) <- Set.toList $ def tcfg n,
                              m <- nodes tcfg,
-                             mhp ! (n,m),
+                             (n,m) ∈ mhp,
                              x ∈ (use tcfg m)
                         ]
        )
      | n <- nodes tcfg ]
-  where mhp = mhpFor p
 
-interThreadDependenceGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-interThreadDependenceGraphP p@(Program { tcfg }) = mkGraph (labNodes tcfg) [ (n,n',InterThreadDependence) | (n,n's) <- Map.toList interdeps, n' <- Set.toList n's]
-  where interdeps = interThreadDependence p
+interThreadDependenceGraphP :: DynGraph gr => Program gr -> Set (Node,Node) -> gr CFGNode Dependence
+interThreadDependenceGraphP p@(Program { tcfg }) mhp = mkGraph (labNodes tcfg) [ (n,n',InterThreadDependence) | (n,n's) <- Map.toList interdeps, n' <- Set.toList n's]
+  where interdeps = interThreadDependence p mhp
 

@@ -47,8 +47,8 @@ programDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, 
   where (ddeps, parameterMaps) = dataDependenceGraphP p
         lift = nmap CFGNode
 
-concurrentProgramDependenceGraphP :: DynGraph gr => Program gr -> gr SDGNode Dependence
-concurrentProgramDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
+concurrentProgramDependenceGraphP :: DynGraph gr => Program gr -> Set (Node,Node) -> gr SDGNode Dependence
+concurrentProgramDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) mhp =
     addParameterEdges  parameterMaps $
     insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
     foldr mergeTwoGraphs empty $ [ ddeps] ++
@@ -58,7 +58,7 @@ concurrentProgramDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticPr
                                    controlDependenceGraph (insEdge (entry, exit, false) $ cfgOfProcedure p procedure)
                                                           exit
                                  | procedure <- Set.toList staticProcedures, let entry = entryOf procedure, let exit = exitOf procedure ]
-  where tdeps = interThreadDependenceGraphP p
+  where tdeps = interThreadDependenceGraphP p mhp
         (ddeps, parameterMaps) = dataDependenceGraphP p
         lift = nmap CFGNode
 
@@ -85,8 +85,8 @@ systemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, e
         lift = nmap CFGNode
 
 
-concurrentSystemDependenceGraphP :: DynGraph gr => Program gr -> gr SDGNode Dependence
-concurrentSystemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) =
+concurrentSystemDependenceGraphP :: DynGraph gr => Program gr -> Set (Node,Node) -> gr SDGNode Dependence
+concurrentSystemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticProcedures, entryOf, exitOf }) mhp =
     addSummaryEdges parameterMaps $ 
     addParameterEdges  parameterMaps $
     insEdges [ (n,n',SpawnDependence) | (n,n',Spawn) <- labEdges tcfg ] $
@@ -97,7 +97,7 @@ concurrentSystemDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticPro
                                    controlDependenceGraph (insEdge (entry, exit, false) $ cfgOfProcedure p procedure)
                                                           exit
                                  | procedure <- Set.toList staticProcedures, let entry = entryOf procedure, let exit = exitOf procedure ]
-  where tdeps = interThreadDependenceGraphP p
+  where tdeps = interThreadDependenceGraphP p mhp
         (ddeps, parameterMaps) = dataDependenceGraphP p
         lift = nmap CFGNode
 

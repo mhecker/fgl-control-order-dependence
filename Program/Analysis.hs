@@ -62,7 +62,7 @@ precomputedUsing :: DynGraph gr => (Program gr -> Map (Node, Node) Node) -> Prog
 precomputedUsing idomComputation p@(Program { tcfg }) =
     PrecomputedResults { cpdg, idom, trnsclos, mhps, mhp, chop, dataConflictGraph, timingdg, dom }
   where
-    cpdg = concurrentProgramDependenceGraphP p
+    cpdg = concurrentProgramDependenceGraphP p mhp
     idom = idomComputation p
     trnsclos = trc tcfg
     mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes tcfg ]
@@ -368,30 +368,32 @@ isSecureTimingCombinedTimingClassificationUsing
         clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ]
         cltInit = Map.fromList [ (n, (⊥))                       | n <- nodes tcfg ] -- TODO: find nice way not to repeat ourselves here?!?!
 
-
-giffhornClassification p@(Program { tcfg, observability }) = (cl, inf)
-  where cl  = (㎲⊒)  (Map.fromList [ (n, clInitFrom observability n)  | n <- nodes tcfg ])
+giffhornClassification p = giffhornClassificationUsing  (precomputedUsing undefined p) p
+giffhornClassificationUsing pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) = (cl, inf)
+  where cl  = (㎲⊒)  (Map.fromList [ (n, clInitFrom observability n)  | n <- nodes cpdg])
                         (\cl -> cl      ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
-                                                                            | n <- nodes tcfg])
+                                                                            | n <- nodes cpdg])
                         )
-        inf = (㎲⊒) ((Map.fromList [ (n, False) | n  <- nodes tcfg ]) ⊔
+        inf = (㎲⊒) ((Map.fromList [ (n, False) | n  <- nodes cpdg ]) ⊔
                      (Map.fromList [ (m, True)  | n  <- nodes tcfg,
                                                   n' <- nodes tcfg,
-                                                  mhp ! (n,n'),
+                                                  (n,n') ∈ mhp,
                                                   (∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')),
                                                   m <- [n,n'] ] )
                     )
                     (\clData -> clData  ⊔ (Map.fromList [ (n,(∐) [ clData ! m  | m <- pre cpdg n])
-                                                                               | n <- nodes tcfg])
+                                                                               | n <- nodes cpdg])
                     )
         def_ = def tcfg
         use_ = use tcfg
-        cpdg = concurrentProgramDependenceGraphP p
-        mhp = mhpFor p
+
 
 
 isSecureGiffhornClassification :: SecurityAnalysis gr
-isSecureGiffhornClassification p@(Program{ tcfg, observability }) =
+isSecureGiffhornClassification p = isSecureGiffhornClassificationUsing (precomputedUsing undefined p) p
+
+isSecureGiffhornClassificationUsing :: PrecomputedResults gr -> SecurityAnalysis gr
+isSecureGiffhornClassificationUsing  pc@(PrecomputedResults { mhp }) p@(Program{ tcfg, observability }) =
     ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl  ! n == Low)
     )
@@ -402,18 +404,20 @@ isSecureGiffhornClassification p@(Program{ tcfg, observability }) =
     ∧
     ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
                                 m <- nodes tcfg, observability m == Just Low,
-                                mhp ! (n,m)
+                                (n,m) ∈ mhp
                           ]
          )
          (\(n,m) -> False)
     )
-  where (cl, inf) = giffhornClassification p
-        mhp = mhpFor p
+  where (cl, inf) = giffhornClassificationUsing pc p
 
 
 
 giffhornLSOD :: SecurityAnalysis gr
-giffhornLSOD p@(Program{ tcfg, observability }) =
+giffhornLSOD p = giffhornLSODUsing (precomputedUsing undefined p) p
+
+giffhornLSODUsing :: PrecomputedResults gr -> SecurityAnalysis gr
+giffhornLSODUsing pc@(PrecomputedResults { mhp, cpdg}) p@(Program{ tcfg, observability }) =
     ((∀) [ (n,n')     | n   <- nodes tcfg, observability n  == Just Low,
                         n'  <- nodes tcfg, observability n' == Just High ] (\(n,n') ->
          (¬) (n' ∊ pre bs n)
@@ -421,7 +425,7 @@ giffhornLSOD p@(Program{ tcfg, observability }) =
     ∧
     ((∀) [ (n,n',n'') | n   <- nodes tcfg,
                         n'  <- nodes tcfg,
-                        mhp ! (n,n'),
+                        (n,n') ∈ mhp,
                         n'' <- nodes tcfg, observability n'' == Just Low   ] (\(n,n',n'') ->
          ((∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')))
          →
@@ -432,16 +436,14 @@ giffhornLSOD p@(Program{ tcfg, observability }) =
     ∧
     ((∀) [ (n,n')     | n   <- nodes tcfg,
                         n'  <- nodes tcfg,
-                        mhp ! (n,n')                                     ] (\(n,n') ->
+                        (n,n') ∈ mhp                                     ] (\(n,n') ->
          (¬) (observability n  == Just Low) ∨
          (¬) (observability n' == Just Low)
     ))
   where
        def_ = def tcfg
        use_ = use tcfg
-       cpdg = concurrentProgramDependenceGraphP p
        bs = trc cpdg -- TODO: name :)
-       mhp = mhpFor p
 
 
 
@@ -454,7 +456,7 @@ unsoundIRLSODAttempt p@(Program{ tcfg, observability }) =
     ∧
     ((∀) [ (n,n',n'') | n   <- nodes tcfg,
                         n'  <- nodes tcfg,
-                        mhp ! (n,n'),
+                        (n,n') ∈ mhp,
                         n'' <- nodes tcfg, observability n'' == Just Low   ] (\(n,n',n'') ->
          ((∃) (def_ n) (\v -> v ∈ (def_ n') ∪ (use_ n')))
          →
@@ -465,7 +467,7 @@ unsoundIRLSODAttempt p@(Program{ tcfg, observability }) =
     ∧
     ((∀) [ (n,n')     | n   <- nodes tcfg,
                         n'  <- nodes tcfg,
-                        mhp ! (n,n')                                     ] (\(n,n') ->
+                        (n,n') ∈ mhp                                     ] (\(n,n') ->
          (¬) (observability n  == Just Low) ∨
          (¬) (observability n' == Just Low) ∨
          let c = idom ! (n,n') in
@@ -474,10 +476,10 @@ unsoundIRLSODAttempt p@(Program{ tcfg, observability }) =
   where
        def_ = def tcfg
        use_ = use tcfg
-       cpdg = concurrentProgramDependenceGraphP p
+       cpdg = concurrentProgramDependenceGraphP p mhp
        bs = trc cpdg -- TODO: name :)
        trnsclos = bs
-       mhp = mhpFor p
+       mhp = mhpSetFor p
        idom = idomMohrEtAl p
        chop s t =    (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance

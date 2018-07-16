@@ -73,8 +73,10 @@ endif
 %.test.xml : %.test-xml.bin
 	./$< $(RTS) $(PATTERN) --xml $@
 
-%.test.xml.html : %.test.xml
-	ant -buildfile test-xml-to-html.xml -Dxmlfile=$<
+unitTestReports/%.test.xml.fixed.xml/html/index.html : %.test.xml .FORCE
+	cat $< | sed -e 's/<testsuites[^>]*>//g' | sed -e 's/<\/testsuites>//g' > $<.fixed.xml
+	ant -v -buildfile test-xml-to-html.xml -Dxmlfile=$<.fixed.xml
+	rm $<.fixed.xml
 
 %.fail : %.fail.bin .FORCE
 	./$< $(RTS) $(PATTERN) $(COLOR)

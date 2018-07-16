@@ -124,9 +124,10 @@ idomToTree idom = trrAcyclic tree
                          (nub [ (c,n,()) | ((a,b),c) <- Map.assocs idom, n  <- [ a,b]])
 
 
-chop graph s t =   (Set.fromList $ suc trnsclos s)
-                 ∩ (Set.fromList $ pre trnsclos t)
-  where trnsclos = trc $ graph
+chop graph =
+  let trnsclos = trc graph in \s t ->
+      (Set.fromList $ suc trnsclos s)
+    ∩ (Set.fromList $ pre trnsclos t)
 
 -- inclChop graph s t
 --     | tFound    = bwd

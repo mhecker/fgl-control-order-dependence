@@ -141,7 +141,7 @@ timingClassificationUsing
     cltInit =
   (㎲⊒) (clInit, cltInit)
     (\(cl,clt) -> (cl  ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
-                                       | n <- nodes tcfg])
+                                       | n <- nodes cpdg])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,n)) | m <- pre dataConflictGraph n])
                                        | n <- nodes tcfg]),
                    clt ⊔ (Map.fromList [ ((n,m), (∐) [ cl ! c' | let c = idom ! (n,m),

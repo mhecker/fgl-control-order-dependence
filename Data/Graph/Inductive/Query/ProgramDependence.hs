@@ -64,9 +64,10 @@ concurrentProgramDependenceGraphP p@(Program { tcfg, staticProcedureOf, staticPr
 
 
 addParameterEdges :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
-addParameterEdges (ParameterMaps { formalInFor, formalOutFor, actualInsFor, actualOutsFor }) graph =
+addParameterEdges (ParameterMaps { formalInFor, formalOutFor, formalInForSpawnIn }) graph =
       insEdges [ (actualIn, formalIn,   ParameterInDependence)  | (actualIn, formalIn)   <- Map.assocs formalInFor ]
     $ insEdges [ (formalOut, actualOut, ParameterOutDependence) | (actualOut, formalOut) <- Map.assocs formalOutFor ]
+    $ insEdges [ (spawnIn, formalIn,    SpawnInDepdendence)     | (spawnIn, formalIn) <- Map.assocs formalInForSpawnIn ]
     $ graph
 
 

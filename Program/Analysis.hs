@@ -93,7 +93,7 @@ minimalClassificationUsing
     clInit =
   (㎲⊒) clInit
     (\cl -> cl ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
-                               | n <- nodes tcfg])
+                               | n <- nodes cpdg])
                ⊔ (Map.fromList [ (n,(∐) [ cl ! c' | m <- Set.toList $ mhps ! n, let c = idom ! (n,m),  c' <- Set.toList $ chop c n])
                                | n <- nodes tcfg])
     )

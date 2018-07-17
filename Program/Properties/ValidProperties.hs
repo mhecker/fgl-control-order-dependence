@@ -2009,8 +2009,8 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
     testProperty  "finite context graphs"      $
       \(INTERCFG(g)) ->
                      let  (folded, nodemap) = krinkeSCC g
-                     in traceShow (length $ nodes g, length $ nodes folded) $
-                        (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0),
+                     in -- traceShow (length $ nodes g, length $ nodes folded) $
+                        (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0)
     -- testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
     -- testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     -- testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,

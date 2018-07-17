@@ -1032,7 +1032,7 @@ interIDomIsIDomOnIntra (CG s gr) = idoms == interIDom (emap (\_ -> Nothing) gr :
 
 
 
-chopsInterIDomAreChops :: InterCFG () String -> Bool
+chopsInterIDomAreChops :: InterCFG Node (Node, Node) -> Bool
 chopsInterIDomAreChops (InterCFG s gr) =
     (∀) (nodes gr) (\n ->
       (∀) (pre interDomsGraph n) (\c -> n == s ∨ c == n ∨
@@ -1059,10 +1059,10 @@ chopsInterIDomAreChopsCounterExamples (InterCFG s gr) = [ (c,i,n) | n <- (nodes 
         summary = sameLevelSummaryGraph'WithoutBs gr
 
 
-sameLevelSummaryGraphIssameLevelSummaryGraph' :: InterCFG () String -> Bool
+sameLevelSummaryGraphIssameLevelSummaryGraph' :: InterCFG Node (Node, Node) -> Bool
 sameLevelSummaryGraphIssameLevelSummaryGraph' (InterCFG _ gr) = sameLevelSummaryGraph gr == sameLevelSummaryGraph' gr
 
-sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs :: InterCFG () String -> Bool
+sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs :: InterCFG Node (Node, Node) -> Bool
 sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = sameLevelSummaryGraphMerged gr == sameLevelSummaryGraph'WithoutBs gr
 
 sameLevelSummaryGraph'WithBsIssameLevelSummaryGraph'WithoutBs :: InterCFG () String -> Bool

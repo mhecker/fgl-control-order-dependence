@@ -2010,17 +2010,17 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
       \(INTERCFG(g)) ->
                      let  (folded, nodemap) = krinkeSCC g
                      in -- traceShow (length $ nodes g, length $ nodes folded) $
-                        (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0)
-    -- testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
-    -- testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
-    -- testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
-    -- testProperty  "simulUnblIsUnbl"                   $ simulUnblIsUnbl,
-    -- testProperty  "simulUnbr'IsUnbr"                  $ simulUnbrIsUnbr,
-    -- testProperty  "simulUnbl'IsUnbl"                  $ simulUnblIsUnbl,
-    -- testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
-    -- testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops,
-    -- testProperty  "sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs" $ sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs
---    testProperty  "sameLevelSummaryGraphIssameLevelSummaryGraph'" $ sameLevelSummaryGraphIssameLevelSummaryGraph', -- this appears to hold, but takes fucking long to quickcheck, so we skip it here
+                        (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0),
+    testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
+    testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
+    testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,
+    testProperty  "simulUnblIsUnbl"                   $ simulUnblIsUnbl,
+    testProperty  "simulUnbr'IsUnbr"                  $ simulUnbrIsUnbr,
+    testProperty  "simulUnbl'IsUnbl"                  $ simulUnblIsUnbl,
+    testProperty  "balancedChopIsSimulBalancedChop"   $ balancedChopIsSimulBalancedChop,
+    testProperty  "chopsInterIDomAreChops"            $ chopsInterIDomAreChops,
+    testProperty  "sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs" $ sameLevelSummaryGraphMergedIssameLevelSummaryGraph'WithoutBs,
+    testProperty  "sameLevelSummaryGraphIssameLevelSummaryGraph'" $ sameLevelSummaryGraphIssameLevelSummaryGraph'
   ]
 
 balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" $

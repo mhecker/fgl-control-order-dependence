@@ -1976,7 +1976,7 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
                           k         = 100
                           language  = Set.fromList [ n | (_,n) <- labNodes cfg ]
                           ms        = sampleFrom seed 5 (nodes cfg)
-                     in traceShow (length $ nodes cfg) $
+                     in -- traceShow (length $ nodes cfg) $
                         (∀) ms (\m2 -> (∀) ms (\m3 ->
                           let pre     = preStar cfg (at m3)
                               prepreAt  = FA.simplify $ preStar cfg $ FA.simplifyModInitial False  $ FA.intersectWithCommonInitialNodes     (at m2) pre
@@ -1994,7 +1994,7 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
                           k         = 100
                           language  = Set.fromList [ n | (_,n) <- labNodes cfg ]
                           ms        = sampleFrom seed 5 (nodes cfg)
-                     in traceShow (length $ nodes cfg) $
+                     in -- traceShow (length $ nodes cfg) $
                         (∀) ms (\m2 -> (∀) ms (\m3 ->
                           let pre     = preStar cfg (at m3)
                               preAt   = FA.simplify $ FA.intersectWithCommonInitialNodes     (at m2) pre
@@ -2011,16 +2011,6 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
                      let  (folded, nodemap) = krinkeSCC g
                      in traceShow (length $ nodes g, length $ nodes folded) $
                         (∀) (nodes folded) (\n -> (Map.size $ contextGraphFrom folded n) >= 0),
-    testProperty  "classification loops in krinkeSCC graphs"      $
-      \(INTERCFG(g)) seed ->
-                     let  (folded, nodemap) = krinkeSCC g
-                          maxlength = 50
-                          k         = 1000
-                          paths     = samplePathsFor seed k maxlength folded
-                     in traceShow (length $ nodes g, length $ nodes folded) $
-                        (∀) paths (\path ->
-                          (∀) (loopsIn path) (\loop -> (sameLevelArbitrary loop) ∨ (not $ realizableArtbitrary loop))
-                        )
     -- testProperty  "sccIsSccNaive"                     $ sccIsSccNaive,
     -- testProperty  "sccIsSameLevelScc"                 $ sccIsSameLevelScc,
     -- testProperty  "simulUnbrIsUnbr"                   $ simulUnbrIsUnbr,

@@ -322,6 +322,16 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
+    testProperty  "classification loops in krinkeSCC graphs"      $
+      \(INTERCFG(g)) seed ->
+                     let  (folded, nodemap) = krinkeSCC g
+                          maxlength = 50
+                          k         = 1000
+                          paths     = samplePathsFor seed k maxlength folded
+                     in -- traceShow (length $ nodes g, length $ nodes folded) $
+                        (∀) paths (\path ->
+                          (∀) (loopsIn path) (\loop -> (sameLevelArbitrary loop) ∨ (not $ realizableArtbitrary loop))
+                        ),
     testProperty  "acyclic realizable scc paths for arbitrary graphs"      $
       \(INTER(g)) seed ->
                           let maxlength = 50

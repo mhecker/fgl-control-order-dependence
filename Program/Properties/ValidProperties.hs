@@ -2262,13 +2262,7 @@ indepsTests = testGroup "(concerning color algorithms)" $
 
 
 miscProps = testGroup "(misc)" [
-    testProperty  "trcOfTrrIsTrc"                     $ trcOfTrrIsTrc,
-    testProperty  "snmF4WithReachCheckGfp == snmF3Gfp "
-                $ \(ARBITRARY(generatedGraph)) ->
-                    let graph     = generatedGraph
-                        snmF3Gfp                = NTICD.snmF3 graph
-                        snmF4WithReachCheckGfp  = NTICD.snmF4WithReachCheckGfp graph
-                    in snmF4WithReachCheckGfp ⊑ snmF3Gfp
+    testProperty  "trcOfTrrIsTrc"                     $ trcOfTrrIsTrc
   ]
 
 

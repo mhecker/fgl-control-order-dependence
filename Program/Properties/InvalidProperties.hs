@@ -83,6 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
+    snmF4WithReachCheckGfp,
     snmF3, snmF5
   ) 
 
@@ -345,6 +346,12 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 
 miscProps = testGroup "(misc)" [
+    testProperty  "snmF4WithReachCheckGfp ⊑ snmF3Gfp "
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let graph     = generatedGraph
+                        snmF3Gfp                = NTICD.snmF3 graph
+                        snmF4WithReachCheckGfp  = NTICD.snmF4WithReachCheckGfp graph
+                    in snmF4WithReachCheckGfp ⊑ snmF3Gfp
   ]
 
 dodProps = testGroup "(concerning decisive order dependence)" [

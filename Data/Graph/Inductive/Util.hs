@@ -121,7 +121,7 @@ trr g =
 
 
 trcOfTrrIsTrc ::  Gr String () -> Bool
-trcOfTrrIsTrc g = trc g == (trc $ trr g)
+trcOfTrrIsTrc g = trc g == (trc $ trr $ trc $ g)
 
 isTransitive g = (∀) (nodes g) (\x -> (∀) (suc g x) (\y -> (∀) (suc g y) (\z -> hasEdge g (x,z))))
 

@@ -263,7 +263,7 @@ timingClassificationDomPathsTests = testGroup "(concerning timingClassificationD
 
 
 simonClassificationProps = testGroup "(concerning simonClassification)" [
-    testProperty  "simonClassification is at least as precise as minimalClassification"
+    testPropertySized 20  "simonClassification is at least as precise as minimalClassification"
                 $ isSecureSimonClassification `isAtLeastAsPreciseAs` isSecureMinimalClassification
   ]
 

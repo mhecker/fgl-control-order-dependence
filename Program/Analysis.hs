@@ -114,9 +114,9 @@ simonClassificationUsing
     clInit =
   (㎲⊒) clInit
     (\cl -> cl ⊔ (Map.fromList [ (n,(∐) [ cl ! m  | m <- pre cpdg n])
-                               | n <- nodes tcfg])
-               ⊔ (Map.fromList [ (n,(∐) [ cl ! p | not $ Set.null $ mhps ! n, p <- pre tcfg n])
                                | n <- nodes cpdg])
+               ⊔ (Map.fromList [ (n,(∐) [ cl ! p | not $ Set.null $ mhps ! n, p <- pre tcfg n])
+                               | n <- nodes tcfg])
     )
   where
     mhps = Map.fromList [ (n, Set.fromList [ m | ((n',m), True) <- Map.assocs mhp, n' == n]) | n <- nodes tcfg ]

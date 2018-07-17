@@ -267,7 +267,7 @@ simonClassificationProps = testGroup "(concerning simonClassification)" [
                 $ isSecureSimonClassification `isAtLeastAsPreciseAs` isSecureMinimalClassification
   ]
 
-simonClassificationTests = testGroup "(concerning timingClassificationDomPaths)" $
+simonClassificationTests = testGroup "(concerning simonClassification)" $
   [ testCase     ("simonClassification is at least as precise as minimalClassification for " ++ exampleName)
                 ((isSecureSimonClassification example ⊒ isSecureMinimalClassification example) @? "")
   | (exampleName, example) <- testsuite

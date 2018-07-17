@@ -12,6 +12,7 @@ import IRLSOD
 
 -- import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
+import qualified Data.Graph.Inductive.Query.DFS as DFS (reachable)
 
 
 import Data.Map ( Map, (!) )
@@ -81,14 +82,14 @@ mhpFor p@(Program { tcfg }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes 
 mhpDifferent p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ [(a,b),(b,a)] | a <- nodes tcfg, (b,Spawn) <- lsuc tcfg a ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
-                                                                   b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a], -- TODO: Performance
-                                                                   a' <- suc trnsclos a,
-                                                                   not $ Set.null $ (threadsOfMap ! a') ⊓ (threadsOfMap ! a) 
+                                                                   a' <- DFS.reachable a tcfg,
+                                                                   not $ Set.null $ (threadsOfMap ! a') ⊓ (threadsOfMap ! a),
+                                                                   b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a] -- TODO: Performance
                                              ]
                       )
        )
 
- where trnsclos = trc tcfg
+ where
        threadsOfMap = threadsOf p
 
 
@@ -96,12 +97,12 @@ mhpDifferentSimon p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ if (e /= NoOp) then (error $ "invalid spawn-node successor " ++ show (b,e)) else
                                     [(a,b),(b,a)] | n <- nodes tcfg, (a,Spawn) <- lsuc tcfg n, (b,e) <- lsuc tcfg n, e /= Spawn ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
-                                                                   b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a], -- TODO: Performance
-                                                                   a' <- suc trnsclos a,
-                                                                   not $ Set.null $ (threadsOfMap ! a') ⊓ (threadsOfMap ! a) 
+                                                                   a' <- DFS.reachable a tcfg,
+                                                                   not $ Set.null $ (threadsOfMap ! a') ⊓ (threadsOfMap ! a),
+                                                                   b  <- [ b | (rofl,b) <- Set.toList mhp, rofl == a] -- TODO: Performance
                                              ]
                       )
        )
 
- where trnsclos = trc tcfg
+ where
        threadsOfMap = threadsOf p

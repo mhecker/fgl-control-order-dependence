@@ -30,7 +30,9 @@ import Program.MHP
 import Program.CDom
 import Program.Analysis
 import Program.Generator (GeneratedProgram(..), toCode, toProgram,
+                          IntraGeneratedProgram(..), toCodeIntra, toProgramIntra,
                           SimpleProgram(..), toCodeSimple, toProgramSimple,
+                          SimpleCFG(..),
                           Generated(..))
 import Program.TransitionSystem
 
@@ -54,7 +56,9 @@ import Data.Graph.Inductive.PatriciaTree
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence
+import Data.Graph.Inductive.Query.LCA
 import Data.Graph.Inductive.Query.NTICD
+import Data.Graph.Inductive.Query.MyWodSlice
 import Data.Graph.Inductive.Query.TimingDependence
 import Data.Graph.Inductive.Query.DataDependence
 import Data.Graph.Inductive.Query.DataConflict
@@ -89,7 +93,8 @@ showGraph g = do
   runInteractiveCommand $ "xdot " ++ file
 
 showPDG p = showGraph $ programDependenceGraphP p
-showcPDG p = showGraph $ concurrentProgramDependenceGraphP p
+showcPDG p = showGraph $ concurrentProgramDependenceGraphP p mhp
+  where mhp = mhpSetFor p
 showCFG p = showGraph $ tcfg p
 -- showSDGSimp sdg = showGraph $ efilter f sdg
 --   where f (_,_, SummaryDependence) = True

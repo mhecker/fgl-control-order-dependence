@@ -8,10 +8,14 @@ import Data.Map (Map, (!))
 import qualified Data.Set as Set
 import Data.Set (Set)
 
+import Data.Bits.Bitwise (fromListBE,fromListLE)
+import Data.Bits (testBit)
+
 import qualified Data.Foldable as Foldable
 import Unicode
 import Algebra.Lattice
 
+import Control.Exception.Base (assert)
 import Control.Monad (foldM)
 import Control.Monad.Random hiding (join)
 the p = fromJust . find p 
@@ -33,10 +37,24 @@ invert m = Map.fromListWith (∪) pairs
 
 
 
+treeDfs :: (Ord k) => Map k [k] -> [k] -> [k]
+treeDfs m roots = dfs roots
+  where m' = invert' m `Map.union` (Map.fromList [(n, []) | n <- Map.keys m])
+        dfs [] = []
+        dfs (n:ns) = n : (dfs ( m' ! n ++ ns ))
+
 invert' :: (Ord k, Ord v) => Map k [v] -> Map v [k]
 invert' m = Map.fromListWith (++) pairs
     where pairs = [(v, [k]) | (k, vs) <- Map.toList m, v <- vs]
 
+
+invert'' :: (Ord k, Ord v) => Map k (Set v) -> Map v (Set k)
+invert'' m = fmap Set.fromList $ invert' $ fmap Set.toList m
+
+
+reallyInvert m = fmap (base ∖) m
+  where base =      (Map.keysSet m)
+             ∪ (∐) (Map.elems   m)
 
 meetFrom :: (Foldable.Foldable f,  MeetSemiLattice a) => a -> f a -> a
 meetFrom x l = Foldable.foldr (⊓) x l
@@ -73,6 +91,61 @@ updateAt n y (x:xs)
    | n < 0     = error "invalid index: update"
    | otherwise = x:(updateAt (n-1) y xs)
 
+
+reachableFrom :: Ord α => Map α (Set α) -> Set α -> Set α -> Set α
+reachableFrom m xs seen
+    | Set.null xs = seen
+    | otherwise = xs ∪ reachableFrom m new (seen ∪ xs)
+  where new = Set.fromList [ x' | x <- Set.toList xs, Just x's <- [ Map.lookup x m ], x' <- Set.toList $ m ! x, not $ x ∈ seen]
+
+
+reachableFromTree :: Ord α => Map α (Set α) -> α -> Set α
+reachableFromTree m x = reachFrom (Set.fromList [x]) Set.empty
+  where reachFrom xs seen 
+          | Set.null xs = seen
+          | otherwise = xs ∪ reachFrom new (seen ∪ xs)
+              where new = Set.fromList [ x' | x <- Set.toList xs, Just x's <- [ Map.lookup x m ], x' <- Set.toList $ m ! x]
+
+
+
+
+isReachableFromTree :: Ord α => Map α (Set α) -> α -> α -> Bool
+isReachableFromTree m x y = isReach y
+  where isReach y
+          | x == y    = True
+          | otherwise = case Set.toList $ m ! y of
+                          []  -> False
+                          [z] -> isReach z
+                          _   -> error "no tree"
+
+isReachableFromTreeM :: Ord α => Map α (Maybe α) -> α -> α -> Bool
+isReachableFromTreeM m x y = isReach y
+  where isReach y
+          | x == y    = True
+          | otherwise = case m ! y of
+                          Nothing  -> False
+                          Just z -> isReach z
+
+
+allReachableFromTree :: Ord α => Map α (Set α) -> Set α -> α -> Bool
+allReachableFromTree m xs y = allReach (Set.delete y xs) y
+  where allReach notseen y
+          | Set.null notseen = True
+          | otherwise = case Set.toList $ m ! y of
+                          []  -> False
+                          [z] -> allReach (Set.delete z notseen) z
+                          _   -> error "no tree"
+
+
+isReachableBeforeFromTree :: Ord α => Map α (Set α) -> α -> α -> α -> Bool
+isReachableBeforeFromTree m a x y = isReach y
+  where isReach y
+          | a == y    = True
+          | x == y    = False
+          | otherwise = case Set.toList $ m ! y of
+                          []  -> False
+                          [z] -> isReach z
+                          _   -> error "no tree"
 
 
 reachableFromIn :: Ord a => Map a (Set (a, (Integer, Set a))) -> a -> a -> Set Integer
@@ -111,3 +184,73 @@ sampleFrom seed n xs = evalRand (s n) (mkStdGen seed)
           return $ xs !! (i-1)
 
 
+roots idom
+  | Set.null ns0 = []
+  | otherwise    = rootsFrom x [x] unchecked
+  where ns0 = Map.keysSet idom
+        (x, unchecked) = Set.deleteFindMin ns0
+        rootsFrom n seen unchecked
+            | Set.null $ idom ! n = [n] : rest
+            | n' ∈ unchecked      = rootsFrom n' (n':seen) (Set.delete n' unchecked)
+            | otherwise           = if (afterN' /= []) then (n':beforeN') : rest else rest
+          where (beforeN',afterN') = span (/= n') seen
+                rest
+                   | Set.null unchecked = []
+                   | otherwise          = rootsFrom x' [x'] unchecked'
+                  where (x', unchecked') = Set.deleteFindMin unchecked
+                [n'] = Set.toList $ idom ! n
+
+
+
+toSet :: Ord a => Maybe a -> Set a
+toSet Nothing  = Set.empty
+toSet (Just x) = Set.fromList [x]
+
+fromSet :: Ord a => Set a -> Maybe a
+fromSet s = case Set.toList s of
+  []  -> Nothing
+  [x] -> Just x
+  otherwise -> error "no singleton/empty"
+
+
+evalBfun f bs  = testBit f (fromListBE bs)
+
+
+findMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
+  where find inXs xs found n
+            | Set.null xs' = found'
+            | otherwise = case Set.toList $ dom ! n of
+                            []  -> False
+                            [z] -> find inXs' xs' found' z
+                            _   -> error "no tree"
+          where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
+                 xs' = Set.delete n xs
+                 found' = found ∨ (inXs ∧ n ∈ ms)
+
+
+findNoMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
+  where find inXs xs found n
+            | inXs ∧ found' = False
+            | Set.null xs' = True
+            | otherwise = case Set.toList $ dom ! n of
+                            []  -> False
+                            [z] -> find inXs' xs' found' z
+                            _   -> error "no tree"
+          where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
+                 xs' = Set.delete n xs
+                 found' = found ∨ (inXs ∧ n ∈ ms)
+
+
+findBoth dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
+  where find inXs xs found n
+            | Set.null xs' = (found', not $ found')
+            | otherwise = case Set.toList $ dom ! n of
+                            []  -> (False, False)
+                            [z] -> find inXs' xs' found' z
+                            _   -> error "no tree"
+          where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
+                 xs' = Set.delete n xs
+                 found' = found ∨ (inXs ∧ n ∈ ms)
+
+
+fromIdom m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]

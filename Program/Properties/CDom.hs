@@ -327,9 +327,10 @@ simulChopIsInclChop gr =
 
 inclChopIsChop :: Program Gr -> Bool
 inclChopIsChop p =
+    let pchop = chop (tcfg p) in
     (∀) (nodes $ tcfg p) (\s ->
       (∀) (nodes $ tcfg p) (\t ->
-             (chop $ tcfg p) s t == (Set.fromList $ (inclChop $ tcfg p) s t)
+             pchop s t == (Set.fromList $ (inclChop $ tcfg p) s t)
       )
     )
 

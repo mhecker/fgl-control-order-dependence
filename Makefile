@@ -5,6 +5,9 @@
 ifdef PROF
 PROF_GHC=-prof -fprof-auto -osuf p_o
 PROF_RTS=-p
+GHC_ASSERT=
+else
+GHC_ASSERT=-fno-ignore-asserts
 endif
 
 ifdef DEBUG
@@ -14,12 +17,12 @@ endif
 
 
 THREADED=-threaded
-RTS=+RTS -N $(PROF_RTS) $(DEBUG_RTS) -RTS
+RTS=+RTS $(PROF_RTS) $(DEBUG_RTS) -RTS
 COLOR=--color always
 ROFL = Program/Tests
 CABAL_PREFIX=cabal exec --
 PATTERN=
-GHC_FLAGS=-rtsopts -O -fno-ignore-asserts
+GHC_FLAGS=-rtsopts -O $(GHC_ASSERT)
 
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE
@@ -70,6 +73,10 @@ endif
 %.test.xml : %.test-xml.bin
 	./$< $(RTS) $(PATTERN) --xml $@
 
+unitTestReports/%.test.xml.fixed.xml/html/index.html : %.test.xml .FORCE
+	cat $< | sed -e 's/<testsuites[^>]*>//g' | sed -e 's/<\/testsuites>//g' > $<.fixed.xml
+	ant -v -buildfile test-xml-to-html.xml -Dxmlfile=$<.fixed.xml
+	rm $<.fixed.xml
 
 %.fail : %.fail.bin .FORCE
 	./$< $(RTS) $(PATTERN) $(COLOR)

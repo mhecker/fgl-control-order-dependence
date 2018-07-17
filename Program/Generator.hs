@@ -1,3 +1,6 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 module Program.Generator where
 
@@ -30,6 +33,9 @@ data IntraGeneratedProgram = IntraGeneratedProgram (Map StaticThread StaticProce
 data GeneratedProgram = GeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 data SimpleProgram    = SimpleProgram    (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 
+data SimpleCFG gr = SimpleCFG (gr () ())
+
+deriving instance (Show (gr () ())) => Show (SimpleCFG gr)
 
 
 toCodeIntra :: IntraGeneratedProgram -> (Map StaticThread  StaticProcedure, Map StaticProcedure For)
@@ -72,7 +78,7 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
                                                           (threadsAvailable ∖ (Set.fromList [thread]))
                                                           proceduresAvailable
                                                           n
-      programGenerator n
+      programGenerator (n `div` 2)
                        ((threadsAvailable ∖ (Map.keysSet spawned')) ∖ (Set.fromList [thread]) )
                        proceduresAvailable 
                        (Map.insert thread    procedure generated)
@@ -110,6 +116,8 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
 
 instance Arbitrary GeneratedProgram where
   arbitrary = sized $ \n -> do
+      let ratio = 1/1.7 :: Double -- attempt to generate a CFG with procedure cfgs of size ~~ [n, n, n/2, n/4, n/8...]
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
       f@(Generated p _ spawned called) <- forGenerator inChannels
                                                        outChannels
                                                        vars
@@ -117,8 +125,8 @@ instance Arbitrary GeneratedProgram where
                                                        varsForbidden
                                                        threadsAvailable
                                                        proceduresAvailable
-                                                       n
-      (generated, generatedProcedures) <- programGenerator n
+                                                       n'
+      (generated, generatedProcedures) <- programGenerator n'
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
                                     (Map.fromList [(1, "main")])
@@ -138,6 +146,8 @@ instance Arbitrary GeneratedProgram where
 
 instance Arbitrary SimpleProgram where
   arbitrary = sized $ \n -> do
+      let ratio = 1/1.7 :: Double -- attempt to generate a CFG with one procedure of size ~~ n
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
       f@(Generated p vars spawned called) <- forGenerator inChannels
                                                           outChannels
                                                           vars
@@ -145,7 +155,7 @@ instance Arbitrary SimpleProgram where
                                                           varsForbidden
                                                           threadsAvailable
                                                           proceduresAvailable
-                                                          n
+                                                          n'
       return $ SimpleProgram (Map.fromList [(1,"main")]) (Map.fromList [("main", Generated (Skip `Seq` p) vars spawned called)])
     where
       threadsAvailable = Set.fromList []
@@ -157,9 +167,16 @@ instance Arbitrary SimpleProgram where
       varsForbidden    = Set.fromList []
       varsAvailable    = vars
 
+instance DynGraph gr => Arbitrary (SimpleCFG gr) where
+  arbitrary = sized $ \n -> do
+      simple  <- resize n arbitrary
+      let p = toProgramSimple simple
+      return $ SimpleCFG (nmap (const ()) $ emap (const ()) $ tcfg p)
 
 instance Arbitrary IntraGeneratedProgram where
   arbitrary = sized $ \n -> do
+      let ratio = 1/1.7 :: Double -- attempt to generate a CFG with thread cfgs of size ~~ [n, n, n/2, n/4, n/8...]
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
       f@(Generated p _ spawned called) <- forGenerator inChannels
                                                        outChannels
                                                        vars
@@ -167,8 +184,8 @@ instance Arbitrary IntraGeneratedProgram where
                                                        varsForbidden
                                                        threadsAvailable
                                                        proceduresAvailable
-                                                       n
-      (generated, generatedProcedures) <- programGenerator n
+                                                       n'
+      (generated, generatedProcedures) <- programGenerator n'
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
                                     (Map.fromList [(1, "main")])
@@ -282,7 +299,7 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
                              (spawned')
                              (called')
    ),
-   (if (Set.null (varsAvailable ∖ varsForbidden)) then 0 else 1,
+   (if (Set.size (varsAvailable ∖ varsForbidden) <= 1) then 0 else 1,
        do var <- elements $ Set.toList (varsAvailable ∖ varsForbidden)
           Generated p'               _ spawned' called' <- forGenerator inChannels outChannels vars varsAvailable (varsForbidden ∪ Set.fromList [var]) threadsAvailable     proceduresAvailable (n-1)
           return $ Generated (ForV var p')
@@ -291,22 +308,22 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
                              (called')
    ),
    (1, do bexp <- bexpGenerator varsAvailable
-          Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable                           proceduresAvailable (n-1)
-          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable varsForbidden (threadsAvailable ∖ Map.keysSet spawned')  proceduresAvailable (n-1)
+          Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable                           proceduresAvailable (n `div` 2)
+          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable varsForbidden (threadsAvailable ∖ Map.keysSet spawned')  proceduresAvailable (n `div` 2)
           return $ Generated (If bexp p' p'')
                              (varsAvailable' ∩ varsAvailable'')
                              (spawned' `Map.union` spawned'')
                              (Map.unionsWith (∩) [ called', called'' ])
    ),
-   (3, do Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable  varsForbidden threadsAvailable                          proceduresAvailable (n-1)
-          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable' varsForbidden (threadsAvailable ∖ Map.keysSet spawned') proceduresAvailable (n-1)
+   (3, do Generated p'  varsAvailable'  spawned'  called'  <- forGenerator inChannels outChannels vars varsAvailable  varsForbidden threadsAvailable                          proceduresAvailable (n `div` 2)
+          Generated p'' varsAvailable'' spawned'' called'' <- forGenerator inChannels outChannels vars varsAvailable' varsForbidden (threadsAvailable ∖ Map.keysSet spawned') proceduresAvailable (n `div` 2)
           return $ Generated (p' `Seq`p'')
                              (varsAvailable'')
                              (spawned' `Map.union` spawned'')
                              (Map.unionsWith (∩) [ called', called'' ])
    )
    ]
- where maxSize = 5
+ where maxSize = 10000
 
 {- randomly pick n elements out of a given list, without repetition -}
 pick :: Eq a => Int -> [a] -> Gen [a]

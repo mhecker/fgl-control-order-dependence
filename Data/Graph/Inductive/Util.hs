@@ -110,6 +110,7 @@ trrAcyclic graph = trrAcyclicCurrent closure (nodes graph)
 
 trr :: DynGraph gr => gr a b -> gr a ()
 trr g =
+    assert (isTransitive g) $
     mkGraph (labNodes g)
             (    [(n, n', ())           | (_,e) <- labNodes g1t, (n,n') <- zip e (tail e)]
               ++ [(last e, head e,  ()) | (_,e) <- labNodes g1t, length e > 1            ]
@@ -122,17 +123,24 @@ trr g =
 trcOfTrrIsTrc ::  Gr String () -> Bool
 trcOfTrrIsTrc g = trc g == (trc $ trr g)
 
+isTransitive g = (∀) (nodes g) (\x -> (∀) (suc g x) (\y -> (∀) (suc g y) (\z -> hasEdge g (x,z))))
+
+immediateOf :: DynGraph gr => Map Node (Set Node) -> gr () ()
+immediateOf succs = trr $ fromSuccMap $ succs
 
 fromPredMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
-fromPredMap pred = mkGraph [(n,()) | n <- Map.keys pred]
+fromPredMap pred = mkGraph [(n,()) | n <- Set.toList $ Map.keysSet pred ∪ (∐) (Map.elems pred)]
                            [(m,n,()) | (n,ms) <- Map.assocs pred, m <- Set.toList ms]
 
 fromSuccMap :: DynGraph gr => Map Node (Set Node) -> gr () () 
-fromSuccMap succ = mkGraph [(n,()) | n <- Map.keys succ]
+fromSuccMap succ = mkGraph [(n,()) | n <- Set.toList $ Map.keysSet succ ∪ (∐) (Map.elems succ)]
                            [(n,m,()) | (n,ms) <- Map.assocs succ, m <- Set.toList ms]
 
 toPredMap ::  Graph gr => gr a b -> Map Node (Set Node)
 toPredMap gr = Map.fromList [(n, Set.fromList $ pre gr n ) | n <- nodes gr]
+
+toSuccMap ::  Graph gr => gr a b -> Map Node (Set Node)
+toSuccMap gr = Map.fromList [(n, Set.fromList $ suc gr n ) | n <- nodes gr]
 
 
 fromSuccMapWithEdgeAnnotation :: DynGraph gr => Map Node (Set (Node,b)) -> gr () b
@@ -242,3 +250,16 @@ removeDuplicateEdges g = mkGraph (labNodes g)
 insNodeIfNecessary (n, l) g
   | n `elem` nodes g = assert (lab g n == Just l) $ g
   | otherwise        = insNode (n,l) g
+
+
+
+delSuccessorEdges :: DynGraph gr => gr a b -> Node -> gr a b
+delSuccessorEdges graph n = c' & graph'
+  where (Just c@(preds, _, a, _), graph') = match n graph
+        c' =    (preds, n, a, [])
+
+delPredecessorEdges :: DynGraph gr => gr a b -> Node -> gr a b
+delPredecessorEdges graph n = c' & graph'
+  where (Just c@(_ , _, a, succs), graph') = match n graph
+        c' =    ([], n, a, succs)
+

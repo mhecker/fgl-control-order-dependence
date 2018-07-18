@@ -2125,7 +2125,7 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 
 indepsProps = testGroup "(concerning dependencey graph representations using independencies)" [
-    testProperty "addNonImplicitNonTrivialSummaryEdgesGfpLfp  =~   addNonImplicitNonTrivialSummaryEdges"
+    testPropertySized 25 "addNonImplicitNonTrivialSummaryEdgesGfpLfp  =~   addNonImplicitNonTrivialSummaryEdges"
                 $ \generated ->
                   let p :: Program Gr = toProgram generated
                       (_, parameterMaps) = withParameterNodes p
@@ -2143,7 +2143,7 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
                        ∧            summaryIndependencies ==            summaryIndependencies'
                        ∧   formalInActualInIndependencies ==   formalInActualInIndependencies'
                        ∧ actualOutFormalOutIndependencies == actualOutFormalOutIndependencies',
-    testProperty "nonImplicitSummaryComputation is correct"
+    testPropertySized 50 "nonImplicitSummaryComputation is correct"
                 $ \generated ->
                     let p   :: Program Gr = toProgram generated
                         pdg = programDependenceGraphP p
@@ -2153,8 +2153,8 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
                         sdg'                    = addImplicitAndTrivialSummaryEdgesLfp p parameterMaps summaryIndependencies formalInActualInInIndependencies actualOutFormalOutIndependencies nonImplicitNonTrivialSummariesSdg
                         summaries                       = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges sdg                              ]
                         summariesNonImplicitNonTrivial  = Set.fromList $[ e | e@(_,_,SummaryDependence) <- labEdges nonImplicitNonTrivialSummariesSdg]
-                    in traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summariesNonImplicitNonTrivial) $
-                       sdg == sdg'
+                    in -- traceShow ("SummaryGraph: ", Set.size summaries, "\t\t", "NonImplicitSummaryGraph: ", Set.size summariesNonImplicitNonTrivial) $
+                       sdg == sdg',
     -- testProperty "implicitSummaryEdgesLfp are valid"
     --             $ \generated ->
     --                 let p   :: Program Gr = toProgram generated
@@ -2165,34 +2165,34 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
     --                     allSummaries = Set.fromList [ (actualIn, actualOut)  | (actualIn, actualOut, SummaryDependence) <-  labEdges sdg]
     --                 in traceShow ("Implicit Summary Edges:", Set.size implicitSummaries, " of ", Set.size allSummaries) $
     --                    implicitSummaries ⊆ allSummaries,
-    -- testProperty "summaryIndepsProperty"
-    --             $ \generated ->
-    --                 let p   :: Program Gr = toProgram generated
-    --                 in summaryIndepsPropertyViolations p == [],
-    -- testProperty "summaryComputation                      =~  summaryComputationGfpLfpWorkList"
-    --             $ \generated ->
-    --                 let p   :: Program Gr = toProgram generated
-    --                     (cfg, parameterMaps) = withParameterNodes p
-    --                     pdg = programDependenceGraphP p
-    --                     sdg               = addSummaryEdges                 parameterMaps pdg
-    --                     sdgGfpLfpWorkList = addSummaryEdgesGfpLfpWorkList p parameterMaps pdg
-    --                 in traceShow (length $ nodes cfg, length $ [ () | (_,_,SummaryDependence) <- labEdges sdg]) $
-    --                                                   sdg == sdgGfpLfpWorkList
-  --   testProperty "summaryComputation                      =~  summaryComputationGfpLfp"
-  --               $ \generated ->
-  --                   let p   :: Program Gr = toProgram generated
-  --                       (_, parameterMaps) = withParameterNodes p
-  --                       pdg = programDependenceGraphP p
-  --                   in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfp p parameterMaps pdg,
-    -- testProperty "summaryComputation                      =~  summaryComputationLfp"
-    --             $ \generated ->
-    --                 let p   :: Program Gr = toProgram generated
-    --                     (_, parameterMaps) = withParameterNodes p
-    --                     pdg = programDependenceGraphP p
-    --                 in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg
-  --   testProperty "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP"
-  --               $ \generated -> let  p :: Program Gr = toProgram generated in
-  --                 dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p
+    testPropertySized 50 "summaryIndepsProperty"
+                $ \generated ->
+                    let p   :: Program Gr = toProgram generated
+                    in summaryIndepsPropertyViolations p == [],
+    testPropertySized 50 "summaryComputation                      =~  summaryComputationGfpLfpWorkList"
+                $ \generated ->
+                    let p   :: Program Gr = toProgram generated
+                        (cfg, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                        sdg               = addSummaryEdges                 parameterMaps pdg
+                        sdgGfpLfpWorkList = addSummaryEdgesGfpLfpWorkList p parameterMaps pdg
+                    in -- traceShow (length $ nodes $ tcfg p, length $ nodes cfg, length $ [ () | (_,_,SummaryDependence) <- labEdges sdg]) $
+                                                      sdg == sdgGfpLfpWorkList,
+    testPropertySized 50 "summaryComputation                      =~  summaryComputationGfpLfp"
+                $ \generated ->
+                    let p   :: Program Gr = toProgram generated
+                        (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesGfpLfp p parameterMaps pdg,
+    testPropertySized 50 "summaryComputation                      =~  summaryComputationLfp"
+                $ \generated ->
+                    let p   :: Program Gr = toProgram generated
+                        (_, parameterMaps) = withParameterNodes p
+                        pdg = programDependenceGraphP p
+                    in addSummaryEdges parameterMaps pdg  == addSummaryEdgesLfp parameterMaps pdg,
+    testPropertySized 50 "dataDependenceGraphViaIndependenceP     == dataDependenceGraphP"
+                $ \generated -> let  p :: Program Gr = toProgram generated in
+                  dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p
   ]
 indepsTests = testGroup "(concerning dependencey graph representations using independencies)" $
   [  testCase  ( "addNonImplicitNonTrivialSummaryEdgesGfpLfp  =~   addNonImplicitNonTrivialSummaryEdges for " ++ exampleName)

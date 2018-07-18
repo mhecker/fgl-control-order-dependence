@@ -2194,7 +2194,7 @@ indepsProps = testGroup "(concerning dependencey graph representations using ind
   --               $ \generated -> let  p :: Program Gr = toProgram generated in
   --                 dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p
   ]
-indepsTests = testGroup "(concerning color algorithms)" $
+indepsTests = testGroup "(concerning dependencey graph representations using independencies)" $
   [  testCase  ( "addNonImplicitNonTrivialSummaryEdgesGfpLfp  =~   addNonImplicitNonTrivialSummaryEdges for " ++ exampleName)
                 $ let (_, parameterMaps) = withParameterNodes p
                       pdg = programDependenceGraphP p

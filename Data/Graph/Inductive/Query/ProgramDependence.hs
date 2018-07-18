@@ -110,6 +110,7 @@ isIntra SpawnDependence        = False
 isIntra InterThreadDependence  = False
 isIntra ParameterInDependence  = False
 isIntra ParameterOutDependence = False
+isIntra SpawnInDepdendence     = False
 
 addSummaryEdges :: DynGraph gr => ParameterMaps -> gr SDGNode Dependence -> gr SDGNode Dependence
 addSummaryEdges parameterMaps graph =

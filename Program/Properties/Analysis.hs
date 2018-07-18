@@ -40,9 +40,9 @@ import qualified Data.Set as Set
 instance Show (Program gr) where
   show p = "rofl"
 
-isAtLeastAsPreciseAs :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> GeneratedProgram -> Bool
+isAtLeastAsPreciseAs :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> IntraGeneratedProgram -> Bool
 isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
-  where p = toProgram generated
+  where p = toProgramIntra generated
 
 
 
@@ -75,9 +75,9 @@ allSoundP ::  [(Program Gr -> Bool)] -> Program Gr -> Bool
 allSoundP as p        = any ($ p) as  → isSecureEmpirically p
 
 
-timingDDomPathsIsTimingG :: GeneratedProgram -> Bool
+timingDDomPathsIsTimingG :: IntraGeneratedProgram -> Bool
 timingDDomPathsIsTimingG generated = timingDDomPathsIsTiming p
-  where p = toProgram generated
+  where p = toProgramIntra generated
 
 timingDDomPathsIsTiming :: Program Gr -> Bool
 timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread, procedureOf }) =

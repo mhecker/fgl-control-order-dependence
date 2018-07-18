@@ -219,20 +219,20 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
-    testProperty  "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
+    testPropertySized 15   "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
-    testProperty  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
+    testPropertySized 40  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated in
                 isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
-    testProperty  "timingClassificationDomPaths == timingClassification"
+    testPropertySized 40  "timingClassificationDomPaths == timingClassification"
                   timingDDomPathsIsTimingG,
-    testProperty  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
+    testPropertySized 40  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
-    testProperty  "timingClassificationAtUses is at least as precise as minimalClassification"
+    testPropertySized 40  "timingClassificationAtUses is at least as precise as minimalClassification"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
-    testProperty  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
+    testPropertySized 40  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
-    testProperty  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
+    testPropertySized 40  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
 

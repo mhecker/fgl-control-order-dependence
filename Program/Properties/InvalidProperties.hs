@@ -137,9 +137,9 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 soundnessProps =  localOption d $ testGroup "(concerning soundness)" [
-    testPropertySized 3
-     ("allSound [ unsoundIRLSODAttempt  ] ")
-     ( allSound [ unsoundIRLSODAttempt  ] )
+    testPropertySized 10
+     ("allSoundIntraMulti [ unsoundIRLSODAttempt  ] ")
+     ( allSoundIntraMulti [ unsoundIRLSODAttempt  ] )
   ]
  where d = 2000000 :: QuickCheckTests
 

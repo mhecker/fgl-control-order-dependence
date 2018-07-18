@@ -71,6 +71,10 @@ allSound ::  [(Program Gr -> Bool)] -> GeneratedProgram -> Property
 allSound as generated = any ($ p) as  ==> isSecureEmpirically p
   where p = toProgram generated
 
+allSoundIntraMulti ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
+allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ==> isSecureEmpirically p
+  where p = toProgramIntra generated
+
 allSoundP ::  [(Program Gr -> Bool)] -> Program Gr -> Bool
 allSoundP as p        = any ($ p) as  → isSecureEmpirically p
 

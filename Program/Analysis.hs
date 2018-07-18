@@ -343,7 +343,7 @@ isSecureTimingClassificationSimple p@(Program{ tcfg, observability }) =
 isSecureTimingCombinedTimingClassification :: SecurityAnalysis gr
 isSecureTimingCombinedTimingClassification p = isSecureTimingCombinedTimingClassificationUsing  (precomputedUsing idomChef p) p
 isSecureTimingCombinedTimingClassificationUsing
-    pc@(PrecomputedResults { timingdg, chop, idom, mhp })
+    pc@(PrecomputedResults { timingdg, chop, idom, mhp, cpdg})
     p@(Program { tcfg, observability }) =
        ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl ! n == Low)
@@ -365,7 +365,7 @@ isSecureTimingCombinedTimingClassificationUsing
             )
        )
   where (cl,clt) = timingClassificationSimpleUsing pc p clInit cltInit
-        clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes tcfg ]
+        clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
         cltInit = Map.fromList [ (n, (⊥))                       | n <- nodes tcfg ] -- TODO: find nice way not to repeat ourselves here?!?!
 
 giffhornClassification p = giffhornClassificationUsing  (precomputedUsing undefined p) p

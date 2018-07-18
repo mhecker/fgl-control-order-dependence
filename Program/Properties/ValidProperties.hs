@@ -1925,18 +1925,18 @@ timingDepTests = testGroup "(concerning timingDependence)" $
 
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
-  [ testPropertySized 3 ("cdomIsCdom idomChef")
-                $ \generated -> let  p :: Program Gr = toProgram generated
+  [ testPropertySized 10 ("cdomIsCdom idomChef")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations p execs idomChef == []
   ] ++
-  [ testPropertySized 3 ("cdomIsCdom' idomMohrEtAl")
-                $ \generated -> let  p :: Program Gr = toProgram generated
+  [ testPropertySized 10 ("cdomIsCdom' idomMohrEtAl")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations' p execs idomMohrEtAl == []
   ] ++
-  [ testPropertySized 3 ("cdomIsCdom idomMohrEtAl")
-                $ \generated -> let  p :: Program Gr = toProgram generated
+  [ testPropertySized 10 ("cdomIsCdom idomMohrEtAl")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations p execs idomMohrEtAl == []
   ] ++
@@ -1958,14 +1958,14 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
     testPropertySized 40  "idomIsTreeProgram idomChef"        $ idomIsTreeProgram idomChef,
     testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"    $ idomIsTreeProgram idomMohrEtAl,
-    testProperty  "chopsCdomArePrefixes idomChef"     $ chopsCdomArePrefixes idomChef,
-    testProperty  "chopsCdomArePrefixes idomMohrEtAl" $ chopsCdomArePrefixes idomMohrEtAl,
-    testProperty  "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree,
-    testProperty  "chopsCdomAreExclChops idomChef"     $ chopsCdomAreExclChops idomChef,
-    testProperty  "chopsCdomAreExclChops idomMohrEtAl" $ chopsCdomAreExclChops idomMohrEtAl,
-    -- testProperty  "inclChopIsChop"                     $ inclChopIsChop, -- this appears to hold, but takes fucking long to quickcheck, so we skip it here
-    testProperty  "exclChopContainedinclChop"          $ exclChopContainedinclChop,
-    testProperty  "selfChopsSame"                      $ selfChopsSame,
+    testPropertySized 15  "chopsCdomArePrefixes idomChef"     $ chopsCdomArePrefixes idomChef,
+    testPropertySized 15  "chopsCdomArePrefixes idomMohrEtAl" $ chopsCdomArePrefixes idomMohrEtAl,
+    testPropertySized  80 "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree,
+    testPropertySized 10  "chopsCdomAreExclChops idomChef"     $ chopsCdomAreExclChops idomChef,
+    testPropertySized 10  "chopsCdomAreExclChops idomMohrEtAl" $ chopsCdomAreExclChops idomMohrEtAl,
+    testPropertySized 15  "inclChopIsChop"                     $ inclChopIsChop,
+    testPropertySized 15  "exclChopContainedinclChop"          $ exclChopContainedinclChop,
+    testPropertySized 70  "selfChopsSame"                      $ selfChopsSame,
     testProperty  "selfChopsSCC"                       $ selfChopsSCC
   ]
 

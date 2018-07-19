@@ -1966,14 +1966,11 @@ isinkdomOfTwoFinger8Down :: forall gr a b. (DynGraph gr) =>
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i worklist imdom = twoFingerDown i worklist imdom
-  where twoFingerDown i worklist imdom
-            |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
-                                    -- traceShow (Set.size worklist0, i) $
-                                    imdom
-            | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
-                                    -- traceShow graph $
-                                    -- traceShow ("DOWN", x, mz, zs, influenced, influenced', imdom) $
-                                    assert (influenced == influenced') $ 
+  where
+        sinkNodesToCanonical = Map.fromList [ (s, s1) | sink <- sinks, let (s1:_) = sink, s <- sink ]
+        twoFingerDown i worklist imdom
+            | Set.null worklist   = imdom
+            | otherwise           = assert (influenced == influenced') $ 
                                     if (not $ changed) then twoFingerDown (i+1)                worklist'                                   imdom
                                     else                    twoFingerDown (i+1) (influenced  ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
@@ -1981,18 +1978,14 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i w
                 zs = case mz of
                        Nothing -> Nothing
                        Just z  -> assert (z /= x) $
-                                  if (z ∈ sinkNodes) then
-                                    let z':_ = the (z ∊ ) sinks in Just z'
-                                  else
-                                    Just z
+                                  case Map.lookup z sinkNodesToCanonical of
+                                    Just s1 -> Just s1
+                                    Nothing -> Just z
                 changed = imdom ! x /= zs
                 influenced = let imdomRev = invert' $ fmap maybeToList imdom
                                  preds = predsSeenFor imdomRev [x] [x]
-                             in  -- traceShow (preds, imdomRev) $
-                                 Set.fromList $ [ n | n <- foldMap prevConds preds, not $ n ∈ sinkNodes]
+                             in  Set.fromList $ [ n | n <- foldMap prevConds preds, not $ n ∈ sinkNodes]
                 influenced' = Set.fromList [ n | n <- Set.toList $ condNodes ∖ sinkNodes, Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
-
-
 
 
 isinkdomOfTwoFinger8DownFixedTraversalForOrder :: forall gr a b. (DynGraph gr) =>
@@ -2004,31 +1997,30 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder :: forall gr a b. (DynGraph gr) =
   -> (Node -> Maybe Node)
   -> Set Node
   -> Integer
+  -> Set Node
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
-isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks  prevConds nextCond condNodes i imdom0 =
+isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks  prevConds nextCond condNodes i toConsider imdom0 =
       id
-    --   traceShow (workset, worklist, imdom0)
-    -- $ traceShow result
+    $ require ((Set.fromList $ fmap fst worklist) == toConsider)
     $ result
   where result = twoFingerDown i worklist imdom0 False
         sinkNodesToCanonical = Map.fromList [ (s, s1) | sink <- sinks, let (s1:_) = sink, s <- sink ]
 
-        worklist = order graph sinkNodes sinks condNodes imdom0
+        worklist = order graph sinkNodes sinks toConsider imdom0
         twoFingerDown i []                     imdom False   = imdom
         twoFingerDown i []                     imdom True    = twoFingerDown  i    worklist                   imdom    False
         twoFingerDown i ((x, succs):worklist') imdom changed = twoFingerDown (i+1) worklist' (Map.insert x zs imdom)  (changed ∨ changed')
-          where changed' =  zs /= (imdom ! x)
-                mz = let (y:ys) = succs
-                     in require (succs == suc graph x) $
-                        foldM lcaDown y ys
+          where 
+                mz = require (succs == suc graph x) $
+                     foldM1 (lca imdom) succs
+                changed' = imdom ! x /= zs
                 zs = case mz of
                        Nothing -> Nothing
                        Just z  -> assert (z /= x) $
                                   case Map.lookup z sinkNodesToCanonical of
                                     Just s1 -> Just s1
                                     Nothing -> Just z
-                lcaDown = lcaIsinkdomOfTwoFinger8DownFixedTraversalForOrder imdom
 
 
 isinkdomOfTwoFinger8DownUniqueExitNode :: forall gr a b. (DynGraph gr) =>
@@ -2066,11 +2058,12 @@ isinkdomOfTwoFinger8DownTreeTraversal :: forall gr a b. (DynGraph gr) =>
   -> (Node -> Maybe Node)
   -> Set Node
   -> Integer
+  -> Set Node
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8DownTreeTraversal = isinkdomOfTwoFinger8DownFixedTraversalForOrder order
-  where order graph sinkNodes sinks  condNodes imdom0 = worklist
-          where worklist = [ (n, succs) | (n, succs, _) <- sortBy (comparing sucOrder) [ (n, succs, minimum [ treeOrderOf x | x <- succs] ) | n <- Set.toList condNodes, let succs = suc graph n ]]
+  where order graph sinkNodes sinks toConsider imdom0 = worklist
+          where worklist = [ (n, succs) | (n, succs, _) <- sortBy (comparing sucOrder) [ (n, succs, minimum [ treeOrderOf x | x <- succs] ) | n <- Set.toList toConsider, let succs = suc graph n ]]
                 sucOrder (n, succs, succOrder) = succOrder 
                 treeOrderOf n = treeOrder ! n
                   where treeOrder :: Map Node Integer
@@ -2086,10 +2079,11 @@ isinkdomOfTwoFinger8DownFixedTraversal :: forall gr a b. (DynGraph gr) =>
   -> (Node -> Maybe Node)
   -> Set Node
   -> Integer
+  -> Set Node
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8DownFixedTraversal = isinkdomOfTwoFinger8DownFixedTraversalForOrder order
-  where order graph sinkNodes sinks  condNodes imdom0 = [ (n, succs) | n <- Set.toList condNodes, let succs = suc graph n ]
+  where order graph sinkNodes sinks toConsider imdom0 = [ (n, succs) | n <- Set.toList toConsider, let succs = suc graph n ]
 
 
 
@@ -2129,6 +2123,7 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                     assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
                                             ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ()))) $
                                     isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
+                         -- isinkdomOfTwoFinger8DownFixedTraversal graph sinkNodes sinks  prevConds nextCond condNodes i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
             | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
                                     -- traceShow graph $ 
                                     -- traceShow (x,processed, influenced, influenced', imdom) $

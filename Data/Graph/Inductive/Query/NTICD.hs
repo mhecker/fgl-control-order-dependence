@@ -2043,10 +2043,9 @@ isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
         twoFingerDown []                     imdom True    = twoFingerDown worklist                   imdom    False
         twoFingerDown ((x, succs):worklist') imdom changed = twoFingerDown worklist' (Map.insert x mz imdom)  (changed ∨ changed')
           where changed' =  mz /= (imdom ! x)
-                mz = let (y:ys) = succs
-                     in assert (succs == suc graph x) $
-                        foldM lcaDown y ys
-                lcaDown = lcaIsinkdomOfTwoFinger8DownUniqueExitNode imdom nx
+                mz = assert (succs == suc graph x) $
+                     foldM1 lca succs
+                lca = lcaUniqueExitNode imdom nx
 
 
 

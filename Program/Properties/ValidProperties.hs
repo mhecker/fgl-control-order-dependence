@@ -221,18 +221,18 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
     testPropertySized 15   "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
-    testPropertySized 40  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
+    testPropertySized 30  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated in
                 isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
-    testPropertySized 40  "timingClassificationDomPaths == timingClassification"
+    testPropertySized 30  "timingClassificationDomPaths == timingClassification"
                   timingDDomPathsIsTimingG,
-    testPropertySized 40  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
+    testPropertySized 30  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
-    testPropertySized 40  "timingClassificationAtUses is at least as precise as minimalClassification"
+    testPropertySized 30  "timingClassificationAtUses is at least as precise as minimalClassification"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
-    testPropertySized 40  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
+    testPropertySized 30  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
-    testPropertySized 40  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
+    testPropertySized 30  "timingClassificationDomPaths is at least as precise as giffhornLSOD"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` giffhornLSOD
   ]
 
@@ -280,7 +280,7 @@ giffhornProps = testGroup "(concerning Giffhorns LSOD)" [
                     let  p :: Program Gr = toProgramIntra generated
                          pc = precomputedUsing undefined p
                     in giffhornLSODUsing pc p == isSecureGiffhornClassificationUsing pc p,
-    testPropertySized 15  "giffhornLSOD == isSecureGiffhornClassification "
+    testPropertySized 10  "giffhornLSOD == isSecureGiffhornClassification "
                 $ \generated ->
                     let  p :: Program Gr = toProgram      generated
                          pc = precomputedUsing undefined p
@@ -1956,17 +1956,17 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
   []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
-    testPropertySized 40  "idomIsTreeProgram idomChef"        $ idomIsTreeProgram idomChef,
-    testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"    $ idomIsTreeProgram idomMohrEtAl,
-    testPropertySized 15  "chopsCdomArePrefixes idomChef"     $ chopsCdomArePrefixes idomChef,
-    testPropertySized 15  "chopsCdomArePrefixes idomMohrEtAl" $ chopsCdomArePrefixes idomMohrEtAl,
-    testPropertySized  80 "idomChefTreeIsDomTree"             $ idomChefTreeIsDomTree,
+    testPropertySized 40  "idomIsTreeProgram idomChef"         $ idomIsTreeProgram idomChef,
+    testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"     $ idomIsTreeProgram idomMohrEtAl,
+    testPropertySized 10  "chopsCdomArePrefixes idomChef"      $ chopsCdomArePrefixes idomChef,
+    testPropertySized 10  "chopsCdomArePrefixes idomMohrEtAl"  $ chopsCdomArePrefixes idomMohrEtAl,
+    testPropertySized 60  "idomChefTreeIsDomTree"              $ idomChefTreeIsDomTree,
     testPropertySized 10  "chopsCdomAreExclChops idomChef"     $ chopsCdomAreExclChops idomChef,
     testPropertySized 10  "chopsCdomAreExclChops idomMohrEtAl" $ chopsCdomAreExclChops idomMohrEtAl,
-    testPropertySized 15  "inclChopIsChop"                     $ inclChopIsChop,
-    testPropertySized 15  "exclChopContainedinclChop"          $ exclChopContainedinclChop,
+    testPropertySized 10  "inclChopIsChop"                     $ inclChopIsChop,
+    testPropertySized 10  "exclChopContainedinclChop"          $ exclChopContainedinclChop,
     testPropertySized 70  "selfChopsSame"                      $ selfChopsSame,
-    testProperty  "selfChopsSCC"                       $ selfChopsSCC
+    testProperty          "selfChopsSCC"                       $ selfChopsSCC
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [

@@ -80,15 +80,15 @@ lcaIsinkdomOfTwoFinger8DownUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromLi
                     | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
                                Just n
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  caseM
-                  where caseM = case imdom ! m of
-                                  Nothing -> assert (m == nx) $
-                                             lcaDownLin ms n
-                                  Just m' -> lcaDown' (m', Set.insert m' ms) (n, ns)
-                lcaDownLin ms n = assert (not $ n ∈ ms) $ lcaDown'' n
-                  where lcaDown'' n = case imdom ! n of
+                                  caseN
+                  where caseN = case imdom ! n of
+                                  Nothing -> assert (n == nx) $
+                                             lcaDownLin ns m
+                                  Just n' -> lcaDown' (m, ms) (n', Set.insert n' ns)
+                lcaDownLin ns m = assert (not $ m ∈ ns) $ lcaDown'' m
+                  where lcaDown'' m = case imdom ! m of
                                         Nothing -> Nothing
-                                        Just n' -> if n' ∈ ms then Just n' else lcaDown'' n'
+                                        Just m' -> if m' ∈ ns then Just m' else lcaDown'' m'
 
 
 

@@ -127,25 +127,23 @@ isReachableFromTreeM m x y = isReach y
                           Just z -> isReach z
 
 
-allReachableFromTree :: Ord α => Map α (Set α) -> Set α -> α -> Bool
-allReachableFromTree m xs y = allReach (Set.delete y xs) y
+allReachableFromTreeM :: Ord α => Map α (Maybe α) -> Set α -> α -> Bool
+allReachableFromTreeM m xs y = allReach (Set.delete y xs) y
   where allReach notseen y
           | Set.null notseen = True
-          | otherwise = case Set.toList $ m ! y of
-                          []  -> False
-                          [z] -> allReach (Set.delete z notseen) z
-                          _   -> error "no tree"
+          | otherwise = case m ! y of
+                          Nothing -> False
+                          Just z  -> allReach (Set.delete z notseen) z
 
 
-isReachableBeforeFromTree :: Ord α => Map α (Set α) -> α -> α -> α -> Bool
-isReachableBeforeFromTree m a x y = isReach y
+isReachableBeforeFromTreeM :: Ord α => Map α (Maybe α) -> α -> α -> α -> Bool
+isReachableBeforeFromTreeM m a x y = isReach y
   where isReach y
           | a == y    = True
           | x == y    = False
-          | otherwise = case Set.toList $ m ! y of
-                          []  -> False
-                          [z] -> isReach z
-                          _   -> error "no tree"
+          | otherwise = case m ! y of
+                          Nothing -> False
+                          Just z  -> isReach z
 
 
 reachableFromIn :: Ord a => Map a (Set (a, (Integer, Set a))) -> a -> a -> Set Integer
@@ -219,10 +217,9 @@ evalBfun f bs  = testBit f (fromListBE bs)
 findMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
   where find inXs xs found n
             | Set.null xs' = found'
-            | otherwise = case Set.toList $ dom ! n of
-                            []  -> False
-                            [z] -> find inXs' xs' found' z
-                            _   -> error "no tree"
+            | otherwise = case dom ! n of
+                            Nothing -> False
+                            Just z  -> find inXs' xs' found' z
           where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
                  xs' = Set.delete n xs
                  found' = found ∨ (inXs ∧ n ∈ ms)
@@ -232,10 +229,9 @@ findNoMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n
   where find inXs xs found n
             | inXs ∧ found' = False
             | Set.null xs' = True
-            | otherwise = case Set.toList $ dom ! n of
-                            []  -> False
-                            [z] -> find inXs' xs' found' z
-                            _   -> error "no tree"
+            | otherwise = case dom ! n of
+                            Nothing -> False
+                            Just z  -> find inXs' xs' found' z
           where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
                  xs' = Set.delete n xs
                  found' = found ∨ (inXs ∧ n ∈ ms)
@@ -244,10 +240,9 @@ findNoMs dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n
 findBoth dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n 
   where find inXs xs found n
             | Set.null xs' = (found', not $ found')
-            | otherwise = case Set.toList $ dom ! n of
-                            []  -> (False, False)
-                            [z] -> find inXs' xs' found' z
-                            _   -> error "no tree"
+            | otherwise = case dom ! n of
+                            Nothing -> (False, False)
+                            Just z  -> find inXs' xs' found' z
           where  inXs' = if inXs then not $ Set.null xs' else n ∈ xs
                  xs' = Set.delete n xs
                  found' = found ∨ (inXs ∧ n ∈ ms)

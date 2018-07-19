@@ -51,7 +51,7 @@ import Control.Exception.Base (assert)
 
 
 
-lcaFast imdom n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
+lca imdom n m = let result = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lcaSlow imdom n m) result
           where 
                 lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
                 lcaDown' (n,ns) (m,ms)
@@ -92,8 +92,8 @@ lcaIsinkdomOfTwoFinger8DownUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromLi
 
 
 
-lca :: Map Node (Maybe Node) -> Node -> Node -> Maybe Node
-lca idom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lcaFast idom n m) result
+lcaSlow :: Map Node (Maybe Node) -> Node -> Node -> Maybe Node
+lcaSlow idom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
   where lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
         lca' (n,ns) (m,ms)
           | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $

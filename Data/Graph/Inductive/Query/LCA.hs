@@ -60,13 +60,21 @@ lcaIsinkdomOfTwoFinger8DownFixedTraversalForOrder imdom n m = lcaDown' (n, Set.f
                     | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
                                Just n
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  caseM
-                  where caseM = case imdom ! m of
-                                  Nothing ->                 caseN
-                                  Just m' -> if m' ∈ ms then caseN   else lcaDown' (n, ns) (m', Set.insert m' ms)
-                        caseN = case imdom ! n of
+                                  caseN
+                  where caseN = case imdom ! n of
+                                  Nothing ->                 caseM
+                                  Just n' -> if n' ∈ ns then caseM   else lcaDown' (m, ms) (n', Set.insert n' ns)
+                        caseM = case imdom ! m of
                                   Nothing ->                 Nothing
-                                  Just n' -> if n' ∈ ns then Nothing else lcaDown' (n', Set.insert n' ns) (m, ms)
+                                  Just m' -> if m' ∈ ms then Nothing else lcaDown' (m', Set.insert m' ms) (n, ns)
+                --   where caseM = case imdom ! m of
+                --                   Nothing ->                 lcaDownLin ms ns n
+                --                   Just m' -> if m' ∈ ms then lcaDownLin ms ns n  else lcaDown' (n, ns) (m', Set.insert m' ms)
+                -- lcaDownLin ms ns n = assert (not $ n ∈ ms) $ lcaDown'' n ns
+                --   where lcaDown'' n ns = case imdom ! n of
+                --                         Nothing -> Nothing
+                --                         Just n' -> if n' ∈ ms then Just n' else
+                --                                    if n' ∈ ns then Nothing else lcaDown'' n' (Set.insert n' ns)
 
 
 lcaIsinkdomOfTwoFinger8DownUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
@@ -91,7 +99,7 @@ lcaIsinkdomOfTwoFinger8DownUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromLi
 
 
 lca :: Map Node (Maybe Node) -> Node -> Node -> Maybe Node
-lca idom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+lca idom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lcaIsinkdomOfTwoFinger8DownFixedTraversalForOrder idom n m) result
   where lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
         lca' (n,ns) (m,ms)
           | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $

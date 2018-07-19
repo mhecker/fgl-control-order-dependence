@@ -109,7 +109,7 @@ instance Arbitrary (InterCFG Node (Node, Node)) where
                let p' =   delEdges [(t,n) | n <- suc p t]
                         $ nmap (\() -> s)
                         $ emap (\() -> Nothing) p
-               return (s,t, subgraph (inclChop p' s t) p')
+               return (s,t, subgraph (Set.toList $ inclChop p' s t) p')
         
         addProcedures :: [(InterCFG Node (Node, Node),Node)] -> Int -> Int -> Int -> Gen (InterCFG Node (Node, Node))
         addProcedures ps 0 nrCalls size = addCalls nrCalls  merged sts

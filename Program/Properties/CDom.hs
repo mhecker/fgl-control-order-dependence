@@ -293,7 +293,7 @@ chopsCdomAreExclChops cdomComputation p =
 
         trnsclos = trc $ tcfg p
 
-        exclChp s t = Set.fromList $ (exclChop $ tcfg p) s t
+        exclChp s t = (exclChop $ tcfg p) s t
 
         chop :: Node -> Node -> Set Node
         chop s t =   (Set.fromList $ suc trnsclos s)
@@ -320,7 +320,7 @@ simulChopIsInclChop ::  Gr () () -> Bool
 simulChopIsInclChop gr =
     (∀) (nodes $ gr) (\s ->
       (∀) (nodes $ gr) (\t ->
-             (Set.fromList $ inclChop gr s t)  == (simul ! (s,t))
+             inclChop gr s t  == (simul ! (s,t))
       )
     )
   where simul = simulChop gr
@@ -330,7 +330,7 @@ inclChopIsChop p =
     let pchop = chop (tcfg p) in
     (∀) (nodes $ tcfg p) (\s ->
       (∀) (nodes $ tcfg p) (\t ->
-             pchop s t == (Set.fromList $ (inclChop $ tcfg p) s t)
+             pchop s t == (inclChop $ tcfg p) s t
       )
     )
 
@@ -339,21 +339,21 @@ exclChopContainedinclChop :: Program Gr -> Bool
 exclChopContainedinclChop p =
     (∀) (nodes $ tcfg p) (\s ->
       (∀) (nodes $ tcfg p) (\t ->
-             (Set.fromList $ (exclChop $ tcfg p) s t) ⊆ (Set.fromList $ (inclChop $ tcfg p) s t)
+             (exclChop $ tcfg p) s t ⊆ (inclChop $ tcfg p) s t
       )
     )
 
 selfChopsSame :: Program Gr -> Bool
 selfChopsSame p =
     (∀) (nodes $ tcfg p) (\s ->
-             (Set.fromList $ (exclChop $ tcfg p) s s) ==  (Set.fromList $ (inclChop $ tcfg p) s s) -- == (chop $ tcfg p) s s via inclChopIsChop
+             (exclChop $ tcfg p) s s ==  (inclChop $ tcfg p) s s -- == (chop $ tcfg p) s s via inclChopIsChop
     )
   where normalChop s = (chop $ tcfg p) s s
 
 selfChopsSCC :: Program Gr -> Bool
 selfChopsSCC p =
     (∀) (nodes $ tcfg p) (\s ->
-             (Set.fromList $ (exclChop $ tcfg p) s s) ==  (Set.fromList $ sccOf s)                 -- == (chop $ tcfg p) s s via inclChopIsChop
+             (exclChop $ tcfg p) s s ==  (Set.fromList $ sccOf s)                 -- == (chop $ tcfg p) s s via inclChopIsChop
     )
   where sccs    = scc $ tcfg p
         sccOf s =  the (s ∊) $ sccs

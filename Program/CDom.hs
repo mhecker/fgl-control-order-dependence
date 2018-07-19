@@ -160,8 +160,8 @@ chop graph =
 
 
 exclChop graph s t
-    | tFound    = Set.toList $ bwd
-    | otherwise = []
+    | tFound    = bwd
+    | otherwise = Set.empty
   where forward ns found tFound 
             | Set.null ns = (tFound, found)
             | otherwise   = forward ((Set.delete t new) ∪ ns') (new ∪ found) (tFound || n == t || t ∈ successors )
@@ -181,8 +181,8 @@ exclChop graph s t
 
 
 inclChop graph s t
-    | tFound    = Set.toList $ bwd
-    | otherwise = []
+    | tFound    = bwd
+    | otherwise = Set.empty
   where
         forward ns found tFound 
             | Set.null ns = (tFound, found)

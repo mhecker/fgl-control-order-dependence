@@ -2987,7 +2987,7 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               assert (pdom == pdom') True,
                                                               n /= m2,
                                                               let (z,relevant) = lcaRKnownM pdom n (suc graph n),
-                                                       assert (z == foldr1 (lca pdom) (suc graph n)) True,
+                                                       assert (Just z == foldM1 (lca pdom) (suc graph n)) True,
                                                        assert (relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
                                                               m1 <- Set.toList $ relevant, m1 /= z,
                                                               m1 /= n,
@@ -3023,8 +3023,6 @@ myWodFastPDomForIterationStrategy strategy graph =
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
         condsIn ns    = Map.fromList [ (n, succs) | n <- ns, let succs = suc graph n, length succs > 1]
-
-        lca  =  lcaMyWodFastPDomForIterationStrategy
 
 
 towardsCycle graph cycleS n = dfs [n] (efilter (\(n,m,_) -> not $ m ∈ cycleS) graph)

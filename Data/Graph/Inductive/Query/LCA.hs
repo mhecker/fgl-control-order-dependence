@@ -130,21 +130,6 @@ lcaRMyCDForNode dom (n, nada) (m, relevant) = assert (Set.null nada) $ lca' rele
 
 
 
-lcaMyWodFastPDomForIterationStrategy dom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
-           where lca' :: (Node,Set Node) -> (Node, Set Node) -> Node
-                 lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case dom ! n of
-                                     Nothing -> case dom ! m of
-                                                Nothing -> error "is no tree"
-                                                Just m' -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     Just n' -> lca' (m, ms) (n', Set.insert n' ns)
-
-
 
 lcaTimdomOfTwoFinger imdom (n, sn, forbiddenNs) (m, sm, forbiddenMs) = lca' imdom (n, sn, Map.fromList [(n,sn)], forbiddenNs) (m, sm, Map.fromList [(m,sm)], forbiddenMs)
           where 

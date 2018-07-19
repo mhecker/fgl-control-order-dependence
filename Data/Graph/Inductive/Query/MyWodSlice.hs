@@ -80,12 +80,12 @@ myWodSlice graph m1 m2 = slice s0 ms0
 
 myWodSliceStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSliceState -> Node -> (Set Node, MyWodSliceState)
 myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) else
-    require
+    require (assertionsDisabled ∨  
       ((∀) ms (\m -> (∀) unknownCond0 (\c ->          (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->
             (∀) (suc graph c) (\x ->       x ∈ dom  ! m)
           ∨ (∀) (suc graph c) (\x ->       m ∈ pdom ! x)
           ∨ (∀) (suc graph c) (\x -> not $ m ∈ pmay ! x)
-      )))) $
+      ))))) $
     let covered    = (∀) unknownCond0 (\c -> c == m ∨ 
             (∃) (Map.assocs ndoms) (\(n, (_,(ipdom, _   ))) -> let Just z = ipdom ! c in isReachableFromTreeM ipdom m z)
           ∨ (∃) (Map.assocs ndoms) (\(n, (_,(_,     idom))) -> (∀) (suc graph c) (\x ->  isReachableFromTreeM idom  x m))
@@ -105,9 +105,9 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                  -- traceShow ("M2 1", (unknownCond1, wod1, notwod1)) $ 
                  -- traceShow ("M2 2", (unknownCond2, wod2, notwod2)) $ 
                  -- traceShow ("M2 3", (unknownCond3, wod3, notwod3)) $ 
-                 assert (unknownCond0 ⊇ unknownCond1  ∧  unknownCond1 ⊇ unknownCond2  ∧  unknownCond2 ⊇ unknownCond3) $
-                 assert (                                        wod1 ⊆         wod2  ∧          wod2 ⊆    wod3) $
-                 assert (                                     notwod1 ⊆      notwod2  ∧       notwod2 ⊆ notwod3) $
+                 assert ( assertionsDisabled ∨  unknownCond0 ⊇ unknownCond1  ∧  unknownCond1 ⊇ unknownCond2  ∧  unknownCond2 ⊇ unknownCond3) $
+                 assert ( assertionsDisabled ∨                                          wod1 ⊆         wod2  ∧          wod2 ⊆    wod3) $
+                 assert ( assertionsDisabled ∨                                       notwod1 ⊆      notwod2  ∧       notwod2 ⊆ notwod3) $
                  (unknownCond2 ∖ (wod ∪ notwod), wod, ndoms)
             else
               let (wod, notwod)        = Set.partition (\c -> (∃) ms (\m1 -> (∃) (suc graph c) (\xl ->  m1 ∈ pdom ! xl)  ∧ (∃) (suc graph c) (\xr -> not $ m1 ∈ pdom ! xr))) unknownCond0
@@ -122,8 +122,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                           )
                     where fromIdom m idom = Map.insert m Nothing $ Map.fromList [ (n, Just m) | (n,m) <- idom ]
               in
-                 assert (   wod ==    wodFast) $
-                 assert (notwod == notwodFast) $
+                 assert ( assertionsDisabled ∨    wod ==    wodFast) $
+                 assert ( assertionsDisabled ∨ notwod == notwodFast) $
                  (unknownCond0 ∖ (wodFast ∪ notwodFast), wodFast, ndoms')
 
         (unknownCondM1, wodM1) =
@@ -137,26 +137,27 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                  -- traceShow ("M1 1", (unknownCond1, wod1, notwod1)) $ 
                  -- traceShow ("M1 2", (unknownCond2, wod2, notwod2)) $ 
                  -- traceShow ("M1 3", (unknownCond3, wod3, notwod3)) $ 
-                 assert (unknownCond0' ⊇ unknownCond1  ∧  unknownCond1 ⊇ unknownCond2  ∧  unknownCond2 ⊇ unknownCond3) $
-                 assert (                                         wod1 ⊆         wod2  ∧          wod2 ⊆    wod3) $
-                 assert (                                      notwod1 ⊆      notwod2  ∧       notwod2 ⊆ notwod3) $
+                 assert ( assertionsDisabled ∨  unknownCond0' ⊇ unknownCond1  ∧  unknownCond1 ⊇ unknownCond2  ∧  unknownCond2 ⊇ unknownCond3) $
+                 assert ( assertionsDisabled ∨                                           wod1 ⊆         wod2  ∧          wod2 ⊆    wod3) $
+                 assert ( assertionsDisabled ∨                                        notwod1 ⊆      notwod2  ∧       notwod2 ⊆ notwod3) $
                  (unknownCond3 ∖ (wod ∪ notwod), wod)
 
     in
        -- traceShow (m,ms, covered, coveredPDom, coveredDom, coveredPMay) $
-       assert ( covered ↔  (∀) unknownCond0 (\c ->  c == m  ∨ (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->
+       assert ( assertionsDisabled ∨  (covered ↔  (∀) unknownCond0 (\c ->  c == m  ∨ (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->
             (∀) (suc graph c) (\x ->       x ∈ dom  ! m)
           ∨ (∀) (suc graph c) (\x ->       m ∈ pdom ! x)
           ∨ (∀) (suc graph c) (\x -> not $ m ∈ pmay ! x)
-       ))) $ 
+       )))) $ 
        (Set.delete m $ wodM2 ∪ wodM1, (Set.insert m ms, ndomsM2))
-  where condNodes    = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1, not $ c ∈ ms, c /= m ]
+  where assertionsDisabled = True
+        condNodes    = Set.fromList [ c | c <- nodes graph, length (suc graph c) > 1, not $ c ∈ ms, c /= m ]
         unknownCond0 = Set.filter  (\c -> (not $ c ∈ ms) ∧ (c /= m)) condNodes
 
         fromDomM2 :: Node -> (Node, ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))) -> (Set Node, Set Node, Set Node) -> (Set Node, Set Node, Set Node)
         fromDomM2 m2 (n,((_,dom,_),(_,idom))) (unknownCond, wod, notwod)  =
-                   assert (    wodNew ==     wodNewFast ) $
-                   assert ( notwodNew ==  notwodNewFast ) $
+                   assert ( assertionsDisabled ∨    wodNew ==     wodNewFast ) $
+                   assert ( assertionsDisabled ∨ notwodNew ==  notwodNewFast ) $
                    (unknownCond', wod ∪ wodNewFast, notwod ∪ notwodNewFast)
           where unknownCond' = unknownCond ∖ (wodNewFast ∪ notwodNewFast)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
@@ -173,8 +174,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
 
         fromDomM1 :: Node -> (Node, ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))) -> (Set Node, Set Node, Set Node) -> (Set Node, Set Node, Set Node)
         fromDomM1 m1 (n,((_,dom,_),(_,idom))) (unknownCond, wod, notwod)  =
-                   assert (    wodNew ==     wodNewFast ) $
-                   assert ( notwodNew ==  notwodNewFast ) $
+                   assert ( assertionsDisabled ∨     wodNew ==     wodNewFast ) $
+                   assert ( assertionsDisabled ∨  notwodNew ==  notwodNewFast ) $
                    (unknownCond', wod ∪ wodNewFast, notwod ∪ notwodNewFast)
           where unknownCond' = unknownCond ∖ (wodNewFast ∪ notwodNewFast)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
@@ -193,8 +194,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 
         fromPdomM2 :: Node -> (Node, ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))) -> (Set Node, Set Node, Set Node) -> (Set Node, Set Node, Set Node)
         fromPdomM2 m2 (n,((pdom,_,_),(ipdom,_))) ((unknownCond, wod, notwod){-, (must, notmust)-})  =
-                   assert (    wodNew ==     wodNewFast ) $
-                   assert ( notwodNew ==  notwodNewFast ) $
+                   assert ( assertionsDisabled ∨     wodNew ==     wodNewFast ) $
+                   assert ( assertionsDisabled ∨  notwodNew ==  notwodNewFast ) $
                    (unknownCond', wod ∪ wodNewFast, notwod ∪ notwodNewFast)
           where unknownCond' = unknownCond ∖ (wodNewFast ∪ notwodNewFast)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
@@ -220,8 +221,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
 
         fromPdomM1 :: Node -> (Node, ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))) -> (Set Node, Set Node, Set Node) -> (Set Node, Set Node, Set Node)
         fromPdomM1 m1  (n,((pdom,_,_),(ipdom,_))) (unknownCond, wod, notwod)  =
-                   assert (    wodNew ==     wodNewFast ) $
-                   assert ( notwodNew ==  notwodNewFast ) $
+                   assert ( assertionsDisabled ∨     wodNew ==     wodNewFast ) $
+                   assert ( assertionsDisabled ∨  notwodNew ==  notwodNewFast ) $
                    (unknownCond', wod ∪ wodNewFast, notwod ∪ notwodNewFast)
           where unknownCond' = unknownCond ∖ (wodNewFast ∪ notwodNewFast)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
@@ -251,8 +252,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
 
         fromPmayM2 :: Node -> (Node, ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))) -> (Set Node, Set Node, Set Node) -> (Set Node, Set Node, Set Node)
         fromPmayM2 m2 (n,((pdom, dom, pmay),(ipdom,idom))) (unknownCond, wod, notwod) =
-                   assert (    wodNew ==     wodNewFast ) $
-                   assert ( notwodNew ==  notwodNewFast ) $
+                   assert ( assertionsDisabled ∨     wodNew ==     wodNewFast ) $
+                   assert ( assertionsDisabled ∨  notwodNew ==  notwodNewFast ) $
                   (unknownCond', wod ∪ wodNewFast, notwod ∪ notwodNewFast)
           where unknownCond' = unknownCond ∖ (wodNewFast ∪ notwodNewFast)
                 wodNew       = Set.fromList [ c | c <- Set.toList unknownCond,
@@ -285,8 +286,8 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
         fromPmayM1 :: Node -> (Node, ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))) -> (Set Node, Set Node, Set Node) -> (Set Node, Set Node, Set Node)
 
         fromPmayM1 m1 (n,((pdom, dom, pmay),(ipdom, idom))) (unknownCond, wod, notwod) =
-                   assert (Set.null    wodNew) $ 
-                   assert (    wodNew ==     wodNewFast ) $
+                   assert ( Set.null wodNewFast) $ 
+                   assert ( assertionsDisabled ∨     wodNew ==     wodNewFast ) $
                    -- assert ( notwodNew ==  notwodNewFast ) $
                    (unknownCond', wod ∪ wodNewFast, notwod) -- do not use notwodNewFast at all
           where unknownCond' = unknownCond ∖ wodNewFast

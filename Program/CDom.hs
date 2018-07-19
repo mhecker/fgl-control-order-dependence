@@ -160,37 +160,46 @@ chop graph =
 
 
 exclChop graph s t
-    | tFound    = bwd
+    | tFound    = Set.toList $ bwd
     | otherwise = []
-  where forward []     found tFound = (tFound, found)
-        forward (n:ns) found tFound = forward  ((new \\ [t]) ++ ns) (new ++ found) (tFound || n == t || t ∊ successors )
-           where successors = suc graph n
-                 new        = successors \\ found
+  where forward ns found tFound 
+            | Set.null ns = (tFound, found)
+            | otherwise   = forward ((Set.delete t new) ∪ ns') (new ∪ found) (tFound || n == t || t ∈ successors )
+          where (n,ns') = Set.deleteFindMin ns
+                new = (successors ∖ found)
+                successors = Set.fromList $ suc graph n
 
-        backward []     found = found
-        backward (n:ns) found = backward       ((new \\ [s]) ++ ns) (new ++ found)
-           where predecessors = pre graph n
-                 new          = (predecessors \\ found) `intersect` fwd
+        backward ns found 
+            | Set.null ns = found
+            | otherwise   = backward ((Set.delete s new) ∪ ns') (new ∪ found)
+          where (n,ns') = Set.deleteFindMin ns
+                new = (predecessors ∖ found) ∩ fwd
+                predecessors = Set.fromList $ pre graph n
 
-        (tFound, fwd) = forward  [s] [s] False
-        bwd           = backward [t] [t]
+        (tFound, fwd) = forward  (Set.fromList [s]) (Set.fromList [s]) False
+        bwd           = backward (Set.fromList [t]) (Set.fromList [t])
 
 
 inclChop graph s t
-    | tFound    = bwd
+    | tFound    = Set.toList $ bwd
     | otherwise = []
-  where forward []     found tFound = (tFound, found)
-        forward (n:ns) found tFound = forward  ((new       ) ++ ns) (new ++ found) (tFound || n == t || t ∊ successors )
-           where successors = suc graph n
-                 new        = successors \\ found
+  where
+        forward ns found tFound 
+            | Set.null ns = (tFound, found)
+            | otherwise   = forward (new ∪ ns') (new ∪ found) (tFound || n == t || t ∈ successors )
+          where (n,ns') = Set.deleteFindMin ns
+                new = (successors ∖ found)
+                successors = Set.fromList $ suc graph n
 
-        backward []     found = found
-        backward (n:ns) found = backward       ((new       ) ++ ns) (new ++ found)
-           where predecessors = pre graph n
-                 new          = (predecessors \\ found) `intersect` fwd
+        backward ns found 
+            | Set.null ns = found
+            | otherwise   = backward (new ∪ ns') (new ∪ found)
+          where (n,ns') = Set.deleteFindMin ns
+                new = (predecessors ∖ found) ∩ fwd
+                predecessors = Set.fromList $ pre graph n
 
-        (tFound, fwd) = forward  [s] [s] False
-        bwd           = backward [t] [t]
+        (tFound, fwd) = forward  (Set.fromList [s]) (Set.fromList [s]) False
+        bwd           = backward (Set.fromList [t]) (Set.fromList [t])
 
 
 

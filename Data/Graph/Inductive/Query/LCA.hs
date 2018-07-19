@@ -51,75 +51,6 @@ import Control.Exception.Base (assert)
 
 
 
-lcaRofldomOfTwoFinger7 :: Map Node (Maybe Node) -> Node -> Node -> Maybe Node
-lcaRofldomOfTwoFinger7 rofldom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca rofldom n m) $ result
-         where
-                lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (rofldom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (rofldom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
-
-
-
-lcaImdomOfTwoFinger6 imdom n m = let result = lca' imdom (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca (fmap fromSet imdom) n m) $ result
-          where
-                lca' c (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((c ! n) ∖ ns ) of
-                                     []   -> case Set.toList $ ((c ! m) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' c ( m', Set.insert m' ms) (n, ns)
-                                                _    -> error "more than one successor in imdom" 
-                                     [n'] -> lca' c (m, ms) (n', Set.insert n' ns)
-                                     _    -> error "more than one successor in imdom" 
-
-lcaImdomOfTwoFinger7 imdom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca imdom n m) $ result
-          where 
-                lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lca' ( m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
-
-
-
-lcaIsinkdomOfTwoFinger8Down imdom n m = let result = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca imdom n m) $ result
-          where
-                lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lcaDown' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ ((toSet (imdom ! n)) ∖ ns ) of
-                                     []   -> case Set.toList $ ((toSet (imdom ! m)) ∖ ms ) of
-                                                []   -> Nothing
-                                                [m'] -> lcaDown' (m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lcaDown' (m, ms) (n', Set.insert n' ns)
-
-
-
-
 lcaIsinkdomOfTwoFinger8DownFixedTraversalForOrder imdom n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
           where 
                 lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
@@ -174,21 +105,6 @@ lca idom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
                                    [m'] -> lca' (m', Set.insert m' ms) (n, ns)
                          [n'] -> lca' (m, ms) (n', Set.insert n' ns)
 
-
-
-lcaMyDom dom n m = let result = lca' (n, Set.fromList [n]) (m, Set.fromList [m]) in assert (result == lca (fmap fromSet dom) n m) $ result
-          where lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
-                lca' (n,ns) (m,ms)
-                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
-                               Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
-                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
-                                  case Set.toList $ (dom ! n) ∖ ns of
-                                     []   -> case Set.toList $ (dom ! m) ∖ ms of
-                                                []   -> Nothing
-                                                [m'] -> lca' (m', Set.insert m' ms) (n, ns)
-                                     [n'] -> lca' (m, ms) (n', Set.insert n' ns)
 
 
 

@@ -1183,7 +1183,7 @@ rofldomOfTwoFinger7 graph0 = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                     if (not $ new) then twoFinger (i+1)                worklist'                                   rofldom
                                     else                twoFinger (i+1) (influenced' ⊔ worklist')  (Map.insert x zs                rofldom)
           where (x, worklist')  = Set.deleteFindMin worklist
-                mz = foldM1 lca [ y | y <- pre graph x]
+                mz = foldM1 (lca rofldom) [ y | y <- pre graph x]
                 -- mz = foldM1 lca (pre graph x)
                 zs = case mz of
                       Just z  -> if z/= x then
@@ -1200,7 +1200,6 @@ rofldomOfTwoFinger7 graph0 = Map.mapWithKey (\n ms -> Set.delete n ms) $
                 new     = assert (isNothing $ rofldom ! x) $
                           (not $ isNothing zs)
                 influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs rofldom, n /= x]
-                lca = lcaRofldomOfTwoFinger7 rofldom
 
 
 fLolDomNaive graph _ _ nextCond toNextCond = f 
@@ -1798,9 +1797,10 @@ mDFF2cd = xDFcd mDFF2
 
 imdomOfTwoFinger6 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
+                          fmap toSet $ 
                           twoFinger 0 worklist0 imdom0
-  where imdom0   = Map.fromList [ (x, Set.empty )                 | x <- nodes graph]
-                 ⊔ Map.fromList [ (x, Set.fromList $ suc graph x) | x <- nodes graph, length (suc graph x) == 1]
+  where imdom0   =             Map.fromList [ (x, Just x')       | x <- nodes graph, [x'] <- [suc graph x]]
+                   `Map.union` Map.fromList [ (x, Nothing)       | x <- nodes graph]
         worklist0   = condNodes
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
         prevConds   = prevCondNodes graph
@@ -1843,30 +1843,31 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                              | w <- Set.toList $ worklistLfp ]
                 imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
 
-        twoFinger :: Integer -> Set Node ->  Map Node (Set Node) -> Map Node (Set Node)
+        twoFinger :: Integer -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
         twoFinger i worklist imdom
             | Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                   -- traceShow (Set.size worklist0, i) $ 
-                                  assert (invariant worklist imdom) $
+                                  assert (invariant worklist (fmap toSet imdom)) $
                                   imdom
             | otherwise         = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
-                                  assert (invariant worklist imdom) $
+                                  assert (invariant worklist (fmap toSet imdom)) $
                                   if (not $ changed) then twoFinger (i+1)               worklist'                                   imdom
                                                      else twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
-                mz = foldM1 lca (suc graph x)
+                mz = foldM1 (lca imdom) (suc graph x)
                 zs = case mz of
                       Just z  -> if z/= x then
-                                   Set.fromList [ z ]
+                                   Just z
                                  else
-                                   Set.fromList [ ]
-                      Nothing ->  Set.fromList [ ]
+                                   Nothing
+                      Nothing -> Nothing
                 changed = zs /= (imdom ! x)
-                influenced = let imdomRev = invert' $ fmap Set.toList imdom
+                influenced = let imdomRev = invert' $ fmap toList imdom
                                  preds = predsSeenFor imdomRev [x] [x]
                              in  -- traceShow (preds, imdomRev) $ 
                                  Set.fromList $ foldMap prevConds preds
-                lca = lcaImdomOfTwoFinger6 imdom
+                  where toList Nothing  = []
+                        toList (Just z) = [z]
 
 
 imdomOfTwoFinger7 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
@@ -1936,7 +1937,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                     if (not $ new) then twoFinger (i+1)                worklist'                                   imdom
                                     else                twoFinger (i+1) (influenced' ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
-                mz = foldM1 lca (suc graph x)
+                mz = foldM1 (lca imdom) (suc graph x)
                 zs = case mz of
                       Just z  -> if z/= x then
                                    Just z
@@ -1950,7 +1951,6 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
                 influenced' = Set.fromList [ n | (n,Nothing) <- Map.assocs imdom, n /= x, Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
-                lca = lcaImdomOfTwoFinger7 imdom
 
 
 
@@ -1977,7 +1977,7 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i w
                                     if (not $ changed) then twoFingerDown (i+1)                worklist'                                   imdom
                                     else                    twoFingerDown (i+1) (influenced  ⊔ worklist')  (Map.insert x zs                imdom)
           where (x, worklist')  = Set.deleteFindMin worklist
-                mz = foldM1 lcaDown (suc graph x)
+                mz = foldM1 (lca imdom) (suc graph x)
                 zs = case mz of
                        Nothing -> Nothing
                        Just z  -> assert (z /= x) $
@@ -1991,7 +1991,6 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i w
                              in  -- traceShow (preds, imdomRev) $
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, not $ n ∈ sinkNodes]
                 influenced' = Set.fromList [ n | n <- Set.toList $ condNodes ∖ sinkNodes, Just p <- [nextCond y | y <- suc graph n], reachableFromSeen imdom p x Set.empty ]
-                lcaDown = lcaIsinkdomOfTwoFinger8Down imdom
 
 
 
@@ -2780,7 +2779,7 @@ myDom graph =
               -- let domn = (fmap Set.singleton$ Map.fromList $ iDom gn n) `Map.union` Map.fromList [ (m, Set.empty) | m <- nodes graph],
               -- Just m <- [foldM1 (lca domn) (suc graph n)]
               let gn  = delSuccessorEdges graph n,
-              let isinkdomN  = isinkdomOfSinkContraction gn,
+              let isinkdomN  = fmap fromSet $ isinkdomOfSinkContraction gn,
               Just m <- [foldM1 (lca isinkdomN) (suc graph n)]
  ]
   where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
@@ -2789,8 +2788,7 @@ myDom graph =
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ isinkdom ! n], n' ∊ cycle]
-        lca isinkdomN = lcaMyDom isinkdomN
-      
+
 
 cdFromDom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
 cdFromDom graph dom = Map.fromList [ (n, Set.empty) | n <- nodes graph ]

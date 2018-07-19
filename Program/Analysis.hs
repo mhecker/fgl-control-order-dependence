@@ -48,7 +48,7 @@ type SecurityAnalysis gr =  DynGraph gr => Program gr -> Bool
 data PrecomputedResults gr = PrecomputedResults {
     cpdg :: gr SDGNode Dependence,
     idom :: Map (Node, Node) Node,
-    trnsclos :: gr CFGNode (),
+    trnsclos :: Map Node (Set Node, Set Node), -- node -> (bs node, fs node)
     mhps :: Map Node (Set Node),
     mhp :: Set (Node,Node),
     chop :: Node -> Node -> Set Node,
@@ -64,11 +64,12 @@ precomputedUsing idomComputation p@(Program { tcfg }) =
   where
     cpdg = concurrentProgramDependenceGraphP p mhp
     idom = idomComputation p
-    trnsclos = trc tcfg
+    trnsclos = Map.fromList [ (n, (Set.fromList $ pre trnsclosG n, Set.fromList $ suc trnsclosG n)) | n <- nodes tcfg ]
+      where trnsclosG = trc tcfg
     mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes tcfg ]
     mhp = mhpSetFor p
-    chop s t =    (Set.fromList $ suc trnsclos s)
-                ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
+    chop s t =    (snd $ trnsclos ! s)
+                ∩ (fst $ trnsclos ! t)  -- TODO: Performance
     dataConflictGraph = dataConflictGraphP p
     timingdg = timingDependenceGraphP p
     dom = Map.fromList $ iDom tcfg (entryOf p $ procedureOf p $ mainThread p)

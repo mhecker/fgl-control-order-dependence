@@ -160,9 +160,9 @@ lcaIsinkdomOfTwoFinger8DownUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromLi
 
 
 lca :: Map Node (Maybe Node) -> Node -> Node -> Maybe Node
-lca idom n m = lca' (n, n, Set.fromList [n]) (m, m, Set.fromList [m])
-  where lca' :: (Node, Node,Set Node) -> (Node, Node, Set Node) -> Maybe Node
-        lca' (n0,n,ns) (m0,m,ms)
+lca idom n m = lca' (n, Set.fromList [n]) (m, Set.fromList [m])
+  where lca' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+        lca' (n,ns) (m,ms)
           | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                      Just m
           | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
@@ -171,8 +171,8 @@ lca idom n m = lca' (n, n, Set.fromList [n]) (m, m, Set.fromList [m])
                        case Set.toList $ ((toSet (idom ! n)) ∖ ns ) of
                          []   -> case Set.toList $ ((toSet (idom ! m)) ∖ ms ) of
                                    []   -> Nothing
-                                   [m'] -> lca' (m0, m', Set.insert m' ms) (n0, n, ns)
-                         [n'] -> lca' (m0, m, ms) (n0, n', Set.insert n' ns)
+                                   [m'] -> lca' (m', Set.insert m' ms) (n, ns)
+                         [n'] -> lca' (m, ms) (n', Set.insert n' ns)
 
 
 

@@ -34,6 +34,7 @@ import Data.List ((\\), nub, sortBy, groupBy)
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq(..), ViewL(..), (|>))
 
+import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
@@ -1876,10 +1877,10 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
 
 imdomOfTwoFinger7 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
-                          fmap toSet $ twoFinger 0 worklist0 imdom0
+                          fmap toSet $ twoFinger 0 workqueue0 Nothing imdom0
   where imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], z /= x]
                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
-        worklist0   = condNodes
+        workqueue0   = Seq.fromList $ Set.toList $ condNodes
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
         prevConds   = prevCondNodes graph
         prevCondsImmediate = prevCondImmediateNodes graph
@@ -1888,10 +1889,11 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
         solution = mdomOfLfp graph
         dom = solution
         onedom = onedomOf solution
-        invariant worklist imdom = -- if (True) then True else
+        invariant workqueue imdom = -- if (True) then True else
                                    -- (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $
                                    inv
-          where inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
+          where worklist = Set.fromList $ Foldable.toList $ workqueue
+                inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
                                 (m ∊ (suc imdomWorklistTrc  n))
                         ))
                        ∧
@@ -1929,19 +1931,18 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                              | w <- Set.toList $ worklistLfp ]
                 imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
 
-        twoFinger :: Integer -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
-        twoFinger i worklist imdom
-            |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+        twoFinger :: Integer -> Seq Node -> Maybe Node -> Map Node (Maybe Node) -> Map Node (Maybe Node)
+        twoFinger i worklist oldest imdom 
+            |  (Seq.null worklist)
+             ∨ (Just x == oldest) = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $ 
                                     assert (invariant worklist imdom) $
                                     imdom
-            | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
+            | otherwise           = -- traceShow (x, mz, zs, worklist, imdom) $
                                     assert (invariant worklist imdom) $
---                                    traceShow (x, influenced, influenced', imdom) $
-                                    assert (influenced == influencedSlow) $ 
-                                    if (not $ new) then twoFinger (i+1)                worklist'                                   imdom
-                                    else                twoFinger (i+1) (influenced  ⊔ worklist')  (Map.insert x zs                imdom)
-          where (x, worklist')  = Set.deleteFindMin worklist
+                                    if (not $ new) then twoFinger (i+1) (worklist' |> x) oldest'                    imdom
+                                    else                twoFinger (i+1) (worklist'     ) Nothing  (Map.insert x zs  imdom)
+          where (x :< worklist')  = Seq.viewl worklist
                 mz = foldM1 (lca imdom) (suc graph x)
                 zs = case mz of
                       Just z  -> if z/= x then
@@ -1951,10 +1952,9 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                       Nothing ->  Nothing
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing zs)
-                influenced = let imdomRev = invert' $ fmap maybeToList imdom
-                                 preds = predsSeenFor imdomRev [x] [x]
-                             in Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds,  n /= x, isNothing $ imdom ! n]
-                influencedSlow = Set.fromList [ n | (n,Nothing) <- Map.assocs imdom, n/= x, (∃) (suc graph n) (\y -> reachableFromSeen imdom y x Set.empty) ]
+                oldest' = case oldest of
+                  Nothing -> Just x
+                  _       -> oldest
 
 
 

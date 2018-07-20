@@ -2113,7 +2113,7 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
         prevConds   = prevCondNodes graph
         prevCondsImmediate = prevCondImmediateNodes graph
         nextCond    = nextCondNode graph
-        sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
+        sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
         sinks = controlSinks graph
 
 

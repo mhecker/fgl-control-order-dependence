@@ -71,6 +71,7 @@ endif
 	./$< $(RTS) $(PATTERN) $(COLOR)
 
 %.test.xml : %.test-xml.bin
+	touch $@
 	./$< $(RTS) $(PATTERN) --xml $@
 
 
@@ -87,6 +88,7 @@ unitTestReports/%.test.xml/html/index.html : %.test.xml .FORCE
 	./$< $(RTS) $(PATTERN) $(COLOR)
 
 %.fail.xml : %.fail-xml.bin
+	touch $@
 	./$< $(RTS) $(PATTERN) --xml $@
 
 

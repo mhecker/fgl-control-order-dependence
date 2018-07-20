@@ -31,6 +31,9 @@ import qualified Data.List as List
 import Data.List ((\\), nub, sortBy, groupBy)
 
 
+import qualified Data.Sequence as Seq
+import Data.Sequence (Seq(..), ViewL(..), (|>))
+
 import IRLSOD
 import Program
 
@@ -2098,7 +2101,7 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                    `Map.union` (Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], not $ x ∈ sinkNodes, assert (z/=x) True]
                     `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
                     )
-        worklist0   = condNodes ∖ sinkNodes
+        worklist0   = Seq.fromList $ Set.toList $ condNodes ∖ sinkNodes
 --        processed0  = (㎲⊒) sinkNodes (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [suc graph x], z ∈ processed]))
         processed0  = Set.fold f Set.empty sinkNodes
           where f s processed
@@ -2118,28 +2121,26 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
 
 
 
-        twoFinger :: Integer -> Set Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
+        twoFinger :: Integer -> Seq Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
         twoFinger i worklist processed imdom
-            |   Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+            |   Seq.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $
                                     assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
                                             ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ()))) $
-                                    isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
-                         -- isinkdomOfTwoFinger8DownFixedTraversal graph sinkNodes sinks  prevConds nextCond condNodes i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
+                                    -- isinkdomOfTwoFinger8Down graph sinkNodes sinks  prevConds nextCond condNodes i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
+                         isinkdomOfTwoFinger8DownFixedTraversal graph sinkNodes sinks  prevConds nextCond condNodes i (Set.fromList [ x | (x, Just _)  <- Map.assocs imdom, x ∈ condNodes ∖ sinkNodes]) imdom
             | otherwise           = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
                                     -- traceShow graph $ 
                                     -- traceShow (x,processed, influenced, influenced', imdom) $
                                     -- traceShow (changed, zs) $
-                                    assert (influenced == influencedSlow) $
                                     assert (imdom ! x == Nothing) $
                                     assert (not $ x ∈ processed) $
-                                    if (not $ new) then twoFinger (i+1)                worklist'    processed                      imdom
-                                    else                twoFinger (i+1) (influenced  ⊔ worklist')   processed' (Map.insert x zs    imdom)
-          where (x, worklist')  = Set.deleteFindMin worklist
-                processed'
-                  | zs == Nothing = Set.empty
-                  | otherwise     = processed'From  (Set.fromList [x]) (processed ∪ Set.fromList [x])
-                zs = mz 
+                                    if   (not $ new) then twoFinger (i+1) (worklist' |> x)   processed                      imdom
+                                    else                  twoFinger (i+1) (worklist'     )   processed' (Map.insert x mz    imdom)
+          where (x :< worklist')  = Seq.viewl worklist
+                processed' = case mz of
+                  Nothing -> Set.empty
+                  Just _  -> processed'From  (Set.fromList [x]) (processed ∪ Set.fromList [x])
                 mz
                   | Set.null succs   = Nothing
                   | otherwise  = case foldM1 (lca imdom) (Set.toList succs) of
@@ -2147,11 +2148,7 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                       Just z  -> Just z
                   where succs    = processed ⊓ (Set.fromList (suc graph x))
                 new     = assert (isNothing $ imdom ! x) $
-                          (not $ isNothing zs)
-                influenced = let imdomRev = invert' $ fmap maybeToList imdom
-                                 preds = predsSeenFor imdomRev [x] [x]
-                             in Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x, isNothing $ imdom ! n]
-                influencedSlow = Set.fromList [ n |  (n,Nothing) <- Map.assocs imdom, n /= x,  (∃) (suc graph n) (\y -> reachableFromSeen imdom y x Set.empty) ]
+                          (not $ isNothing mz)
 
 
 withPossibleIntermediateNodesFromiXdom :: forall gr a b x. (Ord x, DynGraph gr) => gr a b -> Map Node (Set (Node, x)) -> Map Node (Set (Node, (x, Set Node)))

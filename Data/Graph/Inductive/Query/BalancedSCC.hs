@@ -1071,10 +1071,10 @@ sameLevelSummaryGraph'WithBsIssameLevelSummaryGraph'WithoutBs (InterCFG _ gr) = 
 type AnnotatedPath b = [LEdge (Annotation b)]
 
 
-samplePathsFor :: (Eq b, Graph gr)             => Int -> Integer -> Integer ->  gr a (Annotation b) ->   [AnnotatedPath b]
+samplePathsFor :: (Eq b, Graph gr)             => Int -> Integer -> Integer ->  gr a b ->   [[LEdge b]]
 samplePathsFor seed k maxlength g = fmap reverse $ evalRand (samplePaths k maxlength g) (mkStdGen seed)
 
-samplePaths :: (MonadRandom m, Graph gr, Eq b) =>        Integer -> Integer ->  gr a (Annotation b) -> m [AnnotatedPath b]
+samplePaths :: (MonadRandom m, Graph gr, Eq b) =>        Integer -> Integer ->  gr a b -> m [[LEdge b]]
 samplePaths         k maxlength g
   | null (nodes g) = return $ take (fromInteger k) $ repeat []
   | otherwise      = sampleSome [] 0

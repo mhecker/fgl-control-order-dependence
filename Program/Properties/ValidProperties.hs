@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet)
+import Util(the, reachableFromIn, sampleFrom, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -66,6 +66,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
@@ -155,6 +156,9 @@ reducible  = defaultMain                               $ testGroup "reducible" [
 reducibleX = defaultMainWithIngredients [antXMLRunner] $ testGroup "reducible" [                      mkProp [reducibleProps]]
 indeps     = defaultMain                               $ testGroup "indeps"    [ mkTest [indepsTests], mkProp [indepsProps]]
 indepsX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "indeps"    [ mkTest [indepsTests], mkProp [indepsProps]]
+
+delay     = defaultMain                               $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
+delayX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
 
 
 
@@ -2247,6 +2251,28 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
                 $ dataDependenceGraphViaIndependenceP p   == dataDependenceGraphP p @? ""
   | (exampleName, p) <- testsuite ++ interproceduralTestSuit
   ] ++
+  []
+
+
+
+
+delayProps = testGroup "(concerning inifinte delay)" [
+    testProperty  "inifiniteDelay  ~= isinkdom"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        n = toInteger $ length $ nodes g
+                        delayed = InfiniteDelay.delayedInfinitely g
+                        traces = fmap (fmap (\(n,m,_) -> n)) $ InfiniteDelay.sampleLoopPathsFor 42 100 g
+                        isinkdom = NTICD.isinkdomOfTwoFinger8 g
+                    in (∀) traces (\trace ->
+                         let traceSet = Set.fromList trace
+                             delayedNodes = Set.fromList [ n | n <- nodes g, delayed trace n]
+                             reachable    = Set.fromList [ n | n <- Set.toList $ reachableFrom isinkdom traceSet Set.empty, not $ n ∈ traceSet ]
+                         in (if delayedNodes == reachable then id else traceShow (trace, delayedNodes ∖ reachable, reachable ∖ delayedNodes)) $
+                            delayedNodes == reachable
+                    )
+  ]
+delayTests = testGroup "(concerning  inifinite delay)" $
   []
 
 

@@ -775,8 +775,20 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                   let pdom = NTICD.sinkdomOfGfp $ delSuccessorEdges g m2,
                                                   m1 <- nodes g,
                                                   m1 /= m2,
-                                                  let ns = Set.fromList [ n | n <- condNodes, not $ (∀) (suc g n) (\x -> m1 ∈ pdom ! x), (∃) (suc g n) (\x ->  m1 ∈ pdom ! x) ]
+                                                  let ns = Set.fromList [ n | n <- condNodes, n /= m1, n /= m2, not $ (∀) (suc g n) (\x -> m1 ∈ pdom ! x), (∃) (suc g n) (\x ->  m1 ∈ pdom ! x) ]
                                         ]
+                   ),
+    testProperty "wodTEIL == myWod in sinks"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g0 = generatedGraph
+                    sinks = NTICD.controlSinks g0
+                in (∀) sinks (\sink ->
+                     let g = subgraph sink g0
+                         wodTEIL'  = NTICD.wodTEIL' g
+                         myWod     = NTICD.myWodFast g
+                         myWodSym  = (∐) [ Map.fromList [ ((m1,m2), ns), ((m2,m1), ns) ] | ((m1,m2),ns) <- Map.assocs myWod ]
+                     in (if wodTEIL' == myWodSym then id else traceShow wodTEIL' $ traceShow  myWod) $
+                        wodTEIL' == myWodSym
                    ),
     testPropertySized 40 "lfp fMay                 == lfp fMay'"
     $ \(ARBITRARY(g)) ->

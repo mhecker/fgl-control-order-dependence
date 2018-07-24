@@ -2524,8 +2524,8 @@ xodTEIL smmnMust smmnMay graph =
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph,
                                                   m2 <- nodes graph,
-                                                  Set.size (smmnMay ! (m1,m2,n)) > 0,
-                                                  Set.size (smmnMay ! (m2,m1,n)) > 0,
+                                                  Set.size (smmnMay ! (m1,m2,n)) > 0, n /= m2,
+                                                  Set.size (smmnMay ! (m2,m1,n)) > 0, n /= m1,
                                                   let s12n = smmnMust ! (m1,m2,n),
                                                   let s21n = smmnMust ! (m2,m1,n),
                                                   Set.size s12n + Set.size s21n > 0

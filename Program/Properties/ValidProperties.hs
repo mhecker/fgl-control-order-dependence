@@ -787,8 +787,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          wodTEIL'  = NTICD.wodTEIL' g
                          myWod     = NTICD.myWodFast g
                          myWodSym  = (∐) [ Map.fromList [ ((m1,m2), ns), ((m2,m1), ns) ] | ((m1,m2),ns) <- Map.assocs myWod ]
-                     in (if wodTEIL' == myWodSym then id else traceShow wodTEIL' $ traceShow  myWod) $
-                        wodTEIL' == myWodSym
+                     in wodTEIL' == myWodSym
                    ),
     testPropertySized 40 "lfp fMay                 == lfp fMay'"
     $ \(ARBITRARY(g)) ->

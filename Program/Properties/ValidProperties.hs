@@ -762,6 +762,22 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "wodTEIL  in sinks via pdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g0 = generatedGraph
+                    sinks = NTICD.controlSinks g0
+                in (∀) sinks (\sink ->
+                     let g = subgraph sink g0
+                         wodTEIL'  = NTICD.wodTEIL' g
+                         condNodes = [ n | n <- sink, (length $ suc g n) > 1 ]
+                     in wodTEIL' == (∐) [ Map.fromList [ ((m1,m2), ns), ((m2,m1), ns) ] 
+                                                | m2 <- nodes g,
+                                                  let pdom = NTICD.sinkdomOfGfp $ delSuccessorEdges g m2,
+                                                  m1 <- nodes g,
+                                                  m1 /= m2,
+                                                  let ns = Set.fromList [ n | n <- condNodes, not $ (∀) (suc g n) (\x -> m1 ∈ pdom ! x), (∃) (suc g n) (\x ->  m1 ∈ pdom ! x) ]
+                                        ]
+                   ),
     testPropertySized 40 "lfp fMay                 == lfp fMay'"
     $ \(ARBITRARY(g)) ->
                     let lfp      = NTICD.smmnLfp g NTICD.fMay

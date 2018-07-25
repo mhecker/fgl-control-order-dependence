@@ -52,7 +52,7 @@ import Data.Maybe(fromJust)
 import IRLSOD(CFGEdge(..))
 
 import Data.Graph.Inductive.Arbitrary.Reducible
-import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs)
+import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
@@ -844,30 +844,20 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     )),
      testProperty  "myWodFromSimpleSliceStep cutNPasteIfPossible == myWodFast"
      $ \(ARBITRARY(generatedGraph)) ->
-                 let g0 = generatedGraph
-                     sinks = NTICD.controlSinks g0
-                 in
-                    (∀) sinks (\sink ->
-                      let g = subgraph sink g0
-                          mywod = NTICD.myWodFast g
-                          mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.cutNPasteIfPossible g
-                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+                 let g = generatedGraph
+                     mywod = NTICD.myWodFast g
+                     mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.cutNPasteIfPossible g
+                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                            mywodslicestep m1 m2 == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
-                         ))
-                    ),
+                    )),
     testProperty  "myWodSliceSimple cutNPasteIfPossible == myWodFastSlice"
     $ \(ARBITRARY(generatedGraph)) ->
-                let g0 = generatedGraph
-                    sinks = NTICD.controlSinks g0
-                in
-                   (∀) sinks (\sink ->
-                     let g = subgraph sink g0
-                         mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
-                         mywodfastslicer   = NTICD.myWodFastSlice g
-                     in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+                let g = generatedGraph
+                    mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+                    mywodfastslicer   = NTICD.myWodFastSlice g
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
-                        ))
-                   ),
+                   )),
     testPropertySized 50  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
@@ -880,30 +870,20 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     )),
     testProperty  "myWodFromSimpleSliceStep recompute == myWodFast"
      $ \(ARBITRARY(generatedGraph)) ->
-                 let g0 = generatedGraph
-                     sinks = NTICD.controlSinks g0
-                 in
-                    (∀) sinks (\sink ->
-                      let g = subgraph sink g0
-                          mywod = NTICD.myWodFast g
-                          mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.recompute g
-                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+                 let g = generatedGraph
+                     mywod = NTICD.myWodFast g
+                     mywodslicestep = MyWodSlice.myWodFromSimpleSliceStep MyWodSlice.recompute g
+                  in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                            mywodslicestep m1 m2 == mywod ! (m1,m2) ∪ mywod ! (m2,m1)
-                         ))
-                    ),
+                  )),
     testProperty  "myWodSliceSimple recompute == myWodFastSlice"
     $ \(ARBITRARY(generatedGraph)) ->
-                let g0 = generatedGraph
-                    sinks = NTICD.controlSinks g0
-                in
-                   (∀) sinks (\sink ->
-                     let g = subgraph sink g0
-                         mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
-                         mywodfastslicer   = NTICD.myWodFastSlice g
-                     in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
+                let g = generatedGraph
+                    mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
+                    mywodfastslicer   = NTICD.myWodFastSlice g
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
-                        ))
-                   ),
+                   )),
     testPropertySized 50  "myWodSliceSimple recompute           == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
@@ -918,9 +898,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
                     sinks = [ (g, sink, ipdom) | sink <-  NTICD.controlSinks g0,
-                                                let g = subgraph sink g0,
-                                                let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
-                                                let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- sink ]
+                                                let towardsSink = [ n | n <- nodes g0, (∃) sink (\s -> s `elem` reachable n g0) ],
+                                                let g = subgraph towardsSink g0,
+                                                let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- towardsSink ],
+                                                let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- towardsSink ]
                             ]
                 in (∀) sinks (\(g,sink, ipdom) ->
                             (∀) sink (\m -> 

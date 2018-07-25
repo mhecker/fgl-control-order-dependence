@@ -1,6 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE StandaloneDeriving #-}
 #define require assert
 module Data.Graph.Inductive.Query.MyWodSlice where
 
@@ -31,7 +33,7 @@ import qualified Data.List as List
 
 import Data.List ((\\), nub, sortBy, groupBy)
 
-import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableFromTreeM, isReachableBeforeFromTreeM, allReachableFromTreeM, findMs, findNoMs, findBoth, reachableFromTree)
+import Util(restrict, the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableFromTreeM, isReachableBeforeFromTreeM, allReachableFromTreeM, findMs, findNoMs, findBoth, reachableFromTree)
 import Unicode
 
 
@@ -398,73 +400,109 @@ findM2sFast dom ms xs n = assert (result == findM2s dom ms xs n) $
 
 
 
-type MyWodSimpleSliceState = (Set Node, Map Node [Node], Maybe (Node, Map Node (Maybe Node)),Map Node (Set Node))
 
-myWodFromSimpleSliceStep newIPDomFor graph m1 m2 =
-    assert (Set.null new1) $
-    assert (first s1 == Set.fromList [m1]) $
-    assert (first s2 == Set.fromList [m1, m2]) $
-    -- traceShow (snd s1) $
-    -- traceShow (snd s2) $
-    new2
-  where s0 = (Set.empty, condNodes, Nothing, Map.empty)
-        condNodes = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
-        (new1, s1) = myWodSliceSimpleStep graph newIPDom s0 m1
-        (new2, s2) = myWodSliceSimpleStep graph newIPDom s1 m2
-        first (a,_,_,_) = a
-        newIPDom = newIPDomFor graph condNodes
+data MyWodSimpleSliceState gr a b = MyWodSimpleSliceState {
+   ms :: Set Node,
+   condNodes ::  Map Node [Node],
+   nAndIpdomForSink  :: Map Node (Node, Map Node (Maybe Node)),
+   ready :: Map Node (Set Node),
+   sinkOf :: Map Node Node,
+   entryIntoSink :: Map Node Node,
+   gTowardsSink :: Map Node (gr a b, Map Node [Node])
+}
+
+deriving instance (Show (gr a b)) => Show (MyWodSimpleSliceState gr a b)
 
 
-myWodSliceSimple newIPDomFor graph m1 m2 = slice s0 ms0
-  where s0 = (Set.empty, condNodes, Nothing, Map.empty)
-        condNodes = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
-        newIPDom = newIPDomFor graph condNodes
-        ms0 = Set.fromList [m1, m2]
-        step = myWodSliceSimpleStep graph newIPDom
-        slice s@(sliceNodes, _, _, ready) ms
-          | Set.null ms = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
-                          sliceNodes
+initialMyWodSimpleSliceState :: DynGraph gr => gr a b -> MyWodSimpleSliceState gr a b
+initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
+      ms               = Set.empty,
+      condNodes        = condNodes,
+      nAndIpdomForSink = nAndIpdomForSink,
+      ready            = Map.empty,
+      sinkOf           = sinkOf,
+      entryIntoSink    = entryIntoSink,
+      gTowardsSink     = gTowardsSink
+    }
+  where sinks         = controlSinks graph
+        sinkOf        = Map.fromList [ (s, s0)  | sink@(s0:_) <- sinks, s <- sink ]
+        sinkNodes     = (∐) [ Set.fromList sink | sink <- sinks ]
+
+        isinkdom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes graph
+        entryIntoSink = Map.fromList [ (n, sinkOf ! m) | (n, Just m) <-  Map.assocs $ fmap fromSet $ isinkdom, m ∈ sinkNodes, not $ n ∈ sinkNodes ]
+        entryNodes    = Map.keys entryIntoSink
+        condNodes     = Map.fromList [ (c, succs) | c <-  entryNodes ++ (Set.toList sinkNodes), let succs = suc graph c, length succs  > 1]
+
+        gTowardsSink  = Map.fromList [ (s0, (subgraph (towards ++ sink) graph, restrict condNodes (towardsS ∪ sinkS)))
+                                         | sink@(s0:_) <- sinks,
+                                           let sinkS = Set.fromList sink,
+                                           let towards  = [ m | (n, s0') <- Map.assocs entryIntoSink, s0 == s0', m <- towardsCycle graph sinkS n],
+                                           let towardsS = Set.fromList towards
+                        ]
+        nAndIpdomForSink = Map.fromList [ (s0, (s0, recompute graphWithConds Nothing s0)) | (s0, graphWithConds) <- Map.assocs gTowardsSink ]
+
+
+myWodFromSimpleSliceStep :: (DynGraph gr, Show (gr a b)) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Node -> Node -> Set Node
+myWodFromSimpleSliceStep newIPDomFor graph = \m1 m2 ->
+    let (new1, s1) = myWodSliceSimpleStep graph newIPDomFor s0 m1
+        (new2, s2) = myWodSliceSimpleStep graph newIPDomFor s1 m2
+    in  assert (Set.null new1) $
+        assert (ms s1 == Set.fromList [m1]) $
+        assert (ms s2 == Set.fromList [m1, m2]) $
+        new2
+  where s0 = initialMyWodSimpleSliceState graph
+        
+
+myWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Node -> Node -> Set Node
+myWodSliceSimple newIPDomFor graph = \m1 m2 -> slice s0 (Set.fromList [m1, m2])
+  where s0 = initialMyWodSimpleSliceState graph
+        step = myWodSliceSimpleStep graph newIPDomFor
+        slice s@(MyWodSimpleSliceState { ms }) ns
+          | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
+                          ms
           | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
-                          slice s' ms'
-              where (m, ms0)  = Set.deleteFindMin ms
-                    (new, s') = step s m
-                    ms' = ms0 ∪ new 
+                          slice s' ns'
+              where (n, ns0)  = Set.deleteFindMin ns
+                    (new, s') = step s n
+                    ns' = ns0 ∪ new 
 
-
-
-
-
-myWodSliceSimpleStep :: forall gr a b. (Show (gr a b), DynGraph gr) =>
+myWodSliceSimpleStep :: forall gr a b. (DynGraph gr) =>
   gr a b ->
-  (Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) ->
-  MyWodSimpleSliceState ->
+  ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) ->
+  MyWodSimpleSliceState gr a b->
   Node ->
-  (Set Node, MyWodSimpleSliceState)
-myWodSliceSimpleStep graph newIPDom (ms, condNodes, nAndIpdom, ready) m
-    | m ∈ ms    = (Set.empty,                     (ms,  condNodes ,        nAndIpdom,              ready     ))
-    | otherwise = assert (ready' == ready'Fast) $
-                  ((fromReady ∪ fromIpdom) ∖ ms', (ms', condNodes', Just (m, ipdom'), Map.delete m ready'Fast))
+  (Set Node, MyWodSimpleSliceState gr a b)
+myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nAndIpdomForSink, ready, sinkOf, entryIntoSink, gTowardsSink}) m
+    | m ∈ ms                         = (Set.empty,                     s)
+    | Map.lookup m sinkOf == Nothing = (Set.empty,                     s { ms = ms' })
+    | otherwise                      = assert (ready' == ready'Fast) $
+                                       ((fromReady ∪ fromIpdom) ∖ ms', s { ms = ms', condNodes = condNodes', nAndIpdomForSink = nAndIpdomForSink', ready = Map.delete m ready'Fast })
   where ms' = Set.insert m ms
+        nAndIpdomForSink' = Map.insert sinkM (m, ipdom') nAndIpdomForSink
+        Just sinkM = Map.lookup m sinkOf
         condNodes' =  Map.delete m condNodes
-        fromReady = Map.findWithDefault (Set.empty) m ready
-        cWithRelevant = [ (c, lcaRKnownM ipdom' c succs) |  (c, succs) <- Map.assocs condNodes']
+        fromReady  = Map.findWithDefault (Set.empty) m ready
+        cWithRelevant = [ (c, lcaRKnownM ipdom' c succs) |  (c, succs) <- Map.assocs condNodes', Just sinkM == Map.lookup c sinkOf    ∨  Just sinkM == Map.lookup c entryIntoSink ]
         fromIpdom = Set.fromList [ c | (c, (z,relevant)) <- cWithRelevant,
-                                       (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant)
+                                       (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant ∧ (Map.lookup m1 sinkOf  == Just sinkM ))
                     ]
         ready' = ready
                ⊔ (∐) [ Map.fromList [ (m1, Set.fromList [ c ]) ] | (c, (z,relevant)) <- cWithRelevant,
-                                                                    m1 <- Set.toList relevant, m1 /= z
+                                                                    m1 <- Set.toList relevant, m1 /= z, Map.lookup m sinkOf == Just sinkM
                  ]
-        ready'Fast = foldr (\(c,m1) ready -> Map.alter (f c) m1 ready) ready [ (c,m1) | (c, (z,relevant)) <- cWithRelevant, m1 <- Set.toList relevant, m1 /= z ]
+        ready'Fast = foldr (\(c,m1) ready -> Map.alter (f c) m1 ready) ready [ (c,m1) | (c, (z,relevant)) <- cWithRelevant, m1 <- Set.toList relevant, m1 /= z, Map.lookup m sinkOf == Just sinkM ]
           where f c Nothing   = Just $ Set.singleton c
                 f c (Just cs) = Just $ Set.insert c cs
-        ipdom' = newIPDom nAndIpdom m
+        ipdom' = case ipdomN of
+                   Nothing         -> newIPDom (gTowardsSink ! sinkM) ipdomN m
+                   Just (n, ipdom) -> if n == m then ipdom else
+                                      newIPDom (gTowardsSink ! sinkM) ipdomN m
+          where ipdomN = Map.lookup sinkM nAndIpdomForSink
 
-
-cutNPasteIfPossible :: DynGraph gr => gr a b -> Map Node [Node] -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
-cutNPasteIfPossible graph condNodes          Nothing  m = recompute graph undefined undefined m
-cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
-    | List.null succs = recompute graph undefined undefined m
+cutNPasteIfPossible :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
+cutNPasteIfPossible graphWithConds                     Nothing           m = recompute graphWithConds undefined m
+cutNPasteIfPossible graphWithConds@(graph, condNodes)  (Just (n, ipdom)) m
+    | List.null succs = recompute graphWithConds undefined m
     | otherwise       = isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM ipdomM'''
 
   where -- ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) ipdom
@@ -478,7 +516,7 @@ cutNPasteIfPossible graph condNodes (Just (n, ipdom)) m
         graphm = delSuccessorEdges graph m
         condNodesM = Map.delete m condNodes
 
-recompute :: DynGraph gr => gr a b -> Map Node [Node] -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
-recompute graph _ _ m = ipdom
+recompute :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
+recompute (graph,_) _ m = ipdom
   where ipdom = fromIdom m $ iDom (grev $ delSuccessorEdges   graph m) m
           where fromIdom m idom = Map.insert m Nothing $ Map.fromList [ (n, Just m) | (n,m) <- idom ]

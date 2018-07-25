@@ -2091,10 +2091,8 @@ isinkdomOfTwoFinger8DownFixedTraversal = isinkdomOfTwoFinger8DownFixedTraversalF
 
 
 
-
-
-isinkdomOfTwoFinger8 :: forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set Node)
-isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
+isinkdomOfTwoFinger8ForSinks :: forall gr a b. (DynGraph gr) => [[Node]] -> Set Node -> gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger8ForSinks sinks sinkNodes graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                           fmap toSet $ twoFinger 0 worklist0 processed0 imdom0 
   where solution = sinkdomOfGfp graph
         imdom0   =             Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
@@ -2116,8 +2114,6 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
         prevConds   = prevCondNodes graph
         prevCondsImmediate = prevCondImmediateNodes graph
         nextCond    = nextCondNode graph
-        sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
-        sinks = controlSinks graph
 
 
 
@@ -2149,6 +2145,12 @@ isinkdomOfTwoFinger8 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                   where succs    = processed ⊓ (Set.fromList (suc graph x))
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing mz)
+
+
+isinkdomOfTwoFinger8 :: forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger8 graph = isinkdomOfTwoFinger8ForSinks sinks sinkNodes graph
+  where sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
+        sinks = controlSinks graph
 
 
 withPossibleIntermediateNodesFromiXdom :: forall gr a b x. (Ord x, DynGraph gr) => gr a b -> Map Node (Set (Node, x)) -> Map Node (Set (Node, (x, Set Node)))

@@ -17,7 +17,7 @@ import Control.Monad.Random
 
 -- import Data.Functor.Identity (runIdentity)
 -- import qualified Control.Monad.Logic as Logic
-import Data.List(foldl', intersect,foldr1, partition)
+import Data.List(foldl', intersect,foldr1, partition, isPrefixOf)
 
 import Data.Maybe (isNothing, maybeToList)
 import Data.Map ( Map, (!) )
@@ -103,3 +103,73 @@ sampleLoopPaths         k g
          where finished   = null successors
                successors = lsuc g n
                looped     = n `elem` (fmap (\(n,_,_) -> n) trace)
+
+
+data Input = Input { startNode :: Node, choice :: Map Node Node } deriving (Show, Eq, Ord)
+data Trace = Finite [(Node,Node)] | Looping [(Node, Node)] [(Node,Node)] deriving (Show, Eq, Ord)
+
+runInput :: Graph gr => gr a b -> Input -> Trace
+runInput graph (Input { startNode, choice}) = 
+       require  ((∀) (Map.assocs choice) (\(n,m) -> m `elem` suc graph n))
+       require  ((∀) (nodes graph)       (\n -> ((length $ suc graph n) > 1)   →   Map.member n choice))
+     $ require  ( startNode `elem` nodes graph)
+     $ run startNode (Set.fromList [startNode]) []
+  where run n seen trace
+            | succs == [] = Finite  (reverse trace)
+            | n' ∈ seen   = Looping prefix loop 
+            | otherwise   = run n' (Set.insert n' seen) ((n,n') : trace) 
+          where succs = suc graph n
+                n' = case succs of
+                       []   -> undefined
+                       [n'] -> n'
+                       _    -> choice ! n
+
+                (prefix, loop) = span (\(n,m) -> n /= n') $ reverse ((n,n') : trace)
+
+observable :: Set Node -> Trace -> Trace
+observable s (Finite trace)        = Finite $ obs s trace
+observable s (Looping prefix loop)
+    | loop' == [] = Finite   prefix'
+    | otherwise   = Looping  prefix' loop'
+  where prefix' = obs s prefix
+        loop'   = obs s loop
+
+
+obs s =  filter (\(n, m) -> n ∈ s)
+
+isTracePrefixOf (Finite trace) (Finite  trace')      = List.isPrefixOf trace trace'
+isTracePrefixOf (Finite trace) (Looping prefix loop) =
+      require (noLoop prefix) 
+    $ List.isPrefixOf trace (prefix ++ loop)
+isTracePrefixOf (Looping prefix loop) (Looping prefix' loop') =
+      require (noLoop prefix )
+    $ require (noLoop prefix')
+    $ prefix == prefix'   ∧  loop ==  loop'
+
+noLoop l = nub l == l
+
+infinitelyDelays :: Graph gr => gr a b -> Input -> Set Node -> Set Trace
+infinitelyDelays graph input@(Input { startNode, choice }) s =
+    case trace of
+      Finite _    -> Set.empty
+      Looping _ _ -> case traceObs of
+                       Looping _ _ -> Set.empty
+                       Finite prefix -> Set.fromList [
+                                            trace'Obs
+                                          | choice' <- all choice0 (condNodes ∖ s),
+                                            let trace' = runInput graph (Input { startNode = startNode , choice = choice' }),
+                                            let trace'Obs = observable s trace',
+                                            isTracePrefixOf traceObs trace'Obs
+                                        ]
+  where condNodes = Set.fromList [ c | c <- nodes graph, let succs = suc graph c, length succs  > 1]
+        trace = runInput graph input
+        traceObs = observable s trace
+        choice0 = restrict choice s
+
+        all :: Map Node Node -> Set Node -> [Map Node Node]
+        all choice conds
+            | Set.null conds = [choice]
+            | otherwise = do
+                n' <- suc graph n
+                all (Map.insert n n' choice) conds'
+          where (n, conds') = Set.deleteFindMin conds

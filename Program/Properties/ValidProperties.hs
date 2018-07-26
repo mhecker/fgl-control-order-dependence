@@ -894,6 +894,16 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
                     )),
+    testProperty "myWodSliceSimple recompute           == myWodSliceSimple recomputecutNPasteIfPossible for CFG-shaped graphs with exit->entry edge"
+    $ \(SIMPLECFG(generatedGraph)) ->
+                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                    g = insEdge (exit, entry, ()) generatedGraph
+                    mywodsimpleslicer  = MyWodSlice.myWodSliceSimple MyWodSlice.recompute           g
+                    mywodsimpleslicer' = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+                    m1 = (cycle $ nodes g) !! 32904
+                    m2 = (cycle $ nodes g) !! 87653
+                in  mywodsimpleslicer m1 m2 == mywodsimpleslicer' m1 m2,
     testProperty  "cut and re-validate property in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph

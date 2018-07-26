@@ -33,7 +33,7 @@ import qualified Data.List as List
 
 import Data.List ((\\), nub, sortBy, groupBy)
 
-import Util(restrict, the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableFromTreeM, isReachableBeforeFromTreeM, allReachableFromTreeM, findMs, findNoMs, findBoth, reachableFromTree)
+import Util(restrict, without, the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, isReachableFromTree, isReachableFromTreeM, isReachableBeforeFromTreeM, allReachableFromTreeM, findMs, findNoMs, findBoth, reachableFromTree)
 import Unicode
 
 
@@ -417,8 +417,9 @@ deriving instance (Show (gr a b)) => Show (MyWodSimpleSliceState gr a b)
 initialMyWodSimpleSliceState :: DynGraph gr => gr a b -> MyWodSimpleSliceState gr a b
 initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
       ms               = Set.empty,
-      condNodes        = condNodes,
-      nAndIpdomForSink = nAndIpdomForSink,
+      condNodes        = restrict condNodes (entryNodes ∪ sinkNodes),
+      -- nAndIpdomForSink = nAndIpdomForSink,
+      nAndIpdomForSink = Map.empty,
       ready            = Map.empty,
       sinkOf           = sinkOf,
       entryIntoSink    = entryIntoSink,
@@ -428,10 +429,10 @@ initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
         sinkOf        = Map.fromList [ (s, s0)  | sink@(s0:_) <- sinks, s <- sink ]
         sinkNodes     = (∐) [ Set.fromList sink | sink <- sinks ]
 
-        isinkdom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes graph
+        isinkdom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes (fmap Set.fromList $ without condNodes sinkNodes) graph
         entryIntoSink = Map.fromList [ (n, sinkOf ! m) | (n, Just m) <-  Map.assocs $ fmap fromSet $ isinkdom, m ∈ sinkNodes, not $ n ∈ sinkNodes ]
-        entryNodes    = Map.keys entryIntoSink
-        condNodes     = Map.fromList [ (c, succs) | c <-  entryNodes ++ (Set.toList sinkNodes), let succs = suc graph c, length succs  > 1]
+        entryNodes    = Map.keysSet entryIntoSink
+        condNodes     = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
 
         gTowardsSink  = Map.fromList [ (s0, (subgraph (towards ++ sink) graph, restrict condNodes (towardsS ∪ sinkS)))
                                          | sink@(s0:_) <- sinks,
@@ -515,6 +516,11 @@ cutNPasteIfPossible graphWithConds@(graph, condNodes)  (Just (n, ipdom)) m
 
         graphm = delSuccessorEdges graph m
         condNodesM = Map.delete m condNodes
+
+-- recompute :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
+-- recompute (graph, condNodes) _ m = fmap fromSet $ isinkdomOfTwoFinger8ForSinks [[m]] (Set.fromList [m]) (fmap Set.fromList condNodesM) graphM
+--   where condNodesM = Map.delete m condNodes
+--         graphM = delSuccessorEdges graph m
 
 recompute :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 recompute (graph,_) _ m = ipdom

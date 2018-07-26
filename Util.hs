@@ -27,7 +27,9 @@ chooseOneEach choices = fmap (zip as) $ sequence bss
   where as  = fmap fst choices
         bss = fmap snd choices
 
-restrict σ vars = Map.filterWithKey (\var _ -> var ∈ vars) σ
+-- TODO: replace with Map.filterWithKey Map.restrictKeys in newer containers releases
+restrict σ vars = Map.filterWithKey (\var _ ->      var ∈ vars) σ
+without σ vars = Map.filterWithKey (\var _ -> not $ var ∈ vars) σ
 
 
 invert :: (Ord k, Ord v) => Map k v -> Map v (Set k)

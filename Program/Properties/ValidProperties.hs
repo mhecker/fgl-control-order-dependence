@@ -2284,7 +2284,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         choices    = InfiniteDelay.sampleChoicesFor seed2 (n `div`  2 + 1)        g
                         [m1,m2]    =               sampleFrom       seed3                2 (nodes g)
                         s = NTICD.nticdMyWodFastSlice g m1 m2
-                    in -- (∀) choices (\choice -> (∀) startNodes (\startNode  -> 
+                    in (∀) choices (\choice -> (∀) startNodes (\startNode  -> 
                          let input = InfiniteDelay.Input startNode choice
                              continuations = InfiniteDelay.infinitelyDelays g input s
                          in -- traceShow (length startNodes, length choices, length continuations, startNode) $

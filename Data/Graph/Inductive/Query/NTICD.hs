@@ -2405,6 +2405,11 @@ nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = nticdF3 graph
         w     = myWod graph
 
+nticdMyWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+nticdMyWodFastSlice graph =  combinedBackwardSlice graph nticd w
+  where nticd = nticdF3 graph
+        w     = myWodFast graph
+
 
 myWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
 myWodFastSlice graph =  combinedBackwardSlice graph empty w

@@ -66,7 +66,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
-import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor)
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
@@ -78,6 +78,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
+    nticdMyWodFastSlice,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
@@ -2275,20 +2276,38 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
 
 
 delayProps = testGroup "(concerning inifinte delay)" [
-    testProperty  "inifiniteDelay  ~= isinkdom"
-                $ \(ARBITRARY(generatedGraph)) ->
+    testProperty  "inifiniteDelays  is unique"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                     let g = generatedGraph
                         n = toInteger $ length $ nodes g
-                        delayed = InfiniteDelay.delayedInfinitely g
-                        traces = fmap (fmap (\(n,m,_) -> n)) $ InfiniteDelay.sampleLoopPathsFor 42 100 g
-                        isinkdom = NTICD.isinkdomOfTwoFinger8 g
-                    in (∀) traces (\trace ->
-                         let traceSet = Set.fromList trace
-                             delayedNodes = Set.fromList [ n | n <- nodes g, delayed trace n]
-                             reachable    = Set.fromList [ n | n <- Set.toList $ reachableFrom isinkdom traceSet Set.empty, not $ n ∈ traceSet ]
-                         in (if delayedNodes == reachable then id else traceShow (trace, delayedNodes ∖ reachable, reachable ∖ delayedNodes)) $
-                            delayedNodes == reachable
-                    )
+                        startNodes =               sampleFrom       seed1 (n `div` 10 + 1) (nodes g)
+                        choices    = InfiniteDelay.sampleChoicesFor seed2 (n `div`  2 + 1)        g
+                        [m1,m2]    =               sampleFrom       seed3                2 (nodes g)
+                        s = NTICD.nticdMyWodFastSlice g m1 m2
+                    in -- (∀) choices (\choice -> (∀) startNodes (\startNode  -> 
+                         let input = InfiniteDelay.Input startNode choice
+                             continuations = InfiniteDelay.infinitelyDelays g input s
+                         in -- traceShow (length startNodes, length choices, length continuations, startNode) $
+                            -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
+                            (∀) continuations (\continuation ->  (∀) continuations (\continuation' ->
+                                continuation  `InfiniteDelay.isTracePrefixOf` continuation'
+                              ∨ continuation' `InfiniteDelay.isTracePrefixOf` continuation
+                            ))
+                       ))
+    -- testProperty  "inifiniteDelay  ~= isinkdom"
+    --             $ \(ARBITRARY(generatedGraph)) ->
+    --                 let g = generatedGraph
+    --                     n = toInteger $ length $ nodes g
+    --                     delayed = InfiniteDelay.delayedInfinitely g
+    --                     traces = fmap (fmap (\(n,m,_) -> n)) $ InfiniteDelay.sampleLoopPathsFor 42 100 g
+    --                     isinkdom = NTICD.isinkdomOfTwoFinger8 g
+    --                 in (∀) traces (\trace ->
+    --                      let traceSet = Set.fromList trace
+    --                          delayedNodes = Set.fromList [ n | n <- nodes g, delayed trace n]
+    --                          reachable    = Set.fromList [ n | n <- Set.toList $ reachableFrom isinkdom traceSet Set.empty, not $ n ∈ traceSet ]
+    --                      in (if delayedNodes == reachable then id else traceShow (trace, delayedNodes ∖ reachable, reachable ∖ delayedNodes)) $
+    --                         delayedNodes == reachable
+    --                 )
   ]
 delayTests = testGroup "(concerning  inifinite delay)" $
   []

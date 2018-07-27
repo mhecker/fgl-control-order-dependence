@@ -146,17 +146,19 @@ isTracePrefixOf (Looping prefix loop) (Looping prefix' loop') =
     $ require (noLoop prefix')
     $ prefix == prefix'   ∧  loop ==  loop'
 
+isTracePrefixOf (Looping prefix loop) (Finite trace) = False
+
 noLoop l = nub l == l
 
 infinitelyDelays :: Graph gr => gr a b -> Input -> Set Node -> Set Trace
 infinitelyDelays graph input@(Input { startNode, choice }) s =
     case trace of
-      Finite _    -> Set.empty
+      Finite _    -> Set.fromList [traceObs]
       Looping _ _ -> case traceObs of
-                       Looping _ _ -> Set.empty
+                       Looping _ _   -> Set.fromList [traceObs]
                        Finite prefix -> Set.fromList [
                                             trace'Obs
-                                          | choice' <- all choice0 (condNodes ∖ s),
+                                          | choice' <- allChoices graph choice0 (condNodes ∖ s),
                                             let trace' = runInput graph (Input { startNode = startNode , choice = choice' }),
                                             let trace'Obs = observable s trace',
                                             isTracePrefixOf traceObs trace'Obs
@@ -166,10 +168,41 @@ infinitelyDelays graph input@(Input { startNode, choice }) s =
         traceObs = observable s trace
         choice0 = restrict choice s
 
-        all :: Map Node Node -> Set Node -> [Map Node Node]
-        all choice conds
-            | Set.null conds = [choice]
-            | otherwise = do
-                n' <- suc graph n
-                all (Map.insert n n' choice) conds'
-          where (n, conds') = Set.deleteFindMin conds
+
+
+allChoices :: Graph gr => gr a b  -> Map Node Node -> Set Node -> [Map Node Node]
+allChoices graph choice conds
+    | Set.null conds = [choice]
+    | otherwise = do
+                    n' <- suc graph n
+                    allChoices graph (Map.insert n n' choice) conds'
+  where (n, conds') = Set.deleteFindMin conds
+
+
+
+sampleChoicesFor ::                              (Graph gr) => Int -> Integer ->  gr a b ->  [Map Node Node]
+sampleChoicesFor seed k g = evalRand (sampleChoices k g) (mkStdGen seed)
+
+sampleChoices :: forall m gr a b. (MonadRandom m, Graph gr) =>        Integer -> gr a b -> m [Map Node Node]
+sampleChoices         k g = sampleSome [] 0
+     where
+        condNodes = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+        sample :: MonadRandom m => [t] -> m t
+        sample xs = do
+          i <- getRandomR (1, length xs)
+          
+          return $ xs !! (i-1)
+        sampleSome :: [Map Node Node] -> Integer -> m [Map Node Node]
+        sampleSome sampled i
+          | i >= k    = return $ sampled
+          | otherwise = do
+              choice <- sampleChoice Map.empty condNodes
+              sampleSome (choice:sampled) (i+1)
+        sampleChoice :: Map Node Node -> Set Node -> m (Map Node Node)
+        sampleChoice choice condNodes
+          | Set.null condNodes = return choice
+          | otherwise = do
+               n' <- sample successors
+               sampleChoice (Map.insert n n' choice) condNodes'
+         where successors = suc g n
+               (n, condNodes') = Set.deleteFindMin condNodes

@@ -3085,6 +3085,10 @@ isinkdomTwoFingerExample8 = mkGraph [(-48,()),(-43,()),(-35,()),(-32,()),(-30,()
 isinkdomTwoFingerExample9 :: DynGraph gr => gr () ()
 isinkdomTwoFingerExample9 = mkGraph [(-15,()),(0,()),(4,()),(6,()),(9,()),(10,()),(16,()),(17,())] [(-15,-15,()),(-15,4,()),(-15,6,()),(-15,10,()),(0,4,()),(0,4,()),(0,9,()),(4,-15,()),(4,6,()),(4,9,()),(6,0,()),(6,0,()),(9,0,()),(9,4,()),(9,16,()),(10,4,()),(17,-15,()),(17,0,()),(17,4,()),(17,6,()),(17,9,()),(17,10,()),(17,16,())]
 
+
+imdomTwoFingerExample1 :: DynGraph gr => gr () ()
+imdomTwoFingerExample1 = mkGraph [(-29,()),(-13,()),(-12,())] [(-29,-13,()),(-29,-13,()),(-13,-29,()),(-13,-29,()),(-12,-29,()),(-12,-13,())]
+
 -- This example demonstrated an error in a former version of dodFast.
 dodSuperFastCounterExample :: DynGraph gr => gr () ()
 dodSuperFastCounterExample = mkGraph [(-82,()),(-81,()),(-74,()),(-28,()),(-6,()),(15,()),(23,()),(47,()),(66,())] [(-82,23,()),(-81,-74,()),(-81,15,()),(-74,-82,()),(-74,47,()),(-28,-81,()),(-28,47,()),(-6,15,()),(15,47,()),(15,47,()),(23,15,()),(47,-82,()),(47,-6,()),(66,-82,()),(66,-81,()),(66,-74,()),(66,-28,()),(66,-6,()),(66,15,()),(66,23,()),(66,47,())]
@@ -3288,6 +3292,11 @@ interestingIsinkdomTwoFinger = [
               $(withName 'isinkdomTwoFingerExample7),
               $(withName 'isinkdomTwoFingerExample8),
               $(withName 'isinkdomTwoFingerExample9)
+            ]
+
+interestingImdomTwoFinger :: [(String, Gr () ())]
+interestingImdomTwoFinger = [
+              $(withName ' imdomTwoFingerExample1)
             ]
 
 

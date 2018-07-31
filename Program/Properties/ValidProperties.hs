@@ -113,7 +113,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger)
+import Program.Examples (testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger, interestingImdomTwoFinger)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -676,6 +676,14 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                        NTICD.ntscdF3              g
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
+  [  testCase    ( "idomToDFFast _ mdom == mDF _ for " ++ exampleName)
+            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6  g :: Gr () ()
+                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7  g :: Gr () ()
+                    in (∀) [imdom6, imdom7] (\imdom ->
+                       NTICD.idomToDFFast g imdom ==
+                       NTICD.mDF       g) @? ""
+  | (exampleName, g) <- interestingImdomTwoFinger
+  ] ++
   [  testCase    (  "mDFLocal == mDFLocalDef for " ++ exampleName)
             $          NTICD.mDFLocal    g ==
                        NTICD.mDFLocalDef g

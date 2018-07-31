@@ -1855,7 +1855,7 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                   -- traceShow (Set.size worklist0, i) $ 
                                   assert (invariant worklist (fmap toSet imdom)) $
                                   imdom
-            | otherwise         = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
+            | otherwise         = -- traceShow (x, mz, zs, influenced, influencedSlow, worklist, imdom) $
                                   assert (influenced == influencedSlow) $ 
                                   assert (invariant worklist (fmap toSet imdom)) $
                                   if (not $ changed) then twoFinger (i+1)               worklist'                                   imdom
@@ -2200,7 +2200,9 @@ predsSeenFor imdomRev = predsSeenF where
       predsSeen  :: [Node] -> Node -> [Node]
       predsSeen seen x = case Map.lookup x imdomRev of 
         Nothing  -> seen
-        Just ys  -> let new = (filter (not . (∊ seen)) ys) in predsSeenF (new ++ seen) new
+        Just ys  -> let new = (filter (not . (∊ seen)) ys) in case new of
+                      [] -> seen
+                      _  -> predsSeenF (new ++ seen) new
 
 
 

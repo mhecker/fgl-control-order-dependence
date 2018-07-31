@@ -2314,22 +2314,21 @@ delayProps = testGroup "(concerning inifinte delay)" [
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        infinitelyDelays = InfiniteDelay.infinitelyDelays g
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         s = NTICD.nticdMyWodFastSlice g m1 m2
                     in traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
-                             differentobservation = (∃) (nodes g) (\startNode -> (∃) choices (\choice ->
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode ->
                                let input = InfiniteDelay.Input startNode choice
                                    trace = InfiniteDelay.runInput g input
-                                   continuations = InfiniteDelay.infinitelyDelays g input s'
-
-                                   choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s')
+                                   continuations = infinitelyDelays input s'
                                in (∃) choices' (\choice' ->
                                     let input' = InfiniteDelay.Input startNode choice'
                                         trace' = InfiniteDelay.runInput g input'
-                                        continuations' = InfiniteDelay.infinitelyDelays g input' s'
+                                        continuations' = infinitelyDelays input' s'
                                         different =
                                            assert (InfiniteDelay.observable s' trace  ∈ continuations ) $
                                            assert (InfiniteDelay.observable s' trace' ∈ continuations') $                                          

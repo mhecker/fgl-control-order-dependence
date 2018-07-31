@@ -114,17 +114,16 @@ runInput graph (Input { startNode, choice}) =
        require  ((∀) (nodes graph)       (\n -> ((length $ suc graph n) > 1)   →   Map.member n choice))
      $ require  ( startNode `elem` nodes graph)
      $ run startNode (Set.fromList [startNode]) []
-  where run n seen trace
-            | succs == [] = Finished (reverse trace) n
-            | n' ∈ seen   = Looping prefix loop 
-            | otherwise   = run n' (Set.insert n' seen) ((n,n') : trace)
+  where run n seen trace = case Map.lookup n choice of
+                             Nothing -> case succs of
+                                          []   -> Finished (reverse trace) n
+                                          [n'] -> next n'
+                             Just n' -> next n'
           where succs = suc graph n
-                n' = case succs of
-                       []   -> undefined
-                       [n'] -> n'
-                       _    -> choice ! n
-
-                (prefix, loop) = span (\(n,m) -> n /= n') $ reverse ((n, n') : trace)
+                next n'
+                    | n' ∈ seen = Looping prefix loop
+                    | otherwise = run n' (Set.insert n' seen) ((n,n') : trace)
+                  where (prefix, loop) = span (\(n,m) -> n /= n') $ reverse ((n, n') : trace)
 
 observable :: Set Node -> Trace -> Trace
 observable s (Finite trace)       = Finite   $ obs s trace
@@ -244,40 +243,20 @@ noLoop l = nub l == l
 
 
 infinitelyDelays :: Graph gr => gr a b -> Input -> Set Node -> Set Trace
-infinitelyDelays graph input@(Input { startNode, choice }) s =
-                                        -- Set.fromList [
-                                        --     trace'Obs
-                                        --   | choice' <- allChoices graph choice0 (condNodes ∖ s),
-                                        --     let trace' = runInput graph (Input { startNode = startNode , choice = choice' }),
-                                        --     let trace'Obs = observable s trace',
-                                        --     True
-                                        --     -- isTracePrefixOf traceObs trace'Obs
-                                        -- ]
-
-    case trace of
+infinitelyDelays graph = \input@(Input { startNode, choice }) s ->
+    let trace = runInput graph input
+        traceObs = observable s trace
+    in case trace of
       Finite _     -> undefined
       Finished _ _ -> Set.fromList [traceObs]
-      -- Looping _ _ -> case traceObs of
-      --                  Looping _ _   -> Set.fromList [traceObs]
-      --                  Finite prefix -> Set.fromList [
       Looping prefix loop ->  Set.fromList [ observable2 s trace trace'
                                            | choice' <- allChoices graph choice0 allowedToChange,
                                              startNode' <- fmap fst loop,
-                                             let trace' = runInput graph (Input { startNode = startNode' , choice = choice' }),
-                                             -- let trace'Obs = observable s trace',
-                                             -- isTracePrefixOf traceObs trace'Obs,
-                                             True
+                                             let trace' = runInput graph (Input { startNode = startNode' , choice = choice' })
                                         ]
-        where -- startNode' = fst $ head loop
-              allowedToChange = condNodes ∖ s
-              -- allowedToChange = condNodes ∖  (s ∪ (Set.fromList $ fmap fst $ prefix) )
-              --allowedToChange = condNodes ∩ ((Set.fromList $ fmap fst $ loop) ∖ s)
-              -- allowedToChange = ((condNodes ∩ (Set.fromList $ fmap fst $ loop)) ∖ (s {- ∪ (Set.fromList $ fmap fst $ prefix) -})),
+        where allowedToChange = condNodes ∖ s
               choice0 = restrict choice (condNodes ∖ allowedToChange)
   where condNodes = Set.fromList [ c | c <- nodes graph, let succs = suc graph c, length succs  > 1]
-        trace = runInput graph input
-        traceObs = observable s trace
-        -- choice0 = restrict choice s
 
 
 

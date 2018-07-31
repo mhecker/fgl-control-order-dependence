@@ -2284,7 +2284,7 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
 
 
 delayProps = testGroup "(concerning inifinte delay)" [
-    testPropertySized 30 "nticdMyWodFastSlice  is sound"
+    testPropertySized 25 "nticdMyWodFastSlice  is sound"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g

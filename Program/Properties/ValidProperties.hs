@@ -2276,40 +2276,40 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
 
 
 delayProps = testGroup "(concerning inifinte delay)" [
-    -- testProperty  "nticdMyWodFastSlice  is sound"
-    --             $ \(ARBITRARY(generatedGraph)) seed->
-    --                 let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
-    --                     n = toInteger $ length $ nodes g
-    --                     condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
-    --                     choices    = InfiniteDelay.allChoices g Map.empty condNodes
-    --                     [m1,m2]    = sampleFrom seed 2 (nodes g)
-    --                     s = NTICD.nticdMyWodFastSlice g m1 m2
-    --                     differentobservation = (∃) (nodes g) (\startNode -> (∃) choices (\choice ->
-    --                            let input = InfiniteDelay.Input startNode choice
-    --                                trace = InfiniteDelay.runInput g input
-    --                                continuations = InfiniteDelay.infinitelyDelays g input s
-
-    --                                choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s)
-    --                            in (∃) choices' (\choice' ->
-    --                                 let input' = InfiniteDelay.Input startNode choice'
-    --                                     trace' = InfiniteDelay.runInput g input'
-    --                                     continuations' = InfiniteDelay.infinitelyDelays g input' s
-    --                                     different =
-    --                                        assert (InfiniteDelay.observable s trace  ∈ continuations ) $
-    --                                        assert (InfiniteDelay.observable s trace' ∈ continuations') $                                          
-    --                                        --   (      InfiniteDelay.observable s trace /= InfiniteDelay.observable s trace')
-    --                                        -- ∧ (not $ InfiniteDelay.observable s trace  ∈ continuations')
-    --                                        -- ∧ (not $ InfiniteDelay.observable s trace' ∈ continuations )
-    --                                          (      InfiniteDelay.observable s trace /= InfiniteDelay.observable s trace')
-    --                                        ∧ (Set.null $ continuations ∩ continuations')
-    --                                  in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
-    --                                     different
-    --                               )
-    --                            ))
-    --                 in traceShow (length $ nodes g, Set.size s) $
-    --                    (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
-    --                    not differentobservation
-    testProperty "nticdMyWodFastSlice  is minimal"
+    testPropertySized 30 "nticdMyWodFastSlice  is sound"
+                $ \(ARBITRARY(generatedGraph)) seed->
+                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
+                        n = toInteger $ length $ nodes g
+                        runInput = InfiniteDelay.runInput g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        [m1,m2]    = sampleFrom seed 2 (nodes g)
+                        s = NTICD.nticdMyWodFastSlice g m1 m2
+                        infinitelyDelays = InfiniteDelay.infinitelyDelays g s
+                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   continuations = infinitelyDelays input
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        continuations' = infinitelyDelays input'
+                                        different =
+                                           assert (InfiniteDelay.observable s trace  ∈ continuations ) $
+                                           assert (InfiniteDelay.observable s trace' ∈ continuations') $                                          
+                                           --   (      InfiniteDelay.observable s trace /= InfiniteDelay.observable s trace')
+                                           -- ∧ (not $ InfiniteDelay.observable s trace  ∈ continuations')
+                                           -- ∧ (not $ InfiniteDelay.observable s trace' ∈ continuations )
+                                             (      InfiniteDelay.observable s trace /= InfiniteDelay.observable s trace')
+                                           ∧ (Set.null $ continuations ∩ continuations')
+                                     in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                    in traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                       (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
+                       not differentobservation,
+    testPropertySized 50 "nticdMyWodFastSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         runInput = InfiniteDelay.runInput g
@@ -2332,7 +2332,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                                         continuations' = infinitelyDelays input'
                                         different =
                                            assert (InfiniteDelay.observable s' trace  ∈ continuations ) $
-                                           assert (InfiniteDelay.observable s' trace' ∈ continuations') $                                          
+                                           assert (InfiniteDelay.observable s' trace' ∈ continuations') $
                                            --   (      InfiniteDelay.observable s' trace /= InfiniteDelay.observable s' trace')
                                            -- ∧ (not $ InfiniteDelay.observable s' trace  ∈ continuations')
                                            -- ∧ (not $ InfiniteDelay.observable s' trace' ∈ continuations )

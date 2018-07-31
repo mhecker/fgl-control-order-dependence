@@ -109,21 +109,22 @@ data Input = Input { startNode :: Node, choice :: Map Node Node } deriving (Show
 data Trace = Finite [(Node, Node)] |  Finished [(Node, Node)] Node | Looping [(Node, Node)] [(Node,Node)] deriving (Show, Eq, Ord)
 
 runInput :: Graph gr => gr a b -> Input -> Trace
-runInput graph (Input { startNode, choice}) = 
-       require  ((∀) (Map.assocs choice) (\(n,m) -> m `elem` suc graph n))
-       require  ((∀) (nodes graph)       (\n -> ((length $ suc graph n) > 1)   →   Map.member n choice))
-     $ require  ( startNode `elem` nodes graph)
-     $ run startNode (Set.fromList [startNode]) []
-  where run n seen trace = case Map.lookup n choice of
+runInput graph = \(Input { startNode, choice}) ->
+    let run n seen trace = case Map.lookup n choice of
                              Nothing -> case succs of
                                           []   -> Finished (reverse trace) n
                                           [n'] -> next n'
                              Just n' -> next n'
-          where succs = suc graph n
+          where succs = succsOf ! n
                 next n'
                     | n' ∈ seen = Looping prefix loop
                     | otherwise = run n' (Set.insert n' seen) ((n,n') : trace)
                   where (prefix, loop) = span (\(n,m) -> n /= n') $ reverse ((n, n') : trace)
+    in require  ((∀) (Map.assocs choice) (\(n,m) -> m `elem` suc graph n))
+       require  ((∀) (nodes graph)       (\n -> ((length $ suc graph n) > 1)   →   Map.member n choice))
+     $ require  ( startNode `elem` nodes graph)
+     $ run startNode (Set.fromList [startNode]) []
+  where succsOf = Map.fromList [ (n, succs) | n <- nodes graph, let succs = suc graph n, length succs <= 1 ]
 
 observable :: Set Node -> Trace -> Trace
 observable s (Finite trace)       = Finite   $ obs s trace
@@ -242,8 +243,8 @@ noLoop l = nub l == l
 --         -- choice0 = restrict choice s
 
 
-infinitelyDelays :: Graph gr => gr a b -> Input -> Set Node -> Set Trace
-infinitelyDelays graph = \input@(Input { startNode, choice }) s ->
+infinitelyDelays :: Graph gr => gr a b ->  Set Node -> Input -> Set Trace
+infinitelyDelays graph s = \input@(Input { startNode, choice }) ->
     let trace = runInput graph input
         traceObs = observable s trace
     in case trace of
@@ -254,10 +255,10 @@ infinitelyDelays graph = \input@(Input { startNode, choice }) s ->
                                              startNode' <- fmap fst loop,
                                              let trace' = runInput graph (Input { startNode = startNode' , choice = choice' })
                                         ]
-        where allowedToChange = condNodes ∖ s
-              choice0 = restrict choice (condNodes ∖ allowedToChange)
+        where 
+              choice0 = restrict choice s
   where condNodes = Set.fromList [ c | c <- nodes graph, let succs = suc graph c, length succs  > 1]
-
+        allowedToChange = condNodes ∖ s
 
 
 allChoices :: Graph gr => gr a b  -> Map Node Node -> Set Node -> [Map Node Node]

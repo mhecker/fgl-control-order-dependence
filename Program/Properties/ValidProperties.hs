@@ -56,7 +56,7 @@ import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
@@ -2278,7 +2278,7 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
 delayProps = testGroup "(concerning inifinte delay)" [
     -- testProperty  "nticdMyWodFastSlice  is sound"
     --             $ \(ARBITRARY(generatedGraph)) seed->
-    --                 let g = generatedGraph
+    --                 let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
     --                     n = toInteger $ length $ nodes g
     --                     condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
     --                     choices    = InfiniteDelay.allChoices g Map.empty condNodes
@@ -2311,13 +2311,13 @@ delayProps = testGroup "(concerning inifinte delay)" [
     --                    not differentobservation
     testProperty  "nticdMyWodFastSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
-                    let g = generatedGraph
+                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         s = NTICD.nticdMyWodFastSlice g m1 m2
-                    in traceShow (length $ nodes g, Set.size s) $
+                    in traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
                              differentobservation = (∃) (nodes g) (\startNode -> (∃) choices (\choice ->

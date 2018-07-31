@@ -158,8 +158,31 @@ isTracePrefixOf (Looping prefix loop) _ = False
 
 noLoop l = nub l == l
 
+
+followedBy (Finished _ _) _ = undefined
+followedBy (Finite   _)     = undefined
+followedBy (Looping prefix looping) (Finite _) = undefined
+followedBy (Looping prefix looping) (Finished trace' n) =
+      require ( (snd $ last $ trace ) == (fst $ head $ looping) )
+    $ require ( (snd $ last $ trace ) == (fst $ head $ trace')   )
+    $ Finished (trace  ++ trace') n
+  where trace = prefix ++ looping
+followedBy (Looping prefix looping) (Looping prefix' looping') =
+      require ( (snd $ last $ trace ) == (fst $ head $ looping  ))
+    $ require ( (snd $ last $ trace') == (fst $ head $ looping' ))
+    $ require ( (snd $ last $ trace ) == (fst $ head $ trace')
+    $ Looping (prefix ++ looping ++ prefix') looping'
+  where trace  = prefix  ++ looping
+        trace' = prefix' ++ looping'
+
+  
 infinitelyDelays :: Graph gr => gr a b -> Input -> Set Node -> Set Trace
-infinitelyDelays graph input@(Input { startNode, choice }) s =
+infinitelyDelays graph input@(Input { startNode, choice }) s = fmap (observable s) $ (㎲⊒) (Set.fromList [input]) f
+    where f traces = traces ⊔ Set.fromList [     | Looping prefix loop <- Set.toList traces,
+                                                   let (n,m)  = head loop
+                                                   
+                                                         Finished _ _ -> trace
+                                                         
                                         -- Set.fromList [
                                         --     trace'Obs
                                         --   | choice' <- allChoices graph choice0 (condNodes ∖ s),
@@ -177,17 +200,57 @@ infinitelyDelays graph input@(Input { startNode, choice }) s =
       --                  Finite prefix -> Set.fromList [
       Looping prefix loop ->  Set.fromList [
                                             trace'Obs
-                                          | choice' <- allChoices graph choice0 (condNodes ∖ (s ∪ (Set.fromList $ fmap fst $ prefix))),
+                                          | choice' <- allChoices graph choice0 allowedToChange,
                                             let trace' = runInput graph (Input { startNode = startNode , choice = choice' }),
                                             let trace'Obs = observable s trace',
-                                            -- isTracePrefixOf traceObs trace'Obs,
+                                            isTracePrefixOf traceObs trace'Obs,
                                             True
                                         ]
-        where  choice0 = restrict choice (s ∪ (Set.fromList $ fmap fst $ prefix))
+        where allowedToChange = condNodes ∖ s
+              -- allowedToChange = condNodes ∖  (s ∪ (Set.fromList $ fmap fst $ prefix) )
+              --allowedToChange = condNodes ∩ ((Set.fromList $ fmap fst $ loop) ∖ s)
+              -- allowedToChange = ((condNodes ∩ (Set.fromList $ fmap fst $ loop)) ∖ (s {- ∪ (Set.fromList $ fmap fst $ prefix) -})),
+              choice0 = restrict choice (condNodes ∖ allowedToChange)
   where condNodes = Set.fromList [ c | c <- nodes graph, let succs = suc graph c, length succs  > 1]
         trace = runInput graph input
         traceObs = observable s trace
         -- choice0 = restrict choice s
+
+
+-- infinitelyDelays :: Graph gr => gr a b -> Input -> Set Node -> Set Trace
+-- infinitelyDelays graph input@(Input { startNode, choice }) s =
+--                                         -- Set.fromList [
+--                                         --     trace'Obs
+--                                         --   | choice' <- allChoices graph choice0 (condNodes ∖ s),
+--                                         --     let trace' = runInput graph (Input { startNode = startNode , choice = choice' }),
+--                                         --     let trace'Obs = observable s trace',
+--                                         --     True
+--                                         --     -- isTracePrefixOf traceObs trace'Obs
+--                                         -- ]
+
+--     case trace of
+--       Finite _     -> undefined
+--       Finished _ _ -> Set.fromList [traceObs]
+--       -- Looping _ _ -> case traceObs of
+--       --                  Looping _ _   -> Set.fromList [traceObs]
+--       --                  Finite prefix -> Set.fromList [
+--       Looping prefix loop ->  Set.fromList [
+--                                             trace'Obs
+--                                           | choice' <- allChoices graph choice0 allowedToChange,
+--                                             let trace' = runInput graph (Input { startNode = startNode , choice = choice' }),
+--                                             let trace'Obs = observable s trace',
+--                                             isTracePrefixOf traceObs trace'Obs,
+--                                             True
+--                                         ]
+--         where allowedToChange = condNodes ∖ s
+--               -- allowedToChange = condNodes ∖  (s ∪ (Set.fromList $ fmap fst $ prefix) )
+--               --allowedToChange = condNodes ∩ ((Set.fromList $ fmap fst $ loop) ∖ s)
+--               -- allowedToChange = ((condNodes ∩ (Set.fromList $ fmap fst $ loop)) ∖ (s {- ∪ (Set.fromList $ fmap fst $ prefix) -})),
+--               choice0 = restrict choice (condNodes ∖ allowedToChange)
+--   where condNodes = Set.fromList [ c | c <- nodes graph, let succs = suc graph c, length succs  > 1]
+--         trace = runInput graph input
+--         traceObs = observable s trace
+--         -- choice0 = restrict choice s
 
 
 

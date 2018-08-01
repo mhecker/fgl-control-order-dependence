@@ -216,11 +216,13 @@ isLowEquivalentFor infinitelyDelays runInput observable input  = \input' ->
     let trace'    = runInput input' 
         trace'Obs = observable trace'
         continuations' = infinitelyDelays input'
+        ascending' = isAscending continuations'
     in   (traceObs == trace'Obs)
-       ∨ (not $ Set.null $ continuations ∩ continuations')
+       ∨ ( ascending   ∧   ascending'   ∧ (not $ Set.null $ continuations ∩ continuations'))
   where trace     = runInput input
         traceObs  = observable trace
         continuations  = infinitelyDelays input
+        ascending  = isAscending continuations
 
 
 

@@ -66,7 +66,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
-import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices)
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
@@ -2306,28 +2306,19 @@ delayProps = testGroup "(concerning inifinte delay)" [
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
-                        runInput = InfiniteDelay.runInput g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         s = NTICD.nticdMyWodFastSlice g m1 m2
                         infinitelyDelays = InfiniteDelay.infinitelyDelays g s
+                        runInput         = InfiniteDelay.runInput         g
+                        observable       = InfiniteDelay.observable         s
                         differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice
-                                   trace = runInput input
-                                   continuations = infinitelyDelays input
+                                   isLowEquivalent = InfiniteDelay.isLowEquivalentFor infinitelyDelays runInput observable input
                                in (∃) choices' (\choice' ->
                                     let input' = InfiniteDelay.Input startNode choice'
-                                        trace' = runInput input'
-                                        continuations' = infinitelyDelays input'
-                                        different =
-                                           assert (InfiniteDelay.observable s trace  ∈ continuations ) $
-                                           assert (InfiniteDelay.observable s trace' ∈ continuations') $                                          
-                                           --   (      InfiniteDelay.observable s trace /= InfiniteDelay.observable s trace')
-                                           -- ∧ (not $ InfiniteDelay.observable s trace  ∈ continuations')
-                                           -- ∧ (not $ InfiniteDelay.observable s trace' ∈ continuations )
-                                             (      InfiniteDelay.observable s trace /= InfiniteDelay.observable s trace')
-                                           ∧ (Set.null $ continuations ∩ continuations')
+                                        different = not $ isLowEquivalent input'
                                      in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
                                         different
                                   )
@@ -2338,32 +2329,23 @@ delayProps = testGroup "(concerning inifinte delay)" [
     testPropertySized 30 "nticdMyWodFastSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
-                        runInput = InfiniteDelay.runInput g
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         s = NTICD.nticdMyWodFastSlice g m1 m2
+                        runInput         = InfiniteDelay.runInput g
                     in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
                              infinitelyDelays = InfiniteDelay.infinitelyDelays g s'
+                             observable       = InfiniteDelay.observable         s'
                              differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode ->
                                let input = InfiniteDelay.Input startNode choice
-                                   trace = runInput input
-                                   continuations = infinitelyDelays input
+                                   isLowEquivalent = InfiniteDelay.isLowEquivalentFor infinitelyDelays runInput observable input
                                in (∃) choices' (\choice' ->
                                     let input' = InfiniteDelay.Input startNode choice'
-                                        trace' = runInput input'
-                                        continuations' = infinitelyDelays input'
-                                        different =
-                                           assert (InfiniteDelay.observable s' trace  ∈ continuations ) $
-                                           assert (InfiniteDelay.observable s' trace' ∈ continuations') $
-                                           --   (      InfiniteDelay.observable s' trace /= InfiniteDelay.observable s' trace')
-                                           -- ∧ (not $ InfiniteDelay.observable s' trace  ∈ continuations')
-                                           -- ∧ (not $ InfiniteDelay.observable s' trace' ∈ continuations )
-                                             (      InfiniteDelay.observable s' trace /= InfiniteDelay.observable s' trace')
-                                           ∧ (Set.null $ continuations ∩ continuations')
+                                        different = not $ isLowEquivalent input'
                                     in different
                                   )
                                ))
@@ -2387,12 +2369,8 @@ delayProps = testGroup "(concerning inifinte delay)" [
                              continuations = infinitelyDelays input
                          in -- traceShow (length startNodes, length choices, length continuations, startNode) $
                             -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
-                            (∀) continuations (\continuation ->  (∀) continuations (\continuation' ->
-                            let result = 
-                                   continuation  `InfiniteDelay.isTracePrefixOf` continuation'
-                                 ∨ continuation' `InfiniteDelay.isTracePrefixOf` continuation
+                            let result = InfiniteDelay.isAscending continuations
                             in (if result then id else traceShow (m1, m2, input, g, result)) $ result
-                            ))
                        ))
   ]
 delayTests = testGroup "(concerning  inifinite delay)" $

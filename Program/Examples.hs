@@ -3089,6 +3089,32 @@ isinkdomTwoFingerExample9 = mkGraph [(-15,()),(0,()),(4,()),(6,()),(9,()),(10,()
 imdomTwoFingerExample1 :: DynGraph gr => gr () ()
 imdomTwoFingerExample1 = mkGraph [(-29,()),(-13,()),(-12,())] [(-29,-13,()),(-29,-13,()),(-13,-29,()),(-13,-29,()),(-12,-29,()),(-12,-13,())]
 
+
+infinitelyDelaysExamle1 :: DynGraph gr => gr () ()
+infinitelyDelaysExamle1 = mkGraph [(-11,()),(-6,()),(4,()),(6,()),(10,()),(11,())] [(-11,-11,()),(-11,10,()),(-6,10,()),(4,-11,()),(4,-6,()),(6,-11,()),(6,-6,()),(6,6,()),(10,4,()),(10,6,()),(11,-11,()),(11,-6,()),(11,4,()),(11,6,()),(11,10,())]
+  where m1 = 11
+        m2 = 10
+        startNode = 6
+        choice  = Map.fromList [(-11,-11),(4,-11),(6,-11),(10,4),(11,-11)]
+        choice' = Map.fromList [(-11,-11),(4,-11),(6, -6),(10,4),(11,-11)]
+
+
+infinitelyDelaysExamle2 :: DynGraph gr => gr () ()
+infinitelyDelaysExamle2 = mkGraph [(-22,()),(-3,()),(5,()),(6,())] [(-22,-3,()),(-22,5,()),(-3,5,()),(5,-22,()),(5,5,()),(6,-22,())]
+  where m1 = 6
+        m2 = 3
+        startNode = -22
+        choice  = Map.fromList  [(-22,-3),(-3,5),(5,5),(6,-22)]
+        choice' = Map.fromList  [(-22, 5),(-3,5),(5,5),(6,-22)]
+
+
+infinitelyDelaysExamle3 :: DynGraph gr => gr () ()
+infinitelyDelaysExamle3 = mkGraph [(-15,()),(-7,()),(8,()),(-2,()),(3,()),(6,()),(9,()),(10,())] [(-15,8,()),(-15,9,()),(-7,-7,()),(-7,8,()),(-7,3,()),(-7,9,()),(8,-15,()),(8,6,()),(8,9,()),(-2,-7,()),(6,-2,()),(6,3,()),(9,6,()),(9,9,()),(9,9,()),(10,-15,()),(10,-7,()),(10,8,()),(10,-2,()),(10,3,()),(10,6,()),(10,9,())]
+  where  m1 = -2
+         m2 = 6
+         startNode = -2
+         choice  = Map.fromList [(-15,9),(-7,8),(8,-15),(6,-2),(9,9),(10,-2)]
+
 -- This example demonstrated an error in a former version of dodFast.
 dodSuperFastCounterExample :: DynGraph gr => gr () ()
 dodSuperFastCounterExample = mkGraph [(-82,()),(-81,()),(-74,()),(-28,()),(-6,()),(15,()),(23,()),(47,()),(66,())] [(-82,23,()),(-81,-74,()),(-81,15,()),(-74,-82,()),(-74,47,()),(-28,-81,()),(-28,47,()),(-6,15,()),(15,47,()),(15,47,()),(23,15,()),(47,-82,()),(47,-6,()),(66,-82,()),(66,-81,()),(66,-74,()),(66,-28,()),(66,-6,()),(66,15,()),(66,23,()),(66,47,())]
@@ -3297,6 +3323,13 @@ interestingIsinkdomTwoFinger = [
 interestingImdomTwoFinger :: [(String, Gr () ())]
 interestingImdomTwoFinger = [
               $(withName ' imdomTwoFingerExample1)
+            ]
+
+interestingInfinitelyDelays :: [(String, Gr () ())]
+interestingInfinitelyDelays = [
+              $(withName ' infinitelyDelaysExamle1),
+              $(withName ' infinitelyDelaysExamle2),
+              $(withName ' infinitelyDelaysExamle3)
             ]
 
 

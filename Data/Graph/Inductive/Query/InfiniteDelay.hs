@@ -175,7 +175,7 @@ isTracePrefixOf (Finite trace)   (Finished trace' n')    =
     $ List.isPrefixOf trace trace'
 isTracePrefixOf (Finite trace)   (Looping prefix loop) =
       require (noLoop prefix) 
-    $ List.isPrefixOf trace (prefix ++ loop)
+    $ List.isPrefixOf trace (prefix ++ (cycle loop))
 isTracePrefixOf (Looping prefix loop) (Looping prefix' loop') =
       require (noLoop prefix )
     $ require (noLoop prefix')

@@ -2284,6 +2284,24 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
 
 
 delayProps = testGroup "(concerning inifinte delay)" [
+    testPropertySized 25 "infinitelyDelays trace contains trace"
+                $ \(ARBITRARY(generatedGraph)) seed seed' ->
+                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
+                        n = toInteger $ length $ nodes g
+                        runInput = InfiniteDelay.runInput g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        [nSamples] = fmap toInteger $ sampleFrom seed  1        [0.. 4 * (length $ nodes g)]
+                        s          =   Set.fromList $ sampleFrom seed' nSamples (nodes g)
+                        infinitelyDelays = InfiniteDelay.infinitelyDelays g s
+                    in (∀) choices  (\choice ->  (∀) (nodes g) (\startNode -> 
+                         let input = InfiniteDelay.Input startNode choice
+                             trace    = runInput input
+                             traceObs = InfiniteDelay.observable s trace
+                             continuations = infinitelyDelays input
+                         in    traceObs ∈ continuations
+                            ∧ (∀) continuations ( \continuation -> traceObs `InfiniteDelay.isTracePrefixOf` continuation)
+                       )),
     testPropertySized 25 "nticdMyWodFastSlice  is sound"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
@@ -2314,10 +2332,10 @@ delayProps = testGroup "(concerning inifinte delay)" [
                                         different
                                   )
                                ))
-                    in traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
                        (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
                        not differentobservation,
-    testPropertySized 50 "nticdMyWodFastSlice  is minimal"
+    testPropertySized 30 "nticdMyWodFastSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         runInput = InfiniteDelay.runInput g
@@ -2326,7 +2344,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         s = NTICD.nticdMyWodFastSlice g m1 m2
-                    in traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
                              infinitelyDelays = InfiniteDelay.infinitelyDelays g s'
@@ -2353,66 +2371,29 @@ delayProps = testGroup "(concerning inifinte delay)" [
                             -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
                             (if differentobservation then id else traceShow (m1, m2, n, differentobservation)) $
                             differentobservation
-                       )
-    -- testProperty  "nticdMyWodFastSlice  is minimal"
-    --             $ \(ARBITRARY(generatedGraph)) seed->
-    --                 let g = generatedGraph
-    --                     n = toInteger $ length $ nodes g
-    --                     condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
-    --                     choices    = InfiniteDelay.allChoices g Map.empty condNodes
-    --                     [m1,m2]    = sampleFrom seed 2 (nodes g)
-    --                     s = NTICD.nticdMyWodFastSlice g m1 m2
-    --                 in traceShow (length $ nodes g, Set.size s) $
-    --                    (∀) s (\n -> n == m1  ∨  n == m2  ∨
-    --                      let s' = Set.delete n s
-    --                            morethanonecontinuation =  (∃) (nodes g) (\startNode -> (∃) choices (\choice ->
-    --                            let input = InfiniteDelay.Input startNode choice
-    --                                continuations = InfiniteDelay.infinitelyDelays g input s'
-    --                            in  not $ (∀) continuations (\continuation ->  (∀) continuations (\continuation' ->
-    --                                             continuation  `InfiniteDelay.isTracePrefixOf` continuation'
-    --                                           ∨ continuation' `InfiniteDelay.isTracePrefixOf` continuation
-    --                                      ))
-    --                            ))
-    --                      in -- traceShow (length startNodes, length choices, length continuations, startNode) $
-    --                         -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
-    --                         (if morethanonecontinuation then id else traceShow (m1, m2, n, morethanonecontinuation)) $
-    --                         morethanonecontinuation
-    --                    )
-    -- testProperty  "inifiniteDelays  is unique w.r.t nticdMyWodFastSlice"
-    --             $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
-    --                 let g = generatedGraph
-    --                     n = toInteger $ length $ nodes g
-    --                     startNodes =               sampleFrom       seed1 (n `div` 10 + 1) (nodes g)
-    --                     choices    = InfiniteDelay.sampleChoicesFor seed2 (n `div`  2 + 1)        g
-    --                     [m1,m2]    =               sampleFrom       seed3                2 (nodes g)
-    --                     s = NTICD.nticdMyWodFastSlice g m1 m2
-    --                 in traceShow ("Graph: ", length $ nodes g) $
-    --                    (∀) choices (\choice -> (∀) startNodes (\startNode  -> 
-    --                      let input = InfiniteDelay.Input startNode choice
-    --                          continuations = InfiniteDelay.infinitelyDelays g input s
-    --                      in  traceShow (length startNodes, length choices, length continuations, startNode) $
-    --                         -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
-    --                         (∀) continuations (\continuation ->  (∀) continuations (\continuation' ->
-    --                         let result = 
-    --                                continuation  `InfiniteDelay.isTracePrefixOf` continuation'
-    --                              ∨ continuation' `InfiniteDelay.isTracePrefixOf` continuation
-    --                         in (if result then id else traceShow (m1, m2, input, g, result)) $ result
-    --                         ))
-    --                    ))
-    -- testProperty  "inifiniteDelay  ~= isinkdom"
-    --             $ \(ARBITRARY(generatedGraph)) ->
-    --                 let g = generatedGraph
-    --                     n = toInteger $ length $ nodes g
-    --                     delayed = InfiniteDelay.delayedInfinitely g
-    --                     traces = fmap (fmap (\(n,m,_) -> n)) $ InfiniteDelay.sampleLoopPathsFor 42 100 g
-    --                     isinkdom = NTICD.isinkdomOfTwoFinger8 g
-    --                 in (∀) traces (\trace ->
-    --                      let traceSet = Set.fromList trace
-    --                          delayedNodes = Set.fromList [ n | n <- nodes g, delayed trace n]
-    --                          reachable    = Set.fromList [ n | n <- Set.toList $ reachableFrom isinkdom traceSet Set.empty, not $ n ∈ traceSet ]
-    --                      in (if delayedNodes == reachable then id else traceShow (trace, delayedNodes ∖ reachable, reachable ∖ delayedNodes)) $
-    --                         delayedNodes == reachable
-    --                 )
+                       ),
+    testProperty "inifiniteDelays  is unique w.r.t nticdMyWodFastSlice"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
+                    let g = generatedGraph
+                        n = toInteger $ length $ nodes g
+                        startNodes =               sampleFrom       seed1 (n `div` 10 + 1) (nodes g)
+                        choices    = InfiniteDelay.sampleChoicesFor seed2 (n `div`  2 + 1)        g
+                        [m1,m2]    =               sampleFrom       seed3                2 (nodes g)
+                        s = NTICD.nticdMyWodFastSlice g m1 m2
+                        infinitelyDelays = InfiniteDelay.infinitelyDelays g s
+                    in -- traceShow ("Graph: ", length $ nodes g) $
+                       (∀) choices (\choice -> (∀) startNodes (\startNode  -> 
+                         let input = InfiniteDelay.Input startNode choice
+                             continuations = infinitelyDelays input
+                         in -- traceShow (length startNodes, length choices, length continuations, startNode) $
+                            -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
+                            (∀) continuations (\continuation ->  (∀) continuations (\continuation' ->
+                            let result = 
+                                   continuation  `InfiniteDelay.isTracePrefixOf` continuation'
+                                 ∨ continuation' `InfiniteDelay.isTracePrefixOf` continuation
+                            in (if result then id else traceShow (m1, m2, input, g, result)) $ result
+                            ))
+                       ))
   ]
 delayTests = testGroup "(concerning  inifinite delay)" $
   []

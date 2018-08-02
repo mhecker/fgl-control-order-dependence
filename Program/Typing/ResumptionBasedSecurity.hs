@@ -99,13 +99,21 @@ for2ResumptionFor code mainThread =  f2f [mainThread] False [] (code ! mainThrea
           where isSpawn (Program.For.SpawnThread _) = True
                 isSpawn _                           = False
         f2f spawnString inLoop []     (Program.For.ForC x c0)
-            | x == 1    = f2f spawnString inLoop [] c0
-            | x >  1    = f2f spawnString inLoop [(Program.For.ForC (x-1) c0)] c0
-            | otherwise = return Skip
+            | hasSpawn c0  ∧  x == 1    = f2f spawnString inLoop [] c0
+            | hasSpawn c0  ∧  x >  1    = f2f spawnString inLoop [(Program.For.ForC (x-1) c0)] c0
+            | hasSpawn c0               = return Skip
+            | otherwise                 = do
+                    c0' <-f2f spawnString True [] c0
+                    return $ ForC x c0'
+
         f2f spawnString inLoop (c:cs) (Program.For.ForC x c0)
-            | x == 1    = f2f spawnString inLoop (c:cs) c0
-            | x >  1    = f2f spawnString inLoop ((Program.For.ForC (x-1) c0):c:cs) c0
-            | otherwise = f2f spawnString inLoop cs c
+            | hasSpawn c0  ∧  x == 1    = f2f spawnString inLoop (c:cs) c0
+            | hasSpawn c0  ∧  x >  1    = f2f spawnString inLoop ((Program.For.ForC (x-1) c0):c:cs) c0
+            | hasSpawn c0               = f2f spawnString inLoop cs c
+            | otherwise                 = do
+                    c0' <- f2f spawnString True [] c0
+                    c'  <- f2f spawnString inLoop cs c
+                    return $ ForC x c0' `Seq` c'
         f2f spawnString inLoop []     (Program.For.ForV x c0) = do
                     c0' <-f2f spawnString True [] c0
                     return $ ForV x c0'
@@ -141,7 +149,7 @@ subCommands c@(Par  cs)     = c:(foldMap subCommands cs)
 subCommands c@(ParT cs)     = c:(foldMap subCommands cs)
 subCommands c = [c]
 
-
+hasSpawn c = not $ null $ [ () | Program.For.SpawnThread _ <- Program.For.subCommands c]
 
 
 exampleInitialize =
@@ -529,19 +537,15 @@ varDependenciesOf _                var obs c@(While e d) deps =  disc ++ siso
 
 
 
-varDependenciesOf Discr            var obs (ForC _ d) deps = do
+varDependenciesOf Discr            var obs   (ForC _ d) deps = do
     (_, deps') <- varDependenciesOf Discr var obs d deps
     return (Discr, deps')
-varDependenciesOf Siso             var obs (ForC _ d) deps = do
+varDependenciesOf Siso             var obs   (ForC _ d) deps = do
     (_, deps') <- varDependenciesOf Siso var obs d deps
     return (Siso, deps')
-varDependenciesOf maximalCriterion var obs (ForC _ d) deps = left ++ right
-  where left = do
-                  (_, deps') <- varDependenciesOf Siso  var obs d deps
-                  return (Siso, deps')
-        right = do
-                  (_, deps') <- varDependenciesOf Discr var obs d deps
-                  return (Siso, deps')
+varDependenciesOf maximalCriterion var obs c@(ForC _ d) deps =  disc ++ siso
+  where disc = varDependenciesOf Discr var obs c deps
+        siso = varDependenciesOf Siso  var obs c deps
 
 
 varDependenciesOf Discr            var obs (Seq c1 c2) deps = do

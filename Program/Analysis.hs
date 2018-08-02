@@ -160,9 +160,9 @@ timingClassificationAtUses p@(Program { tcfg, observability }) =
         pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomMohrEtAl p
 -- timingClassificationAtUsesNodes p@(Program { tcfg, observability }) =
 --     timingClassificationAtUsesUsing pc p clInit cltInit
---   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes tcfg ]
+--   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
 --         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
---         pc@(PrecomputedResults { mhp }) = precomputedUsing idomMohrEtAl p
+--         pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomMohrEtAl p
 timingClassificationAtUsesUsing
     (PrecomputedResults { cpdg, idom, mhp, chop, timingdg })
     (Program { tcfg })

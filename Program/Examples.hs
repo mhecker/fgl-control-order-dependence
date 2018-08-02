@@ -3,7 +3,7 @@ module Program.Examples where
 
 
 import Program
-import Program.Generator (Generated(..), GeneratedProgram(..), toProgram)
+import Program.Generator (Generated(..), GeneratedProgram(..), IntraGeneratedProgram(..), toProgram)
 import Program.For
 import Program.Defaults
 
@@ -3040,6 +3040,42 @@ summaryExample14 = toProgram $ GeneratedProgram (Map.fromList [(1,"main"),(2,"th
 
 summaryExample15 :: Program Gr
 summaryExample15 = toProgram $ GeneratedProgram (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")]) (Map.fromList [("bar",Generated (ForC 1 (ForV (Global "a") (Seq (Seq (CallProcedure "bar") (ReadFromChannel (Global "z") "lowIn1")) (Seq (ReadFromChannel (Global "y") "lowIn1") Skip)))) undefined undefined undefined),("baz",Generated (Seq (Seq (ForC 2 (If CTrue (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "a") "lowIn1"))) (Seq (If CFalse Skip (Ass (Global "c") (Val 42))) (Seq (CallProcedure "procF") (ReadFromChannel (Global "a") "lowIn1")))) (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (SpawnThread 2)) (Seq (ReadFromChannel (Global "a") "lowIn1") (CallProcedure "procH"))) (Seq (Seq (ReadFromChannel (Global "a") "lowIn1") (ReadFromChannel (Global "z") "stdIn")) (ForV (Global "z") (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "a")))))))) undefined undefined undefined),("foo",Generated (If CTrue (Seq (If CFalse (ForC 2 (PrintToChannel (Val (-1)) "stdOut")) (ForC 1 Skip)) (Seq (Seq (CallProcedure "baz") (PrintToChannel (Val 0) "stdOut")) (Seq (CallProcedure "procF") (Ass (Global "c") (Val 17))))) (Seq (Seq (If CTrue (ReadFromChannel (Global "a") "stdIn") (Ass (Global "a") (Val 0))) (Seq Skip (Ass (Global "z") (Times (Var (Global "a")) (Var (Global "a")))))) (Seq (ForV (Global "z") (ReadFromChannel (Global "c") "lowIn1")) (Seq (CallProcedure "procF") (CallProcedure "procF"))))) undefined undefined undefined),("main",Generated (If CFalse (Seq (Seq (Seq Skip (PrintToChannel (Val 1) "stdOut")) (ForC 2 (PrintToChannel (Val 0) "stdOut"))) (ForC 2 (Seq (Ass (Global "z") (Val 1)) (SpawnThread 3)))) (If CTrue (Seq (ForC 2 (CallProcedure "foo")) (Seq Skip (Ass (Global "c") (Val (-1))))) (Seq (Seq (Ass (Global "c") (Val (-1))) Skip) (Seq (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") Skip)))) undefined undefined undefined),("procF",Generated (Seq (Seq (ForC 1 (Seq (ReadFromChannel (Global "b") "stdIn") (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut"))) (Seq (Seq (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut") (Ass (Global "b") (Times (Var (Global "b")) (Var (Global "b"))))) (ForV (Global "b") (ReadFromChannel (Global "y") "lowIn1")))) (Seq (ForV (Global "b") (If (Leq (Val 0) (Times (Var (Global "b")) (Var (Global "b")))) (Ass (Global "c") (Times (Var (Global "b")) (Var (Global "b")))) (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut"))) (ForV (Global "b") (Seq (PrintToChannel (Times (Var (Global "b")) (Var (Global "b"))) "stdOut") (ReadFromChannel (Global "a") "lowIn1"))))) undefined undefined undefined),("procG",Generated (Seq (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (ForC 1 (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut"))) (ForC 1 (ForV (Global "a") (CallProcedure "bar")))) (Seq (ForC 1 (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (ReadFromChannel (Global "b") "lowIn1") (Ass (Global "c") (Times (Var (Global "a")) (Var (Global "a")))))) (ForC 2 (Seq (Ass (Global "y") (Times (Var (Global "a")) (Var (Global "a")))) (ReadFromChannel (Global "y") "stdIn"))))) undefined undefined undefined),("procH",Generated (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (ForC 1 (CallProcedure "procH")) (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (CallProcedure "procG") (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut"))) (Seq (ForV (Global "a") (ReadFromChannel (Global "b") "lowIn1")) (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (ReadFromChannel (Global "z") "lowIn1")))) (ForV (Global "a") (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")) (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a")))) (Ass (Global "b") (Times (Var (Global "a")) (Var (Global "a")))) (CallProcedure "procH"))))) undefined undefined undefined),("thread2",Generated (ForV (Global "a") (Seq (ForC 1 (Seq (Ass (Global "c") (Times (Var (Global "a")) (Var (Global "a")))) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut"))) (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "c")))) (ForC 2 (Ass (Global "x") (Times (Var (Global "c")) (Var (Global "c"))))) (ForV (Global "c") (ReadFromChannel (Global "y") "lowIn1"))))) undefined undefined undefined),("thread3",Generated (ForV (Global "z") (Seq (Seq (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "z")))) (ReadFromChannel (Global "y") "stdIn") (ReadFromChannel (Global "b") "lowIn1")) (Seq (ReadFromChannel (Global "b") "stdIn") (Ass (Global "a") (Times (Var (Global "b")) (Var (Global "z")))))) (ForV (Global "b") (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "b")))) Skip (ReadFromChannel (Global "c") "stdIn"))))) undefined undefined undefined)])
+
+
+
+interestingResumtionVsTimingAtUsed =
+  IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")] )
+    (Map.fromList [("main",Generated (Seq (If CTrue
+                                               (Seq (ReadFromChannel (Global "z") "stdIn") Skip)
+                                           {- else -}
+                                               (If CFalse
+                                                   (Ass (Global "y") (Val 42))
+                                               {- else -}
+                                                   (PrintToChannel (Val 42) "stdOut")))
+                                          (If CFalse
+                                               (Seq (PrintToChannel (Val 0) "stdOut")
+                                                    (SpawnThread 3))
+                                          {- else -}
+                                               (ForC 2 (SpawnThread 2))))
+                    undefined undefined undefined),
+                   ("thread2",Generated (ForC 1
+                                          (If CTrue
+                                              (Seq (Seq (ReadFromChannel (Global "y") "lowIn1") Skip)
+                                                   (Seq (PrintToChannel (Times (Var (Global "y")) (Var (Global "y"))) "stdOut")
+                                                        (Ass (Global "a") (Times (Var (Global "y")) (Var (Global "y"))))))
+                                          {- else -}
+                                              (Seq (Seq (PrintToChannel (Val 42) "stdOut")
+                                                        (ReadFromChannel (Global "a") "stdIn"))
+                                                        (If (Leq (Val 0) (Times (Var (Global "a")) (Var (Global "a"))))
+                                                            (Ass (Global "a") (Times (Var (Global "a")) (Var (Global "a"))))
+                                                        {- else -}
+                                                            (ReadFromChannel (Global "b") "stdIn")))))
+                    undefined undefined undefined),
+                   ("thread3",Generated (Seq (Seq (Ass (Global "c") (Val 17))
+                                             (Ass (Global "z") (Times (Var (Global "c")) (Var (Global "c")))))
+                                             (ForC 1 (Ass (Global "x")
+                                                 (Times (Var (Global "c")) (Var (Global "c")))))) undefined undefined undefined)]  )
 
 
 exampleTimingDepInterestingTwoFinger :: DynGraph gr => gr () ()

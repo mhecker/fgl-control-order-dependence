@@ -52,7 +52,7 @@ import Util(restrict)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
-import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter)
+import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs)
 import Data.Graph.Inductive.Query.Dominators (iDom)
@@ -69,8 +69,7 @@ import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTrac
 import Program.Examples
 import Program.Analysis hiding (timing)
 import Program.CDom
-import Program.Generator (toProgram, GeneratedProgram)
-
+import Program.Generator (toProgram, GeneratedProgram, SimpleCFG(..))
 import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive (Node, subgraph)
@@ -81,9 +80,9 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     isinkdomOfTwoFinger8,
     imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
     controlSinks,
-    myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay,
+    myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay, myWodFastSlice,
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
-    wodTEIL',
+    wodTEIL', wodTEILSlice,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF4WithReachCheckGfp,
@@ -442,6 +441,16 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "myWodSlice g' == wodTEILSlice g for CFG-shaped graphs g (with exit->entry edge: g')"
+    $ \(SIMPLECFG(g)) ->
+                let [entry] = [ n | n <- nodes g, pre g n == [] ]
+                    [exit]  = [ n | n <- nodes g, suc g n == [] ]
+                    g' = insEdge (exit, entry, ()) g
+                    mywodslicer   = NTICD.myWodFastSlice g'
+                    wodteilslicer = NTICD.wodTEILSlice   g
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                      mywodslicer m1 m2 == wodteilslicer m1 m2
+                   )),
     testProperty  "wodTEIL' ∩ sinks = myWod"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

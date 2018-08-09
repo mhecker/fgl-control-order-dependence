@@ -48,6 +48,8 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map ( Map, (!) )
 
+import Util(restrict)
+
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
 import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter)
@@ -81,6 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     controlSinks,
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay,
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
+    wodTEIL',
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF4WithReachCheckGfp,
@@ -439,6 +442,14 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty  "wodTEIL' ∩ sinks = myWod"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        mywod    = Map.filter (not . Set.null) $ NTICD.myWodFast g
+                        wodTEIL' = Map.filter (not . Set.null) $ NTICD.wodTEIL' g
+                        sinks    = NTICD.controlSinks g
+                        sinkNodes = (∐) [ Set.fromList [(m1,m2) | m1 <- sink, m2 <- sink, m1 /= m2] | sink <- sinks ]
+                    in restrict wodTEIL' sinkNodes  == mywod,
     testProperty  "wodFast ⊑ myWodFast"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

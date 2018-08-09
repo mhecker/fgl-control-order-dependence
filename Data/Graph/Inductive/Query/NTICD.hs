@@ -50,7 +50,7 @@ import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dependence
-import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs)
+import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, reachable)
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -2299,6 +2299,29 @@ fMustNoReachCheck graph condNodes reachable nextCond toNextCond s =
 
 
 
+fMustBefore :: DynGraph gr => SmmnFunctionalGen gr a b
+fMustBefore graph condNodes reachable nextCond toNextCond s = 
+                   Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- suc graph p,
+                                                                            m1 ∊ (reachable x),
+                                                                      not $ m2 ∊ (reachable x)
+                                                          ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes]
+                ⊔ Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- suc graph p,
+                                                                      let toNxtCondX = toNextCond x,
+                                                                      m1 ∊ toNxtCondX,
+                                                                      not $ m2 ∊ (m1 : (takeWhile (/= m1) $ reverse toNxtCondX))
+                                                          ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes]
+                ⊔ Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- (suc graph p),
+                                                                     Just n <- [nextCond x], 
+                                                                     let toNxtCondX = toNextCond x,
+                                                                     not $ m2 ∊ toNxtCondX,
+                                                                     m1 ∊ (reachable x),
+                                                                     s ! (m1,m2,n) ⊇ Set.fromList [ (n, y) | y <- suc graph n, m2 ∊ (reachable y) ]
+                                               ]
+                                  ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
+
+
 
 fMay :: DynGraph gr => SmmnFunctionalGen gr a b
 fMay graph condNodes reachable nextCond toNextCond s = 
@@ -2401,7 +2424,12 @@ ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
         d     = dod graph
 
 
-        
+
+nticdSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
+nticdSlice graph =  combinedBackwardSlice graph nticd w
+  where nticd = nticdF3 graph
+        w     = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph ]
+
 nticdMyWodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Node -> Node -> Set Node
 nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = nticdF3 graph
@@ -2447,9 +2475,36 @@ wodTEILSlice graph = combinedBackwardSlice graph empty w
 
 
 wodTEIL :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node,Node))
-wodTEIL graph = xodTEIL smmnMust smmnMay graph
-  where smmnMust = smmnFMustWod graph
+wodTEIL graph = xodTEIL smmnMustBefore smmnMay graph
+  where smmnMustBefore = smmnFMustWodBefore graph
         smmnMay  = smmnFMayWod graph
+
+
+wodTEIL'PDom :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node) (Set Node)
+wodTEIL'PDom graph  = unreachable ⊔  left ⊔ right
+  where left  = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- condNodes, n /= m2, n /= m1, n `elem` (nodes gToM2),
+                                                let (y, relevant) = lcaRKnownM (fmap fromSet isinkdom) n (suc gToM2 n),
+                                                m1 /= y,
+                                                m1 ∈ relevant
+                                            ]) | m2 <- nodes graph,
+                                                 let gM2   = delSuccessorEdges graph m2,
+                                                 let gToM2 = subgraph (reachable m2 (grev gM2)) gM2,
+                                                 let isinkdom = isinkdomOfTwoFinger8 gToM2,
+                                                 m1 <- nodes graph,
+                                                 m2 /= m1
+                ]
+        right = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs left]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+        unreachable = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph, n /= m1, n /= m2,
+                                                                   m1 `elem` reachable n graph,
+                                                                   m2 `elem` reachable n graph,
+                                                                   (∃) (suc graph n) (\x -> (      m1 `elem` reachable x graph)  ∧  (not $ m2 `elem` reachable x graph))
+                                                                 ∨ (∃) (suc graph n) (\x -> (not $ m1 `elem` reachable x graph)  ∧  (      m2 `elem` reachable x graph))
+                                                ]
+                                     ) | m1 <- nodes graph, m2 <- nodes graph, m2 /= m1,
+                                         (not $ m2 `elem`  reachable m1 graph)  ∨  (not $ m1 `elem` reachable m2 graph)
+                    ]
 
 
 
@@ -2480,6 +2535,9 @@ mustBeforeMaximalDef graph =
 
 smmnFMustWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustWod graph = smmnGfp graph fMust
+
+smmnFMustWodBefore :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFMustWodBefore graph = smmnGfp graph fMustBefore
 
 
 smmnFMayWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
@@ -2530,14 +2588,14 @@ xodTEIL:: DynGraph gr => (Map (Node, Node, Node ) (Set (T Node))) ->
                          (Map (Node, Node, Node ) (Set (T Node))) ->
                          gr a b ->
                          Map Node (Set (Node,Node))
-xodTEIL smmnMust smmnMay graph = 
+xodTEIL smmnMustBefore smmnMay graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph,
                                                   m2 <- nodes graph,
                                                   Set.size (smmnMay ! (m1,m2,n)) > 0, n /= m2,
                                                   Set.size (smmnMay ! (m2,m1,n)) > 0, n /= m1,
-                                                  let s12n = smmnMust ! (m1,m2,n),
-                                                  let s21n = smmnMust ! (m2,m1,n),
+                                                  let s12n = smmnMustBefore ! (m1,m2,n),
+                                                  let s21n = smmnMustBefore ! (m2,m1,n),
                                                   Set.size s12n + Set.size s21n > 0
                                       ]
                      ) | n <- condNodes

@@ -80,7 +80,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdMyWodFastSlice,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodDef, wodFast, fMay, fMay',
+    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
@@ -913,6 +913,28 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     m1 = (cycle $ nodes g) !! 32904
                     m2 = (cycle $ nodes g) !! 87653
                 in  mywodsimpleslicer m1 m2 == mywodsimpleslicer' m1 m2,
+    testPropertySized 60 "wodTEIL' == wodTeil'PDom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.wodTEIL'       g ==
+                       NTICD.wodTEIL'PDom   g,
+    testProperty "myWodSlice g' == wodTEILSlice g for CFG-shaped graphs g (with exit->entry edge: g')"
+    $ \(SIMPLECFG(g)) ->
+                let nodeS = Set.fromList $ nodes g
+                    [entry] = [ n | n <- nodes g, pre g n == [] ]
+                    [exit]  = [ n | n <- nodes g, suc g n == [] ]
+                    g' = insEdge (exit, entry, ()) g
+                in (∀) (nodes g) (\n ->  n == entry   ∨   n == exit   ∨
+                     let gN   = delSuccessorEdges g  n
+                         g'N  = delSuccessorEdges g' n
+
+                         gToN = subgraph keep' gN
+                         
+                         isinkdom  = NTICD.isinkdomOfTwoFinger8 gToN
+                         isinkdom' = NTICD.isinkdomOfTwoFinger8 g'N
+                         keep' = reachable n (grev gN)
+                     in  isinkdom == restrict isinkdom' (Set.fromList keep')
+                   ),
     testProperty  "cut and re-validate property in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
@@ -1840,10 +1862,9 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        NTICD.timingSolvedF3dependence g ==
                        NTICD.timingSnSolvedDependence g,
     testProperty  "timmaydomOfLfp            relates to solved timingF3EquationSystem"
-                $ \(ARBITRARY(gg)) ->
+                $ \(ARBITRARY(g)) ->
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
                            timmaydomOfLfp    = NTICD.timmaydomOfLfp g
-                           g = mkGraph [(-3,()),(0,()),(3,()),(4,())] [(0,-3,()),(0,3,()),(3,3,()),(4,-3,()),(4,0,()),(4,3,())] :: Gr () ()
                        in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
                              in (m /= p) →

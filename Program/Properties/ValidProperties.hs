@@ -808,7 +808,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let wodDef   = NTICD.wodDef  g
                         wodFast  = NTICD.wodFast g
                     in  wodDef == wodFast,
-    testProperty  "myWod ⊑ wodTEIL'"
+    testPropertySized 60 "myWod ⊑ wodTEIL'"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         myWod = NTICD.myWod g
@@ -918,7 +918,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let g = generatedGraph
                     in NTICD.wodTEIL'       g ==
                        NTICD.wodTEIL'PDom   g,
-    testProperty "myWodSlice g' == wodTEILSlice g for CFG-shaped graphs g (with exit->entry edge: g')"
+    testPropertySized 20 "dominator trees of (gN|{m |  m ->* n}) from dominator trees of gN in CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(g)) ->
                 let nodeS = Set.fromList $ nodes g
                     [entry] = [ n | n <- nodes g, pre g n == [] ]
@@ -1072,7 +1072,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                     in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc),
-  testProperty  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice"
+  testPropertySized 50  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
@@ -1092,7 +1092,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                               s' = nticdWodSlice m1 m2
                           in s ⊆ s'
                         )),
-  testProperty  "wodTEILSlice is contained in nticdMyWodSlice"
+  testPropertySized 30  "wodTEILSlice is contained in nticdMyWodSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         nticdWodSlice   = NTICD.nticdMyWodSlice g

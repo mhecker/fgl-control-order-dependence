@@ -2258,7 +2258,7 @@ imdomTwoFingercd = xDFcd mDFTwoFinger
 
 
 type SmmnFunctional = Map (Node,Node,Node) (Set (T Node)) -> Map (Node,Node,Node) (Set (T Node))
-type SmmnFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> SmmnFunctional
+type SmmnFunctionalGen gr a b = gr a b -> [Node] -> (Map Node (Set Node)) -> (Node -> Maybe Node) -> (Node -> [Node]) -> SmmnFunctional
 
 
 fMust :: DynGraph gr => SmmnFunctionalGen gr a b
@@ -2274,7 +2274,7 @@ fMust graph condNodes reachable nextCond toNextCond s =
                                                                      (Set.size $ s ! (m1,m2,n)) == (Set.size $ Set.fromList $ suc graph n),
                                                                      let toNxtCondX = toNextCond x,
                                                                      not $ m2 ∊ toNxtCondX,
-                                                                     m1 ∊ (reachable x)
+                                                                     m1 ∈ (reachable ! x)
                                                ]
                                   ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
 
@@ -2302,8 +2302,8 @@ fMustNoReachCheck graph condNodes reachable nextCond toNextCond s =
 fMustBefore :: DynGraph gr => SmmnFunctionalGen gr a b
 fMustBefore graph condNodes reachable nextCond toNextCond s = 
                    Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- suc graph p,
-                                                                            m1 ∊ (reachable x),
-                                                                      not $ m2 ∊ (reachable x)
+                                                                            m1 ∈ (reachable ! x),
+                                                                      not $ m2 ∈ (reachable ! x)
                                                           ]
                                   ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes]
                 ⊔ Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- suc graph p,
@@ -2316,8 +2316,8 @@ fMustBefore graph condNodes reachable nextCond toNextCond s =
                                                                      Just n <- [nextCond x], 
                                                                      let toNxtCondX = toNextCond x,
                                                                      not $ m2 ∊ toNxtCondX,
-                                                                     m1 ∊ (reachable x),
-                                                                     s ! (m1,m2,n) ⊇ Set.fromList [ (n, y) | y <- suc graph n, m2 ∊ (reachable y) ]
+                                                                     m1 ∈ (reachable ! x),
+                                                                     s ! (m1,m2,n) ⊇ Set.fromList [ (n, y) | y <- suc graph n, m2 ∈ (reachable ! y) ]
                                                ]
                                   ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
 
@@ -2333,7 +2333,7 @@ fMay graph condNodes reachable nextCond toNextCond s =
                                   ) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes]
                 ⊔ Map.fromList [ ((m1,m2,p), Set.fromList  [ (p,x) | x <- (suc graph p),
                                                                      let toNxtCondX = toNextCond x,
-                                                                     m1 ∊ (reachable x),
+                                                                     m1 ∈ (reachable ! x),
                                                                      not $ m2 ∊ toNxtCondX,
                                                                      Just n <- [nextCond x], 
                                                                      (Set.size $ s ! (m1,m2,n)) > 0
@@ -2406,7 +2406,7 @@ ffMust graph condNodes reachable nextCond toNextCond dom =
 
 
 combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Node -> Node -> Set Node
-combinedBackwardSlice graph cd od m1 m2 =  (㎲⊒) (Set.fromList [m1, m2]) f
+combinedBackwardSlice graph cd od = \m1 m2 -> (㎲⊒) (Set.fromList [m1, m2]) f
   where f slice = slice
                 ⊔ Set.fromList [ n | m <- Set.toList slice, n <- Set.toList $ cdReversed ! m ]
                 ⊔ Set.fromList [ n | m1 <- Set.toList slice, m2 <- Set.toList slice, m1 /= m2, n <- Set.toList $ od ! (m1,m2) ]
@@ -2563,7 +2563,7 @@ smmnGfp graph f = -- traceShow graph $
   where smnInit =  Map.fromList [ ((m1,m2,p), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
                  ⊔ Map.fromList [ ((m1,m2,p), Set.fromList [ (p,x) | x <- suc graph p]) | m1 <- nodes graph, m2 <- nodes graph, m2 /= m1, p <- condNodes]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        reachable x = suc trncl x
+        reachable = Map.fromList [(x, Set.fromList $ Data.Graph.Inductive.Query.DFS.reachable x graph) | x <- nodes graph] 
         nextCond = nextCondNode graph
         toNextCond = toNextCondNode graph
         trncl = trc graph
@@ -2573,7 +2573,7 @@ smmnLfp graph f = -- traceShow graph $
                   (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCond)
   where smnInit =  Map.fromList [ ((m1,m2,p), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        reachable x = suc trncl x
+        reachable = Map.fromList [(x, Set.fromList $ Data.Graph.Inductive.Query.DFS.reachable x graph) | x <- nodes graph] 
         nextCond = nextCondNode graph
         toNextCond = toNextCondNode graph
         trncl = trc graph

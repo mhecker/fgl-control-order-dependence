@@ -2481,7 +2481,7 @@ wodTEIL graph = xodTEIL smmnMustBefore smmnMay graph
 
 
 wodTEIL'PDom :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node) (Set Node)
-wodTEIL'PDom graph  = unreachable ⊔  left ⊔ right
+wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
   where left  = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- condNodes, n /= m2, n /= m1, n `elem` (nodes gToM2),
                                                 let (y, relevant) = lcaRKnownM (fmap fromSet isinkdom) n (suc gToM2 n),
                                                 m1 /= y,
@@ -2496,15 +2496,15 @@ wodTEIL'PDom graph  = unreachable ⊔  left ⊔ right
         right = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs left]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
-        unreachable = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph, n /= m1, n /= m2,
+        unreachableLeft = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph, n /= m1, n /= m2,
                                                                    m1 `elem` reachable n graph,
                                                                    m2 `elem` reachable n graph,
-                                                                   (∃) (suc graph n) (\x -> (      m1 `elem` reachable x graph)  ∧  (not $ m2 `elem` reachable x graph))
-                                                                 ∨ (∃) (suc graph n) (\x -> (not $ m1 `elem` reachable x graph)  ∧  (      m2 `elem` reachable x graph))
+                                                                   (∃) (suc graph n) (\x -> (not $ m1 `elem` reachable x graph)  ∧  ( m2 `elem` reachable x graph))
                                                 ]
                                      ) | m1 <- nodes graph, m2 <- nodes graph, m2 /= m1,
-                                         (not $ m2 `elem`  reachable m1 graph)  ∨  (not $ m1 `elem` reachable m2 graph)
+                                         not $ m1 `elem` reachable m2 graph
                     ]
+        unreachableRight = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs unreachableLeft]
 
 
 

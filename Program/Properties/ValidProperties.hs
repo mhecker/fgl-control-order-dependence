@@ -863,7 +863,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          mywodslicer     = MyWodSlice.myWodSlice g
                          mywodfastslicer = NTICD.myWodFastSlice g
                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
-                          mywodslicer m1 m2 == mywodfastslicer m1 m2
+                          mywodslicer m1 m2 == mywodfastslicer (Set.fromList [m1, m2])
                         ))
                    ),
     testPropertySized 20 "myWodSlice == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
@@ -874,7 +874,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodslicer     = MyWodSlice.myWodSlice g
                     mywodpdomslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
-                       mywodslicer m1 m2 == mywodpdomslicer m1 m2
+                       mywodslicer m1 m2 == mywodpdomslicer (Set.fromList [m1, m2])
                     )),
      testProperty  "myWodFromSimpleSliceStep cutNPasteIfPossible == myWodFast"
      $ \(ARBITRARY(generatedGraph)) ->
@@ -890,7 +890,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
                     mywodfastslicer   = NTICD.myWodFastSlice g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
-                          mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
+                          mywodsimpleslicer (Set.fromList [m1, m2]) == mywodfastslicer (Set.fromList [m1, m2])
                    )),
     testPropertySized 50  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
@@ -900,7 +900,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
                     mywodpdomslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
-                       mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
+                       mywodsimpleslicer (Set.fromList [m1, m2]) == mywodpdomslicer (Set.fromList [m1, m2])
                     )),
     testProperty  "myWodFromSimpleSliceStep recompute == myWodFast"
      $ \(ARBITRARY(generatedGraph)) ->
@@ -916,7 +916,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
                     mywodfastslicer   = NTICD.myWodFastSlice g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
-                          mywodsimpleslicer m1 m2 == mywodfastslicer m1 m2
+                          mywodsimpleslicer (Set.fromList [m1, m2]) == mywodfastslicer (Set.fromList [m1, m2])
                    )),
     testPropertySized 50  "myWodSliceSimple recompute           == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
@@ -926,7 +926,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
                     mywodpdomslicer = NTICD.myWodFastPDomSimpleHeuristicSlice g
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
-                       mywodsimpleslicer m1 m2 == mywodpdomslicer m1 m2
+                       mywodsimpleslicer (Set.fromList [m1, m2]) == mywodpdomslicer (Set.fromList [m1, m2])
                     )),
     testProperty "myWodSliceSimple recompute           == myWodSliceSimple recomputecutNPasteIfPossible for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
@@ -937,7 +937,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywodsimpleslicer' = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
                     m1 = (cycle $ nodes g) !! 32904
                     m2 = (cycle $ nodes g) !! 87653
-                in  mywodsimpleslicer m1 m2 == mywodsimpleslicer' m1 m2,
+                in  mywodsimpleslicer (Set.fromList [m1, m2]) == mywodsimpleslicer' (Set.fromList [m1, m2]),
     testPropertySized 60 "wodTEIL' == wodTeil'PDom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -1103,7 +1103,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice           g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          wodTEILSlice m1 m2 ⊆ nticdWodSlice m1 m2
+                          wodTEILSlice (Set.fromList [m1, m2]) ⊆ nticdWodSlice (Set.fromList [m1, m2])
                         )),
   testPropertySized 30  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice for CFG-shaped graphs with exit->entry edge " 
     $ \(SIMPLECFG(generatedGraph)) ->
@@ -1113,8 +1113,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice           g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          let s  = wodTEILSlice m1 m2
-                              s' = nticdWodSlice m1 m2
+                          let s  = wodTEILSlice (Set.fromList [m1, m2])
+                              s' = nticdWodSlice (Set.fromList [m1, m2])
                           in s ⊆ s'
                         )),
   testPropertySized 30  "wodTEILSlice is contained in nticdMyWodSlice"
@@ -1123,7 +1123,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         nticdWodSlice   = NTICD.nticdMyWodSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice g
                     in (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+                          wodTEILSlice (Set.fromList [m1, m2]) ⊑   nticdWodSlice (Set.fromList [m1, m2])
                         )),
     testProperty  "myWod is contained in isinkdom sccs"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -1237,7 +1237,7 @@ wodTests = testGroup "(concerning weak order dependence)" $
             $       let nticdWodSlice   = NTICD.nticdMyWodSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          wodTEILSlice m1 m2 ⊑   nticdWodSlice m1 m2
+                          wodTEILSlice (Set.fromList [m1, m2])  ⊑  nticdWodSlice (Set.fromList [m1, m2])
                         )) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++

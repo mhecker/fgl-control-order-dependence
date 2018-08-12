@@ -78,7 +78,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice,
+    nticdMyWodFastSlice, wodTEILPDomSlice,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
@@ -86,7 +86,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF4WithReachCheckGfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8,
     nticdSinkContraction, nticdSinkContractionGraphP,
-    sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty, sinkdomNaiveGfp,
+    sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty, isinkdomTwoFingercd, sinkdomNaiveGfp,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
@@ -446,6 +446,11 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let g = generatedGraph
                     in NTICD.sinkDFcd         g ==
                        NTICD.nticdF3          g,
+    testProperty   "isinkdomTwoFingercd   == nticdF3"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.isinkdomTwoFingercd g ==
+                       NTICD.nticdF3             g,
     testProperty   "sinkDFFromUpLocalDefcd== nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -771,6 +776,26 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "wodTEILSlice g ms = nticdMyWodFastSlice g{ n | n ->* ms} ms"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g   =      generatedGraph
+                    rev = grev generatedGraph
+                    wodteilslicer    = NTICD.wodTEILSlice g
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                     let g' = subgraph (List.nub $ (reachable m1 rev) ++ (reachable m2 rev)) g
+                         nticdmywodslicer  = NTICD.nticdMyWodFastSlice g'
+                     in wodteilslicer (Set.fromList [m1, m2]) == nticdmywodslicer (Set.fromList [m1, m2])
+                   )),
+    testProperty "wodTEILPDomSlice g ms = nticdMyWodSliceSimple g{ n | n ->* ms} ms"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g   =      generatedGraph
+                    rev = grev generatedGraph
+                    wodteilslicer    = NTICD.wodTEILPDomSlice g
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                     let g' = subgraph (List.nub $ (reachable m1 rev) ++ (reachable m2 rev)) g
+                         nticdmywodslicer  = MyWodSlice.nticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g'
+                     in wodteilslicer (Set.fromList [m1, m2]) == nticdmywodslicer (Set.fromList [m1, m2])
+                   )),
     testProperty "wodTEIL  in sinks via pdom"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
@@ -1297,8 +1322,8 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
                     in  -- traceShow (length $ nodes g) $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          ntscdDodSlice   m1 m2 ==
-                          ntscdMyDodSlice m1 m2
+                          ntscdDodSlice   (Set.fromList [m1, m2]) ==
+                          ntscdMyDodSlice (Set.fromList [m1, m2])
                         )),
     testProperty  "dod implies myDod"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -1424,8 +1449,8 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         ntscdMyDodSlice   = NTICD.ntscdMyDodSlice g
                     in  -- traceShow (length $ nodes g) $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
-                          ntscdDodSlice   m1 m2 ==
-                          ntscdMyDodSlice m1 m2
+                          ntscdDodSlice   (Set.fromList [m1, m2]) ==
+                          ntscdMyDodSlice (Set.fromList [m1, m2])
                         )) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
@@ -2330,7 +2355,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = NTICD.nticdMyWodFastSlice g m1 m2
+                        s = NTICD.nticdMyWodFastSlice g (Set.fromList [m1, m2])
                         infinitelyDelays = InfiniteDelay.infinitelyDelays g s
                         runInput         = InfiniteDelay.runInput         g
                         observable       = InfiniteDelay.observable         s
@@ -2354,7 +2379,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = NTICD.nticdMyWodFastSlice g m1 m2
+                        s = NTICD.nticdMyWodFastSlice g (Set.fromList [m1, m2])
                         runInput         = InfiniteDelay.runInput g
                     in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
@@ -2382,7 +2407,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         startNodes =               sampleFrom       seed1 (n `div` 10 + 1) (nodes g)
                         choices    = InfiniteDelay.sampleChoicesFor seed2 (n `div`  2 + 1)        g
                         [m1,m2]    =               sampleFrom       seed3                2 (nodes g)
-                        s = NTICD.nticdMyWodFastSlice g m1 m2
+                        s = NTICD.nticdMyWodFastSlice g (Set.fromList [m1, m2])
                         infinitelyDelays = InfiniteDelay.infinitelyDelays g s
                     in -- traceShow ("Graph: ", length $ nodes g) $
                        (∀) choices (\choice -> (∀) startNodes (\startNode  -> 

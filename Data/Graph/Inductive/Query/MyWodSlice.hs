@@ -454,8 +454,25 @@ myWodFromSimpleSliceStep newIPDomFor graph = \m1 m2 ->
   where s0 = initialMyWodSimpleSliceState graph
         
 
-myWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Node -> Node -> Set Node
-myWodSliceSimple newIPDomFor graph = \m1 m2 -> slice s0 (Set.fromList [m1, m2])
+
+nticdMyWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
+nticdMyWodSliceSimple newIPDomFor graph = \ms ->
+           nticdslicer $ slice s0 ms
+  where nticdslicer = nticdSlice graph
+        s0 = initialMyWodSimpleSliceState graph
+        step = myWodSliceSimpleStep graph newIPDomFor
+        slice s@(MyWodSimpleSliceState { ms }) ns
+          | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
+                          ms
+          | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
+                          slice s' ns'
+              where (n, ns0)  = Set.deleteFindMin ns
+                    (new, s') = step s n
+                    ns' = ns0 ∪ new 
+
+
+myWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
+myWodSliceSimple newIPDomFor graph = \ms -> slice s0 ms
   where s0 = initialMyWodSimpleSliceState graph
         step = myWodSliceSimpleStep graph newIPDomFor
         slice s@(MyWodSimpleSliceState { ms }) ns

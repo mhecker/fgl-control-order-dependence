@@ -2516,7 +2516,7 @@ wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
 
         unreachableLeft = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph, n /= m1, n /= m2,
                                                                    m1 `elem` reachable n graph,
-                                                                   m2 `elem` reachable n graph,
+                                                                {- m2 `elem` reachable n graph, -}
                                                                    (∃) (suc graph n) (\x -> (not $ m1 `elem` reachable x graph)  ∧  ( m2 `elem` reachable x graph))
                                                 ]
                                      ) | m1 <- nodes graph, m2 <- nodes graph, m2 /= m1,

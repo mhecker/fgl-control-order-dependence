@@ -2225,17 +2225,15 @@ idomToDF graph idomG =
 
 idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> gr () () -> Map Node (Set Node)
 idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
-  where f2 df cycle  = Map.fromList [ (x, local ⊔ up) | x <- cycle ] `Map.union` df
+  where f2 df cycle  = Map.fromList [ (x, (local ⊔ up) ∖ invalid) | x <- cycle ] `Map.union` df
           where local =       (∐) [ Set.fromList [ y ] | x <- cycle, 
-                                                          y <- pre graph x,
-                                                          not $ (∃) (idomSccOf ! x) (\x' -> x' ∊ (suc idomG y))
+                                                          y <- pre graph x
                                    ]
-                up    =       (∐) [ Set.fromList [ y ] | x <- cycle,
+                up    =       (∐) [ df ! z             | x <- cycle,
                                                           z <- pre idomG x,
-                                                          not $ z ∊ cycle,
-                                                          y <- Set.toList $ df ! z,
-                                                          not $ (∃) (idomSccOf ! x) (\x' -> x' ∊ (suc idomG y))
+                                                          not $ z ∊ cycle
                                    ]
+                invalid = Set.fromList [ y | x <- cycle, y <- pre idomG x]
 
         idomSccs = scc idomG
         sorting = idomSccs -- The SCC algorithms implicitly yield a topsort

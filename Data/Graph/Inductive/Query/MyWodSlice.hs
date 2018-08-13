@@ -543,3 +543,13 @@ recompute :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node 
 recompute (graph,_) _ m = ipdom
   where ipdom = fromIdom m $ iDom (grev $ delSuccessorEdges   graph m) m
           where fromIdom m idom = Map.insert m Nothing $ Map.fromList [ (n, Just m) | (n,m) <- idom ]
+
+
+
+wccSliceViaNticdMyWodSliceSimple :: (Show (gr a b), DynGraph gr) =>  ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b ->  Set Node -> Set Node
+wccSliceViaNticdMyWodSliceSimple newIPDomFor g ms = s ∩ fromMs
+  where gRev = grev g
+        g'   = subgraph (Set.toList toMs) g
+        s    = nticdMyWodSliceSimple newIPDomFor g' ms
+        toMs   = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m gRev ]
+        fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]

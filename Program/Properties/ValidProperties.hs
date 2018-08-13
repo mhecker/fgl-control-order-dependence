@@ -66,6 +66,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
+import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     rotatePDomAround,
@@ -776,6 +777,24 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice for CFG-shaped graphs with exit->entry edge"
+    $ \(SIMPLECFG(generatedGraph)) ->
+                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                    g = insEdge (exit, entry, ()) generatedGraph
+                    m1 = (cycle $ nodes g) !! 32904
+                    m2 = (cycle $ nodes g) !! 87653
+                    wccSlicer  = FCACD.wccSlice g
+                    wccSlicer' = MyWodSlice.wccSliceViaNticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+                in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
+    testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g   =      generatedGraph
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                     let wccSlicer  = FCACD.wccSlice g
+                         wccSlicer' = MyWodSlice.wccSliceViaNticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+                     in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2])
+                   )),
     testProperty "wodTEILSlice g ms = nticdMyWodFastSlice g{ n | n ->* ms} ms"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g   =      generatedGraph

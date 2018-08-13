@@ -60,6 +60,7 @@ import Data.Graph.Inductive.Query.LCA
 import Data.Graph.Inductive.Query.NTICD
 import Data.Graph.Inductive.Query.MyWodSlice
 import Data.Graph.Inductive.Query.InfiniteDelay
+import qualified Data.Graph.Inductive.Query.FCACD as FCACD
 import Data.Graph.Inductive.Query.TimingDependence
 import Data.Graph.Inductive.Query.DataDependence
 import Data.Graph.Inductive.Query.DataConflict

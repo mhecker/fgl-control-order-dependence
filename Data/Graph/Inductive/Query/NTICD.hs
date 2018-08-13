@@ -2453,6 +2453,11 @@ nticdMyWodFastSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkdomTwoFingercd graph
         w     = myWodFast graph
 
+wccSliceViaWodTEILPDom :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wccSliceViaWodTEILPDom graph = \ms -> let fromMs = (Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m graph ]) in combinedBackwardSlice graph empty w ms ∩ fromMs
+  where empty = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+        w     = wodTEIL'PDom graph
+
 
 myWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node  -> Set Node
 myWodFastSlice graph =  combinedBackwardSlice graph empty w

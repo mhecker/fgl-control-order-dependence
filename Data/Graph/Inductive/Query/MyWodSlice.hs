@@ -464,7 +464,7 @@ nticdMyWodSliceSimple newIPDomFor graph = \ms ->
            nticdslicer $ slice s0 ms
   where nticdslicer = combinedBackwardSlice graph nticd Map.empty
         s0@(MyWodSimpleSliceState { sinks, isinkdom }) = initialMyWodSimpleSliceState graph
-        nticd = idomToDFFastForRoots roots graph isinkdom
+        nticd = xDFcd (\graph -> idomToDFFastForRoots roots graph isinkdom) graph
           where roots = go (Map.assocs isinkdom) sinks
                   where go []     roots = roots
                         go ((n, m):as) roots = case m of

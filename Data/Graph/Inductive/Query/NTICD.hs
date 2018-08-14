@@ -2226,7 +2226,7 @@ idomToDF graph idomG =
 idomToDFFastForRoots :: forall gr a b. DynGraph gr => [[Node]] -> gr a b -> Map Node (Set Node) -> Map Node (Set Node)
 idomToDFFastForRoots roots graph idom = foldr f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
   where f2 cycle df = Map.fromList [ (x, (local ⊔ up) ∖ invalid) | x <- Set.toList cycle ] `Map.union` df
-          where local =       (∐) [ Set.fromList [ y ] | x <- Set.toList cycle, 
+          where local = Set.fromList [ y                | x <- Set.toList cycle, 
                                                           y <- pre graph x
                                    ]
                 up    =       (∐) [ df ! z             | x <- Set.toList cycle,

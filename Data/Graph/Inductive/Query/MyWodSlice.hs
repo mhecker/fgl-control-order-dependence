@@ -504,21 +504,14 @@ myWodSliceSimpleStep :: forall gr a b. (DynGraph gr) =>
 myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nAndIpdomForSink, ready, sinkOf, entryIntoSink, gTowardsSink}) m
     | m ∈ ms                         = (Set.empty,                     s)
     | Map.lookup m sinkOf == Nothing = (Set.empty,                     s { ms = ms' })
-    | otherwise                      = {- assert (ready' == ready'Fast) $ -}
+    | otherwise                      = assert (ready' == ready'Fast) $
                                        ((fromReady ∪ fromIpdom) ∖ ms', s { ms = ms', condNodes = condNodes', nAndIpdomForSink = nAndIpdomForSink', ready = Map.delete m ready'Fast })
   where ms' = Set.insert m ms
         nAndIpdomForSink' = Map.insert sinkM (m, ipdom') nAndIpdomForSink
         Just sinkM = Map.lookup m sinkOf
         condNodes' =  Map.delete m condNodes
         fromReady  = Map.findWithDefault (Set.empty) m ready
-
-        df = idomToDFFastForRoots [[m]] gM ipdom'
-          where (gM,_) = (gTowardsSink ! sinkM) 
-        fromIpdom = (∐) [ Set.filter relevantForSink $  df ! m1 | m1 <- Set.toList ms, Map.lookup m1 sinkOf  == Just sinkM]
-        ready'Fast = ready ⊔ Map.fromList [ (m1, Set.filter relevantForSink $ cs) |  (m1, cs) <- Map.assocs df, Map.lookup m1 sinkOf == Just sinkM ]
-
-        relevantForSink c =  Just sinkM == Map.lookup c sinkOf    ∨  Just sinkM == Map.lookup c entryIntoSink
-{-
+        
         cWithRelevant = [ (c, lcaRKnownM ipdom' c succs) |  (c, succs) <- Map.assocs condNodes', Just sinkM == Map.lookup c sinkOf    ∨  Just sinkM == Map.lookup c entryIntoSink ]
         fromIpdom = Set.fromList [ c | (c, (z,relevant)) <- cWithRelevant,
                                        (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant ∧ (Map.lookup m1 sinkOf  == Just sinkM ))
@@ -530,7 +523,6 @@ myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nA
         ready'Fast = foldr (\(c,m1) ready -> Map.alter (f c) m1 ready) ready [ (c,m1) | (c, (z,relevant)) <- cWithRelevant, m1 <- Set.toList relevant, m1 /= z, Map.lookup m sinkOf == Just sinkM ]
           where f c Nothing   = Just $ Set.singleton c
                 f c (Just cs) = Just $ Set.insert c cs
--}
         ipdom' = case ipdomN of
                    Nothing         -> newIPDom (gTowardsSink ! sinkM) ipdomN m
                    Just (n, ipdom) -> if n == m then ipdom else

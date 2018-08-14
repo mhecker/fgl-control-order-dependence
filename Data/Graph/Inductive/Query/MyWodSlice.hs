@@ -406,7 +406,7 @@ data MyWodSimpleSliceState gr a b = MyWodSimpleSliceState {
    condNodes ::  Map Node [Node],
    nAndIpdomForSink  :: Map Node (Node, Map Node (Maybe Node)),
    ready :: Map Node (Set Node),
-   isinkdom :: Map Node (Set Node),
+   isinkdom :: Map Node (Maybe Node),
    sinks :: [[Node]],
    sinkOf :: Map Node Node,
    entryIntoSink :: Map Node Node,
@@ -434,7 +434,7 @@ initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
         sinkNodes     = (∐) [ Set.fromList sink | sink <- sinks ]
 
         isinkdom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes (fmap Set.fromList $ without condNodes sinkNodes) graph
-        entryIntoSink = Map.fromList [ (n, sinkOf ! m) | (n, Just m) <-  Map.assocs $ fmap fromSet $ isinkdom, m ∈ sinkNodes, not $ n ∈ sinkNodes ]
+        entryIntoSink = Map.fromList [ (n, sinkOf ! m) | (n, Just m) <-  Map.assocs $ isinkdom, m ∈ sinkNodes, not $ n ∈ sinkNodes ]
         entryNodes    = Map.keysSet entryIntoSink
         condNodes     = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
 
@@ -467,9 +467,9 @@ nticdMyWodSliceSimple newIPDomFor graph = \ms ->
         nticd = idomToDFFastForRoots roots graph isinkdom
           where roots = go (Map.assocs isinkdom) sinks
                   where go []     roots = roots
-                        go ((n, m):as) roots
-                          | Set.null m = go as ([n]:roots)
-                          | otherwise  = go as      roots
+                        go ((n, m):as) roots = case m of
+                          Nothing -> go as ([n]:roots)
+                          _       -> go as      roots
 
         step = myWodSliceSimpleStep graph newIPDomFor
         slice s@(MyWodSimpleSliceState { ms }) ns
@@ -512,7 +512,7 @@ myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nA
         condNodes' =  Map.delete m condNodes
         fromReady  = Map.findWithDefault (Set.empty) m ready
 
-        df = idomToDFFastForRoots [[m]] gM (fmap toSet ipdom')
+        df = idomToDFFastForRoots [[m]] gM ipdom'
           where (gM,_) = (gTowardsSink ! sinkM) 
         fromIpdom = (∐) [ Set.filter relevantForSink $  df ! m1 | m1 <- Set.toList ms, Map.lookup m1 sinkOf  == Just sinkM]
         ready'Fast = ready ⊔ Map.fromList [ (m1, Set.filter relevantForSink $ cs) |  (m1, cs) <- Map.assocs df, Map.lookup m1 sinkOf == Just sinkM ]

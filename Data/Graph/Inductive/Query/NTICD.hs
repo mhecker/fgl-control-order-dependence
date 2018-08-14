@@ -38,7 +38,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree)
 import Unicode
 
 
@@ -2088,13 +2088,13 @@ isinkdomOfTwoFinger8DownFixedTraversal = isinkdomOfTwoFinger8DownFixedTraversalF
 
 
 
-isinkdomOfTwoFinger8ForSinks :: forall gr a b. (DynGraph gr) => [[Node]] -> Set Node -> Map Node (Set Node) -> gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger8ForSinks :: forall gr a b. (DynGraph gr) => [[Node]] -> Set Node -> Map Node (Set Node) -> gr a b -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
                           require (sinks == controlSinks graph)
                         $ require (sinkNodes == (∐) [ Set.fromList sink | sink <- sinks])
                         $ require (nonSinkCondNodes == Map.fromList [ (n, Set.fromList succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ])
-                        $ Map.mapWithKey (\n ms -> Set.delete n ms)
-                        $ fmap toSet $ twoFinger 0 worklist0 processed0 imdom0 
+                        $ Map.mapWithKey (\n m -> if m == Just n then Nothing else m)
+                        $ twoFinger 0 worklist0 processed0 imdom0 
   where solution = sinkdomOfGfp graph
         imdom0   =              Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
                    `Map.union` (Map.fromList [ (x, case suc graph x of { [z] -> assert (z /= x) $ Just z               ; _ -> Nothing  }) | x <- nodes graph, not $ x ∈ sinkNodes ])
@@ -2148,7 +2148,7 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
 
 
 isinkdomOfTwoFinger8 :: forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set Node)
-isinkdomOfTwoFinger8 graph = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph
+isinkdomOfTwoFinger8 graph = fmap toSet $ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph
   where sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
         sinks = controlSinks graph
         nonSinkCondNodes = Map.fromList [ (x, Set.fromList succs) | x <- nodes graph, not $ x ∈ sinkNodes, let succs = suc graph x, length succs > 1 ]
@@ -2309,7 +2309,7 @@ idomToDF graph idomG =
         idomSccs = scc idomG
         idomSccOf = Map.fromList [ (c, cycle) | cycle <- idomSccs, c <- cycle ]
 
-idomToDFFastForRoots :: forall gr a b. Graph gr => [[Node]] -> gr a b -> Map Node (Set Node) -> Map Node (Set Node)
+idomToDFFastForRoots :: forall gr a b. Graph gr => [[Node]] -> gr a b -> Map Node (Maybe Node) -> Map Node (Set Node)
 idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
   where f2 cycle df = Map.fromList [ (x, combined) | x <- Set.toList cycle ] `Map.union` df
           where combined = (local ⊔ up) ∖ invalid
@@ -2324,11 +2324,11 @@ idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
 
         rs = fmap Set.fromList $ roots
         idom' :: Map Node (Set Node)
-        idom' = (invert'' idom) `Map.union` (fmap (const Set.empty) idom)
+        idom' = (invert''' idom) `Map.union` (fmap (const Set.empty) idom)
 
         sorting = concat $ fmap (dfsTree idom') rs
 
-idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph idom
+idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph (fmap fromSet idom)
 
 
 
@@ -2355,9 +2355,9 @@ sinkDFTwoFinger graph = idomToDFFastForRoots roots graph idom
         idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph
         roots = go (Map.assocs idom) sinks
           where go []     roots = roots
-                go ((n, m):as) roots
-                  | Set.null m = go as ([n]:roots)
-                  | otherwise  = go as      roots
+                go ((n, m):as) roots = case m of 
+                  Nothing -> go as ([n]:roots)
+                  _       -> go as      roots
 
 isinkdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 isinkdomTwoFingerGraphP = cdepGraphP isinkdomTwoFingerGraph

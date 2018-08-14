@@ -54,6 +54,11 @@ invert'' :: (Ord k, Ord v) => Map k (Set v) -> Map v (Set k)
 invert'' m = Map.fromListWith (∪) pairs
     where pairs = [(v, Set.singleton k) | (k, vs) <- Map.toList m, v <- Set.toList vs]
 
+invert''' :: (Ord k, Ord v) => Map k (Maybe v) -> Map v (Set k)
+invert''' m = Map.fromListWith (∪) pairs
+    where pairs = [(v, Set.singleton k) | (k, Just v) <- Map.toList m]
+
+
 dfsTree idom' ns = ns : (concat $ fmap dfs [ m | n <- Set.toList ns, m <- Set.toList $ idom' ! n, not $ m ∈ ns ])
   where dfs n = Set.fromList [n] : (concat $ Set.map dfs $ Map.findWithDefault Set.empty n idom')
 

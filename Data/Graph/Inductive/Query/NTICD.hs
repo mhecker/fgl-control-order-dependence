@@ -38,7 +38,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom)
+import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree)
 import Unicode
 
 
@@ -2223,26 +2223,29 @@ idomToDF graph idomG =
         idomSccs = scc idomG
         idomSccOf = Map.fromList [ (c, cycle) | cycle <- idomSccs, c <- cycle ]
 
-idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> gr () () -> Map Node (Set Node)
-idomToDFFast graph idomG = foldl f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
-  where f2 df cycle  = Map.fromList [ (x, (local ⊔ up) ∖ invalid) | x <- cycle ] `Map.union` df
-          where local =       (∐) [ Set.fromList [ y ] | x <- cycle, 
+idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
+idomToDFFast graph idom = -- traceShow idom $ traceShow  rs $ traceShow  idom' $ traceShow sorting $ 
+                          foldr f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
+  where f2 cycle df = Map.fromList [ (x, (local ⊔ up) ∖ invalid) | x <- Set.toList cycle ] `Map.union` df
+          where local =       (∐) [ Set.fromList [ y ] | x <- Set.toList cycle, 
                                                           y <- pre graph x
                                    ]
-                up    =       (∐) [ df ! z             | x <- cycle,
-                                                          z <- pre idomG x,
-                                                          not $ z ∊ cycle
+                up    =       (∐) [ df ! z             | x <- Set.toList cycle,
+                                                          z <- Set.toList $ idom' ! x
                                    ]
-                invalid = Set.fromList [ y | x <- cycle, y <- pre idomG x]
+                invalid = Set.fromList [ y | x <- Set.toList cycle, y <- Set.toList $ idom' ! x]
 
-        idomSccs = scc idomG
-        sorting = idomSccs -- The SCC algorithms implicitly yield a topsort
-        idomSccOf = Map.fromList [ (c, cycle) | cycle <- idomSccs, c <- cycle ]
+        rs = fmap Set.fromList $ roots idom
+        idom' :: Map Node (Set Node)
+        idom' = (invert'' idom) `Map.union` (fmap (const Set.empty) idom)
+
+        sorting = concat $ fmap (dfsTree idom') rs
+
 
 
 
 mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-mDFTwoFinger graph = idomToDFFast graph $ (fromSuccMap $ imdomOfTwoFinger7 graph :: gr () ())
+mDFTwoFinger graph = idomToDFFast graph $ imdomOfTwoFinger7 graph
 
 imdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 imdomTwoFingerGraphP = cdepGraphP imdomTwoFingerGraph
@@ -2255,7 +2258,7 @@ imdomTwoFingercd = xDFcd mDFTwoFinger
 
 
 sinkDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-sinkDFTwoFinger graph = idomToDFFast graph $ (fromSuccMap $ isinkdomOfTwoFinger8 graph :: gr () ())
+sinkDFTwoFinger graph = idomToDFFast graph $ isinkdomOfTwoFinger8 graph
 
 isinkdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 isinkdomTwoFingerGraphP = cdepGraphP isinkdomTwoFingerGraph

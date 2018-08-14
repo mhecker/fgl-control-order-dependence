@@ -53,6 +53,8 @@ invert' m = Map.fromListWith (++) pairs
 invert'' :: (Ord k, Ord v) => Map k (Set v) -> Map v (Set k)
 invert'' m = fmap Set.fromList $ invert' $ fmap Set.toList m
 
+dfsTree idom' ns = ns : (concat $ fmap dfs [ m | n <- Set.toList ns, m <- Set.toList $ idom' ! n, not $ m ∈ ns ])
+  where dfs n = Set.fromList [n] : (concat $ Set.map dfs $ Map.findWithDefault Set.empty n idom')
 
 reallyInvert m = fmap (base ∖) m
   where base =      (Map.keysSet m)

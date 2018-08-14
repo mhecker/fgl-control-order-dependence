@@ -304,19 +304,19 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "idomToDFFast _ isinkdom == sinkDF _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+                        isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g isinkdom ==
                        NTICD.sinkDF       g),
     testProperty   "idomToDFFast _ isinkdom == idomToDF _ isinkdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+                        isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                       NTICD.idomToDFFast g isinkdom ==
-                       NTICD.idomToDF     g isinkdom),
+                       NTICD.idomToDFFast g                isinkdom ==
+                       NTICD.idomToDF     g (fromSuccMap $ isinkdom :: Gr () ())),
     testProperty   "DF of isinkdom Cycles are all the same"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -471,8 +471,8 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
 
 insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
-            $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+            $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g isinkdom ==
                        NTICD.sinkDF       g) @? ""
@@ -503,19 +503,19 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
-            $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+            $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g isinkdom ==
                        NTICD.sinkDF       g) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
-            $       let isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+            $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                         NTICD.idomToDFFast g isinkdom ==
-                       NTICD.idomToDF     g isinkdom) @? ""
+                       NTICD.idomToDF     g (fromSuccMap isinkdom :: Gr () ())) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "DF of isinkdom Cycles are all the same for " ++ exampleName)
@@ -556,17 +556,17 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     testProperty   "idomToDFFast _ imdom == idomToDF _ imdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                        imdom6 = NTICD.imdomOfTwoFinger6 g
+                        imdom7 = NTICD.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
-                         NTICD.idomToDFFast g imdom ==
-                         NTICD.idomToDF     g imdom
+                         NTICD.idomToDFFast g              imdom ==
+                         NTICD.idomToDF     g (fromSuccMap imdom :: Gr () ())
                        ),
     testProperty   "idomToDFFast _ imdom  == mDF _ "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                        imdom6 = NTICD.imdomOfTwoFinger6 g
+                        imdom7 = NTICD.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
                          NTICD.idomToDFFast g imdom ==
                          NTICD.mDF          g
@@ -683,8 +683,8 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
   [  testCase    ( "idomToDFFast _ mdom == mDF _ for " ++ exampleName)
-            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6  g :: Gr () ()
-                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7  g :: Gr () ()
+            $       let imdom6 = NTICD.imdomOfTwoFinger6  g
+                        imdom7 = NTICD.imdomOfTwoFinger7  g
                     in (∀) [imdom6, imdom7] (\imdom ->
                        NTICD.idomToDFFast g imdom ==
                        NTICD.mDF       g) @? ""
@@ -715,17 +715,17 @@ sensitiveDomTests = testGroup "(concerning nontermination-sensitive control depe
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ imdom == idomToDF _ imdom for " ++ exampleName)
-            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+            $       let imdom6 = NTICD.imdomOfTwoFinger6 g
+                        imdom7 = NTICD.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
-                         NTICD.idomToDFFast g imdom ==
-                         NTICD.idomToDF     g imdom
+                         NTICD.idomToDFFast g              imdom ==
+                         NTICD.idomToDF     g (fromSuccMap imdom :: Gr () ())
                        ) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ imdom == mDF _ for " ++ exampleName)
-            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+            $       let imdom6 = NTICD.imdomOfTwoFinger6 g
+                        imdom7 = NTICD.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
                          NTICD.idomToDFFast g imdom ==
                          NTICD.mDF          g

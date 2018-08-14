@@ -81,6 +81,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdMyWodFastSlice, wodTEILPDomSlice,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
+    wccSliceViaNticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -777,6 +778,22 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "wccSliceViaNticdMyWodPDomSimpleHeuristic  == wccSlice for randomly selected nodes"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    m1 = (cycle $ nodes g) !! 32904
+                    m2 = (cycle $ nodes g) !! 87653
+                    wccSlicer  = FCACD.wccSlice g
+                    wccSlicer' = NTICD.wccSliceViaNticdMyWodPDomSimpleHeuristic g
+                in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
+    testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice for randomly selected nodes"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    m1 = (cycle $ nodes g) !! 32904
+                    m2 = (cycle $ nodes g) !! 87653
+                    wccSlicer  = FCACD.wccSlice g
+                    wccSlicer' = MyWodSlice.wccSliceViaNticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g
+                in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
     testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]

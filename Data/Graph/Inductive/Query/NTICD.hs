@@ -2309,16 +2309,18 @@ idomToDF graph idomG =
         idomSccs = scc idomG
         idomSccOf = Map.fromList [ (c, cycle) | cycle <- idomSccs, c <- cycle ]
 
-idomToDFFastForRoots :: forall gr a b. DynGraph gr => [[Node]] -> gr a b -> Map Node (Set Node) -> Map Node (Set Node)
-idomToDFFastForRoots roots graph idom = foldr f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
-  where f2 cycle df = Map.fromList [ (x, (local ⊔ up) ∖ invalid) | x <- Set.toList cycle ] `Map.union` df
-          where local = Set.fromList [ y                | x <- Set.toList cycle, 
+idomToDFFastForRoots :: forall gr a b. Graph gr => [[Node]] -> gr a b -> Map Node (Set Node) -> Map Node (Set Node)
+idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
+  where f2 cycle df = Map.fromList [ (x, combined) | x <- Set.toList cycle ] `Map.union` df
+          where combined = (local ⊔ up) ∖ invalid
+                local = Set.fromList [ y                | x <- Set.toList cycle, 
                                                           y <- pre graph x
                                    ]
-                up    =       (∐) [ df ! z             | x <- Set.toList cycle,
+                up    =       (∐) [ Map.findWithDefault Set.empty z df
+                                                        | x <- Set.toList cycle,
                                                           z <- Set.toList $ idom' ! x
                                    ]
-                invalid = Set.fromList [ y | x <- Set.toList cycle, y <- Set.toList $ idom' ! x]
+                invalid =  (∐) [ idom' ! x | x <- Set.toList cycle ]
 
         rs = fmap Set.fromList $ roots
         idom' :: Map Node (Set Node)

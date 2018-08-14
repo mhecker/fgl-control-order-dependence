@@ -32,7 +32,7 @@ infixl 7 ⊓
 
 
 (∐) :: (BoundedJoinSemiLattice a) => [a] -> a
-(∐) = joins
+(∐) l = joins l
 
 (∏) :: (MeetSemiLattice a) => [a] -> a
 (∏) = meets1

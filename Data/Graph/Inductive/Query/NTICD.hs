@@ -2154,6 +2154,92 @@ isinkdomOfTwoFinger8 graph = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSin
         nonSinkCondNodes = Map.fromList [ (x, Set.fromList succs) | x <- nodes graph, not $ x ∈ sinkNodes, let succs = suc graph x, length succs > 1 ]
 
 
+
+
+
+
+
+
+
+
+{- 
+isinkdomOfTwoFinger9DownFixedTraversal :: forall gr a b. (DynGraph gr) =>
+     gr a b
+  -> Integer
+  -> Map Node (Maybe Node)
+  -> Map Node (Maybe Node)
+isinkdomOfTwoFinger9DownFixedTraversal graph i imdom0 =
+      id
+    $ result
+  where solution = sinkdomOfGfp graph
+        result = twoFingerDown i worklist imdom0 False
+        worklist = [(n, succs) | n <- nodes graph, let succs = suc graph n]
+        
+        twoFingerDown i []                     imdom False   = imdom
+        twoFingerDown i []                     imdom True    = twoFingerDown  i    worklist                   imdom    False
+        twoFingerDown i ((x, succs):worklist') imdom changed = if (not $ expanded ⊒ solution) then traceShow (x, zs, imdom) $ error "rofl" else
+                                                               twoFingerDown (i+1) worklist' (Map.insert x zs imdom)  (changed ∨ changed')
+          where expanded = toSuccMap $ trc $ (fromSuccMap $ fmap toSet $ Map.insert x zs $ imdom :: gr () ())
+                mz = require (succs == suc graph x) $
+                     case succs of
+                       [] -> Nothing
+                       _  -> foldM1 (lca imdom) succs
+                changed' = imdom ! x /= zs
+                zs = case mz of
+                       Nothing -> Nothing
+                       Just z  -> assert (z /= x) $
+                                  -- if (x ∈ reachableFrom (fmap toSet (Map.insert x (Just z) imdom)) (Set.fromList [z]) (Set.empty)) then imdom ! x else Just z
+                                  Just z
+
+        lca imdom n m = let result = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m]) in result
+          where 
+                lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
+                lcaDown' (n,ns) (m,ms)
+                    | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
+                               Just m
+                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                               Just n
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  caseN
+                  where caseN = case imdom ! n of
+                                  Nothing ->                 lcaDownLin ms ns m
+                                  Just n' -> if n' ∈ ns then lcaDownLin ms ns m  else lcaDown' (m, ms) (n', Set.insert n' ns)
+                lcaDownLin ms ns m = assert (not $ m ∈ ns) $ lcaDown'' m ms
+                  where lcaDown'' m ms = case imdom ! m of
+                                        Nothing -> Nothing
+                                        Just m' -> if m' ∈ ns then Just m' else
+                                                   if m' ∈ ms then Nothing else lcaDown'' m' (Set.insert m' ms)
+
+
+isinkdomOfTwoFinger9 :: forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set Node)
+isinkdomOfTwoFinger9 graph
+    | List.null $ nodes graph = Map.empty
+    | otherwise =         Map.mapWithKey (\n ms -> Set.delete n ms)
+                        $ fmap toSet
+                        -- $ traceShow (zip starts ends)
+                        -- $ traceShow imdomLin'
+                        $ isinkdomOfTwoFinger9DownFixedTraversal graph 0 imdom0
+  where
+        -- imdomLin  =  Map.fromList [ (m, Just m')  | m <- nodes graph, [m'] <- [suc graph m]]
+        -- imdomLin' = case starts of
+        --              []  -> imdomLin
+        --              [s] -> imdomLin
+        --              _   -> imdomLin `Map.union` Map.fromList [ (end, Just start)  | (end, start) <- zip ends starts0]
+        -- starts = [ m  | m <- Map.keys imdomLin, not $ (∃) (Map.elems imdomLin) (\(Just m') -> m == m') ]
+        -- ends   = [ go m | m <- starts ]
+        --   where go m = case Map.lookup m imdomLin of
+        --                          Nothing        -> m
+        --                          Just (Just m') -> go m'
+        -- (_:_:starts0) = starts 
+
+        imdom0   =  Map.fromList [ (m, Just m')  | (m,m') <- zip (n:ns) (ns ++ [n]) ]
+          where (n:ns) = nodes graph
+-}
+
+
+
+
+
 withPossibleIntermediateNodesFromiXdom :: forall gr a b x. (Ord x, DynGraph gr) => gr a b -> Map Node (Set (Node, x)) -> Map Node (Set (Node, (x, Set Node)))
 withPossibleIntermediateNodesFromiXdom graph ixdom = Map.fromList [ (n, Set.fromList [(m,(x,pi))])  | (n, ms) <- Map.assocs ixdom, [(m,x)] <- [Set.toList $ ms], let pi = pis ! n ]
                                                    ⊔ Map.fromList [ (n, Set.fromList []          )  | (n, ms) <- Map.assocs ixdom, []      <- [Set.toList $ ms]                   ]

@@ -2326,7 +2326,8 @@ idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
         idom' :: Map Node (Set Node)
         idom' = (invert''' idom) `Map.union` (fmap (const Set.empty) idom)
 
-        sorting = concat $ fmap (dfsTree idom') rs
+        sorting :: [Set Node]
+        sorting = dfsTree idom' rs
 
 idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph (fmap fromSet idom)
 

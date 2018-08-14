@@ -2223,9 +2223,8 @@ idomToDF graph idomG =
         idomSccs = scc idomG
         idomSccOf = Map.fromList [ (c, cycle) | cycle <- idomSccs, c <- cycle ]
 
-idomToDFFast :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
-idomToDFFast graph idom = -- traceShow idom $ traceShow  rs $ traceShow  idom' $ traceShow sorting $ 
-                          foldr f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
+idomToDFFastForRoots :: forall gr a b. DynGraph gr => [[Node]] -> gr a b -> Map Node (Set Node) -> Map Node (Set Node)
+idomToDFFastForRoots roots graph idom = foldr f2 (Map.fromList [(x, Set.empty) | x <- nodes graph]) sorting
   where f2 cycle df = Map.fromList [ (x, (local ⊔ up) ∖ invalid) | x <- Set.toList cycle ] `Map.union` df
           where local =       (∐) [ Set.fromList [ y ] | x <- Set.toList cycle, 
                                                           y <- pre graph x
@@ -2235,12 +2234,13 @@ idomToDFFast graph idom = -- traceShow idom $ traceShow  rs $ traceShow  idom' $
                                    ]
                 invalid = Set.fromList [ y | x <- Set.toList cycle, y <- Set.toList $ idom' ! x]
 
-        rs = fmap Set.fromList $ roots idom
+        rs = fmap Set.fromList $ roots
         idom' :: Map Node (Set Node)
         idom' = (invert'' idom) `Map.union` (fmap (const Set.empty) idom)
 
         sorting = concat $ fmap (dfsTree idom') rs
 
+idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph idom
 
 
 
@@ -2258,7 +2258,18 @@ imdomTwoFingercd = xDFcd mDFTwoFinger
 
 
 sinkDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-sinkDFTwoFinger graph = idomToDFFast graph $ isinkdomOfTwoFinger8 graph
+sinkDFTwoFinger graph = idomToDFFastForRoots roots graph idom
+  where 
+        sinks            = controlSinks graph
+        sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]
+        nonSinkCondNodes = Map.fromList [ (n, Set.fromList succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ]
+
+        idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph
+        roots = go (Map.assocs idom) sinks
+          where go []     roots = roots
+                go ((n, m):as) roots
+                  | Set.null m = go as ([n]:roots)
+                  | otherwise  = go as      roots
 
 isinkdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 isinkdomTwoFingerGraphP = cdepGraphP isinkdomTwoFingerGraph

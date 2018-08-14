@@ -406,6 +406,8 @@ data MyWodSimpleSliceState gr a b = MyWodSimpleSliceState {
    condNodes ::  Map Node [Node],
    nAndIpdomForSink  :: Map Node (Node, Map Node (Maybe Node)),
    ready :: Map Node (Set Node),
+   isinkdom :: Map Node (Set Node),
+   sinks :: [[Node]],
    sinkOf :: Map Node Node,
    entryIntoSink :: Map Node Node,
    gTowardsSink :: Map Node (gr a b, Map Node [Node])
@@ -421,6 +423,8 @@ initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
       -- nAndIpdomForSink = nAndIpdomForSink,
       nAndIpdomForSink = Map.empty,
       ready            = Map.empty,
+      isinkdom         = isinkdom,
+      sinks            = sinks,
       sinkOf           = sinkOf,
       entryIntoSink    = entryIntoSink,
       gTowardsSink     = gTowardsSink
@@ -458,8 +462,15 @@ myWodFromSimpleSliceStep newIPDomFor graph = \m1 m2 ->
 nticdMyWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
 nticdMyWodSliceSimple newIPDomFor graph = \ms ->
            nticdslicer $ slice s0 ms
-  where nticdslicer = nticdSlice graph
-        s0 = initialMyWodSimpleSliceState graph
+  where nticdslicer = combinedBackwardSlice graph nticd Map.empty
+        s0@(MyWodSimpleSliceState { sinks, isinkdom }) = initialMyWodSimpleSliceState graph
+        nticd = idomToDFFastForRoots roots graph isinkdom
+          where roots = go (Map.assocs isinkdom) sinks
+                  where go []     roots = roots
+                        go ((n, m):as) roots
+                          | Set.null m = go as ([n]:roots)
+                          | otherwise  = go as      roots
+
         step = myWodSliceSimpleStep graph newIPDomFor
         slice s@(MyWodSimpleSliceState { ms }) ns
           | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $

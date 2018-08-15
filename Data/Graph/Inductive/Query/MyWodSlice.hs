@@ -548,10 +548,31 @@ cutNPasteIfPossible graphWithConds@(graph, condNodes)  (Just (n, ipdom)) m
         ipdomM'''' = isinkdomOftwoFinger8Up graphm condNodesM worklist0 processed0 imdom0
           where nIsCond    = Map.member n condNodes
                 [nx]       = suc graphm n
-                processed0 = Set.fromList [ x            | x <- nodes graphm, m ∈ reachableFromTree (fmap toSet ipdomM'') x]
+                
+                -- processed0 = Set.fromList [ x            | x <- nodes graphm, m ∈ reachableFromTree (fmap toSet ipdomM'') x]
+                -- imdom0     = (if nIsCond then id else Map.insert n (Just nx)) $
+                --              Map.fromList [ (x, Nothing) | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM] `Map.union` ipdomM''
+                -- worklist0  = Seq.fromList [ x            | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM]
+                
+                (processed0, unprocessed0) = findReachable (nodes graphm) (Set.singleton m) Set.empty
+                todo = unprocessed0 ∩ (Map.keysSet condNodesM)
                 imdom0     = (if nIsCond then id else Map.insert n (Just nx)) $
-                             Map.fromList [ (x, Nothing) | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM] `Map.union` ipdomM''
-                worklist0  = Seq.fromList [ x            | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM]
+                             (Map.fromSet (\x -> Nothing) todo) `Map.union` ipdomM''
+                worklist0  = Seq.fromList $ Set.toList $ todo
+
+                findReachable (x:xs) processed unprocessed = find [x] xs processed unprocessed
+                  where find []         [] processed unprocessed =  (processed, unprocessed)
+                        find path@(x:_) xs processed unprocessed
+                            | x ∈ processed          = find path'     xs' processed' unprocessed
+                            | x ∈ unprocessed        = find path'     xs' processed  unprocessed'
+                            | otherwise = case ipdomM'' ! x of
+                                            Nothing -> find path'     xs' processed  unprocessed'
+                                            Just x' -> find (x':path) xs  processed  unprocessed
+                          where (path', xs') = case xs of
+                                                []     -> ([], [])
+                                                (y:ys) -> ([y], ys)
+                                processed'   = foldr Set.insert   processed path
+                                unprocessed' = foldr Set.insert unprocessed path
 
         graphm = delSuccessorEdges graph m
         condNodesM = Map.delete m condNodes

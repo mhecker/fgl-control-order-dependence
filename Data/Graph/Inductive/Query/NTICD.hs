@@ -2075,11 +2075,11 @@ isinkdomOfTwoFinger8DownFixedTraversal = isinkdomOfTwoFinger8DownFixedTraversalF
 
 
 
-isinkdomOfTwoFinger8ForSinks :: forall gr a b. (DynGraph gr) => [[Node]] -> Set Node -> Map Node (Set Node) -> gr a b -> Map Node (Maybe Node)
+isinkdomOfTwoFinger8ForSinks :: forall gr a b. (DynGraph gr) => [[Node]] -> Set Node -> Map Node [Node] -> gr a b -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
                           require (sinks == controlSinks graph)
                         $ require (sinkNodes == (∐) [ Set.fromList sink | sink <- sinks])
-                        $ require (nonSinkCondNodes == Map.fromList [ (n, Set.fromList succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ])
+                        $ require (nonSinkCondNodes == Map.fromList [ (n, succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ])
                         $ Map.mapWithKey (\n m -> if m == Just n then Nothing else m)
                         $ imdom''
   where imdom0   =              Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
@@ -2106,7 +2106,7 @@ processed'From graph nonSinkCondNodes = processed'F
                       new      = Set.fromList [ x'| x' <- pre graph x, not $ Map.member x' nonSinkCondNodes, not $ x' ∈ processed]
 
 
-isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set Node) -> Seq Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
+isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> Seq Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
 isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
   where solution = sinkdomOfGfp graph
         twoFinger worklist processed imdom
@@ -2125,12 +2125,12 @@ isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
                   Nothing -> Set.empty
                   Just _  -> processed'From graph nonSinkCondNodes (Set.fromList [x]) (processed ∪ Set.fromList [x])
                 mz
-                  | Set.null succs   = Nothing
-                  | otherwise  = case foldM1 (lca imdom) (Set.toList succs) of
-                      Nothing -> Just $ head $ (Set.toList succs)
+                  | List.null succs   = Nothing
+                  | otherwise  = case foldM1 (lca imdom) succs of
+                      Nothing -> Just $ head $ succs
                       Just z  -> Just z
-                  where succs    = require (nonSinkCondNodes ! x == Set.fromList (suc graph x )) $
-                                   (nonSinkCondNodes ! x) ⊓ processed
+                  where succs    = require (nonSinkCondNodes ! x == (suc graph x )) $
+                                  [ x | x <- nonSinkCondNodes ! x, x ∈ processed ]
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing mz)
 
@@ -2139,7 +2139,7 @@ isinkdomOfTwoFinger8 :: forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set 
 isinkdomOfTwoFinger8 graph = fmap toSet $ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph
   where sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
         sinks = controlSinks graph
-        nonSinkCondNodes = Map.fromList [ (x, Set.fromList succs) | x <- nodes graph, not $ x ∈ sinkNodes, let succs = suc graph x, length succs > 1 ]
+        nonSinkCondNodes = Map.fromList [ (x, succs) | x <- nodes graph, not $ x ∈ sinkNodes, let succs = suc graph x, length succs > 1 ]
 
 
 
@@ -2339,7 +2339,7 @@ sinkDFTwoFinger graph = idomToDFFastForRoots roots graph idom
   where 
         sinks            = controlSinks graph
         sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]
-        nonSinkCondNodes = Map.fromList [ (n, Set.fromList succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ]
+        nonSinkCondNodes = Map.fromList [ (n, succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ]
 
         idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph
         roots = go (Map.assocs idom) sinks

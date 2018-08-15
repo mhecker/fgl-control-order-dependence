@@ -17,6 +17,7 @@ import Data.Functor.Identity (runIdentity)
 import qualified Control.Monad.Logic as Logic
 import Data.List(foldl', intersect,foldr1, partition)
 
+import qualified Data.Sequence as Seq
 import Data.Maybe (isNothing, maybeToList)
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -433,7 +434,7 @@ initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
         sinkOf        = Map.fromList [ (s, s0)  | sink@(s0:_) <- sinks, s <- sink ]
         sinkNodes     = (∐) [ Set.fromList sink | sink <- sinks ]
 
-        isinkdom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes (fmap Set.fromList $ without condNodes sinkNodes) graph
+        isinkdom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes (without condNodes sinkNodes) graph
         entryIntoSink = Map.fromList [ (n, sinkOf ! m) | (n, Just m) <-  Map.assocs $ isinkdom, m ∈ sinkNodes, not $ n ∈ sinkNodes ]
         entryNodes    = Map.keysSet entryIntoSink
         condNodes     = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
@@ -532,16 +533,25 @@ myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nA
 cutNPasteIfPossible :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 cutNPasteIfPossible graphWithConds                     Nothing           m = recompute graphWithConds undefined m
 cutNPasteIfPossible graphWithConds@(graph, condNodes)  (Just (n, ipdom)) m
-    | List.null succs = recompute graphWithConds undefined m
+    | List.null succs = isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM ipdomM''''
     | otherwise       = isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM ipdomM'''
 
   where -- ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) ipdom
         ipdomM''  = Map.insert m Nothing ipdom
         succs     = [ x | x <- suc graph n, isReachableFromTreeM ipdomM'' m x]
 
-        z = foldM1 (lca ipdomM'') succs
         ipdomM''' = assert (z /= Nothing) $ 
                     Map.insert n z ipdomM''
+          where z = foldM1 (lca ipdomM'') succs
+
+
+        ipdomM'''' = isinkdomOftwoFinger8Up graphm condNodesM worklist0 processed0 imdom0
+          where nIsCond    = Map.member n condNodes
+                [nx]       = suc graphm n
+                processed0 = Set.fromList [ x            | x <- nodes graphm, m ∈ reachableFromTree (fmap toSet ipdomM'') x]
+                imdom0     = (if nIsCond then id else Map.insert n (Just nx)) $
+                             Map.fromList [ (x, Nothing) | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM] `Map.union` ipdomM''
+                worklist0  = Seq.fromList [ x            | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM]
 
         graphm = delSuccessorEdges graph m
         condNodesM = Map.delete m condNodes

@@ -43,6 +43,7 @@ import Data.Ord
 import Debug.Trace (traceShow)
 
 
+import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List as List
@@ -86,7 +87,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
-    isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8,
+    isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty, isinkdomTwoFingercd, sinkdomNaiveGfp,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
@@ -999,13 +1000,14 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "cut and re-validate property in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
-                    sinks = [ (g, sink, ipdom) | sink <-  NTICD.controlSinks g0,
+                    sinks = [ (g, gn, sink, ipdom, condNodes) | sink <-  NTICD.controlSinks g0,
                                                 let towardsSink = [ n | n <- nodes g0, (∃) sink (\s -> s `elem` reachable n g0) ],
                                                 let g = subgraph towardsSink g0,
                                                 let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- towardsSink ],
+                                                let condNodes = Map.fromList [ (n, Set.fromList succs) | n <- towardsSink, let succs = suc g n, length succs > 1]
                                                 let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- towardsSink ]
                             ]
-                in (∀) sinks (\(g,sink, ipdom) ->
+                in (∀) sinks (\(g,gn,sink, ipdom, condNodes) ->
                             (∀) sink (\m -> 
                               (∀) sink (\n ->
                                    if (m == n) then True else
@@ -1014,7 +1016,20 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                        succs    = [ x | x <- suc g n, isReachableFromTree ipdomM'' m x]
                                        mz = foldM1 (LCA.lca (fmap fromSet ipdomM'')) succs
                                        ipdomM''' = Map.insert n (toSet mz) ipdomM''
-                                  in if List.null succs then True else
+                                  in if List.null succs then
+                                       let nIsCond = Map.member n condNodes
+                                           nonSinkCondNodes = Map.fromList [ (c, succs) | (c, succs) <- Map.assocs condNodes, c /= m]
+                                           processed0 = Set.fromList [ x            | x <- nodes (gn ! m), m ∈ reachableFromTree ipdomM'' x]
+                                           imdom0     = (if nIsCond then id else Map.insert n (fromSet $ Set.fromList $ suc (gn ! m) n)) $
+                                                        Map.fromList [ (x, Nothing) | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes] `Map.union` (fmap fromSet ipdomM'')
+                                           worklist0  = Seq.fromList [ x            | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes]
+                                           ipdomM'''' = traceShow (Map.size nonSinkCondNodes, Seq.length worklist0) $
+                                                        fmap toSet $ NTICD.isinkdomOftwoFinger8Up (gn ! m) nonSinkCondNodes worklist0 processed0 imdom0
+                                       in (∀) sink (\y ->
+                                               reachableFromTree  ipdomM''''  y
+                                            ⊇  reachableFromTree (ipdom ! m) y
+                                          )
+                                     else
                                        assert (mz /= Nothing) $
                                        (∀) sink (\y ->
                                              reachableFromTree  ipdomM'''  y

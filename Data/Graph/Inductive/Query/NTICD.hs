@@ -2101,9 +2101,9 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
 processed'From graph nonSinkCondNodes = processed'F
   where processed'F xs processed
             | Set.null xs   = processed
-            | otherwise     = processed'F (xs' ∪ new) (processed ∪ new)
+            | otherwise     = processed'F (foldr Set.insert xs' new) (foldr Set.insert processed new)
                 where (x, xs') = Set.deleteFindMin xs
-                      new      = Set.fromList [ x'| x' <- pre graph x, not $ Map.member x' nonSinkCondNodes, not $ x' ∈ processed]
+                      new      = [ x'| x' <- pre graph x, not $ Map.member x' nonSinkCondNodes, not $ x' ∈ processed]
 
 
 isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> Seq Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
@@ -2130,7 +2130,7 @@ isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
                       Nothing -> Just $ head $ succs
                       Just z  -> Just z
                   where succs    = require (nonSinkCondNodes ! x == (suc graph x )) $
-                                  [ x | x <- nonSinkCondNodes ! x, x ∈ processed ]
+                                   [ y | y <- nonSinkCondNodes ! x, y ∈ processed ]
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing mz)
 

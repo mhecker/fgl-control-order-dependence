@@ -57,9 +57,10 @@ lca imdom n m = let result = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m]
                 lcaDown' (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                                Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
+                    -- | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                    --            Just n
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  assert (not $ n ∈ ms) $ 
                                   caseN
                   where caseN = case imdom ! n of
                                   Nothing ->                 lcaDownLin ms ns m
@@ -77,9 +78,10 @@ lcaUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList
                 lcaDown' (n,ns) (m,ms)
                     | m ∈ ns = -- traceShow ((n,ns), (m,ms)) $
                                Just m
-                    | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
-                               Just n
+                    -- | n ∈ ms = -- traceShow ((n,ns), (m,ms)) $
+                    --            Just n
                     | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  assert (not $ n ∈ ms) $ 
                                   caseN
                   where caseN = case imdom ! n of
                                   Nothing -> assert (n == nx) $

@@ -38,7 +38,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree, restrict)
 import Unicode
 
 
@@ -2097,7 +2097,8 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
 --      imdom'' = isinkdomOfTwoFinger8Down               graph sinkNodes sinks   nonSinkCondNodes (Set.fromList [ x | (x, Just _) <- Map.assocs imdom', Map.member x nonSinkCondNodes]) imdom'
 
 
-
+processed'From  :: Graph gr => gr a b -> Map Node c -> Set Node -> Set Node -> Set Node
+{-# INLINE processed'From #-}
 processed'From graph nonSinkCondNodes = processed'F
   where processed'F xs processed
             | Set.null xs   = processed
@@ -3163,17 +3164,17 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
                                                               let entries = entriesFor cycle,
-                                                              let nodesTowardsCycle = [ m | n <- entries, m <- towardsCycle graph cycleS n],
-                                                              let condsInCycle     = condsIn cycle,
+                                                              let nodesTowardsCycle = dfs (head cycle : entries) graph,
                                                               let condsTowardCycle = condsIn nodesTowardsCycle,
-                                                              let cycleGraph = subgraph ( cycle ++ nodesTowardsCycle) graph,
+                                                              let condsInCycle = restrict condsTowardCycle cycleS,
+                                                              let cycleGraph = subgraph nodesTowardsCycle graph,
                                                               let paths = strategy graph cycle,
                                                               require ( (∐) [ Set.fromList path | path <- paths] == Set.fromList cycle ) True,
                                                               (m20:others) <- paths,
                                                               let edges = zip (m20:others) others,
                                                               let pdom0 = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m20) `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
                                                               let pdoms = zip (m20:others)
-                                                                              (scanl (rotatePDomAround cycleGraph (condsInCycle `Map.union` condsTowardCycle)) pdom0 edges),
+                                                                              (scanl (rotatePDomAround cycleGraph condsTowardCycle) pdom0 edges),
                                                               n <- [ n | (n,_) <- Map.assocs condsInCycle] ++ entries,
                                                               (m2, pdom) <- pdoms,
                                                               let pdom' = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m2)  `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
@@ -3219,7 +3220,7 @@ myWodFastPDomForIterationStrategy strategy graph =
         condsIn ns    = Map.fromList [ (n, succs) | n <- ns, let succs = suc graph n, length succs > 1]
 
 
-towardsCycle graph cycleS n = dfs [n] (efilter (\(n,m,_) -> not $ m ∈ cycleS) graph)
+-- towardsCycle graph cycleS n = dfs [n] graph
 
 
 myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)

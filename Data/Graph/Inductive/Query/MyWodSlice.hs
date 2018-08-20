@@ -439,10 +439,10 @@ initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
         entryNodes    = Map.keysSet entryIntoSink
         condNodes     = Map.fromList [ (c, succs) | c <- nodes graph, let succs = suc graph c, length succs  > 1]
 
-        gTowardsSink  = Map.fromList [ (s0, (subgraph (towards ++ sink) graph, restrict condNodes (towardsS ∪ sinkS)))
+        gTowardsSink  = Map.fromList [ (s0, (subgraph towards graph, restrict condNodes towardsS))
                                          | sink@(s0:_) <- sinks,
-                                           let sinkS = Set.fromList sink,
-                                           let towards  = [ m | (n, s0') <- Map.assocs entryIntoSink, s0 == s0', m <- towardsCycle graph sinkS n],
+                                           let entries = s0 : [ n | (n, s0') <- Map.assocs entryIntoSink, s0 == s0' ],
+                                           let towards  = dfs entries graph,
                                            let towardsS = Set.fromList towards
                         ]
         nAndIpdomForSink = Map.fromList [ (s0, (s0, recompute graphWithConds Nothing s0)) | (s0, graphWithConds) <- Map.assocs gTowardsSink ]

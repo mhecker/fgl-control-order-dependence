@@ -2124,7 +2124,7 @@ isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
           where (x :< worklist')  = Seq.viewl worklist
                 processed' = case mz of
                   Nothing -> Set.empty
-                  Just _  -> processed'From graph nonSinkCondNodes (Set.fromList [x]) (processed ∪ Set.fromList [x])
+                  Just _  -> processed'From graph nonSinkCondNodes (Set.fromList [x]) (Set.insert x processed)
                 mz
                   | List.null succs   = Nothing
                   | otherwise  = case foldM1 (lca imdom) succs of

@@ -473,14 +473,63 @@ nticdMyWodSliceSimple newIPDomFor graph = \ms ->
                           _       -> go as      roots
 
         step = myWodSliceSimpleStep graph newIPDomFor
-        slice s@(MyWodSimpleSliceState { ms }) ns
+        slice s@(MyWodSimpleSliceState { ms, sinkOf,  nAndIpdomForSink }) ns
           | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
                           ms
           | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
                           slice s' ns'
-              where (n, ns0)  = Set.deleteFindMin ns
+              where
+                    -- (n, ns0) = Set.deleteFindMin ns
+                    
+                    -- n   = case [ n | n <- Set.toList ns, not $ Map.member n sinkOf] of
+                    --         []    -> head [ n | (s0, nInS) <- Map.assocs $ partitionBy (sinkOf !) $ ns,
+                    --                             n <- case Map.lookup s0 nAndIpdomForSink of
+                    --                                    Just (_, ipdom) -> Set.toList $ maximal ipdom nInS
+                    --                                    Nothing         -> Set.toList $               nInS
+                    --                       ]
+                    --         (n:_) -> n
+                    -- ns0 = Set.delete n ns
+
+                    -- n   = case [ m | m <- Set.toList ns, not $ Map.member m sinkOf] of
+                    --         []    -> head [ m | (s0, mInS) <- Map.assocs $ partitionBy (sinkOf !) $ ns,
+                    --                             m <- case Map.lookup s0 nAndIpdomForSink of
+                    --                                    Just (n, ipdom) -> (filter (\m -> let ipdomM'' = Map.insert m Nothing ipdom in (∃) (suc graph n) (\x -> isReachableFromTreeM ipdomM'' m x)) 
+                    --                                                               (Set.toList mInS)
+                    --                                                       ) ++ (Set.toList mInS)
+                    --                                    Nothing         -> Set.toList $               mInS
+                    --                       ]
+                    --         (m:_) -> m
+                    -- ns0 = Set.delete n ns
+                    
+                    n   = case [ m | m <- Set.toList ns, not $ Map.member m sinkOf] of
+                            []    -> head [ m | (s0, mInS) <- Map.assocs $ partitionBy (sinkOf !) $ ns,
+                                                m <- case Map.lookup s0 nAndIpdomForSink of
+                                                       Just (n, ipdom) -> ( fmap fst
+                                                                          $ sortBy (comparing snd)
+                                                                          $ Map.assocs
+                                                                          $ maximal ipdom
+                                                                          $ Set.filter (\m -> let ipdomM'' = Map.insert m Nothing ipdom in (∃) (suc graph n) (\x -> isReachableFromTreeM ipdomM'' m x))
+                                                                          $ mInS
+                                                                          ) ++ (Set.toList mInS)
+                                                       Nothing         -> Set.toList $               mInS
+                                          ]
+                            (m:_) -> m
+                    ns0 = Set.delete n ns
+                    
+                    -- n   = case [ n | n <- Set.toList ns, not $ Map.member n sinkOf] of
+                    --         []    -> head [ n | (s0, nInS) <- Map.assocs $ partitionBy (sinkOf !) $ ns,
+                    --                             n <- case Map.lookup s0 nAndIpdomForSink of
+                    --                                    Just (_, ipdom) -> Set.toList $ minimal ipdom nInS
+                    --                                    Nothing         -> Set.toList $               nInS
+                    --                       ]
+                    --         (n:_) -> n
+                    -- ns0 = Set.delete n ns
                     (new, s') = step s n
-                    ns' = ns0 ∪ new 
+                    ns' = ns0 ∪ new
+
+partitionBy f ns = Set.fold (\n grouped -> Map.alter (g n) (f n) grouped) Map.empty ns
+  where g n (Nothing) = Just $ Set.singleton n
+        g n (Just ms) = Just $ Set.insert n ms
 
 
 myWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
@@ -530,15 +579,50 @@ myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nA
                                       newIPDom (gTowardsSink ! sinkM) ipdomN m
           where ipdomN = Map.lookup sinkM nAndIpdomForSink
 
+
+minimal :: Map Node (Maybe Node) -> Set Node -> Set Node
+minimal idom ends = case Set.size ends of
+      0 -> Set.empty
+      1 -> ends
+      _ -> findMinimal (Set.toList ends) ends
+  where findMinimal []     minimal = minimal
+        findMinimal (x:xs) minimal = case idom ! x of
+                             Nothing ->   findMinimal     xs                 minimal
+                             Just x' -> if x' ∈ ends then
+                                          findMinimal     xs  (Set.delete x' minimal)
+                                        else
+                                          findMinimal (x':xs)                minimal
+
+
+
+maximal :: Map Node (Maybe Node) -> Set Node -> Map Node Integer
+maximal idom ends = case Set.size ends of
+      0 -> Map.empty
+      1 -> Map.fromSet (\n -> 1) ends -- close enough :)
+      _ -> findMaximal x 0 (x:xs) Map.empty
+  where (x:xs) = Set.toList ends
+        findMaximal _ _         []  maximal = maximal
+        findMaximal x i (start:xs)  maximal = case idom ! x of
+                             Nothing ->   findMaximal (head xs)     0        xs (Map.insert start i maximal)
+                             Just x' -> if x' ∈ ends then
+                                          findMaximal (head xs)     0        xs                     maximal
+                                        else
+                                          findMaximal        x' (i+1) (start:xs)                    maximal
+
+
+
+
 cutNPasteIfPossible :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 cutNPasteIfPossible graphWithConds                     Nothing           m = recompute graphWithConds undefined m
 cutNPasteIfPossible graphWithConds@(graph, condNodes)  (Just (n, ipdom)) m
-    | List.null succs = isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM ipdomM''''
-    | otherwise       = isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM ipdomM'''
+    | List.null succs = isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM  ipdomM''''
+    | otherwise       = isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM  ipdomM'''
+        
 
   where -- ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) ipdom
         ipdomM''  = Map.insert m Nothing ipdom
         succs     = [ x | x <- suc graph n, isReachableFromTreeM ipdomM'' m x]
+        relevantCondNodesM = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x) condNodesM
 
         ipdomM''' = assert (z /= Nothing) $ 
                     Map.insert n z ipdomM''

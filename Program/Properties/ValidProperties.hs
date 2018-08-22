@@ -794,7 +794,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     m2 = (cycle $ nodes g) !! 87653
                     wccSlicer  = FCACD.wccSlice g
                     wccSlicer' = MyWodSlice.wccSliceViaNticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g
-                in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
+                in traceShow (length $ nodes g) $
+                   wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
     testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
@@ -1004,7 +1005,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                 let towardsSink = [ n | n <- nodes g0, (∃) sink (\s -> s `elem` reachable n g0) ],
                                                 let g = subgraph towardsSink g0,
                                                 let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- towardsSink ],
-                                                let condNodes = Map.fromList [ (n, Set.fromList succs) | n <- towardsSink, let succs = suc g n, length succs > 1]
+                                                let condNodes = Map.fromList [ (n, succs) | n <- towardsSink, let succs = suc g n, length succs > 1],
                                                 let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- towardsSink ]
                             ]
                 in (∀) sinks (\(g,gn,sink, ipdom, condNodes) ->

@@ -615,14 +615,28 @@ maximal idom ends = case Set.size ends of
 cutNPasteIfPossible :: DynGraph gr =>  (gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)
 cutNPasteIfPossible graphWithConds                     Nothing           m = recompute graphWithConds undefined m
 cutNPasteIfPossible graphWithConds@(graph, condNodes)  (Just (n, ipdom)) m
-    | List.null succs = isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM  ipdomM''''
-    | otherwise       = isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM  ipdomM'''
+    | List.null succs = isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM'''' ipdomM''''
+    | otherwise       = isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM'''  ipdomM'''
         
 
   where -- ipdomM'   = Map.union (Map.fromList [(n', Set.fromList [m]) | n' <- pre g m ]) ipdom
         ipdomM''  = Map.insert m Nothing ipdom
         succs     = [ x | x <- suc graph n, isReachableFromTreeM ipdomM'' m x]
-        relevantCondNodesM = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x) condNodesM
+        relevantCondNodesM''' = assert (fromFind == slow) fromFind where
+          slow = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x) condNodesM
+          fromFind = findAll (Map.keys condNodesM) Map.empty
+                  where findAll (x:xs) relevant = find [x] xs relevant
+                        find []         [] relevant = relevant
+                        find path@(x:_) xs relevant
+                            | x == n                 = find path'     xs' relevant'
+                            | Map.member x relevant  = find path'     xs' relevant'
+                            | otherwise = case ipdomM'' ! x of
+                                            Nothing -> find path'     xs' relevant
+                                            Just x' -> find (x':path) xs  relevant
+                          where (path', xs') = case xs of
+                                                []     -> ([], [])
+                                                (y:ys) -> ([y], ys)
+                                relevant' = foldr (uncurry Map.insert) relevant [ (y,succs) | y <- path, Just succs <- [Map.lookup y condNodesM] ]
 
         ipdomM''' = assert (z /= Nothing) $ 
                     Map.insert n z ipdomM''
@@ -638,25 +652,24 @@ cutNPasteIfPossible graphWithConds@(graph, condNodes)  (Just (n, ipdom)) m
                 --              Map.fromList [ (x, Nothing) | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM] `Map.union` ipdomM''
                 -- worklist0  = Seq.fromList [ x            | x <- nodes graphm, not $ x ∈ processed0, Map.member x condNodesM]
                 
-                (processed0, unprocessed0) = findReachable (nodes graphm) (Set.singleton m) Set.empty
-                todo = unprocessed0 ∩ (Map.keysSet condNodesM)
                 imdom0     = (if nIsCond then id else Map.insert n (Just nx)) $
-                             (Map.fromSet (\x -> Nothing) todo) `Map.union` ipdomM''
-                worklist0  = Seq.fromList $ Set.toList $ todo
+                             (fmap (const Nothing) relevantCondNodesM'''') `Map.union` ipdomM''
+                worklist0  = Seq.fromList $ Map.keys relevantCondNodesM''''
 
-                findReachable (x:xs) processed unprocessed = find [x] xs processed unprocessed
-                  where find []         [] processed unprocessed =  (processed, unprocessed)
-                        find path@(x:_) xs processed unprocessed
-                            | x ∈ processed          = find path'     xs' processed' unprocessed
-                            | x ∈ unprocessed        = find path'     xs' processed  unprocessed'
+        (processed0, relevantCondNodesM'''') = findReachable (nodes graphm) (Set.singleton m) Map.empty
+        findReachable (x:xs) processed relevant = find [x] xs processed relevant
+                  where find []         [] processed relevant =  (processed, relevant)
+                        find path@(x:_) xs processed relevant
+                            | Map.member x   relevant  = find path'     xs' processed  relevant'
+                            |            x ∈ processed = find path'     xs' processed' relevant
                             | otherwise = case ipdomM'' ! x of
-                                            Nothing -> find path'     xs' processed  unprocessed'
-                                            Just x' -> find (x':path) xs  processed  unprocessed
+                                            Nothing ->   find path'     xs' processed  relevant'
+                                            Just x' ->   find (x':path) xs  processed  relevant
                           where (path', xs') = case xs of
                                                 []     -> ([], [])
                                                 (y:ys) -> ([y], ys)
-                                processed'   = foldr Set.insert   processed path
-                                unprocessed' = foldr Set.insert unprocessed path
+                                processed' = foldr          Set.insert  processed                    path
+                                relevant'  = foldr (uncurry Map.insert) relevant  [ (y,succs) | y <- path, Just succs <- [Map.lookup y condNodesM] ]
 
         graphm = delSuccessorEdges graph m
         condNodesM = Map.delete m condNodes

@@ -160,15 +160,15 @@ lcaTimdomOfTwoFinger imdom (n, sn, forbiddenNs) (m, sm, forbiddenMs) = lca' imdo
                                      [_] -> let Just (n',sn') = c ! n
                                             in lca' c (m, sm, ms, forbiddenMs) (n', sn + sn', Map.insert n' (sn+sn') ns, forbiddenNs)
 
-lcaRKnownM :: Map Node (Maybe Node) -> Node -> [Node] -> (Node, Set Node)
+lcaRKnownM :: Map Node (Maybe Node) -> Node -> [Node] -> (Node, [Node])
 lcaRKnownM dom c successors = case dom ! c of
                      Nothing -> assert (successors == []) $
-                                (c, Set.fromList [c])
+                                (c, [c])
                      Just z  -> assert (successors /= []) $ 
-                                (z, foldr relevant (Set.fromList successors) successors)
-                       where relevant :: Node -> Set Node -> Set Node
+                                (z, foldr relevant successors successors)
+                       where relevant :: Node -> [Node] -> [Node]
                              relevant n ns
                                | n == z = ns
-                               | otherwise = relevant n' (Set.insert n' ns)
+                               | otherwise = relevant n' (n':ns)
                                    where Just n' = dom ! n
 

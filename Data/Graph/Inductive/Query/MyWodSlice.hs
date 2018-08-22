@@ -114,7 +114,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                  (unknownCond2 ∖ (wod ∪ notwod), wod, ndoms)
             else
               let (wod, notwod)        = Set.partition (\c -> (∃) ms (\m1 -> (∃) (suc graph c) (\xl ->  m1 ∈ pdom ! xl)  ∧ (∃) (suc graph c) (\xr -> not $ m1 ∈ pdom ! xr))) unknownCond0
-                  (wodFast,notwodFast) = Set.partition (\c ->  let (z, relevant) = lcaRKnownM ipdom c (suc graph c) in (∃) ms (\m1 -> m1 /= z ∧ m1 ∈ relevant))               unknownCond0
+                  (wodFast,notwodFast) = Set.partition (\c ->  let (z, relevant) = lcaRKnownM ipdom c (suc graph c) in (∃) ms (\m1 -> m1 /= z ∧ m1 `elem` relevant))               unknownCond0
                   ndoms' = Map.insert m ((pdom, dom, pmay), (ipdom, idom)) ndoms
                   ( pdom,  dom,  pmay)  = ( sinkdomOfGfp         $ delSuccessorEdges       graph  m,
                                             sinkdomOfGfp         $ delSuccessorEdges (grev graph) m,
@@ -213,7 +213,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 isReachableIPDomFrom = isReachableFromTreeM ipdom
                 withJoin     = [ (c,z,relevant) | c <- Set.toList unknownCond, let (z,relevant) = lcaRKnownM ipdom c (suc graph c), m2 `isReachableIPDomFrom` z ]
                 wodNewFast   = Set.fromList [ c | (c,z,relevant) <- withJoin,
-                                                  (∃) ms (\m1 -> (m1 ∈ relevant)  ∧  (m1 /= z))
+                                                  (∃) ms (\m1 -> (m1 `elem` relevant)  ∧  (m1 /= z))
                                ]
                 notwodNewFast= Set.fromList [ c | (c,z,relevant) <- withJoin,
                                                   not $ c ∈ wodNewFast
@@ -244,12 +244,12 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                 isReachableIPDomFrom = isReachableFromTreeM ipdom
                 withJoin     = [ (c,z,relevant) | c <- Set.toList unknownCond, let (z,relevant) = lcaRKnownM ipdom c (suc graph c) ]
                 wodNewFast   = Set.fromList [ c | (c,z,relevant) <- withJoin,
-                                                  (m1 /= z)  ∧  (       m1 ∈ relevant),
+                                                  (m1 /= z)  ∧  (       m1 `elem` relevant),
                                                   (∃) ms (\m2 -> m2 `isReachableIPDomFrom` m1)
                                ]
                 notwodNewFast= Set.fromList [ c | (c,z,relevant) <- withJoin,
                                                   not $ c ∈ wodNewFast,
-                                                  (m1 == z)  ∨  (not $ m1 ∈ relevant),
+                                                  (m1 == z)  ∨  (not $ m1 `elem` relevant),
                                                   allReachableFromTreeM ipdom ms z
                                ]
 
@@ -273,7 +273,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                                   assert (m2 /= c) True,
                                                   (n /= c) ∧ (not $ m2 `elem` reachable c gn),
                                                   let (z, relevant) = lcaRKnownM ipdom c (suc graph c),
-                                                  (∃) ms (\m1 -> m1 ∈ relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2))
+                                                  (∃) ms (\m1 -> m1 `elem` relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2))
                               ]
                 notwodNewFast   = Set.fromList [ c | (n /= m2),
                                                   c <- Set.toList unknownCond, 
@@ -281,7 +281,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                                   assert (m2 /= c) True,
                                                   (n /= c) ∧ (not $ m2 `elem` reachable c gn),
                                                   let (z, relevant) = lcaRKnownM ipdom c (suc graph c),
-                                            not $ (∃) ms (\m1 -> m1 ∈ relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2))
+                                            not $ (∃) ms (\m1 -> m1 `elem` relevant  ∧  m1 /= z  ∧  (not $ m1 `isReachableIDomFrom` m2))
                               ]
 
 
@@ -315,7 +315,7 @@ myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) e
                                                     (n /= m2) ∧ 
                                                     (n /= c) ∧
                                                     m1 /= z  ∧
-                                                    m1 ∈ relevant ∧
+                                                    m1 `elem` relevant ∧
                                                     (not $ isReachableBeforeFromTreeM idom m1 z m2) ∧
                                                     (not $ m2 `elem` reach)
                                                   )
@@ -564,13 +564,13 @@ myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nA
         
         cWithRelevant = [ (c, lcaRKnownM ipdom' c succs) |  (c, succs) <- Map.assocs condNodes', Just sinkM == Map.lookup c sinkOf    ∨  Just sinkM == Map.lookup c entryIntoSink ]
         fromIpdom = Set.fromList [ c | (c, (z,relevant)) <- cWithRelevant,
-                                       (∃) (ms) (\m1 -> m1 /= z ∧ m1 ∈ relevant ∧ (Map.lookup m1 sinkOf  == Just sinkM ))
+                                       (∃) (relevant) (\m1 -> m1 /= z ∧ m1 ∈ ms ∧ (Map.lookup m1 sinkOf  == Just sinkM ))
                     ]
         ready' = ready
                ⊔ (∐) [ Map.fromList [ (m1, Set.fromList [ c ]) ] | (c, (z,relevant)) <- cWithRelevant,
-                                                                    m1 <- Set.toList relevant, m1 /= z, Map.lookup m sinkOf == Just sinkM
+                                                                    m1 <- relevant, m1 /= z, Map.lookup m sinkOf == Just sinkM
                  ]
-        ready'Fast = foldr (\(c,m1) ready -> Map.alter (f c) m1 ready) ready [ (c,m1) | (c, (z,relevant)) <- cWithRelevant, m1 <- Set.toList relevant, m1 /= z, Map.lookup m sinkOf == Just sinkM ]
+        ready'Fast = foldr (\(c,m1) ready -> Map.alter (f c) m1 ready) ready [ (c,m1) | (c, (z,relevant)) <- cWithRelevant, m1 <- relevant, m1 /= z, Map.lookup m sinkOf == Just sinkM ]
           where f c Nothing   = Just $ Set.singleton c
                 f c (Just cs) = Just $ Set.insert c cs
         ipdom' = case ipdomN of

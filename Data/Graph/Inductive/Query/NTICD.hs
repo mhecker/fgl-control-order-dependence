@@ -2613,7 +2613,7 @@ wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
   where left  = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- condNodes, n /= m2, n /= m1, n `elem` (nodes gToM2),
                                                 let (y, relevant) = lcaRKnownM (fmap fromSet isinkdom) n (suc gToM2 n),
                                                 m1 /= y,
-                                                m1 ∈ relevant
+                                                m1 `elem` relevant
                                             ]) | m2 <- nodes graph,
                                                  let gM2   = delSuccessorEdges graph m2,
                                                  let gToM2 = subgraph (reachable m2 (grev gM2)) gM2,
@@ -3287,8 +3287,8 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               n /= m2,
                                                               let (z,relevant) = lcaRKnownM pdom n (suc graph n),
                                                        assert (Just z == foldM1 (lca pdom) (suc graph n)) True,
-                                                       assert (relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
-                                                              m1 <- Set.toList $ relevant, m1 /= z,
+                                                       assert (Set.fromList relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
+                                                              m1 <- relevant, m1 /= z,
                                                               m1 /= n,
                                                               m1 ∈ cycleS,
                                                        assert (m1 ∊ (suc isinkdomTrc n)) True,

@@ -3122,7 +3122,7 @@ myWodFast graph =
 
 
 
-rotatePDomAroundNeighbours :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAroundNeighbours :: forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
 rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
       id
     $ require (n /= m)
@@ -3181,7 +3181,7 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
 
 
 
-rotatePDomAroundArbitrary :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAroundArbitrary :: forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
 rotatePDomAroundArbitrary  graph condNodes ipdom (n, m) = 
       id
     $ require (n /= m)
@@ -3256,14 +3256,14 @@ rotatePDomAroundArbitrary  graph condNodes ipdom (n, m) =
         solution = fromIdom m $ iDom (grev graphm) m
 
 
-rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAround :: forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
 rotatePDomAround graph condNodes pdom nm
   | hasEdge graph nm = rotatePDomAroundNeighbours  graph condNodes pdom nm
   | otherwise        = rotatePDomAroundArbitrary   graph condNodes pdom nm
 
 
 
-myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr, Show (gr a b)) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDomForIterationStrategy strategy graph =
         convert $
         [ (n,m1,m2)  |                                        cycle <- isinkdomCycles,

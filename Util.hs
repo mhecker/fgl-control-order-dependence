@@ -266,4 +266,5 @@ findBoth dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n
                  found' = found ∨ (inXs ∧ n ∈ ms)
 
 
-fromIdom m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]
+fromIdom  m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]
+fromIdomM m idom = Map.insert m Nothing   $ Map.fromList [ (n, Just          m ) | (n,m) <- idom ]

@@ -1262,7 +1262,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
                         myWodFastPDom                 = NTICD.myWodFastPDom                  g
                         n = length $ nodes g
-                    in -- traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDom, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDom) $
+                    in traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDomSimpleHeuristic, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDomSimpleHeuristic) $
                          True
                        ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom,
     testProperty  "myWodFastPDom             == myWod"

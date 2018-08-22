@@ -38,7 +38,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree, restrict, isReachableFromTreeM)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM)
 import Unicode
 
 
@@ -3122,8 +3122,8 @@ myWodFast graph =
 
 
 
-rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
-rotatePDomAround  graph condNodes pdom e@(n,m) =
+rotatePDomAroundNeighbours :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
       id
     $ require (n /= m)
     $ require (hasEdge graph e)
@@ -3180,10 +3180,93 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
                 solution = fromIdom m $ iDom (grev graphm) m
 
 
+
+rotatePDomAroundArbitrary :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAroundArbitrary  graph condNodes ipdom (n, m) = 
+      id
+    $ require (n /= m)
+    $ require (ipdom  ! n == Nothing)
+    $ assert  (nodes graphm == (nodes $ efilter (\(x,y,_) -> x /= m) graph))
+    $ assert  (edges graphm == (edges $ efilter (\(x,y,_) -> x /= m) graph))
+    $ assert  (ipdom' ! m == Nothing)
+    $ ipdom'
+
+  where ipdomM''  = Map.insert m Nothing ipdom
+        succs     = [ x | x <- suc graph n, isReachableFromTreeM ipdomM'' m x]
+        graphm = delSuccessorEdges graph m
+        condNodesM = Map.delete m condNodes
+
+        ipdom' = assert ((∀) (nodes graph) (\x ->
+                                   if isReachableFromTreeM ipdomM'' n x then
+                                             reachableFromTree  (fmap toSet ipdomM''') x
+                                          ⊇  reachableFromTree                solution x
+                                   else 
+                                             reachableFromTree  (fmap toSet ipdomM''') x
+                                         ==  reachableFromTree                solution x
+                                       )
+                       )
+               $ assert (relevantCondNodesM == Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x) condNodesM)
+               $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM ipdomM'''
+
+        (relevantCondNodesM, ipdomM''') = 
+                if List.null succs then
+                  let (processed0, relevantCondNodesM) = findProcessedAndRelevant (nodes graphm) (Set.singleton m) Map.empty
+                      ipdomM''' = isinkdomOftwoFinger8Up graphm condNodesM worklist0 processed0 imdom0
+                        where nIsCond    = Map.member n condNodes
+                              [nx]       = suc graphm n
+                              imdom0     = (if nIsCond then id else Map.insert n (Just nx)) $
+                                           (fmap (const Nothing) relevantCondNodesM) `Map.union` ipdomM''
+                              worklist0  = Seq.fromList $ Map.keys relevantCondNodesM
+                  in (relevantCondNodesM, ipdomM''')
+                else
+                   let relevantCondNodesM = findRelevant (Map.keys condNodesM) Map.empty
+                       ipdomM''' = assert (z /= Nothing) $ Map.insert n z ipdomM''
+                         where z = foldM1 (lca ipdomM'') succs
+                  in (relevantCondNodesM, ipdomM''')
+
+
+        findProcessedAndRelevant (x:xs) processed relevant = find [x] xs processed relevant
+                  where find []         [] processed relevant =  (processed, relevant)
+                        find path@(x:_) xs processed relevant
+                            | Map.member x   relevant  = find path'     xs' processed  relevant'
+                            |            x ∈ processed = find path'     xs' processed' relevant
+                            | otherwise = case ipdomM'' ! x of
+                                            Nothing ->   find path'     xs' processed  relevant'
+                                            Just x' ->   find (x':path) xs  processed  relevant
+                          where (path', xs') = case xs of
+                                                []     -> ([], [])
+                                                (y:ys) -> ([y], ys)
+                                processed' = foldr          Set.insert  processed                    path
+                                relevant'  = foldr (uncurry Map.insert) relevant  [ (y,succs) | y <- path, Just succs <- [Map.lookup y condNodesM] ]
+
+        findRelevant     [] relevant =             relevant
+        findRelevant (x:xs) relevant = find [x] xs relevant
+                  where find []         [] relevant = relevant
+                        find path@(x:_) xs relevant
+                            | x == n                 = find path'     xs' relevant'
+                            | Map.member x relevant  = find path'     xs' relevant'
+                            | otherwise = case ipdomM'' ! x of
+                                            Nothing -> find path'     xs' relevant
+                                            Just x' -> find (x':path) xs  relevant
+                          where (path', xs') = case xs of
+                                                []     -> ([], [])
+                                                (y:ys) -> ([y], ys)
+                                relevant' = foldr (uncurry Map.insert) relevant [ (y,succs) | y <- path, Just succs <- [Map.lookup y condNodesM] ]
+
+        solution = fromIdom m $ iDom (grev graphm) m
+
+
+rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
+rotatePDomAround graph condNodes pdom nm
+  | hasEdge graph nm = rotatePDomAroundNeighbours  graph condNodes pdom nm
+  | otherwise        = rotatePDomAroundArbitrary   graph condNodes pdom nm
+
+
+
 myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr, Show (gr a b)) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDomForIterationStrategy strategy graph =
         convert $
-        [ (n,m1,m2)  |                                            cycle <- isinkdomCycles,
+        [ (n,m1,m2)  |                                        cycle <- isinkdomCycles,
                                                               length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
                                                               let entries = entriesFor cycle,
@@ -3192,17 +3275,15 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               let condsInCycle = restrict condsTowardCycle cycleS,
                                                               let cycleGraph = subgraph nodesTowardsCycle graph,
                                                               let paths = strategy graph cycle,
-                                                              require ( (∐) [ Set.fromList path | path <- paths] == Set.fromList cycle ) True,
-                                                              (m20:others) <- paths,
-                                                              let edges = zip (m20:others) others,
-                                                              let pdom0 = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m20) `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
-                                                              let pdoms = zip (m20:others)
-                                                                              (scanl (rotatePDomAround cycleGraph condsTowardCycle) pdom0 edges),
+                                                      require ( (∐) [ Set.fromList path | path <- paths] == Set.fromList cycle ) True,
+                                                              let (m20:others) = concat paths,
+                                                              let pairs = zip (m20:others) others,
+                                                              let pdom0 = fromIdomM m20 $ iDom (grev cycleGraph) m20,
+                                                              let pdoms = zip (m20:others) (scanl (rotatePDomAround cycleGraph condsTowardCycle) pdom0 pairs),
                                                               n <- [ n | (n,_) <- Map.assocs condsInCycle] ++ entries,
                                                               (m2, pdom) <- pdoms,
-                                                              let pdom' = (fmap Just $ Map.fromList $ iDom (grev cycleGraph) m2)  `Map.union` Map.fromList [ (m, Nothing) | m <- nodes cycleGraph],
-                                                              -- if pdom == pdom' then True else traceShow (m2, pdom', pdoms, cycleGraph) True,
-                                                              assert (pdom == pdom') True,
+                                                              let pdom' = fromIdomM m2  $ iDom (grev cycleGraph) m2,
+                                                       assert (pdom == pdom') True,
                                                               n /= m2,
                                                               let (z,relevant) = lcaRKnownM pdom n (suc graph n),
                                                        assert (Just z == foldM1 (lca pdom) (suc graph n)) True,

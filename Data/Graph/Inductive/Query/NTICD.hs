@@ -38,7 +38,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree, restrict)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, roots, dfsTree, restrict, isReachableFromTreeM)
 import Unicode
 
 
@@ -3125,6 +3125,7 @@ myWodFast graph =
 rotatePDomAround :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map Node [Node] -> Map Node (Maybe Node) -> (Node, Node) -> Map Node (Maybe Node)
 rotatePDomAround  graph condNodes pdom e@(n,m) =
       id
+    $ require (n /= m)
     $ require (hasEdge graph e)
     $ require (pdom  ! n == Nothing)
     $ assert  (nodes graphm == (nodes $ efilter (\(x,y,_) -> x /= m) graph))
@@ -3132,17 +3133,22 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
     $ assert  (pdom' ! m == Nothing)
     $ pdom'
   where graphm = delSuccessorEdges graph m
-        pdom'0 = id
-               $ Map.insert m Nothing
-               $ Map.union (Map.fromList [(n', Just m) | n' <- pre graph m ])
-               $ pdom
+        pdom'0   = id
+                 $ Map.insert n (Just m)
+                 $ ipdomM''
+        ipdomM'' = Map.insert m Nothing
+                 $ pdom
         pdom' = id
               -- $ traceShow pdom'0 
               -- $ traceShow [ (n, sol, pd) | (n,sol) <- Map.assocs $ toSuccMap $ (immediateOf solution :: gr () ()),
               --                              let pd = pdom'0 ! n, pd /= sol]
-              $ assert ((∀) (nodes graph) (\n ->
-                                             reachableFromTree  (fmap toSet pdom'0) n
-                                          ⊇  reachableFromTree             solution n
+              $ assert ((∀) (nodes graph) (\x ->
+                                   if isReachableFromTreeM ipdomM'' n x then
+                                             reachableFromTree  (fmap toSet pdom'0) x
+                                          ⊇  reachableFromTree             solution x
+                                   else 
+                                             reachableFromTree  (fmap toSet pdom'0) x
+                                         ==  reachableFromTree             solution x
                                        )
                        )
               $ if ((∀) (pre graph m) (\p -> p == n)) then
@@ -3150,9 +3156,26 @@ rotatePDomAround  graph condNodes pdom e@(n,m) =
                   $ pdom'0
                 else
                     id 
-                  $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m condNodesM pdom'0
+                  $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM pdom'0
           where 
                 condNodesM = Map.delete m condNodes
+                relevantCondNodesM = assert (fromFind == slow) fromFind
+                  where slow = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x) condNodesM
+                        fromFind = findAll (Map.keys condNodesM) Map.empty
+                          where findAll     [] relevant = relevant
+                                findAll (x:xs) relevant = find [x] xs relevant
+                                find []         [] relevant = relevant
+                                find path@(x:_) xs relevant
+                                    | x == n                 = find path'     xs' relevant'
+                                    | Map.member x relevant  = find path'     xs' relevant'
+                                    | otherwise = case ipdomM'' ! x of
+                                                    Nothing -> find path'     xs' relevant
+                                                    Just x' -> find (x':path) xs  relevant
+                                  where (path', xs') = case xs of
+                                                         []     -> ([], [])
+                                                         (y:ys) -> ([y], ys)
+                                        relevant' = foldr (uncurry Map.insert) relevant [ (y,succs) | y <- path, Just succs <- [Map.lookup y condNodesM] ]
+
 
                 solution = fromIdom m $ iDom (grev graphm) m
 
@@ -3212,7 +3235,7 @@ myWodFastPDomForIterationStrategy strategy graph =
 
             return m'
 
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG

@@ -115,6 +115,9 @@ main g v' =
                 (candidates, obs') =  propagate g w obs u u
                 new_nodes = Set.filter (\v ->  confirm g obs' v u) candidates
 
+wdSlice :: Graph gr => gr a b -> Set Node -> Set Node
+wdSlice g = fst . (main g)
+
 wccSlice :: Graph gr => gr a b -> Set Node -> Set Node
 wccSlice g v' = w ∩ fromV'
   where (w,_) = main g v'

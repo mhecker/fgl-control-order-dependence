@@ -67,7 +67,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
-import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
+import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     rotatePDomAround,
@@ -779,6 +779,18 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "wodTEILSlice  == wdSlice"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    g'   = grev g
+                    wodteilslicer    = NTICD.wodTEILSlice g
+                    wdslicer         = FCACD.wdSlice      g
+                    wodteilslicer'   = NTICD.wodTEILSlice g'
+                    wdslicer'        = FCACD.wdSlice      g'
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                       wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
+                     ∧ wodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
+                   )),
     testProperty "wccSliceViaNticdMyWodPDomSimpleHeuristic  == wccSlice for randomly selected nodes"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

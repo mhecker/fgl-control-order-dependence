@@ -806,7 +806,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     m2 = (cycle $ nodes g) !! 87653
                     wccSlicer  = FCACD.wccSlice g
                     wccSlicer' = MyWodSlice.wccSliceViaNticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g
-                in traceShow (length $ nodes g) $
+                in -- traceShow (length $ nodes g) $
                    wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
     testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
@@ -1036,7 +1036,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                            imdom0     = (if nIsCond then id else Map.insert n (fromSet $ Set.fromList $ suc (gn ! m) n)) $
                                                         Map.fromList [ (x, Nothing) | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes] `Map.union` (fmap fromSet ipdomM'')
                                            worklist0  = Seq.fromList [ x            | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes]
-                                           ipdomM'''' = traceShow (Map.size nonSinkCondNodes, Seq.length worklist0) $
+                                           ipdomM'''' = -- traceShow (Map.size nonSinkCondNodes, Seq.length worklist0) $
                                                         fmap toSet $ NTICD.isinkdomOftwoFinger8Up (gn ! m) nonSinkCondNodes worklist0 processed0 imdom0
                                        in (∀) sink (\y ->
                                                reachableFromTree  ipdomM''''  y
@@ -1274,7 +1274,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myWodFastPDomSimpleHeuristic  = NTICD.myWodFastPDomSimpleHeuristic   g
                         myWodFastPDom                 = NTICD.myWodFastPDom                  g
                         n = length $ nodes g
-                    in traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDomSimpleHeuristic, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDomSimpleHeuristic) $
+                    in -- traceShow (n, sum $ fmap (\s -> if Set.null s then 0 else 1) $ Map.elems myWodFastPDomSimpleHeuristic, n*n, sum $ fmap Set.size $ Map.elems myWodFastPDomSimpleHeuristic) $
                          True
                        ∧ myWodFastPDomSimpleHeuristic  == myWodFastPDom,
     testProperty  "myWodFastPDom             == myWod"

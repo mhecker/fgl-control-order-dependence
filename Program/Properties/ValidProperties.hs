@@ -818,7 +818,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     wccSlicer  = FCACD.wccSlice g
                     wccSlicer' = MyWodSlice.wccSliceViaNticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g
                 in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
-    testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice"
+    testPropertySized 70 "wccSliceViaNticdMyWodSliceSimple  == wccSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g   =      generatedGraph
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
@@ -942,7 +942,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           mywodsimpleslicer (Set.fromList [m1, m2]) == mywodfastslicer (Set.fromList [m1, m2])
                    )),
-    testPropertySized 50  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 20  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]

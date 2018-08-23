@@ -1223,7 +1223,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                            let gn   = efilter (\(x,y,_) -> x /= n) g
                                pdom = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 gn
                                condNodes = Map.fromList [ (x, succs) | x <- nodes g, let succs = suc g x, length succs  > 1 ]
-                           in    (∀) (suc g n) (\m -> 
+                           in    (∀) (suc g n) (\m -> if m == n then True else
                                   let pdom' = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 gm
                                         where gm = delSuccessorEdges g m
                                       rpdom' = NTICD.rotatePDomAround g condNodes pdom (n,m)

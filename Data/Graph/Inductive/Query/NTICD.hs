@@ -2564,6 +2564,15 @@ wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 
 
+wodTEILSliceViaNticdMyWodPDomSimpleHeuristic :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g ms = s
+  where gRev = grev g
+        g'   = subgraph (Set.toList toMs) g
+        s    = nticdMyWodPDomSimpleHeuristic g' ms
+        toMs   = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m gRev ]
+
+
+
 myWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node  -> Set Node
 myWodFastSlice graph =  combinedBackwardSlice graph empty w
   where empty = Map.empty

@@ -80,7 +80,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice, wodTEILPDomSlice,
+    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticdMyWodPDomSimpleHeuristic,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
@@ -786,6 +786,18 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     wodteilslicer    = NTICD.wodTEILSlice g
                     wdslicer         = FCACD.wdSlice      g
                     wodteilslicer'   = NTICD.wodTEILSlice g'
+                    wdslicer'        = FCACD.wdSlice      g'
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                       wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
+                     ∧ wodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
+                   )),
+    testProperty "wodTEILSliceViaNticdMyWodPDomSimpleHeuristic  == wdSlice"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    g'   = grev g
+                    wodteilslicer    = NTICD.wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g
+                    wdslicer         = FCACD.wdSlice      g
+                    wodteilslicer'   = NTICD.wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g'
                     wdslicer'        = FCACD.wdSlice      g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])

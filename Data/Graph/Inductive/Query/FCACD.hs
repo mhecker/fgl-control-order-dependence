@@ -54,6 +54,9 @@ import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, reachable)
 
+
+import Data.Graph.Inductive.Query.NTICD (nticdSlice)
+
 import Debug.Trace
 import Control.Exception.Base (assert)
 
@@ -122,3 +125,10 @@ wccSlice :: Graph gr => gr a b -> Set Node -> Set Node
 wccSlice g v' = w ∩ fromV'
   where (w,_) = main g v'
         fromV' = (Set.fromList $ [ n | m <- Set.toList v', n <- reachable m g ])
+
+
+nticdMyWodViaWDSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdMyWodViaWDSlice graph = \ms -> let wd = wdSlice graph ms
+                                    in nticd wd
+  where nticd = nticdSlice graph
+

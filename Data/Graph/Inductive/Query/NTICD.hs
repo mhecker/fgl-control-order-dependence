@@ -2507,55 +2507,72 @@ ffMust graph condNodes reachable nextCond toNextCond dom =
                                   ) | m1 <- nodes graph, m2 <- nodes graph]
 
 
-
-combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
-combinedBackwardSlice graph cd od = \ms -> (㎲⊒) ms f
+combinedBackwardSliceSlow :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
+combinedBackwardSliceSlow graph cd od = \ms -> (㎲⊒) ms f
   where f slice = slice
                 ⊔ Set.fromList [ n | m <- Set.toList slice, n <- Set.toList $ cdReversed ! m ]
                 ⊔ Set.fromList [ n | m1 <- Set.toList slice, m2 <- Set.toList slice, m1 /= m2, n <- Set.toList $ Map.findWithDefault Set.empty (m1,m2) od ]
         cdReversed = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
                    ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList cd )
 
-ntscdMyDodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
+combinedBackwardSlice graph cd od = \ms ->
+     let result = slice Set.empty ms 
+         slice s workset
+             | Set.null workset = s
+             | otherwise        = slice s' workset'
+           where (m, workset0) = Set.deleteFindMin workset
+                 s'  = Set.insert m s
+                 new = (fromOD ∪ fromCD) ∖ s'
+                 workset' = workset0 ∪ new
+
+                 fromCD = cdReversed ! m
+                 fromOD = (∐) [ (Map.findWithDefault Set.empty (m,m') od ) ∪ (Map.findWithDefault Set.empty (m', m) od) | m' <- Set.toList s ]
+     in result
+  where cdReversed = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+                   ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList cd )
+
+
+ntscdMyDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = ntscdF3 graph
         d     = myDod graph
 
-ntscdDodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = ntscdF3 graph
         d     = dod graph
 
 
 
-nticdSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkdomTwoFingercd graph
         w     = Map.empty
 
-nticdMyWodSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdMyWodSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = nticdF3 graph
         w     = myWod graph
 
-nticdMyWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdMyWodFastSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodFastSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkdomTwoFingercd graph
         w     = myWodFast graph
 
-nticdMyWodPDomSimpleHeuristic :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdMyWodPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodPDomSimpleHeuristic graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkdomTwoFingercd graph
         w     = myWodFastPDomSimpleHeuristic graph
 
 
-wccSliceViaWodTEILPDom :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wccSliceViaWodTEILPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 wccSliceViaWodTEILPDom graph = \ms -> let fromMs = (Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m graph ]) in combinedBackwardSlice graph empty w ms ∩ fromMs
   where empty = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
         w     = wodTEIL'PDom graph
 
 
-wccSliceViaNticdMyWodPDomSimpleHeuristic :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wccSliceViaNticdMyWodPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
   where gRev = grev g
         g'   = subgraph (Set.toList toMs) g
@@ -2564,7 +2581,7 @@ wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 
 
-wodTEILSliceViaNticdMyWodPDomSimpleHeuristic :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticdMyWodPDomSimpleHeuristic :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g ms = s
   where gRev = grev g
         g'   = subgraph (Set.toList toMs) g
@@ -2573,24 +2590,25 @@ wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g ms = s
 
 
 
-myWodFastSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node  -> Set Node
+myWodFastSlice :: ( DynGraph gr) => gr a b ->  Set Node  -> Set Node
 myWodFastSlice graph =  combinedBackwardSlice graph empty w
   where empty = Map.empty
         w     = myWodFast graph
 
 
-myWodFastPDomSimpleHeuristicSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+myWodFastPDomSimpleHeuristicSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 myWodFastPDomSimpleHeuristicSlice graph =  combinedBackwardSlice graph empty w
   where empty = Map.empty
         w     = myWodFastPDomSimpleHeuristic graph
 
 
-wodMyEntryWodMyCDSlice :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodMyEntryWodMyCDSlice :: forall gr a b. ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
                                    -- traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd))
                                   id
                                 else
-                                   traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd), graph)
+                                   -- traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd), graph)
+                                  id
                                ) $
                                combinedBackwardSlice graph (nticdF3 graph ⊔ cd) w
   where cdFromDom    = myCDFromMyDom graph
@@ -2600,24 +2618,24 @@ wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
         cdFromDomEdges = Set.fromList $ edges $ trc $ (fromSuccMap cdFromDom :: gr () ())
 
 
-wodTEILSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 wodTEILSlice graph = combinedBackwardSlice graph empty w
   where empty = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
         w     = wodTEIL' graph
 
-wodTEILPDomSlice :: (Show (gr a b), DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 wodTEILPDomSlice graph = combinedBackwardSlice graph empty w
   where empty = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
         w     = wodTEIL'PDom graph
 
 
-wodTEIL :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node,Node))
+wodTEIL :: (DynGraph gr) => gr a b -> Map Node (Set (Node,Node))
 wodTEIL graph = xodTEIL smmnMustBefore smmnMay graph
   where smmnMustBefore = smmnFMustWodBefore graph
         smmnMay  = smmnFMayWod graph
 
 
-wodTEIL'PDom :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node) (Set Node)
+wodTEIL'PDom :: (DynGraph gr) => gr a b -> Map (Node, Node) (Set Node)
 wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
   where left  = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- condNodes, n /= m2, n /= m1, n `elem` (nodes gToM2),
                                                 let (y, relevant) = lcaRKnownM (fmap fromSet isinkdom) n (suc gToM2 n),
@@ -2646,7 +2664,7 @@ wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
 
 
 
-wodTEIL' :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+wodTEIL' :: (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 wodTEIL' graph = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
                ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList wTEIL )
   where wTEIL = wodTEIL graph
@@ -2654,7 +2672,7 @@ wodTEIL' graph = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- 
 
 
 
-mustBeforeMaximalDef :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set (Node, Node))
+mustBeforeMaximalDef :: (DynGraph gr) => gr a b -> Map Node (Set (Node, Node))
 mustBeforeMaximalDef graph =
                 Map.fromList [ (n, Set.empty) | n <- nodes graph]
               ⊔ Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph,
@@ -2670,31 +2688,31 @@ mustBeforeMaximalDef graph =
         inPathBefore = inPathForBefore graph doms
         doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
 
-smmnFMustWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFMustWod :: (DynGraph gr) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustWod graph = smmnGfp graph fMust
 
-smmnFMustWodBefore :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFMustWodBefore :: (DynGraph gr) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustWodBefore graph = smmnGfp graph fMustBefore
 
 
-smmnFMayWod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFMayWod :: (DynGraph gr) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMayWod graph = smmnLfp graph fMay'
 
 
-smmnFMustDod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFMustDod :: (DynGraph gr) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustDod graph = smmnLfp graph fMust
 
-smmnFMustNoReachCheckDod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFMustNoReachCheckDod :: (DynGraph gr) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMustNoReachCheckDod graph = smmnLfp graph fMustNoReachCheck
 
 
-smmnFMayDod :: (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnFMayDod :: (DynGraph gr) => gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnFMayDod graph = smmnLfp graph fMay'
 
 
 
 
-smmnGfp :: (DynGraph gr , Show (gr a b)) => gr a b -> SmmnFunctionalGen gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnGfp :: (DynGraph gr ) => gr a b -> SmmnFunctionalGen gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnGfp graph f = -- traceShow graph $ 
                   (𝝂) smnInit (f graph condNodes reachable nextCond toNextCond)
   where smnInit =  Map.fromList [ ((m1,m2,p), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
@@ -2705,7 +2723,7 @@ smmnGfp graph f = -- traceShow graph $
         toNextCond = toNextCondNode graph
         trncl = trc graph
 
-smmnLfp :: (DynGraph gr, Show (gr a b)) => gr a b -> SmmnFunctionalGen gr a b -> Map (Node, Node, Node) (Set (T Node))
+smmnLfp :: (DynGraph gr) => gr a b -> SmmnFunctionalGen gr a b -> Map (Node, Node, Node) (Set (T Node))
 smmnLfp graph f = -- traceShow graph $ 
                   (㎲⊒) smnInit (f graph condNodes reachable nextCond toNextCond)
   where smnInit =  Map.fromList [ ((m1,m2,p), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, p <- condNodes ]
@@ -2772,7 +2790,7 @@ myXod smmnMust s graph =
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 
-myEntryWodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myEntryWodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 myEntryWodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
@@ -2800,7 +2818,7 @@ myEntryWodFast graph =
 
 symmetric m = (∐) [ Map.fromList [((m1,m2), ns), ((m2,m1),ns) ] |  ((m1,m2),ns) <- Map.assocs m ]
 
-mySinkWodFast  :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+mySinkWodFast  :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 mySinkWodFast graph = (∐) [ Map.fromList [ ((m1, m2), Set.fromList [ n ] ) ] |
                                                                            cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes,
                                                                            xl <- suc graph n,
@@ -3022,7 +3040,7 @@ someprop g =  smmnmay' == smmnmay
         -- pr = exampleSimpleNoUniqueEndNodeWithChoice2
         -- g0 = tcfg pr
         -- g = insEdge (10,1,NoOp)  $ insEdge (6,9,NoOp) g0
-myWodFromMay :: forall gr a b. (DynGraph gr, Show (gr a b)) =>  gr a b -> Map (Node, Node) (Set Node)
+myWodFromMay :: forall gr a b. (DynGraph gr) =>  gr a b -> Map (Node, Node) (Set Node)
 myWodFromMay graph =  --      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
                       myEntryWodFast graph
                    ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n]) ] | (n, m1, m2) <- mywod ]
@@ -3099,7 +3117,7 @@ myWod graph = myXod sMust s3 graph
   where sMust = smmnFMustWod graph
         s3    = snmF3 graph
 
-myWodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 myWodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
@@ -3336,12 +3354,12 @@ myWodFastPDomForIterationStrategy strategy graph =
 -- towardsCycle graph cycleS n = dfs [n] graph
 
 
-myWodFastPDom :: forall gr a b. (DynGraph gr, Show (gr a b), Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDom :: forall gr a b. (DynGraph gr,  Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDom graph = myWodFastPDomForIterationStrategy none graph
   where none graph cycle = [ [n] | n <- cycle ]
 
 
-myWodFastPDomSimpleHeuristic :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDomSimpleHeuristic :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDomSimpleHeuristic graph = myWodFastPDomForIterationStrategy simple graph
   where simple :: gr a b -> [Node] -> [[Node]]
         simple graph cycle = from (joinNodes ++ nonJoinNodes) Set.empty []
@@ -3376,7 +3394,7 @@ myDod graph = myXod sMust s3 graph
         s3    = snmF3Lfp graph
 
 
-myDodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myDodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 myDodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- imdomCycles,
@@ -3402,7 +3420,7 @@ myDodFast graph =
 
 
 
-dodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+dodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 dodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
@@ -3433,7 +3451,7 @@ dodFast graph =
 
 
 {- this algorithm does *not* work, see: Program.Examples.dodSuperFastCounterExample6 -}
-dodSuperFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+dodSuperFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 dodSuperFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
@@ -3575,7 +3593,7 @@ dodColoredDagFixedFast graph =
         unorderedPairsOf (x:xs) = [ (x,y) | y <- xs ] ++ unorderedPairsOf xs
 
 
-wodFast :: forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+wodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 wodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- condNodes,
@@ -4298,7 +4316,7 @@ solveSnTimingEquationSystem graph s = solve s0 0
                             ]
 
 
-solveSnTimingEquationSystemWorklist ::  forall gr a b. (DynGraph gr, Show (gr a b)) => gr a b -> SnTimingEquationSystem -> SnTimingEquationSystem
+solveSnTimingEquationSystemWorklist ::  forall gr a b. (DynGraph gr) => gr a b -> SnTimingEquationSystem -> SnTimingEquationSystem
 solveSnTimingEquationSystemWorklist graph s0 = solve s0 worklist0 (Map.fromList [ (y, 0) | y <- Map.keys s0]) (Map.fromList [ (y, 0) | y <- Map.keys s0])
           where condNodes = [ x | x <- nodes graph, length (suc graph x) > 1 ]
                 nextCond = nextCondNode graph
@@ -4420,7 +4438,7 @@ timingSnSolvedDependence graph =
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
 
-timingSnSolvedDependenceWorklist :: (DynGraph gr, Show (gr a b)) => gr a b -> Map Node (Set Node)
+timingSnSolvedDependenceWorklist :: (DynGraph gr) => gr a b -> Map Node (Set Node)
 timingSnSolvedDependenceWorklist graph = 
       Map.fromList [ (n, Set.empty) | n <- nodes graph]
     ⊔ Map.fromList [ (p, Set.fromList [ m | let sx = (∐) [ s ! x  | x <- suc graph p ],

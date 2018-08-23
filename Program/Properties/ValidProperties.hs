@@ -779,7 +779,7 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testProperty "wodTEILSlice  == wdSlice"
+    testPropertySized 40 "wodTEILSlice  == wdSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g

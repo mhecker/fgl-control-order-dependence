@@ -38,7 +38,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without)
 import Unicode
 
 
@@ -2565,6 +2565,11 @@ nticdMyWodPDomSimpleHeuristic graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkdomTwoFingercd graph
         w     = myWodFastPDomSimpleHeuristic graph
 
+nticdMyWodPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdMyWodPDom graph =  combinedBackwardSlice graph nticd w
+  where nticd = isinkdomTwoFingercd graph
+        w     = myWodFastPDom graph
+
 
 wccSliceViaWodTEILPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 wccSliceViaWodTEILPDom graph = \ms -> let fromMs = (Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m graph ]) in combinedBackwardSlice graph empty w ms ∩ fromMs
@@ -3161,7 +3166,7 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
     $ pdom'
   where graphm = delSuccessorEdges graph m
         pdom'0   = id
-                 $ Map.insert n (Just m)
+                 $ Map.union (Map.fromList [(n', Just m) | n' <- pre graph m, n' /= m ])
                  $ ipdomM''
         ipdomM'' = Map.insert m Nothing
                  $ pdom
@@ -3186,8 +3191,15 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
                   $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM pdom'0
           where 
                 condNodesM = Map.delete m condNodes
-                relevantCondNodesM = assert (fromFind == slow) fromFind
-                  where slow = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x) condNodesM
+                relevantCondNodesM =
+                                   --   assert (fromFind == slow)
+                                   -- $ without fromFind (Set.fromList $ pre graph m)
+                                   traceShow (n, m, pdom) $
+                                   -- traceShow (Map.size slow, Map.size slowOld) $
+                                     slow
+                  where slow    = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x
+                                                           ∧ (not $ (∃) (pre graph m) (\n' -> isReachableFromTreeM ipdomM'' n' x  ∧  (not $ isReachableFromTreeM ipdomM'' n' n )))) condNodesM
+                        slowOld = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x                                                                         ) condNodesM
                         fromFind = findAll (Map.keys condNodesM) Map.empty
                           where findAll     [] relevant = relevant
                                 findAll (x:xs) relevant = find [x] xs relevant
@@ -3354,7 +3366,7 @@ myWodFastPDomForIterationStrategy strategy graph =
 -- towardsCycle graph cycleS n = dfs [n] graph
 
 
-myWodFastPDom :: forall gr a b. (DynGraph gr,  Eq (gr a b)) => gr a b -> Map (Node,Node) (Set Node)
+myWodFastPDom :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDom graph = myWodFastPDomForIterationStrategy none graph
   where none graph cycle = [ [n] | n <- cycle ]
 

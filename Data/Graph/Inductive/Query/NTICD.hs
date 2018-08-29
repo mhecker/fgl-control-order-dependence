@@ -2035,16 +2035,13 @@ isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
     -- $ traceShow result
     $ result
   where result = twoFingerDown worklist imdom0 False
-        worklist = fmap (\(x, succs) -> (x, Set.fromList succs)) $
-                   Map.assocs condNodes
+        worklist = Map.assocs condNodes
         twoFingerDown []                     imdom False   = imdom
         twoFingerDown []                     imdom True    = twoFingerDown worklist                   imdom    False
         twoFingerDown ((x, succs):worklist') imdom changed = twoFingerDown worklist' (Map.insert x mz imdom)  (changed ∨ changed')
           where changed' =  mz /= (imdom ! x)
-                mz = require (succs == (Set.fromList $ suc graph x)) $
-                     -- require (succs == suc graph x) $
-                     -- foldM1 lca succs
-                     lcaBelowKnownM imdom x succs
+                mz = require (succs == suc graph x) $
+                     foldM1 lca succs
                 lca = lcaUniqueExitNode imdom nx
 
 
@@ -3195,16 +3192,9 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
                   $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM pdom'0
           where 
                 condNodesM = Map.delete m condNodes
-                relevantCondNodesM =
-                                     assert (fromFind == slowOld)
-                                   -- $ traceShow (n, m, pdom)
-                                   -- $ without fromFind (Set.fromList $ pre graph m)
+                relevantCondNodesM = assert (fromFind == slow) $
                                      fromFind
-                                   -- traceShow (Map.size slow, Map.size slowOld) $
-                                   --  slow
-                  where slow    = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x
-                                                           ∧ (not $ (∃) (pre graph m) (\n' -> isReachableFromTreeM ipdomM'' n' x  ∧  (not $ isReachableFromTreeM ipdomM'' n' n )))) condNodesM
-                        slowOld = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x   ∧  (not $ x ∈ preM)                                                              ) condNodesM
+                  where slow     = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x    ∧   (not $ x ∈ preM)) condNodesM
                         fromFind = findAll (Set.toList $ (Map.keysSet condNodesM) ∖ preM) Map.empty
                           where findAll     [] relevant = relevant
                                 findAll (x:xs) relevant = find [x] xs relevant

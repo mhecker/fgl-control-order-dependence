@@ -2035,13 +2035,16 @@ isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
     -- $ traceShow result
     $ result
   where result = twoFingerDown worklist imdom0 False
-        worklist = Map.assocs condNodes
+        worklist = fmap (\(x, succs) -> (x, Set.fromList succs)) $
+                   Map.assocs condNodes
         twoFingerDown []                     imdom False   = imdom
         twoFingerDown []                     imdom True    = twoFingerDown worklist                   imdom    False
         twoFingerDown ((x, succs):worklist') imdom changed = twoFingerDown worklist' (Map.insert x mz imdom)  (changed ∨ changed')
           where changed' =  mz /= (imdom ! x)
-                mz = assert (succs == suc graph x) $
-                     foldM1 lca succs
+                mz = require (succs == (Set.fromList $ suc graph x)) $
+                     -- require (succs == suc graph x) $
+                     -- foldM1 lca succs
+                     lcaBelowKnownM imdom x succs
                 lca = lcaUniqueExitNode imdom nx
 
 
@@ -3165,8 +3168,9 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
     $ assert  (pdom' ! m == Nothing)
     $ pdom'
   where graphm = delSuccessorEdges graph m
+        preM = Set.fromList $ pre graph m
         pdom'0   = id
-                 $ Map.union (Map.fromList [(n', Just m) | n' <- pre graph m, n' /= m ])
+                 $ Map.union (Map.fromSet (const $ Just m) $ Set.delete m preM)
                  $ ipdomM''
         ipdomM'' = Map.insert m Nothing
                  $ pdom
@@ -3183,7 +3187,7 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
                                          ==  reachableFromTree             solution x
                                        )
                        )
-              $ if ((∀) (pre graph m) (\p -> p == n)) then
+              $ if ((∀) preM (\p -> p == n)) then
                     id
                   $ pdom'0
                 else
@@ -3192,15 +3196,16 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
           where 
                 condNodesM = Map.delete m condNodes
                 relevantCondNodesM =
-                                   --   assert (fromFind == slow)
+                                     assert (fromFind == slowOld)
+                                   -- $ traceShow (n, m, pdom)
                                    -- $ without fromFind (Set.fromList $ pre graph m)
-                                   traceShow (n, m, pdom) $
+                                     fromFind
                                    -- traceShow (Map.size slow, Map.size slowOld) $
-                                     slow
+                                   --  slow
                   where slow    = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x
                                                            ∧ (not $ (∃) (pre graph m) (\n' -> isReachableFromTreeM ipdomM'' n' x  ∧  (not $ isReachableFromTreeM ipdomM'' n' n )))) condNodesM
-                        slowOld = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x                                                                         ) condNodesM
-                        fromFind = findAll (Map.keys condNodesM) Map.empty
+                        slowOld = Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x   ∧  (not $ x ∈ preM)                                                              ) condNodesM
+                        fromFind = findAll (Set.toList $ (Map.keysSet condNodesM) ∖ preM) Map.empty
                           where findAll     [] relevant = relevant
                                 findAll (x:xs) relevant = find [x] xs relevant
                                 find []         [] relevant = relevant
@@ -3213,7 +3218,7 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
                                   where (path', xs') = case xs of
                                                          []     -> ([], [])
                                                          (y:ys) -> ([y], ys)
-                                        relevant' = foldr (uncurry Map.insert) relevant [ (y,succs) | y <- path, Just succs <- [Map.lookup y condNodesM] ]
+                                        relevant' = foldr (uncurry Map.insert) relevant [ (y,succs) | y <- path, not $ y ∈ preM, Just succs <- [Map.lookup y condNodesM] ]
 
 
                 solution = fromIdom m $ iDom (grev graphm) m

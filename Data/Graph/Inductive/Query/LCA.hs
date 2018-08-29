@@ -34,7 +34,7 @@ import qualified Data.List as List
 -- import Program
 
 -- import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet)
-import Util(toSet, fromSet)
+import Util(toSet, fromSet, foldM1)
 import Unicode
 
 
@@ -44,7 +44,7 @@ import Data.Graph.Inductive
 -- import Data.Graph.Inductive.Query.Dependence
 -- import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs)
 
--- import Debug.Trace
+import Debug.Trace
 import Control.Exception.Base (assert)
 
 
@@ -171,4 +171,20 @@ lcaRKnownM dom c successors = case dom ! c of
                                | n == z = ns
                                | otherwise = relevant n' (n':ns)
                                    where Just n' = dom ! n
+
+
+lcaBelowKnownM :: Map Node (Maybe Node) -> Node -> Set Node -> Maybe Node
+lcaBelowKnownM dom c successors = --if assert (result == foldM1 (lcaSlow dom) (Set.toList successors)) result
+                                  (if result == foldM1 (lcaSlow dom) (Set.toList successors) then id else traceShow (dom, c, successors, result, foldM1 (lcaSlow dom) (Set.toList successors))) $
+                                  result
+  where result = case dom ! c of
+                     Nothing -> assert (      Set.null successors) $
+                                Nothing
+                     Just z  -> assert (not $ Set.null successors) $ 
+                                Just $ find z z
+                       where find :: Node -> Node -> Node
+                             find z n = case dom ! n of
+                                 Just n' -> find z' n'
+                                 Nothing -> z'
+                               where z'  = if n ∈ successors then n else z
 

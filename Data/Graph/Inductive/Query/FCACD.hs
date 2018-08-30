@@ -132,3 +132,82 @@ nticdMyWodViaWDSlice graph = \ms -> let wd = wdSlice graph ms
                                     in nticd wd
   where nticd = nticdSlice graph
 
+
+
+
+data Reachability  = Unreachable | Reached Node | Phi (Set Node) deriving (Show, Eq)
+instance JoinSemiLattice Reachability where
+  Unreachable   `join` x           = x
+  x             `join` Unreachable = x
+
+  Reached x `join` Reached y
+    | x == y    = Reached x
+    | otherwise = Phi (Set.fromList [x,y])
+
+
+  Reached x `join` Phi ys = Phi (Set.insert x ys)
+  Phi xs `join` Reached y = Phi (Set.insert y xs)
+
+  Phi xs `join` Phi ys = Phi (xs ∪ ys)
+
+instance BoundedJoinSemiLattice Reachability where
+  bottom = Unreachable
+
+
+braunF :: Graph gr => gr a b -> Set Node -> Map Node (Set Node) -> Map Node (Set Node)
+braunF g ms0 phi = Map.fromList [ (n, Set.fromList [n])                | n <- Set.toList ms0 ]
+                 ⊔ Map.fromList [ (n, phi ! n'        )                | n <- nodes g, not $ n ∈ ms0, [n'] <- [suc g n] ]
+                 ⊔ Map.fromList [ (n, (∐) [ phi ! n' | n' <- succs])  | n <- nodes g, not $ n ∈ ms0, let succs = suc g n, length succs > 1 ]
+
+braunLfp g ms0 = (㎲⊒) (Map.fromList [(n, Set.empty) | n <- nodes g]) (braunF g ms0)
+
+braunEq :: Graph gr => gr a b -> Set Node -> Map Node Reachability
+braunEq g ms0    =  Map.fromList [ (n, Reached n)                      | n <- Set.toList ms0 ]
+                  ⊔ Map.fromList [ (n, Reached n')                     | n <- nodes g, not $ n ∈ ms0, [n'] <- [suc g n] ]
+                  ⊔ Map.fromList [ (n, Phi (Set.fromList succs))       | n <- nodes g, not $ n ∈ ms0, let succs = suc g n, length succs > 1 ]
+                  ⊔ Map.fromList [ (n, Unreachable)                    | n <- nodes g, not $ n ∈ ms0, []   <- [suc g n]]
+
+
+
+solvePhiEquationSystem :: Set Node -> Map Node Reachability -> Map Node Reachability
+solvePhiEquationSystem ms0 s = if (s == s') then s else solvePhiEquationSystem ms0 s'
+          where s' =             Map.fromList [ (n, Reached n)                      | n <- Set.toList ms0 ]
+                    `Map.union`  Map.fromList [ (n, nonTrivialAt n $ case rn of
+                                              Unreachable -> Unreachable
+                                              Reached n'  -> s `at` n' 
+                                              Phi ns      -> (∐) [ s `at` n' | n' <- Set.toList ns]
+                                        )
+                                      | (n, rn) <- Map.assocs s ]
+                at s n' = case s ! n' of
+                            Unreachable -> Unreachable
+                            Reached n'' -> Reached n''
+                            _           -> Reached n'
+                nonTrivialAt _ Unreachable = Unreachable
+                nonTrivialAt n (Reached n')
+                  | n == n' = Unreachable
+                  | otherwise = Reached n'
+                nonTrivialAt n (Phi ns') = case Set.toList $ Set.delete n ns' of
+                    []   -> error "Unreachable"
+                    [n'] -> Reached n'
+                    _    -> Phi ns'
+                -- nontrivialAt n (Phi ns) = if      Set.null ns' then
+                --                             Unreachable
+                --                           else if Set.size (Set.delete n ns') > 1 then
+                --                             Phi ns
+                --                           else 
+                --   where ns' = Set.filter (\n' -> s ! n /= Unreachable) ns
+
+wodTEILViaBraun g ms = ms ∪ Set.fromList [ n | (n, r) <- Map.assocs $ solvePhiEquationSystem ms $ braunEq g ms, isPhi r]
+  where isPhi (Phi _) = True
+        isPhi _       = False
+
+-- braun :: Graph gr => gr a b -> Set Node -> Set Node
+-- braun graph ms = go ms (Map.fromSet (\m -> Nothing) ms )
+--   where go ms phi
+--             | Set.null ms = phi
+--             | otherwise   = case pre graph m of
+--                 []   -> go ms' phi
+--                 [m'] -> 
+              
+--           where (m, ms') = Set.deleteFindMin ms
+        

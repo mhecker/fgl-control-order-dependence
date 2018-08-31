@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict)
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -67,7 +67,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
-import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice)
+import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     rotatePDomAround,
@@ -80,7 +80,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticdMyWodPDomSimpleHeuristic,
+    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
@@ -791,6 +791,18 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        mywodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
                      ∧ mywodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
                    )),
+    testPropertySized 40 "wodTEILSlice  == wodTEILSliceViaBraunF2"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    g'   = grev g
+                    wodteilslicer    = NTICD.wodTEILSlice           g
+                    wdslicer         = FCACD.wodTEILSliceViaBraunF2 g
+                    wodteilslicer'   = NTICD.wodTEILSlice           g'
+                    wdslicer'        = FCACD.wodTEILSliceViaBraunF2 g'
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> if m1 == m2 then True else
+                       wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
+                     ∧ wodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
+                   )),
     testPropertySized 40 "wodTEILSlice  == wdSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
@@ -803,13 +815,45 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
                      ∧ wodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
                    )),
-    testProperty "wodTEILSliceViaNticdMyWodPDomSimpleHeuristic  == wdSlice"
+    testProperty "wodTEILSliceViaNticd  == wdcSlice for CFG-shaped graphs with exit->entry edge"
+    $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
+                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                    g = insEdge (exit, entry, ()) generatedGraph
+                    nrSlices = 2
+                    n = length $ nodes g
+                    mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
+                                                        let m1 = nodes g !! (s1 `mod` n),
+                                                        let m2 = nodes g !! (s2 `mod` n),
+                                                        let m3 = nodes g !! (s3 `mod` n)
+                          ]
+                    wdslicer  = FCACD.wdSlice g
+                    wodslicer = NTICD.wodTEILSliceViaNticd g
+                in (∀) mss (\ms ->
+                     wdslicer ms == wodslicer ms
+                   ),
+    testProperty "wodTEILSliceViaNticd  == wdSlice for randomly selected nodes"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
+                let g = generatedGraph
+                    nrSlices = 80
+                    n = length $ nodes g
+                    mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
+                                                        let m1 = nodes g !! (s1 `mod` n),
+                                                        let m2 = nodes g !! (s2 `mod` n),
+                                                        let m3 = nodes g !! (s3 `mod` n)
+                          ]
+                    wdslicer  = FCACD.wdSlice g
+                    wodslicer = NTICD.wodTEILSliceViaNticd g
+                in (∀) mss (\ms ->
+                     wdslicer ms == wodslicer ms
+                   ),
+    testProperty "wodTEILSliceViaNticd  == wdSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    wodteilslicer    = NTICD.wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g
+                    wodteilslicer    = NTICD.wodTEILSliceViaNticd g
                     wdslicer         = FCACD.wdSlice      g
-                    wodteilslicer'   = NTICD.wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g'
+                    wodteilslicer'   = NTICD.wodTEILSliceViaNticd g'
                     wdslicer'        = FCACD.wdSlice      g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
@@ -860,7 +904,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          nticdmywodslicer  = NTICD.nticdMyWodFastSlice g'
                      in wodteilslicer (Set.fromList [m1, m2]) == nticdmywodslicer (Set.fromList [m1, m2])
                    )),
-    testProperty "wodTEILPDomSlice g ms = nticdMyWodSliceSimple g{ n | n ->* ms} ms"
+    testPropertySized 70 "wodTEILPDomSlice g ms = nticdMyWodSliceSimple g{ n | n ->* ms} ms"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g   =      generatedGraph
                     rev = grev generatedGraph
@@ -966,7 +1010,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           mywodsimpleslicer (Set.fromList [m1, m2]) == mywodfastslicer (Set.fromList [m1, m2])
                    )),
-    testPropertySized 20  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 15  "myWodSliceSimple cutNPasteIfPossible == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -992,7 +1036,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           mywodsimpleslicer (Set.fromList [m1, m2]) == mywodfastslicer (Set.fromList [m1, m2])
                    )),
-    testPropertySized 50  "myWodSliceSimple recompute           == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 40  "myWodSliceSimple recompute           == myWodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -1002,7 +1046,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        mywodsimpleslicer (Set.fromList [m1, m2]) == mywodpdomslicer (Set.fromList [m1, m2])
                     )),
-    testProperty "myWodSliceSimple recompute           == myWodSliceSimple recomputecutNPasteIfPossible for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 70  "myWodSliceSimple recompute           == myWodSliceSimple recomputecutNPasteIfPossible for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -1290,7 +1334,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myWodFastPDom                = NTICD.myWodFastPDom                 g
                     in   True
                        ∧ myWodFastPDomSimpleHeuristic == myWodFastPDom,
-    testProperty  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 40  "myWodFastPDom*             == myWodFastPDom* for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]

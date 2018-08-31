@@ -50,7 +50,7 @@ import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dependence
-import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, reachable)
+import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, rdfs, reachable)
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -2526,11 +2526,12 @@ combinedBackwardSlice graph cd od = \ms ->
                  new = (fromOD ∪ fromCD) ∖ s'
                  workset' = workset0 ∪ new
 
-                 fromCD = cdReversed ! m
-                 fromOD = (∐) [ (Map.findWithDefault Set.empty (m,m') od ) ∪ (Map.findWithDefault Set.empty (m', m) od) | m' <- Set.toList s ]
+                 fromCD = Map.findWithDefault Set.empty m      cdReversed
+                 fromOD
+                   | Map.null od  = Set.empty
+                   | otherwise    = (∐) [ (Map.findWithDefault Set.empty (m,m') od ) ∪ (Map.findWithDefault Set.empty (m', m) od) | m' <- Set.toList s ]
      in result
-  where cdReversed = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
-                   ⊔ (fmap Set.fromList $ invert' $ fmap Set.toList cd )
+  where cdReversed = invert'' cd
 
 
 ntscdMyDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
@@ -2586,12 +2587,11 @@ wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 
 
-wodTEILSliceViaNticdMyWodPDomSimpleHeuristic :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaNticdMyWodPDomSimpleHeuristic g ms = s
-  where gRev = grev g
-        g'   = subgraph (Set.toList toMs) g
-        s    = nticdMyWodPDomSimpleHeuristic g' ms
-        toMs   = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m gRev ]
+wodTEILSliceViaNticd :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticd g = \ms ->
+    let g'   = Set.fold (flip delSuccessorEdges) (subgraph toMs g) ms
+        toMs = rdfs (Set.toList ms) g
+    in nticdSlice g' ms
 
 
 

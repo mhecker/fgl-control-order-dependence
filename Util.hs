@@ -186,6 +186,10 @@ rotations xs = rots l double
         l = length xs
 
 
+moreSeeds seed n =  evalRand (s n) (mkStdGen seed)
+  where s n = do
+          rs <- getRandoms
+          return $ take n rs
 
 sampleFrom :: Int -> Integer -> [a] -> [a]
 sampleFrom seed n xs = evalRand (s n) (mkStdGen seed)

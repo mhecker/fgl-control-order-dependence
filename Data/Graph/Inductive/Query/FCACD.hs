@@ -55,7 +55,7 @@ import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, reachable)
 
 
-import Data.Graph.Inductive.Query.NTICD (nticdSlice)
+import Data.Graph.Inductive.Query.NTICD (nticdSlice, nticdF3)
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -161,6 +161,15 @@ braunF g ms0 phi = Map.fromList [ (n, Set.fromList [n])                | n <- Se
 
 braunLfp g ms0 = (㎲⊒) (Map.fromList [(n, Set.empty) | n <- nodes g]) (braunF g ms0)
 
+
+
+braunF2 :: Graph gr => gr a b -> Set Node -> Map Node (Set Node) -> Map Node (Set Node)
+braunF2 g ms0 phi = Map.fromList [ (n, Set.fromList [n])                              | n <- Set.toList ms0 ]
+                  ⊔ Map.fromList [ (n, Set.insert n $ (∐) [ phi ! n' | n' <- succs, let rs = reachable n' g, (∃) ms0 (\m -> m `elem` rs)])  | n <- nodes g, not $ n ∈ ms0, let succs = suc g n]
+
+braunLfp2 g ms0 = (㎲⊒) (Map.fromList [(n, Set.empty) | n <- nodes g]) (braunF2 g ms0)
+
+
 braunEq :: Graph gr => gr a b -> Set Node -> Map Node Reachability
 braunEq g ms0    =  Map.fromList [ (n, Reached n)                      | n <- Set.toList ms0 ]
                   ⊔ Map.fromList [ (n, Reached n')                     | n <- nodes g, not $ n ∈ ms0, [n'] <- [suc g n] ]
@@ -197,17 +206,16 @@ solvePhiEquationSystem ms0 s = if (s == s') then s else solvePhiEquationSystem m
                 --                           else 
                 --   where ns' = Set.filter (\n' -> s ! n /= Unreachable) ns
 
-wodTEILViaBraun g ms = ms ∪ Set.fromList [ n | (n, r) <- Map.assocs $ solvePhiEquationSystem ms $ braunEq g ms, isPhi r]
+braunSlice g ms = ms ∪ Set.fromList [ n | (n, r) <- Map.assocs $ solvePhiEquationSystem ms $ braunEq g ms, isPhi r]
   where isPhi (Phi _) = True
         isPhi _       = False
 
--- braun :: Graph gr => gr a b -> Set Node -> Set Node
--- braun graph ms = go ms (Map.fromSet (\m -> Nothing) ms )
---   where go ms phi
---             | Set.null ms = phi
---             | otherwise   = case pre graph m of
---                 []   -> go ms' phi
---                 [m'] -> 
-              
---           where (m, ms') = Set.deleteFindMin ms
-        
+
+
+wodTEILSliceViaBraunF2 :: forall gr a b. DynGraph gr => gr a b -> Set Node -> Set Node
+wodTEILSliceViaBraunF2 g ms0 =  (㎲⊒) Set.empty f
+  where 
+        f ms = -- traceShow ms $ 
+               ms0
+             ∪ Set.fromList [ n |  n <- nodes g, (length $ nub $ [ braun2 ! x ∩ ms | x <- suc g n, not $ Set.null $  braun2 ! x ∩ ms ]) > 1]
+          where braun2 = braunLfp2 g ms

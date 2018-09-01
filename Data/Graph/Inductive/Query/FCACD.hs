@@ -62,8 +62,8 @@ import Control.Exception.Base (assert)
 
 
 
-propagate :: Graph gr => gr a b -> Set Node -> Map Node Node -> Node -> Node -> (Set Node, Map Node Node)
-propagate g w obs0 u v = 
+propagate :: Map Node (Set Node) -> Map Node [Node] -> Set Node -> Map Node Node -> Node -> Node -> (Set Node, Map Node Node)
+propagate pres sucs w obs0 u v = 
     let worklist0   = Set.fromList [u]
         candidates0 = Set.empty
         result = loop obs0 worklist0 candidates0
@@ -74,14 +74,14 @@ propagate g w obs0 u v =
             | otherwise         = let (obs'', worklist'', candidates'') = loop2 pred_todo0 obs worklist' candidates
                                   in loop obs'' worklist'' candidates''
           where (n, worklist') = Set.deleteFindMin worklist
-                pred_todo0 = Set.fromList $ pre g n
+                pred_todo0 = pres ! n
                 
                 loop2 pred_todo obs worklist candidates
                     | Set.null pred_todo = (obs, worklist, candidates)
                     | not $ u0 ∈  w      = let (obs', worklist', candidates') = 
                                                  if Map.member u0 obs then
                                                    if not $ (obs ! u0) == v then
-                                                     (Map.insert u0 v obs, Set.insert u0 worklist, if (length $ suc g u0) > 1 then Set.insert u0 candidates else candidates)
+                                                     (Map.insert u0 v obs, Set.insert u0 worklist, if isCond $ sucs ! u0 then Set.insert u0 candidates      else candidates)
                                                    else
                                                      (                obs,               worklist,                                                               candidates)
                                                  else
@@ -90,12 +90,16 @@ propagate g w obs0 u v =
                                               loop2 pred_todo' obs' worklist' candidates'
                     | otherwise          =    loop2 pred_todo' obs  worklist  candidates
                   where (u0, pred_todo') = Set.deleteFindMin pred_todo
+        isCond []  = False
+        isCond [_] = False
+        isCond _   = True
+    
 
 
-confirm :: Graph gr => gr a b -> Map Node Node -> Node -> Node -> Bool
-confirm g obs u u_obs =
+confirm :: Map Node [Node] -> Map Node Node -> Node -> Node -> Bool
+confirm sucs obs u u_obs =
     let result0 = False in
-    let succ0 = Set.fromList $ suc g u in
+    let succ0 = Set.fromList $ sucs ! u in
     loop succ0 result0
   where loop succ result
             | Set.null succ                                   = result
@@ -109,14 +113,16 @@ main g v' =
           obs0 = Map.fromList [ (n,n) | n <- Set.toList v' ]
           worklist0 = v'
       in loop w0 obs0 worklist0
-  where loop w obs worklist
+  where pres = Map.fromList [ (n, Set.fromList $ pre g n) | n <- nodes g]
+        sucs = Map.fromList [ (n,                suc g n) | n <- nodes g]
+        loop w obs worklist
             | Set.null worklist = -- traceShow (w, obs, worklist) $
                                   (w, obs)
             | otherwise         = -- traceShow (w, obs, worklist, "*****", u, candidates, new_nodes, obs') $
                                   loop (w ∪ new_nodes)   (Map.union (Map.fromSet id new_nodes) obs')   (worklist' ∪ new_nodes)
           where (u, worklist') = Set.deleteFindMin worklist
-                (candidates, obs') =  propagate g w obs u u
-                new_nodes = Set.filter (\v ->  confirm g obs' v u) candidates
+                (candidates, obs') =  propagate pres sucs w obs u u
+                new_nodes = Set.filter (\v ->  confirm sucs obs' v u) candidates
 
 wdSlice :: Graph gr => gr a b -> Set Node -> Set Node
 wdSlice g = fst . (main g)

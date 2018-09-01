@@ -32,7 +32,9 @@ import Data.List ((\\), nub, sortBy, groupBy)
 
 
 import qualified Data.Dequeue as Dequeue
-import Data.Dequeue (BankersDequeue, pushBack, popFront)
+import Data.Dequeue (pushBack, popFront)
+import Data.Dequeue.SimpleDequeue (SimpleDequeue)
+
 
 import qualified Data.Foldable as Foldable
 import IRLSOD
@@ -1931,7 +1933,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                              | w <- Set.toList $ worklistLfp ]
                 imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
 
-        twoFinger :: Integer -> BankersDequeue Node -> Maybe Node -> Map Node (Maybe Node) -> Map Node (Maybe Node)
+        twoFinger :: Integer -> SimpleDequeue Node -> Maybe Node -> Map Node (Maybe Node) -> Map Node (Maybe Node)
         twoFinger i worklist oldest imdom 
             |  (Dequeue.null worklist)
              ∨ (Just x == oldest) = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
@@ -2108,7 +2110,7 @@ processed'From graph nonSinkCondNodes = processed'F
                       new      = [ x'| x' <- pre graph x, not $ Map.member x' nonSinkCondNodes, not $ x' ∈ processed]
 
 
-isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> BankersDequeue (Node, [Node]) -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
+isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> SimpleDequeue (Node, [Node]) -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
 isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
   where solution = sinkdomOfGfp graph
         twoFinger worklist processed imdom

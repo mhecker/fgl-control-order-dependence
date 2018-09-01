@@ -31,8 +31,8 @@ import qualified Data.List as List
 import Data.List ((\\), nub, sortBy, groupBy)
 
 
-import qualified Data.Sequence as Seq
-import Data.Sequence (Seq(..), ViewL(..), (|>))
+import qualified Data.Dequeue as Dequeue
+import Data.Dequeue (BankersDequeue, pushBack, popFront)
 
 import qualified Data.Foldable as Foldable
 import IRLSOD
@@ -1880,7 +1880,7 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                           fmap toSet $ twoFinger 0 workqueue0 Nothing imdom0
   where imdom0   =             Map.fromList [ (x, Just z   ) | x <- nodes graph, [z] <- [suc graph x], z /= x]
                    `Map.union` Map.fromList [ (x, Nothing  ) | x <- nodes graph]
-        workqueue0   = Seq.fromList $ Set.toList $ condNodes
+        workqueue0   = Dequeue.fromList $ Set.toList $ condNodes
         condNodes   = Set.fromList [ x | x <- nodes graph, length (suc graph x) > 1 ]
         prevConds   = prevCondNodes graph
         prevCondsImmediate = prevCondImmediateNodes graph
@@ -1931,18 +1931,18 @@ imdomOfTwoFinger7 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                              | w <- Set.toList $ worklistLfp ]
                 imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
 
-        twoFinger :: Integer -> Seq Node -> Maybe Node -> Map Node (Maybe Node) -> Map Node (Maybe Node)
+        twoFinger :: Integer -> BankersDequeue Node -> Maybe Node -> Map Node (Maybe Node) -> Map Node (Maybe Node)
         twoFinger i worklist oldest imdom 
-            |  (Seq.null worklist)
+            |  (Dequeue.null worklist)
              ∨ (Just x == oldest) = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $ 
                                     assert (invariant worklist imdom) $
                                     imdom
             | otherwise           = -- traceShow (x, mz, zs, worklist, imdom) $
                                     assert (invariant worklist imdom) $
-                                    if (not $ new) then twoFinger (i+1) (worklist' |> x) oldest'                    imdom
-                                    else                twoFinger (i+1) (worklist'     ) Nothing  (Map.insert x zs  imdom)
-          where (x :< worklist')  = Seq.viewl worklist
+                                    if (not $ new) then twoFinger (i+1) (pushBack worklist' x) oldest'                    imdom
+                                    else                twoFinger (i+1) (         worklist'  ) Nothing  (Map.insert x zs  imdom)
+          where Just (x, worklist')  = popFront worklist
                 mz = foldM1 (lca imdom) (suc graph x)
                 zs = case mz of
                       Just z  -> if z/= x then
@@ -2086,7 +2086,7 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
   where imdom0   =              Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
                    `Map.union` (Map.fromList [ (x, case suc graph x of { [z] -> assert (z /= x) $ Just z               ; _ -> Nothing  }) | x <- nodes graph, not $ x ∈ sinkNodes ])
                    `Map.union` (Map.fromList [ (x, case suc graph x of { [z] -> if (z /= x) then  Just z else Nothing  ; _ -> Nothing  }) | [x] <- sinks ])
-        worklist0   = Seq.fromList $ Map.keys $ nonSinkCondNodes
+        worklist0   = Dequeue.fromList $ Map.keys $ nonSinkCondNodes
 --        processed0  = (㎲⊒) sinkNodes (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [suc graph x], z ∈ processed]))
         processed0  = Set.fold f Set.empty sinkNodes
           where f s processed
@@ -2108,11 +2108,11 @@ processed'From graph nonSinkCondNodes = processed'F
                       new      = [ x'| x' <- pre graph x, not $ Map.member x' nonSinkCondNodes, not $ x' ∈ processed]
 
 
-isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> Seq Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
+isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node [Node] -> BankersDequeue Node -> Set Node ->  Map Node (Maybe Node) -> Map Node (Maybe Node)
 isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
   where solution = sinkdomOfGfp graph
         twoFinger worklist processed imdom
-            | Seq.null worklist   = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
+            | Dequeue.null worklist   = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $
                                     assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
                                             ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ()))) $
@@ -2120,9 +2120,9 @@ isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
             | otherwise           = -- traceShow (x, worklist', mz, processed', new, imdom) $
                                     assert (imdom ! x == Nothing) $
                                     assert (not $ x ∈ processed) $
-                                    if   (not $ new) then twoFinger (worklist' |> x)   processed                      imdom
-                                    else                  twoFinger (worklist'     )   processed' (Map.insert x mz    imdom)
-          where (x :< worklist')  = Seq.viewl worklist
+                                    if   (not $ new) then twoFinger (pushBack worklist' x)   processed                      imdom
+                                    else                  twoFinger (         worklist'  )   processed' (Map.insert x mz    imdom)
+          where Just (x, worklist')  = popFront worklist
                 processed' = case mz of
                   Nothing -> Set.empty
                   Just _  -> processed'From graph nonSinkCondNodes (Set.fromList [x]) (Set.insert x processed)
@@ -3255,7 +3255,7 @@ rotatePDomAroundArbitrary  graph condNodes ipdom (n, m) =
                               [nx]       = suc graphm n
                               imdom0     = (if nIsCond then id else Map.insert n (Just nx)) $
                                            (fmap (const Nothing) relevantCondNodesM) `Map.union` ipdomM''
-                              worklist0  = Seq.fromList $ Map.keys relevantCondNodesM
+                              worklist0  = Dequeue.fromList $ Map.keys relevantCondNodesM
                   in (relevantCondNodesM, ipdomM''')
                 else
                    let relevantCondNodesM = findRelevant (Map.keys condNodesM) Map.empty

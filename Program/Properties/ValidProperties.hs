@@ -894,7 +894,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          wccSlicer' = MyWodSlice.wccSliceViaNticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g
                      in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2])
                    )),
-    testProperty "wodTEILSlice g ms = nticdMyWodFastSlice g{ n | n ->* ms} ms"
+    testPropertySized 40 "wodTEILSlice g ms = nticdMyWodFastSlice g{ n | n ->* ms} ms"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g   =      generatedGraph
                     rev = grev generatedGraph

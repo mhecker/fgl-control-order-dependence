@@ -1962,20 +1962,21 @@ isinkdomOfTwoFinger8Down :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Set Node
   -> [[Node]]
-  -> Map Node (Set Node)
-  -> Set Node
+  -> Map Node [Node]
+  -> Map Node [Node]
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8Down graph sinkNodes sinks nonSinkCondNodes = twoFingerDown
   where sinkNodesToCanonical = Map.fromList [ (s, s1) | sink <- sinks, let (s1:_) = sink, s <- sink ]
         prevCondsImmediate = prevCondImmediateNodes graph
         twoFingerDown worklist imdom
-            | Set.null worklist   = imdom
+            | Map.null worklist   = imdom
             | otherwise           = assert (influenced == influencedSlow) $ 
-                                    if (not $ changed) then twoFingerDown                 worklist'                                   imdom
-                                    else                    twoFingerDown  (influenced  ⊔ worklist')  (Map.insert x zs                imdom)
-          where (x, worklist')  = Set.deleteFindMin worklist
-                mz = foldM1 (lca imdom) (suc graph x)
+                                    if (not $ changed) then twoFingerDown                          worklist'                                   imdom
+                                    else                    twoFingerDown  (influenced `Map.union` worklist')  (Map.insert x zs                imdom)
+          where ((x, succs), worklist')  = Map.deleteFindMin worklist
+                mz = require (succs == suc graph x) $
+                     foldM1 (lca imdom) succs
                 zs = case mz of
                        Nothing -> Nothing
                        Just z  -> assert (z /= x) $
@@ -1985,21 +1986,21 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks nonSinkCondNodes = twoFingerDown
                 changed = imdom ! x /= zs
                 influenced = let imdomRev = invert' $ fmap maybeToList imdom
                                  preds = predsSeenFor imdomRev [x] [x]
-                             in Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, not $ n ∈ sinkNodes]
-                influencedSlow = Set.fromList [ n | (n, succ) <- Map.assocs nonSinkCondNodes, (∃) succ (\y -> reachableFromSeen imdom y x Set.empty) ]
+                             in Map.fromList $ [ (n, succ) | n <- foldMap prevCondsImmediate preds, Just succ <- [Map.lookup n nonSinkCondNodes]]
+                influencedSlow = Map.fromList [ (n, succ) | (n, succ) <- Map.assocs nonSinkCondNodes, (∃) succ (\y -> reachableFromSeen imdom y x Set.empty) ]
 
 
 isinkdomOfTwoFinger8DownFixedTraversalForOrder :: forall gr a b. (DynGraph gr) =>
-     (gr a b -> Set Node -> [[Node]] -> Set Node -> Map Node (Maybe Node) -> [(Node, [Node])])
+     (gr a b -> Set Node -> [[Node]] -> Map Node [Node] -> Map Node (Maybe Node) -> [(Node, [Node])])
   -> gr a b
   -> Set Node
   -> [[Node]]
-  -> Set Node
+  -> Map Node [Node]
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks toConsider imdom0 =
       id
-    $ require ((Set.fromList $ fmap fst worklist) == toConsider)
+    $ require (Map.fromList worklist == toConsider)
     $ result
   where result = twoFingerDown worklist imdom0 False
         sinkNodesToCanonical = Map.fromList [ (s, s1) | sink <- sinks, let (s1:_) = sink, s <- sink ]
@@ -2050,12 +2051,12 @@ isinkdomOfTwoFinger8DownTreeTraversal :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Set Node
   -> [[Node]]
-  -> Set Node
+  -> Map Node [Node]
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8DownTreeTraversal = isinkdomOfTwoFinger8DownFixedTraversalForOrder order
   where order graph sinkNodes sinks toConsider imdom0 = worklist
-          where worklist = [ (n, succs) | (n, succs, _) <- sortBy (comparing sucOrder) [ (n, succs, minimum [ treeOrderOf x | x <- succs] ) | n <- Set.toList toConsider, let succs = suc graph n ]]
+          where worklist = [ (n, succs) | (n, succs, _) <- sortBy (comparing sucOrder) [ (n, succs, minimum [ treeOrderOf x | x <- succs] ) | (n, succs) <- Map.assocs toConsider ]]
                 sucOrder (n, succs, succOrder) = succOrder 
                 treeOrderOf n = treeOrder ! n
                   where treeOrder :: Map Node Integer
@@ -2067,11 +2068,11 @@ isinkdomOfTwoFinger8DownFixedTraversal :: forall gr a b. (DynGraph gr) =>
      gr a b
   -> Set Node
   -> [[Node]]
-  -> Set Node
+  -> Map Node [Node]
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8DownFixedTraversal = isinkdomOfTwoFinger8DownFixedTraversalForOrder order
-  where order graph sinkNodes sinks toConsider imdom0 = [ (n, succs) | n <- Set.toList toConsider, let succs = suc graph n ]
+  where order graph sinkNodes sinks toConsider imdom0 = Map.assocs toConsider
 
 
 
@@ -2093,8 +2094,8 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
                     | otherwise     = processed'From graph nonSinkCondNodes (Set.fromList [s]) (processed ∪ Set.fromList [s])
 
         imdom'  = isinkdomOftwoFinger8Up                 graph                   nonSinkCondNodes  worklist0 processed0 imdom0
-        imdom'' = isinkdomOfTwoFinger8DownFixedTraversal graph sinkNodes sinks                    (Set.fromList [ x | (x, Just _) <- Map.assocs imdom', Map.member x nonSinkCondNodes]) imdom'
---      imdom'' = isinkdomOfTwoFinger8Down               graph sinkNodes sinks   nonSinkCondNodes (Set.fromList [ x | (x, Just _) <- Map.assocs imdom', Map.member x nonSinkCondNodes]) imdom'
+        imdom'' = isinkdomOfTwoFinger8DownFixedTraversal graph sinkNodes sinks                    (Map.filterWithKey (\x _ -> imdom' ! x /= Nothing) nonSinkCondNodes) imdom'
+--      imdom'' = isinkdomOfTwoFinger8Down               graph sinkNodes sinks   nonSinkCondNodes (Map.filterWithKey (\x _ -> imdom' ! x /= Nothing) nonSinkCondNodes) imdom'
 
 
 processed'From  :: Graph gr => gr a b -> Map Node c -> Set Node -> Set Node -> Set Node

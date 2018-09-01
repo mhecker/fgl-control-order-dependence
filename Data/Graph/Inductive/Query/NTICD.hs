@@ -2077,7 +2077,7 @@ isinkdomOfTwoFinger8DownFixedTraversal = isinkdomOfTwoFinger8DownFixedTraversalF
 
 isinkdomOfTwoFinger8ForSinks :: forall gr a b. (DynGraph gr) => [[Node]] -> Set Node -> Map Node [Node] -> gr a b -> Map Node (Maybe Node)
 isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
-                          require (sinks == controlSinks graph)
+                          require ((Set.fromList sinks) == (Set.fromList $ controlSinks graph))
                         $ require (sinkNodes == (∐) [ Set.fromList sink | sink <- sinks])
                         $ require (nonSinkCondNodes == Map.fromList [ (n, succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ])
                         $ Map.mapWithKey (\n m -> if m == Just n then Nothing else m)
@@ -2335,10 +2335,11 @@ imdomTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 imdomTwoFingercd = xDFcd mDFTwoFinger
 
 
-isinkDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-isinkDFTwoFinger graph = idomToDFFastForRoots roots graph idom
+isinkDFTwoFingerForSinks :: forall gr a b. DynGraph gr => [[Node]] -> gr a b ->  Map Node (Set Node)
+isinkDFTwoFingerForSinks sinks graph =
+    require (Set.fromList sinks == Set.fromList (controlSinks graph)) $
+    idomToDFFastForRoots roots graph idom
   where 
-        sinks            = controlSinks graph
         sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]
         nonSinkCondNodes = Map.fromList [ (n, succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ]
 
@@ -2348,6 +2349,11 @@ isinkDFTwoFinger graph = idomToDFFastForRoots roots graph idom
                 go ((n, m):as) roots = case m of 
                   Nothing -> go as ([n]:roots)
                   _       -> go as      roots
+
+isinkDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+isinkDFTwoFinger graph = isinkDFTwoFingerForSinks sinks graph
+  where sinks = controlSinks graph
+
 
 isinkdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 isinkdomTwoFingerGraphP = cdepGraphP isinkdomTwoFingerGraph
@@ -2585,10 +2591,11 @@ wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
 
 
 wodTEILSliceViaNticd :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaNticd g = \ms ->
-    let g'   = Set.fold (flip delSuccessorEdges) (subgraph toMs g) ms
-        toMs = rdfs (Set.toList ms) g
-    in nticdSlice g' ms
+wodTEILSliceViaNticd g ms = combinedBackwardSlice g' nticd Map.empty ms
+  where toMs  = rdfs (Set.toList ms) g
+        g'    = Set.fold (flip delSuccessorEdges) (subgraph toMs g) ms
+        nticd = isinkDFTwoFingerForSinks [ [m] | m <- Set.toList ms] g'
+
 
 
 

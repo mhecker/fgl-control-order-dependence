@@ -2593,12 +2593,56 @@ wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 
 
-wodTEILSliceViaNticd :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaNticd g ms = combinedBackwardSlice g' nticd Map.empty ms
-  where toMs  = rdfs (Set.toList ms) g
+wodTEILSliceViaNticd :: (Show (gr a b),  DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticd g =  \ms ->
+    let toMs  = rdfs (Set.toList ms) g
+        toMsS = Set.fromList toMs
         g'    = Set.fold (flip delSuccessorEdges) (subgraph toMs g) ms
-        nticd = isinkDFTwoFingerForSinks [ [m] | m <- Set.toList ms] g'
+        msSinks = [ sink | sink <- sinks, (∃) ms (\m -> m `elem` sink) ]
+        idom'0 = id
+               $ Map.union (Map.fromSet (\m -> Nothing) ms)
+               $ Map.union (Map.fromList [ (x, case suc g' x of { [z] -> assert (z /= x) $ Just z  ; _ -> Nothing  }) | msSink <- msSinks, x <- msSink ])
+               $ fmap intoMs
+               $ restrict idom toMsS
+          where intoMs n@(Nothing) = n
+                intoMs n@(Just x)
+                  | x ∈ toMsS  = n
+                  | otherwise = Nothing
+        idom'1 = Map.union (Map.fromList [ (x, case suc g' x of { [z] -> assert (z /= x) $ Just z  ; _ -> Nothing  }) | x <- Map.keys condNodes, not $ (∃) ms (\m -> isReachableFromTreeM idom'0 m x)])
+               $ idom'0
+        sinks' = [ [m] | m <- Set.toList ms]
+        idom'  = let idom'2 = isinkdomOftwoFinger8Up                 g'                                                                      nonSinkCondNodes'   worklist'0  processed'0 idom'1
+                     idom'  = isinkdomOfTwoFinger8DownFixedTraversal g' sinkNodes' sinks' (Map.filterWithKey (\x _ -> idom'1 ! x /= Nothing) nonSinkCondNodes')                          idom'2
+                 in idom'
+          where sinkNodes'        = ms
+                nonSinkCondNodes' = Map.filter isCond
+                                  $ fmap (List.filter (∈ ms))
+                                  $ restrict condNodes (toMsS ∖ ms)
+                  where isCond []  = False
+                        isCond [_] = False
+                        isCond _   = True
+                worklist'0  = Dequeue.fromList $ Map.assocs $ nonSinkCondNodes'
+                processed'0 = Set.fold f Set.empty sinkNodes'
+                  where f s processed
+                          | s ∈ processed = processed
+                          | otherwise     = processed'From g' nonSinkCondNodes (Set.fromList [s]) (processed ∪ Set.fromList [s])
+        nticd' = idomToDFFastForRoots roots' g' idom'
+          where roots' = go (Map.assocs idom') sinks'
+                go []     roots = roots
+                go ((n, m):as) roots = case m of 
+                  Nothing -> go as ([n]:roots)
+                  _       -> go as      roots
 
+        nticd = isinkDFTwoFingerForSinks [ [m] | m <- Set.toList ms] g'
+    in (if nticd == nticd' then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
+       -- assert (nticd == nticd') $
+       combinedBackwardSlice g' nticd' Map.empty ms
+  where
+        sinks            = controlSinks g
+        sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]
+        condNodes        = Map.fromList [ (n, succs) | n <- nodes g, let succs = suc g n, length succs > 1 ]
+        nonSinkCondNodes = without condNodes sinkNodes
+        idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes g
 
 
 

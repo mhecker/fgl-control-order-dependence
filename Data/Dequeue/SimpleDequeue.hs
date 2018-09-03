@@ -29,10 +29,7 @@ import Data.Foldable
 import qualified Data.List as List
 
 import Test.QuickCheck
-#if MIN_VERSION_QuickCheck(2,0,0)
-#else
    hiding (check)
-#endif
 
 import Safe
 
@@ -58,17 +55,12 @@ instance Foldable SimpleDequeue where
     foldl f a (SimpleDequeue _ front _ rear) = foldl f a (front ++ reverse rear)
     foldr1 f (SimpleDequeue _ front _ rear) = foldr1 f (front ++ reverse rear)
     foldl1 f (SimpleDequeue _ front _ rear) = foldl1 f (front ++ reverse rear)
-#if MIN_VERSION_base(4,8,0)
     length (SimpleDequeue sizeF _ sizeR _) = sizeF + sizeR
-#endif
 
 instance Dequeue SimpleDequeue where
     empty = SimpleDequeue 0 [] 0 []
     null (SimpleDequeue 0 [] 0 []) = True
     null _ = False
-#if !MIN_VERSION_base(4,8,0)
-    length (SimpleDequeue sizeF _ sizeR _) = sizeF + sizeR
-#endif
     first (SimpleDequeue _ [] _ [x]) = Just x
     first (SimpleDequeue _ front _ _) =  headMay front
     last (SimpleDequeue _ [x] _ []) = Just x
@@ -97,12 +89,6 @@ instance Dequeue SimpleDequeue where
 
 instance (Arbitrary a) => Arbitrary (SimpleDequeue a) where
     arbitrary = (liftM fromList) arbitrary
-
-#if MIN_VERSION_QuickCheck(2,0,0)
-#else
-    coarbitrary (SimpleDequeue _ front _ rear) =
-        variant 0 . coarbitrary front . coarbitrary rear
-#endif
 
 instance Eq a => Eq (SimpleDequeue a) where
     queue1 == queue2 = toList queue1 == toList queue2

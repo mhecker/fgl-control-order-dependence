@@ -2621,10 +2621,11 @@ wodTEILSliceViaNticd g =  \ms ->
                         isCond [_] = False
                         isCond _   = True
         worklist'0  = Dequeue.fromList $ filter (\(x,_) -> idom'1 ! x == Nothing) $ Map.assocs $ nonSinkCondNodes'
-        processed'0 = Set.fold f Set.empty sinkNodes'
-                  where f s processed
-                          | s ∈ processed = processed
-                          | otherwise     = processed'From g' nonSinkCondNodes' (Set.fromList [s]) (processed ∪ Set.fromList [s])
+        processed'0 = Set.fromList [ n | n <- Set.toList toMsS, (∃) ms (\m -> isReachableFromTreeM idom'1 m n) ]
+        -- processed'0 = Set.fold f Set.empty sinkNodes'
+        --           where f s processed
+        --                   | s ∈ processed = processed
+        --                   | otherwise     = processed'From g' nonSinkCondNodes' (Set.fromList [s]) (processed ∪ Set.fromList [s])
         nticd' = idomToDFFastForRoots roots' g' idom'
           where roots' = go (Map.assocs idom') sinks'
                 go []     roots = roots

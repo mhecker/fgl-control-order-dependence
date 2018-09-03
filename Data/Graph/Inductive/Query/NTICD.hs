@@ -15,6 +15,9 @@ import Data.Functor.Identity (runIdentity)
 import qualified Control.Monad.Logic as Logic
 import Data.List(foldl', intersect,foldr1, partition)
 
+import qualified Data.Tree as Tree
+import Data.Tree (Tree(..))
+
 import Data.Maybe (isNothing, maybeToList)
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -52,7 +55,7 @@ import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dependence
-import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, rdfs, reachable)
+import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, rdfs, rdff, reachable)
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -2088,6 +2091,7 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
   where imdom0   =              Map.fromList [ (s1, Just s2)  | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
                    `Map.union` (Map.fromList [ (x, case suc graph x of { [z] -> assert (z /= x) $ Just z               ; _ -> Nothing  }) | x <- nodes graph, not $ x ∈ sinkNodes ])
                    `Map.union` (Map.fromList [ (x, case suc graph x of { [z] -> if (z /= x) then  Just z else Nothing  ; _ -> Nothing  }) | [x] <- sinks ])
+        worklist0 :: SimpleDequeue (Node, [Node])
         worklist0   = Dequeue.fromList $ Map.assocs $ nonSinkCondNodes
 --        processed0  = (㎲⊒) sinkNodes (\processed -> processed ⊔ (Set.fromList [ x | x <- nodes graph, [z] <- [suc graph x], z ∈ processed]))
         processed0  = Set.fold f Set.empty sinkNodes
@@ -2095,7 +2099,8 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
                     | s ∈ processed = processed
                     | otherwise     = processed'From graph nonSinkCondNodes (Set.fromList [s]) (processed ∪ Set.fromList [s])
 
-        imdom'  = isinkdomOftwoFinger8Up                 graph                   nonSinkCondNodes  worklist0 processed0 imdom0
+        imdom'  = isinkdomOftwoFinger8UpDfs              graph           sinks                                          imdom0
+--      imdom'  = isinkdomOftwoFinger8Up                 graph                   nonSinkCondNodes  worklist0 processed0 imdom0
         imdom'' = isinkdomOfTwoFinger8DownFixedTraversal graph sinkNodes sinks                    (Map.filterWithKey (\x _ -> imdom' ! x /= Nothing) nonSinkCondNodes) imdom'
 --      imdom'' = isinkdomOfTwoFinger8Down               graph sinkNodes sinks   nonSinkCondNodes (Map.filterWithKey (\x _ -> imdom' ! x /= Nothing) nonSinkCondNodes) imdom'
 
@@ -2130,13 +2135,32 @@ isinkdomOftwoFinger8Up graph nonSinkCondNodes = twoFinger
                   Just _  -> processed'From graph nonSinkCondNodes (Set.fromList [x]) (Set.insert x processed)
                 mz
                   | List.null succs   = Nothing
-                  | otherwise  = case foldM1 (lca imdom) succs of
-                      Nothing -> Just $ head $ succs
-                      Just z  -> Just z
+                  | otherwise         = Just $ head $ succs
                   where succs    = require (succs0 == (suc graph x)) $
                                    [ y | y <- succs0, y ∈ processed ]
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing mz)
+
+
+isinkdomOftwoFinger8UpDfs ::  forall gr a b. (DynGraph gr) => gr a b -> [[Node]] -> Map Node (Maybe Node) -> Map Node (Maybe Node)
+isinkdomOftwoFinger8UpDfs graph sinks idom =
+    assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet idom' :: gr ()()))
+           ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ()))) $
+    idom'
+  where solution = sinkdomOfGfp graph
+
+        idom' = go forest idom
+
+        forest = rdff [ s | (s:_) <- sinks ] graph
+
+        go :: [Tree Node] -> Map Node (Maybe Node) -> Map Node (Maybe Node)
+        go               []  idom = idom
+        go ((Node n ts):ts') idom = go (ts++ts') idom'
+          where idom' = foldr f idom [ Tree.rootLabel t | t <- ts ]
+                f m = Map.insertWith g m (Just n)
+                g n  Nothing  = n
+                g _        n' = n'
+
 
 
 isinkdomOfTwoFinger8 :: forall gr a b. (DynGraph gr) => gr a b -> Map Node (Set Node)
@@ -2658,7 +2682,7 @@ wodTEILSliceViaNticd g =  \ms ->
         nticd'Slow = isinkDFTwoFingerForSinks [ [m] | m <- Set.toList ms] g'
     in -- (if nticd' == nticd'Slow then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
        assert (nticd' == nticd'Slow) $
-       combinedBackwardSlice g' nticd' Map.empty ms
+       combinedBackwardSlice g' nticd'Slow Map.empty ms
   where
         sinks            = controlSinks g
         sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]

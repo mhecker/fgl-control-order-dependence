@@ -114,7 +114,14 @@ reachableFrom :: Ord α => Map α (Set α) -> Set α -> Set α -> Set α
 reachableFrom m xs seen
     | Set.null xs = seen
     | otherwise = xs ∪ reachableFrom m new (seen ∪ xs)
-  where new = Set.fromList [ x' | x <- Set.toList xs, Just x's <- [ Map.lookup x m ], x' <- Set.toList $ m ! x, not $ x ∈ seen]
+  where new = Set.fromList [ x' | x <- Set.toList xs, not $ x ∈ seen, x' <- Set.toList $ Map.findWithDefault Set.empty x m]
+
+
+reachableFromM :: Ord α => Map α (Maybe α) -> Set α -> Set α -> Set α
+reachableFromM m xs seen
+    | Set.null xs = seen
+    | otherwise = xs ∪ reachableFromM m new (seen ∪ xs)
+  where new = Set.fromList [ x' | x <- Set.toList xs, not $ x ∈ seen, Just x' <- [ Map.findWithDefault Nothing x m ] ]
 
 
 reachableFromTree :: Ord α => Map α (Set α) -> α -> Set α

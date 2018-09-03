@@ -815,12 +815,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
                      ∧ wodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
                    )),
-    testProperty "wodTEILSliceViaNticd  == wdcSlice for CFG-shaped graphs with exit->entry edge"
+    testProperty "wodTEILSliceViaNticd  == wdcSlice for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
-                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
-                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
-                    g = insEdge (exit, entry, ()) generatedGraph
-                    nrSlices = 2
+                let g = generatedGraph
+                    nrSlices = 10
                     n = length $ nodes g
                     mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
                                                         let m1 = nodes g !! (s1 `mod` n),
@@ -835,7 +833,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty "wodTEILSliceViaNticd  == wdSlice for randomly selected nodes"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
-                    nrSlices = 80
+                    nrSlices = 10
                     n = length $ nodes g
                     mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
                                                         let m1 = nodes g !! (s1 `mod` n),

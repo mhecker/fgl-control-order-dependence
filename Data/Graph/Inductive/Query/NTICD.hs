@@ -40,7 +40,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without)
 import Unicode
 
 
@@ -2601,27 +2601,32 @@ wodTEILSliceViaNticd g =  \ms ->
         msSinks = [ sink | sink <- sinks, (∃) ms (\m -> m `elem` sink) ]
         idom'0 = id
                $ Map.union (Map.fromSet (\m -> Nothing) ms)
+               $ Map.union (Map.fromList [ (x, Nothing)                                                               | x <- Map.keys condNodes', Just z <- [idom ! x], z ∈ sinkNodes]) 
+               $ Map.union (Map.fromList [ (x, let [z] = suc g' x in     assert (z /= x) $ Just z                   ) | x <- Map.keys $ condNodesBeforeMs `Map.difference` condNodes' ])
                $ Map.union (Map.fromList [ (x, case suc g' x of { [z] -> assert (z /= x) $ Just z  ; _ -> Nothing  }) | msSink <- msSinks, x <- msSink ])
                $ fmap intoMs
                $ restrict idom toMsS
           where intoMs n@(Nothing) = n
                 intoMs n@(Just x)
-                  | x ∈ toMsS  = n
+                  | x ∈ toMsS = n
                   | otherwise = Nothing
-        idom'1 = Map.union (Map.fromList [ (x, case suc g' x of { [z] -> assert (z /= x) $ Just z  ; _ -> Nothing  }) | x <- Map.keys condNodes, x ∈ toMsS, not $ (∃) ms (\m -> isReachableFromTreeM idom'0 m x)])
+        idom'1 = Map.union (Map.fromList [ (x,                                                             Nothing  ) | x <- Map.keys todo'0 ])
                $ idom'0
         idom'2 = isinkdomOftwoFinger8Up                 g'                                                                      nonSinkCondNodes'   worklist'0  processed'0 idom'1
         idom'  = isinkdomOfTwoFinger8DownFixedTraversal g' sinkNodes' sinks' (Map.filterWithKey (\x _ -> idom'2 ! x /= Nothing) nonSinkCondNodes')                          idom'2
         sinks' = [ [m] | m <- Set.toList ms]
-        sinkNodes'        = ms
-        nonSinkCondNodes' = Map.filter isCond
+        sinkNodes' = ms
+        condNodesBeforeMs = restrict condNodes (toMsS ∖ ms)
+        condNodes' = Map.filter isCond
                                   $ fmap (List.filter (∈ toMsS))
-                                  $ restrict condNodes (toMsS ∖ ms)
+                                  $ condNodesBeforeMs
                   where isCond []  = False
                         isCond [_] = False
                         isCond _   = True
-        worklist'0  = Dequeue.fromList $ filter (\(x,_) -> idom'1 ! x == Nothing) $ Map.assocs $ nonSinkCondNodes'
-        processed'0 = Set.fromList [ n | n <- Set.toList toMsS, (∃) ms (\m -> isReachableFromTreeM idom'1 m n) ]
+        nonSinkCondNodes' = condNodes'
+        worklist'0  = Dequeue.fromList $ Map.assocs $ todo'0
+        (processed'0, unprocessed'0)  = Set.partition (\n -> not $ Set.null $ ms ∩ (reachableFromM idom'0 (Set.fromList [n]) Set.empty)) toMsS
+        todo'0 = restrict nonSinkCondNodes' unprocessed'0
         -- processed'0 = Set.fold f Set.empty sinkNodes'
         --           where f s processed
         --                   | s ∈ processed = processed
@@ -2634,7 +2639,12 @@ wodTEILSliceViaNticd g =  \ms ->
                   _       -> go as      roots
 
         nticd = isinkDFTwoFingerForSinks [ [m] | m <- Set.toList ms] g'
-    in (if nticd == nticd' then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
+    in -- traceShow idom $
+       -- traceShow idom'0 $
+       -- traceShow processed'0 $
+       -- traceShow todo'0 $ 
+       -- traceShow idom'1 $
+       (if nticd == nticd' then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
        -- assert (nticd == nticd') $
        combinedBackwardSlice g' nticd' Map.empty ms
   where

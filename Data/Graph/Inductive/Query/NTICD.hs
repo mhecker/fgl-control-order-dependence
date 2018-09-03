@@ -2628,8 +2628,26 @@ wodTEILSliceViaNticd g =  \ms ->
                 isCond _   = True
         nonSinkCondNodes' = condNodes'
         worklist'0  = Dequeue.fromList $ Map.assocs $ todo'0
-        (processed'0, unprocessed'0)  = Set.partition (\n -> not $ Set.null $ ms ∩ (reachableFromM idom'0 (Set.fromList [n]) Set.empty)) toMsS
-        todo'0 = restrict nonSinkCondNodes' unprocessed'0
+        -- (processed'0, unprocessed'0)  = Set.partition (\n -> not $ Set.null $ ms ∩ (reachableFromM idom'0 (Set.fromList [n]) Set.empty)) toMsS
+        -- todo'0 = restrict nonSinkCondNodes' unprocessed'0
+        (processed'0, todo'0)  = findProcessedAndUnprocessed toMs ms Map.empty
+        findProcessedAndUnprocessed (x:xs) processed unprocessed = find (Just (x, Set.fromList [x])) xs processed unprocessed
+                  where find Nothing          [] processed unprocessed =  (processed, unprocessed)
+                        find (Just (x, path)) xs processed unprocessed
+                            | Map.member x unprocessed = find                          path'  xs' processed  unprocessed'
+                            |            x ∈ processed = find                          path'  xs' processed' unprocessed
+                            | otherwise = case idom'0 ! x of
+                                            Nothing ->   find                          path'  xs' processed  unprocessed'
+                                            Just x' -> if x' ∈ path then
+                                                         find                          path'  xs' processed  unprocessed'
+                                                       else
+                                                         find (Just (x', Set.insert x' path)) xs  processed  unprocessed
+                          where (path', xs') = case xs of
+                                                []     -> (Nothing,                    [])
+                                                (y:ys) -> (Just (y, Set.fromList [y]), ys)
+                                processed'   = processed ∪ path
+                                unprocessed' = Map.union unprocessed (Map.fromAscList [ (y, succs) | y <- Set.toAscList path, Just succs <- [Map.lookup y nonSinkCondNodes'] ])
+
         nticd' = idomToDFFastForRoots roots' g' idom'
           where roots' = go (Map.assocs idom') sinks'
                 go []     roots = roots

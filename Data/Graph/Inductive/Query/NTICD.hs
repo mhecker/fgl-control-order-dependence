@@ -2600,13 +2600,16 @@ wodTEILSliceViaNticd g =  \ms ->
         g'    = Set.fold (flip delSuccessorEdges) (subgraph toMs g) ms
         msSinks = [ sink | sink <- sinks, (∃) ms (\m -> m `elem` sink) ]
         idom'0 = id
-               $ Map.union (Map.fromSet (\m -> Nothing) ms)
-               $ Map.union (Map.fromList [ (x, Nothing)                                                               | x <- Map.keys condNodes', Just z <- [idom ! x], z ∈ sinkNodes]) 
-               $ Map.union (Map.fromList [ (x, let [z] = suc g' x in     assert (z /= x) $ Just z                   ) | x <- Map.keys $ noLongerCondNodes])
-               $ Map.union (Map.fromList [ (x, case suc g' x of { [z] -> assert (z /= x) $ Just z  ; _ -> Nothing  }) | msSink <- msSinks, x <- msSink ])
+               $ Map.union (Map.fromSet    (\m ->   Nothing) $ ms)
+               $ Map.union (Map.mapWithKey (\x _ -> Nothing) $ Map.filterWithKey isEntry $ condNodes')
+               $ Map.union (Map.mapWithKey (\x _ -> let [z] = suc g' x in assert (z /= x) $ Just z                   ) noLongerCondNodes)
+               $ Map.union (Map.fromList  [ (x, case suc g' x of { [z] -> assert (z /= x) $ Just z  ; _ -> Nothing  }) | msSink <- msSinks, x <- msSink ])
                $ fmap intoMs
                $ restrict idom toMsS
-          where intoMs n@(Nothing) = n
+          where isEntry x _ = case idom ! x of
+                  Nothing -> False
+                  Just z -> z ∈ sinkNodes
+                intoMs n@(Nothing) = n
                 intoMs n@(Just x)
                   | x ∈ toMsS = n
                   | otherwise = Nothing

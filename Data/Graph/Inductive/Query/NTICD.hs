@@ -2361,24 +2361,22 @@ idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph (fmap fromSet 
 
 
 
--- idomToDFFastLazy :: forall gr a b. Graph gr => [[Node]] -> gr a b -> Map Node (Maybe Node) -> Map Node (Set Node)
--- idomToDFFastLazy graph idom idom' df = \x -> case Map.lookup x df of
---     Just dfs -> (dfs, df)
---     Nothing  -> let combined = (local ∪ up) ∖ invalid
---                     local = Set.fromList [ y                | x <- Set.toList cycle, 
---                                                           y <- pre graph x
---                                    ]
---                     up    = Set.unions [ us                 | z <- Set.toList invalid,
---                                                           Just us <- [Map.lookup z df]
---                                    ]
---                     invalid =  Set.unions [ is | x <- Set.toList cycle, Just is <- [Map.lookup x idom'] ]
+idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))
+idomToDFFastLazy graph cycleOf idom' = \df x -> case Map.lookup x df of
+    Just dfs -> (dfs, df)
+    Nothing  -> let cycle = cycleOf ! x
+                    combined = (local ∪ up) ∖ invalid
+                    local = Set.fromList [ y            | x <- Set.toList cycle, 
+                                                          y <- pre graph x
+                                   ]
+                    (up, df') =  Set.fold f (Set.empty, df) (invalid ∖ cycle)
+                      where f z (up, df) = let (us,df') = idomToDFFastLazy graph cycleOf idom' df z in (up ∪ us, df')
+                    
+                    invalid =  Set.unions [ is | x <- Set.toList cycle, Just is <- [Map.lookup x idom'] ]
+                in (combined, Map.fromSet (\x -> combined) cycle `Map.union` df')
 
---         rs = fmap Set.fromList $ roots
---         idom' :: Map Node (Set Node)
---         idom' = invert''' idom
-
---         sorting :: [Set Node]
---         sorting = dfsTree idom' rs
+  -- where cycleOf =             Map.fromList [ (s, cycle) | sink <- sinks, let cycle = Set.fromList sink, s <- sink ]
+  --                `Map.union` Map.fromList [ (n, Set.singleton n) | n <- nodes graph]
 
 
 

@@ -2028,17 +2028,16 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks toCon
                                     Nothing -> (Just z, False)
 
 
-isinkdomOfTwoFinger8DownUniqueExitNode :: forall gr a b. (DynGraph gr) =>
+isinkdomOfTwoFinger8DownSingleNodeSinks :: forall gr a b. (DynGraph gr) =>
      gr a b
-  -> Node
+  -> Set Node
   -> Map Node [Node]
   -> Map Node (Maybe Node)
   -> Map Node (Maybe Node)
-isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
+isinkdomOfTwoFinger8DownSingleNodeSinks graph nxs condNodes imdom0 =
       id
-    $ require (imdom0 ! nx == Nothing)
-    $ require ((∀) (Map.assocs imdom0) (\(n, m) -> n == nx  ∨  (m /= Nothing  ∧  m /= Just n)))
-    $ require (not $ Map.member nx condNodes)
+    $ require ((∀) nxs (\nx -> imdom0 ! nx == Nothing))
+    $ require ((∀) nxs (\nx -> not $ Map.member nx condNodes))
     --   traceShow (workset, worklist, imdom0)
     -- $ traceShow result
     $ result
@@ -2051,10 +2050,11 @@ isinkdomOfTwoFinger8DownUniqueExitNode graph nx condNodes imdom0 =
           where workLeft'  = reverse workRight
         twoFingerDown (w@(x, succs):workLeft') workRight imdom changed = twoFingerDown workLeft'  workRight' (Map.insert x mz imdom)  (changed ∨ changed')
           where changed' =  mz /= (imdom ! x)
-                workRight' = if mz == Nothing then workRight else w:workRight
+                workRight' = if mz == Nothing  ∨  z ∈ nxs then workRight else w:workRight
+                  where Just z = mz
                 mz = require (succs == suc graph x) $
                      foldM1 lca succs
-                lca = lcaUniqueExitNode imdom nx
+                lca = lcaSingleNodeSinks imdom nxs
 
 
 
@@ -2687,8 +2687,9 @@ wodTEILSliceViaNticd g =  \ms ->
         idom'1 = Map.union (fmap (\x -> Nothing) todo'0)
                $ idom'0
         idom'1Rev = invert''' idom'1
-        idom'2 = isinkdomOftwoFinger8Up                 g'                                                                      nonSinkCondNodes'   worklist'0  processed'0 idom'1Rev idom'1
-        idom'  = isinkdomOfTwoFinger8DownFixedTraversal g' sinkNodes' sinks' (Map.filterWithKey (\x _ -> idom'2 ! x /= Nothing) nonSinkCondNodes')                                    idom'2
+        idom'2 = isinkdomOftwoFinger8Up                  g'                                                                 nonSinkCondNodes'   worklist'0  processed'0 idom'1Rev idom'1
+        idom'  = isinkdomOfTwoFinger8DownSingleNodeSinks g' sinkNodes' (Map.filterWithKey (\x _ -> not $ idom'2 ! x ∈ done) nonSinkCondNodes')                                    idom'2
+          where done = Set.insert Nothing $ Set.map Just sinkNodes'
         sinks' = [ [m] | m <- Set.toList ms]
         sinkNodes' = ms
         (condNodes', noLongerCondNodes) =
@@ -3309,7 +3310,7 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
                   $ pdom'0
                 else
                     id 
-                  $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM pdom'0
+                  $ isinkdomOfTwoFinger8DownSingleNodeSinks graphm (Set.fromList [m]) relevantCondNodesM pdom'0
           where 
                 condNodesM = Map.delete m condNodes
                 relevantCondNodesM = assert (fromFind == slow) $
@@ -3360,7 +3361,7 @@ rotatePDomAroundArbitrary  graph condNodes ipdom (n, m) =
                                        )
                        )
                $ assert (relevantCondNodesM == Map.filterWithKey (\x _ -> isReachableFromTreeM ipdomM'' n x) condNodesM)
-               $ isinkdomOfTwoFinger8DownUniqueExitNode graphm m relevantCondNodesM ipdomM'''
+               $ isinkdomOfTwoFinger8DownSingleNodeSinks graphm (Set.fromList [m]) relevantCondNodesM ipdomM'''
 
         (relevantCondNodesM, ipdomM''') = 
                 if List.null succs then

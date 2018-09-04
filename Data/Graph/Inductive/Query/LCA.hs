@@ -72,7 +72,7 @@ lca imdom n m = let result = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m]
                                                    if m' ∈ ms then Nothing else lcaDown'' m' (Set.insert m' ms)
 
 
-lcaUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
+lcaSingleNodeSinks imdom nxs n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList [m])
           where
                 lcaDown' :: (Node,Set Node) -> (Node, Set Node) -> Maybe Node
                 lcaDown' (n,ns) (m,ms)
@@ -84,7 +84,7 @@ lcaUniqueExitNode imdom nx n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromList
                                   assert (not $ n ∈ ms) $ 
                                   caseN
                   where caseN = case imdom ! n of
-                                  Nothing -> assert (n == nx) $
+                                  Nothing -> assert (n ∈ nxs) $
                                              lcaDownLin ns m
                                   Just n' -> lcaDown' (m, ms) (n', Set.insert n' ns)
                 lcaDownLin ns m = assert (not $ m ∈ ns) $ lcaDown'' m

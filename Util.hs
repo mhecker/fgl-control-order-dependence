@@ -64,7 +64,7 @@ invert''' m = Map.fromListWith (∪) pairs
 
 
 dfsTree :: Ord a => Map a (Set a) -> [Set a] -> [Set a]
-dfsTree idom' roots = foldr (:) (dfs [ m | root <- roots, n <- Set.toList root, m <- Set.toList $ idom' ! n, not $ m ∈ root ]) roots
+dfsTree idom' roots = foldr (:) (dfs [ m | root <- roots, n <- Set.toList root, m <- Set.toList $ Map.findWithDefault Set.empty n idom', not $ m ∈ root ]) roots
   where dfs []       = []
         dfs (n : ns) = (Set.singleton n) : dfs ns'
           where ns' = Set.fold (:) ns $ Map.findWithDefault Set.empty n idom'
@@ -113,8 +113,10 @@ updateAt n y (x:xs)
 reachableFrom :: Ord α => Map α (Set α) -> Set α -> Set α -> Set α
 reachableFrom m xs seen
     | Set.null xs = seen
-    | otherwise = xs ∪ reachableFrom m new (seen ∪ xs)
-  where new = Set.fromList [ x' | x <- Set.toList xs, not $ x ∈ seen, x' <- Set.toList $ Map.findWithDefault Set.empty x m]
+    | otherwise   = reachableFrom m new (seen ∪ xs)
+  where seen' = seen ∪ xs
+        -- new   = Set.unions [ (Map.findWithDefault Set.empty x m) ∖ seen' | x <- Set.toList $ xs ]
+        new   = Set.unions [ (Map.findWithDefault Set.empty x m) ∖ seen' | x <- Set.toList $ xs ]
 
 
 reachableFromM :: Ord α => Map α (Maybe α) -> Set α -> Set α -> Set α

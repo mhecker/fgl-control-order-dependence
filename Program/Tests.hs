@@ -10,6 +10,11 @@ import Data.List
 
 import Data.Maybe (fromJust)
 
+import qualified Data.Dequeue as Dequeue
+import Data.Dequeue (pushBack, popFront)
+import Data.Dequeue.SimpleDequeue (SimpleDequeue)
+
+
 import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random
 import Control.Monad(forM_, when, forever, forM)

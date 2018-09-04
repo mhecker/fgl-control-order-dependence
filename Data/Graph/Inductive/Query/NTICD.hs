@@ -2364,7 +2364,7 @@ idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph (fmap fromSet 
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))
 idomToDFFastLazy graph cycleOf idom' = \df x -> case Map.lookup x df of
     Just dfs -> (dfs, df)
-    Nothing  -> let cycle = cycleOf ! x
+    Nothing  -> let cycle = Map.findWithDefault (Set.singleton x) x cycleOf
                     combined = (local ∪ up) ∖ invalid
                     local = Set.fromList [ y            | x <- Set.toList cycle, 
                                                           y <- pre graph x
@@ -2374,9 +2374,6 @@ idomToDFFastLazy graph cycleOf idom' = \df x -> case Map.lookup x df of
                     
                     invalid =  Set.unions [ is | x <- Set.toList cycle, Just is <- [Map.lookup x idom'] ]
                 in (combined, Map.fromSet (\x -> combined) cycle `Map.union` df')
-
-  -- where cycleOf =             Map.fromList [ (s, cycle) | sink <- sinks, let cycle = Set.fromList sink, s <- sink ]
-  --                `Map.union` Map.fromList [ (n, Set.singleton n) | n <- nodes graph]
 
 
 
@@ -2595,6 +2592,21 @@ combinedBackwardSlice graph cd od = \ms ->
      in result
 
 
+nticdSliceLazy :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Set Node -> Set Node
+nticdSliceLazy graph cycleOf idom' = \ms ->
+     let result = slice Map.empty Set.empty ms 
+         slice df s workset 
+             | Set.null workset = s
+             | otherwise        = slice df' s' workset'
+           where (m, workset0) = Set.deleteFindMin workset
+                 s'  = Set.insert m s
+                 new = fromNTICD ∖ s'
+                 workset' = workset0 ∪ new
+
+                 (fromNTICD, df') = idomToDFFastLazy graph cycleOf idom' df m
+      in result
+
+
 ntscdMyDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdF3 graph
@@ -2675,10 +2687,8 @@ wodTEILSliceViaNticd g =  \ms ->
         idom'1 = Map.union (fmap (\x -> Nothing) todo'0)
                $ idom'0
         idom'1Rev = invert''' idom'1
-        idom'2 = -- traceShow (Map.size todo'0, Map.size nonSinkCondNodes') $ 
-                 -- traceShow (ms, g', todo'0, processed'0, idom'0Rev, idom'0) $ 
-                 isinkdomOftwoFinger8Up                 g'                                                                      nonSinkCondNodes'   worklist'0  processed'0 idom'1Rev idom'1
-        idom'  = isinkdomOfTwoFinger8DownFixedTraversal g' sinkNodes' sinks' (Map.filterWithKey (\x _ -> idom'2 ! x /= Nothing) nonSinkCondNodes')                          idom'2
+        idom'2 = isinkdomOftwoFinger8Up                 g'                                                                      nonSinkCondNodes'   worklist'0  processed'0 idom'1Rev idom'1
+        idom'  = isinkdomOfTwoFinger8DownFixedTraversal g' sinkNodes' sinks' (Map.filterWithKey (\x _ -> idom'2 ! x /= Nothing) nonSinkCondNodes')                                    idom'2
         sinks' = [ [m] | m <- Set.toList ms]
         sinkNodes' = ms
         (condNodes', noLongerCondNodes) =
@@ -2690,17 +2700,12 @@ wodTEILSliceViaNticd g =  \ms ->
                 isCond _   = True
         nonSinkCondNodes' = condNodes'
 
-        nticd' = idomToDFFastForRoots roots' g' idom'
-          where roots' = go (Map.assocs idom') []
-                go []     roots = roots
-                go ((n, m):as) roots = case m of 
-                  Nothing -> go as ([n]:roots)
-                  _       -> go as      roots
-
-        nticd'Slow = isinkDFTwoFingerForSinks [ [m] | m <- Set.toList ms] g'
-    in -- (if nticd' == nticd'Slow then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
-       assert (nticd' == nticd'Slow) $
-       combinedBackwardSlice g' nticd' Map.empty ms
+        cycleOf' =  Map.fromList [ (s, cycle) | sink <- sinks', let cycle = Set.fromList sink, s <- sink ]
+        
+        idom'Direct = isinkdomOfTwoFinger8ForSinks sinks' sinkNodes' nonSinkCondNodes' g'
+    in -- (if idom' == idom'Direct then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
+       assert (idom' == idom'Direct) $
+       nticdSliceLazy g' cycleOf' (invert''' idom') ms
   where
         sinks            = controlSinks g
         sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]

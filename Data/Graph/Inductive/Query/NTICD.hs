@@ -43,7 +43,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without)
 import Unicode
 
 
@@ -2648,9 +2648,13 @@ wodTEILSliceViaNticd g =  \ms ->
                   | x ∈ toMsS = n
                   | otherwise = Nothing
         idom'1 = id
-               $ Map.union (Map.fromList [ (x,                                                             Nothing  ) | x <- Map.keys todo'0 ])
+            -- $ Map.union (Map.fromList [ (x,                                                             Nothing  ) | x <- Map.keys todo'0 ])
+               $ Map.union (Map.fromList [ (x,                                                             Nothing  ) | x <- cycleCuts])
                $ idom'0
-        idom'2 = isinkdomOftwoFinger8UpDfs              g'            sinks'                                                                                                idom'1
+        idom'2 = Map.foldWithKey noCycle idom'1 (Map.filterWithKey (\n _ -> idom'1 ! n == Nothing) nonSinkCondNodes')
+          where noCycle n succs idom = Map.insert n (Just z) idom
+                  where z = head [ x | x <- succs, not $ isReachableFromM idom n x]
+     -- idom'2 = isinkdomOftwoFinger8UpDfs              g'            sinks'                                                                                                idom'1
      -- idom'2 = isinkdomOftwoFinger8Up                 g'                                                                      nonSinkCondNodes'   worklist'0  processed'0 idom'1
         idom'  = isinkdomOfTwoFinger8DownFixedTraversal g' sinkNodes' sinks' (Map.filterWithKey (\x _ -> idom'2 ! x /= Nothing) nonSinkCondNodes')                          idom'2
         sinks' = [ [m] | m <- Set.toList ms]
@@ -2663,27 +2667,47 @@ wodTEILSliceViaNticd g =  \ms ->
                 isCond [_] = False
                 isCond _   = True
         nonSinkCondNodes' = condNodes'
-        worklist'0 :: SimpleDequeue (Node, [Node])
-        worklist'0  = Dequeue.fromList $ Map.assocs $ todo'0
-        -- (processed'0, unprocessed'0)  = Set.partition (\n -> not $ Set.null $ ms ∩ (reachableFromM idom'0 (Set.fromList [n]) Set.empty)) toMsS
-        -- todo'0 = restrict nonSinkCondNodes' unprocessed'0
-        (processed'0, todo'0)  = findProcessedAndUnprocessed toMs ms Map.empty
-        findProcessedAndUnprocessed (x:xs) processed unprocessed = find (Just (x, Set.fromList [x])) xs processed unprocessed
-                  where find Nothing          [] processed unprocessed =  (processed, unprocessed)
-                        find (Just (x, path)) xs processed unprocessed
-                            | Map.member x unprocessed = find                          path'  xs' processed  unprocessed'
-                            |            x ∈ processed = find                          path'  xs' processed' unprocessed
+        cycleCuts   = [ n | cycle <- cycles, n <- Set.toList $ cycle ∩ (Map.keysSet nonSinkCondNodes') ]
+        cycles  = findCycles toMs Set.empty []
+        findCycles (x:xs) seen cycles = find (Just (x, Set.fromList [x])) xs seen cycles
+                  where find Nothing          [] seen cycles =  cycles
+                        find (Just (x, path)) xs seen cycles 
+                            |            x ∈ seen    = find                            path'  xs' seen'  cycles
                             | otherwise = case idom'0 ! x of
-                                            Nothing ->   find                          path'  xs' processed  unprocessed'
+                                            Nothing -> find                            path'  xs' seen'  cycles
                                             Just x' -> if x' ∈ path then
-                                                         find                          path'  xs' processed  unprocessed'
+                                                         find                          path'  xs' seen' (cycles' x')
                                                        else
-                                                         find (Just (x', Set.insert x' path)) xs  processed  unprocessed
+                                                         find (Just (x', Set.insert x' path)) xs  seen  cycles
                           where (path', xs') = case xs of
                                                 []     -> (Nothing,                    [])
                                                 (y:ys) -> (Just (y, Set.fromList [y]), ys)
-                                processed'   = processed ∪ path
-                                unprocessed' = Map.union unprocessed (Map.fromAscList [ (y, succs) | y <- Set.toAscList path, Just succs <- [Map.lookup y nonSinkCondNodes'] ])
+                                seen'      = seen ∪ path
+                                cycles' x' = (find' x' (Set.fromList [x])) : cycles
+                                  where find' x cycle
+                                          | x ∈ cycle = cycle
+                                          | otherwise = let Just x' = idom'0 ! x in find' x' (Set.insert x cycle)
+        -- worklist'0 :: SimpleDequeue (Node, [Node])
+        -- worklist'0  = Dequeue.fromList $ Map.assocs $ todo'0
+        -- -- (processed'0, unprocessed'0)  = Set.partition (\n -> not $ Set.null $ ms ∩ (reachableFromM idom'0 (Set.fromList [n]) Set.empty)) toMsS
+        -- -- todo'0 = restrict nonSinkCondNodes' unprocessed'0
+        -- (processed'0, todo'0)  = findProcessedAndUnprocessed toMs ms Map.empty
+        -- findProcessedAndUnprocessed (x:xs) processed unprocessed = find (Just (x, Set.fromList [x])) xs processed unprocessed
+        --           where find Nothing          [] processed unprocessed =  (processed, unprocessed)
+        --                 find (Just (x, path)) xs processed unprocessed
+        --                     | Map.member x unprocessed = find                          path'  xs' processed  unprocessed'
+        --                     |            x ∈ processed = find                          path'  xs' processed' unprocessed
+        --                     | otherwise = case idom'0 ! x of
+        --                                     Nothing ->   find                          path'  xs' processed  unprocessed'
+        --                                     Just x' -> if x' ∈ path then
+        --                                                  find                          path'  xs' processed  unprocessed'
+        --                                                else
+        --                                                  find (Just (x', Set.insert x' path)) xs  processed  unprocessed
+        --                   where (path', xs') = case xs of
+        --                                         []     -> (Nothing,                    [])
+        --                                         (y:ys) -> (Just (y, Set.fromList [y]), ys)
+        --                         processed'   = processed ∪ path
+        --                         unprocessed' = Map.union unprocessed (Map.fromAscList [ (y, succs) | y <- Set.toAscList path, Just succs <- [Map.lookup y nonSinkCondNodes'] ])
 
         nticd' = idomToDFFastForRoots roots' g' idom'
           where roots' = go (Map.assocs idom') sinks'
@@ -2693,9 +2717,9 @@ wodTEILSliceViaNticd g =  \ms ->
                   _       -> go as      roots
 
         nticd'Slow = isinkDFTwoFingerForSinks [ [m] | m <- Set.toList ms] g'
-    in -- (if nticd' == nticd'Slow then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
+    in (if nticd' == nticd'Slow then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
        assert (nticd' == nticd'Slow) $
-       combinedBackwardSlice g' nticd'Slow Map.empty ms
+       combinedBackwardSlice g' nticd' Map.empty ms
   where
         sinks            = controlSinks g
         sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]

@@ -151,6 +151,15 @@ isReachableFromTreeM m x y = isReach y
                           Nothing  -> False
                           Just z -> isReach z
 
+isReachableFromM :: Ord α => Map α (Maybe α) -> α -> α -> Bool
+isReachableFromM m x y = isReach y Set.empty
+  where isReach y seen
+          | x == y    = True
+          | y ∈ seen  = False
+          | otherwise = case m ! y of
+                          Nothing  -> False
+                          Just z -> isReach z (Set.insert y seen)
+
 
 allReachableFromTreeM :: Ord α => Map α (Maybe α) -> Set α -> α -> Bool
 allReachableFromTreeM m xs y = allReach (Set.delete y xs) y

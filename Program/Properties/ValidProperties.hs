@@ -42,7 +42,9 @@ import Data.Ord
 
 import Debug.Trace (traceShow)
 
-
+import qualified Data.Dequeue as Dequeue
+import Data.Dequeue (pushBack, popFront)
+import Data.Dequeue.SimpleDequeue (SimpleDequeue)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -818,7 +820,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty "wodTEILSliceViaNticd  == wdcSlice for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
-                    nrSlices = 10
+                    nrSlices = 80
                     n = length $ nodes g
                     mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
                                                         let m1 = nodes g !! (s1 `mod` n),
@@ -1100,8 +1102,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                            nonSinkCondNodes = Map.fromList [ (c, succs) | (c, succs) <- Map.assocs condNodes, c /= m]
                                            processed0 = Set.fromList [ x            | x <- nodes (gn ! m), m ∈ reachableFromTree ipdomM'' x]
                                            imdom0     = (if nIsCond then id else Map.insert n (fromSet $ Set.fromList $ suc (gn ! m) n)) $
-                                                        Map.fromList [ (x, Nothing) | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes] `Map.union` (fmap fromSet ipdomM'')
-                                           worklist0  = Seq.fromList [ x            | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes]
+                                                        Map.fromList [ (x, Nothing)   | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes] `Map.union` (fmap fromSet ipdomM'')
+                                           worklist0  = Dequeue.fromList [ (x, succs) | x <- nodes (gn ! m), not $ x ∈ processed0, Just succs <- [Map.lookup x nonSinkCondNodes]]
                                            ipdomM'''' = -- traceShow (Map.size nonSinkCondNodes, Seq.length worklist0) $
                                                         fmap toSet $ NTICD.isinkdomOftwoFinger8Up (gn ! m) nonSinkCondNodes worklist0 processed0 imdom0
                                        in (∀) sink (\y ->

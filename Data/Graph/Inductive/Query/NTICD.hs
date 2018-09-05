@@ -2024,7 +2024,7 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks toCon
                        Nothing -> (Nothing, True)
                        Just z  -> assert (z /= x) $
                                   case Map.lookup z sinkNodesToCanonical of
-                                    Just s1 -> (Just s1, True)
+                                    Just s1 -> (Just s1, False)
                                     Nothing -> (Just z, False)
 
 
@@ -2050,7 +2050,7 @@ isinkdomOfTwoFinger8DownSingleNodeSinks graph nxs condNodes imdom0 =
           where workLeft'  = reverse workRight
         twoFingerDown (w@(x, succs):workLeft') workRight imdom changed = twoFingerDown workLeft'  workRight' (Map.insert x mz imdom)  (changed ∨ changed')
           where changed' =  mz /= (imdom ! x)
-                workRight' = if mz == Nothing  ∨  z ∈ nxs then workRight else w:workRight
+                workRight' = if mz == Nothing then workRight else w:workRight
                   where Just z = mz
                 mz = require (succs == suc graph x) $
                      foldM1 lca succs
@@ -2687,9 +2687,8 @@ wodTEILSliceViaNticd g =  \ms ->
         idom'1 = Map.union (fmap (\x -> Nothing) todo'0)
                $ idom'0
         idom'1Rev = invert''' idom'1
-        idom'2 = isinkdomOftwoFinger8Up                  g'                                                                 nonSinkCondNodes'   worklist'0  processed'0 idom'1Rev idom'1
-        idom'  = isinkdomOfTwoFinger8DownSingleNodeSinks g' sinkNodes' (Map.filterWithKey (\x _ -> not $ idom'2 ! x ∈ done) nonSinkCondNodes')                                    idom'2
-          where done = Set.insert Nothing $ Set.map Just sinkNodes'
+        idom'2 = isinkdomOftwoFinger8Up                  g'                                                               nonSinkCondNodes'   worklist'0  processed'0 idom'1Rev idom'1
+        idom'  = isinkdomOfTwoFinger8DownSingleNodeSinks g' sinkNodes' (Map.filterWithKey (\x _ -> idom'2 ! x /= Nothing) nonSinkCondNodes')                                    idom'2
         sinks' = [ [m] | m <- Set.toList ms]
         sinkNodes' = ms
         (condNodes', noLongerCondNodes) =

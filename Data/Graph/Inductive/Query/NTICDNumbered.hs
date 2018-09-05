@@ -20,7 +20,7 @@ import Debug.Trace
 import Data.Graph.Inductive.Query.NTICD (controlSinks)
 
 import Data.Ord (Down(..))
-import Data.List (sortBy, sortOn)
+import Data.List (sortOn)
 
 
 {-# ANN iPDom "HLint: ignore Use ***" #-}
@@ -57,7 +57,7 @@ type Node' = Int
 -- thereof. the dominance set of a node can be found by taking the union of
 -- {node} and the dominance set of its immediate dominator.
 type IPDom = Array Node' Node'
--- array containing the list of predecessors of each node
+-- array containing the list of successors of each node
 type Succs = Array Node' [Node']
 -- array containing the canonical representative (== itself for non-sink-nodes) of each node
 type ToCanonical = Array Node' Node' 
@@ -84,7 +84,7 @@ idomWork g sinks = let
     --  in order to preserve sink-cycles in idom, override successors for sink nodes with their idom-successor
     succs  = array (1, s-1) [(i, filter (\i' -> i' /= -1  && i' /= i) (map (fromNode I.!) (suc g (toNode ! i)))) | i <- [1..s-1]] // fmap (\(n,x) -> (n,[x])) sinkSuccs
     -- iteratively improve the approximation to find iDom.
-    iD = fixEq (refineIDom toCanonical toNode succs) iPD0
+    iD = fixEq (refineIDom toCanonical succs) iPD0
     
   in if null tree then error "Dominators.idomWork: root not in graph"
                   else (iD, toNode, fromNode)
@@ -92,25 +92,25 @@ idomWork g sinks = let
 
 
 
--- for each node in iDom, find the intersection of all its predecessor's
+-- for each node in iDom, find the intersection of all its successors's
 -- dominating sets, and update iDom accordingly.
-refineIDom :: ToCanonical -> ToNode -> Succs -> IPDom -> IPDom
-refineIDom toCanonical toNode preds iD = fmap f preds
+refineIDom :: ToCanonical -> Succs -> IPDom -> IPDom
+refineIDom toCanonical succs iD = fmap f succs
   where f []  = nothing
         f [x] = x
-        f ps = foldl1 (intersect toCanonical toNode iD) ps
+        f ps = foldl1 (intersect toCanonical iD) ps
 
 nothing :: Node'
 nothing = 0
 
 -- find the intersection of the two given dominance sets.
-intersect ::  ToCanonical -> ToNode -> IPDom -> Node' -> Node' -> Node'
-intersect toCanonical toNode iD a b
+intersect ::  ToCanonical -> IPDom -> Node' -> Node' -> Node'
+intersect toCanonical iD a b
   | a == nothing  || b == nothing = nothing
   | otherwise = case a `compare` b of
-    LT -> let b' = (iD ! b) in if (b' >= b) then lin toCanonical iD b a else intersect toCanonical toNode iD  a  b'
+    LT -> let b' = (iD ! b) in if (b' >= b) then lin toCanonical iD b a else intersect toCanonical iD  a  b'
     EQ -> toCanonical ! a
-    GT -> let a' = (iD ! a) in if (a' >= a) then lin toCanonical iD a b else intersect toCanonical toNode iD  a' b
+    GT -> let a' = (iD ! a) in if (a' >= a) then lin toCanonical iD a b else intersect toCanonical iD  a' b
 
 lin toCanonical iD min x
  | x == nothing = nothing

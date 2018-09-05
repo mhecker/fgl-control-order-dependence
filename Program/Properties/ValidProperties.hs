@@ -59,7 +59,7 @@ import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
@@ -90,7 +90,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
-    isinkdomOf, isinkdomOfGfp2, joinUpperBound, controlSinks, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,
+    isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty, isinkdomTwoFingercd, sinkdomNaiveGfp,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
@@ -378,7 +378,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "joinUpperBound always computes an upper bound"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        sinks = NTICD.controlSinks g
+                        sinks = controlSinks g
                     in (∀) (Map.assocs $ NTICD.joinUpperBound g) (\(n,maybeNs) -> maybeNs /= Nothing ∨   (∃) (sinks) (\sink -> n ∊ sink)),
     testProperty   "isinkdomOf^*          == sinkdomOfJoinUpperBound^*"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -837,8 +837,11 @@ wodProps = testGroup "(concerning weak order dependence)" [
                    )),
     testProperty "wodTEILSliceViaNticd  == wdcSlice for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
+  --               let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+  --                   [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+  --                   g = insEdge (exit, entry, ()) generatedGraph
                 let g = generatedGraph
-                    nrSlices = 80
+                    nrSlices = 10
                     n = length $ nodes g
                     mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
                                                         let m1 = nodes g !! (s1 `mod` n),
@@ -935,7 +938,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty "wodTEIL  in sinks via pdom"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
-                    sinks = NTICD.controlSinks g0
+                    sinks = controlSinks g0
                 in (∀) sinks (\sink ->
                      let g = subgraph sink g0
                          wodTEIL'  = NTICD.wodTEIL' g
@@ -951,7 +954,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty "wodTEIL == myWod in sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
-                    sinks = NTICD.controlSinks g0
+                    sinks = controlSinks g0
                 in (∀) sinks (\sink ->
                      let g = subgraph sink g0
                          wodTEIL'  = NTICD.wodTEIL' g
@@ -980,7 +983,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
      testProperty  "myWodFromSliceStep == myWodFast"
      $ \(ARBITRARY(generatedGraph)) ->
                  let g0 = generatedGraph
-                     sinks = NTICD.controlSinks g0
+                     sinks = controlSinks g0
                  in
                     (∀) sinks (\sink ->
                       let g = subgraph sink g0
@@ -992,7 +995,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testPropertySized 60 "myWodSlice == myWodFastSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
-                    sinks = NTICD.controlSinks g0
+                    sinks = controlSinks g0
                 in
                    (∀) sinks (\sink ->
                      let g = subgraph sink g0
@@ -1099,7 +1102,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "cut and re-validate property in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
-                    sinks = [ (g, gn, sink, ipdom, condNodes) | sink <-  NTICD.controlSinks g0,
+                    sinks = [ (g, gn, sink, ipdom, condNodes) | sink <-  controlSinks g0,
                                                 let towardsSink = [ n | n <- nodes g0, (∃) sink (\s -> s `elem` reachable n g0) ],
                                                 let g = subgraph towardsSink g0,
                                                 let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- towardsSink ],
@@ -1139,7 +1142,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "pmay properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
-                    sinks = [ (g, sink, pdom, pmay, dom, condNodes) | sink <-  NTICD.controlSinks g0,
+                    sinks = [ (g, sink, pdom, pmay, dom, condNodes) | sink <-  controlSinks g0,
                                                    let g = subgraph sink g0,
                                                    let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
                                                    let gn'  = Map.fromList [ (n, delSuccessorEdges (grev g) n)    | n <- sink ],
@@ -1156,7 +1159,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "pdom swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
-                    sinks = [ (sink, pdom, pmay, dom) | sink <-  NTICD.controlSinks g0,
+                    sinks = [ (sink, pdom, pmay, dom) | sink <-  controlSinks g0,
                                                    let g = subgraph sink g0,
                                                    let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- sink ],
                                                    let gn'  = Map.fromList [ (n, delSuccessorEdges (grev g) n)    | n <- sink ],
@@ -1195,7 +1198,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "dom/may swap properties in control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g0 = generatedGraph
-                        sinks = NTICD.controlSinks g0
+                        sinks = controlSinks g0
                     in (∀) sinks (\sink ->
                          let g = subgraph sink g0
                              gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
@@ -1303,7 +1306,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        ),
     testProperty  "rotatePDomAround g (pdom_n) (n->m)  == pdom_m in arbitrary control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
-                    let sinks = NTICD.controlSinks generatedGraph
+                    let sinks = controlSinks generatedGraph
                     in (∀) sinks (\sink -> let g = subgraph sink generatedGraph in
                          (∀) (nodes g) (\n ->
                            let gn   = efilter (\(x,y,_) -> x /= n) g

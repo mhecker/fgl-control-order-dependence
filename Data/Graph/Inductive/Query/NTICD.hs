@@ -23,6 +23,7 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Graph.Inductive.Query.NTICDNumbered (iPDomForSinks)
 import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
@@ -2702,10 +2703,10 @@ wodTEILSliceViaNticd g =  \ms ->
 
         cycleOf' =  Map.fromList [ (s, cycle) | sink <- sinks', let cycle = Set.fromList sink, s <- sink ]
         
-        idom'Direct = isinkdomOfTwoFinger8ForSinks sinks' sinkNodes' nonSinkCondNodes' g'
+        idom'Direct = Map.fromList $ iPDomForSinks sinks' g'
     in -- (if idom' == idom'Direct then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
        assert (idom' == idom'Direct) $
-       nticdSliceLazy g' cycleOf' (invert''' idom') ms
+       nticdSliceLazy g' cycleOf' (invert''' idom'Direct) ms
   where
         sinks            = controlSinks g
         sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]
@@ -3980,14 +3981,6 @@ data MaximalPathCondensed = MaximalPathCondensed {
   mcScc ::  Node,       --    Node  in the condensed graph
   mcEndNodes :: [Node]  -- of Nodes in the original graph
  }
-
-controlSinks :: Graph gr => gr a b -> [[Node]]
-controlSinks graph =
-      [ scc | scc <- sccs, let sccS = Set.fromList scc, (∀) scc (\n ->
-                            (∀) (suc graph n) (\n' -> n' ∈ sccS)
-                           )
-                   ]
-    where sccs = scc graph
 
 sinkPathsFor :: DynGraph gr => gr a b -> Map Node [SinkPath]
 sinkPathsFor graph = Map.fromList [ (n, sinkPaths n) | n <- nodes graph ]

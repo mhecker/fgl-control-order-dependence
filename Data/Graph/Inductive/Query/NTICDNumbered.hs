@@ -17,7 +17,7 @@ import qualified Data.Tree                      as T
 
 import Debug.Trace
 
-import Data.Graph.Inductive.Query.NTICD (controlSinks)
+import Data.Graph.Inductive.Util (controlSinks)
 
 import Data.Ord (Down(..))
 import Data.List (sortOn)

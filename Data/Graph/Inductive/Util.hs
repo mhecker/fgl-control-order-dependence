@@ -263,3 +263,10 @@ delPredecessorEdges graph n = c' & graph'
   where (Just c@(_ , _, a, succs), graph') = match n graph
         c' =    ([], n, a, succs)
 
+controlSinks :: Graph gr => gr a b -> [[Node]]
+controlSinks graph =
+      [ scc | scc <- sccs, let sccS = Set.fromList scc, (∀) scc (\n ->
+                            (∀) (suc graph n) (\n' -> n' ∈ sccS)
+                           )
+                   ]
+    where sccs = scc graph

@@ -19,6 +19,9 @@ import Debug.Trace
 
 import Data.Graph.Inductive.Query.NTICD (controlSinks)
 
+import Data.Ord (Down(..))
+import Data.List (sortBy, sortOn)
+
 
 {-# ANN iPDom "HLint: ignore Use ***" #-}
 -- | return immediate post-dominators for each node of a graph
@@ -69,7 +72,7 @@ idomWork g sinks = let
     -- relabel the tree so that paths from the root have increasing nodes
     (s, ntree) = numberTree 0 tree
     -- sink nodes must be given a fixed idom s.t. node from the same sink form a cycle
-    sinkSuccs = [ (fromNode I.! s1, fromNode I.! s2) | (s:sink) <- sinks, sink /= [], (s1,s2) <- zip (s:sink) (sink ++ [s]) ]
+    sinkSuccs = [ (s1, s2) | sink@(_:_:_) <- sinks, let (s:sorted) = sortOn Down $ fmap (fromNode I.!) sink, (s1,s2) <- zip (s:sorted) (sorted ++ [s]) ]
     -- the approximation iPDom0 just maps each node to its parent
     iPD0 = array (1, s-1) (tail $ treeEdges (-1) ntree)   // sinkSuccs
     -- in order to preserve sink-cycles in idom, chose a canonical representative for each sink
@@ -92,7 +95,7 @@ idomWork g sinks = let
 -- for each node in iDom, find the intersection of all its predecessor's
 -- dominating sets, and update iDom accordingly.
 refineIDom :: ToCanonical -> ToNode -> Succs -> IPDom -> IPDom
-refineIDom toCanonical toNode preds iD = {- traceShow (  map (\(a, b) -> (toNode ! a, toNode `at` b)) (assocs iD)) $ -} traceShow iD $ fmap f preds
+refineIDom toCanonical toNode preds iD = fmap f preds
   where f []  = nothing
         f [x] = x
         f ps = foldl1 (intersect toCanonical toNode iD) ps
@@ -104,14 +107,14 @@ nothing = 0
 intersect ::  ToCanonical -> ToNode -> IPDom -> Node' -> Node' -> Node'
 intersect toCanonical toNode iD a b
   | a == nothing  || b == nothing = nothing
-  | otherwise = traceShow (a, b) $ case a `compare` b of
+  | otherwise = case a `compare` b of
     LT -> let b' = (iD ! b) in if (b' >= b) then lin toCanonical iD b a else intersect toCanonical toNode iD  a  b'
     EQ -> toCanonical ! a
     GT -> let a' = (iD ! a) in if (a' >= a) then lin toCanonical iD a b else intersect toCanonical toNode iD  a' b
 
 lin toCanonical iD min x
  | x == nothing = nothing
- | otherwise = traceShow (min, x) $ case min `compare` x of
+ | otherwise = case min `compare` x of
      LT -> let x' = (iD ! x) in if (x' >= x) then nothing else lin toCanonical iD min x'
      EQ -> toCanonical ! x
      GT -> nothing

@@ -2070,12 +2070,12 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
                            timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
-                           mustReachFrom x   = suc imdomTrc x
-                             where imdom    = NTICD.imdomOfTwoFinger7 g
-                                   imdomTrc = trc $ fromSuccMap imdom :: Gr () ()
+                           mustReachFrom x   = suc isinkdomTrc x
+                             where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
+                                   isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()
                        in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
-                             in ((m /= p) ∧ (∀) (suc g p) (\x -> m ∊ mustReachFrom x)) →
+                             in ((m /= p) ∧ m ∊ mustReachFrom p) →
                                   case rmq of
                                      NTICD.FixedSteps s            -> Set.fromList [1+s] == mustReachFromIn p m
                                      NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == mustReachFromIn p y
@@ -2135,12 +2135,12 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
                            timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
-                           mustReachFrom x   = suc imdomTrc x
-                             where imdom    = NTICD.imdomOfTwoFinger7 g
-                                   imdomTrc = trc $ fromSuccMap imdom :: Gr () ()
+                           mustReachFrom x   = suc isinkdomTrc x
+                             where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
+                                   isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()
                        in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
-                             in ((m /= p) ∧ (∀) (suc g p) (\x -> m ∊ mustReachFrom x)) →
+                             in ((m /= p) ∧ m ∊ mustReachFrom p) →
                                   case rmq of
                                      NTICD.FixedSteps s            -> Set.fromList [1+s] == mustReachFromIn p m
                                      NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == mustReachFromIn p y

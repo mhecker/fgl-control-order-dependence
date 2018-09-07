@@ -4666,32 +4666,35 @@ timmaydomOfLfp graph = tmaydomOfLfp graph fTimeMayDom
 
 
 
-timdomOfTwoFingerFor :: forall gr a b. DynGraph gr => gr a b -> Map Node [Node] -> Map Node (Maybe (Node, Integer)) -> Map Node (Set (Node, Integer))
-timdomOfTwoFingerFor graph condNodes imdom0  =
+timdomOfTwoFingerFor :: forall gr a b. DynGraph gr => gr a b -> Map Node [Node] -> Map Node (Maybe (Node, Integer)) -> Map Node (Set (Node)) -> Map Node (Set (Node, Integer))
+timdomOfTwoFingerFor graph condNodes imdom0  imdom0Rev =
       require (condNodes  == Map.fromList [ (x, succs) | x <- nodes graph, let succs = suc graph x, length succs > 1 ])
     $ require (imdom0     ==             Map.fromList [ (x, Just (z,1)) | x <- nodes graph, [z] <- [suc graph x]]
                              `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes graph])
---    $ require (imdom0Rev  == invert'' $ fmap noSteps $ imdom0)
-    $ fmap toSet $ twoFinger 0 worklist0 imdom0
-  where 
+    $ require (imdom0Rev  == (invert''' $ fmap noSteps $ imdom0))
+    $ fmap toSet $ twoFinger 0 worklist0 imdom0 imdom0Rev
+  where
+        noSteps Nothing       = Nothing
+        noSteps (Just (z, _)) = Just z
         toMap Nothing  = Map.empty
         toMap (Just (x, sx)) = Map.fromList [(x,sx)]
         worklist0   = condNodes
 
         prevConds   = prevCondNodes graph
 
-        twoFinger :: Integer -> Map Node [Node] ->  Map Node (Maybe (Node, Integer)) -> Map Node (Maybe (Node, Integer))
-        twoFinger i worklist imdom
+        twoFinger :: Integer -> Map Node [Node] ->  Map Node (Maybe (Node, Integer)) -> Map Node (Set Node) -> Map Node (Maybe (Node, Integer))
+        twoFinger i worklist imdom imdomRev
             | Map.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                   -- traceShow (Set.size worklist0, i) $ 
                                     imdom
             | otherwise         = -- traceShow (x, mz, zs, influenced, worklist, imdom) $
-                                    if (not $ new) then twoFinger (i+1)                         worklist'                                   imdom
-                                    else                twoFinger (i+1) (influenced `Map.union` worklist')  (Map.insert x zs                imdom)
+                                    if (not $ new) then twoFinger (i+1)                         worklist'                                   imdom                                            imdomRev
+                                    else                twoFinger (i+1) (influenced `Map.union` worklist')  (Map.insert x zs                imdom)  (Map.insertWith (∪) z (Set.fromList [x]) imdomRev)
           where ((x, succs), worklist')  = Map.deleteFindMin worklist
                 mz :: Maybe (Node, Integer, Set Node)
                 mz = require (succs == suc graph x) 
                    $ foldM1 lca [ (y, 1, Set.empty) | y <- succs]
+                Just (z,_) = zs
                 zs = case mz of
                       Just (z,sz,_)  -> if z /= x then
                                           Just (z, sz)
@@ -4700,14 +4703,14 @@ timdomOfTwoFingerFor graph condNodes imdom0  =
                       Nothing ->  Nothing
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing zs)
-                influenced = let imdomRev = invert' $ fmap maybeToList $ fmap (liftM fst) imdom
-                                 preds = predsSeenFor imdomRev [x] [x]
+                influenced = assert (imdomRev  == (invert''' $ fmap (liftM fst) imdom)) $
+                             let preds = predsSeenFor (fmap Set.toList $ imdomRev) [x] [x]
                              in  -- traceShow (preds, imdomRev) $
                                  restrict condNodes (Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n])
                 lca = lcaTimdomOfTwoFinger imdom
 
 timdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Integer))
-timdomOfTwoFinger graph = timdomOfTwoFingerFor graph condNodes imdom0
+timdomOfTwoFinger graph = timdomOfTwoFingerFor graph condNodes imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
   where imdom0   =             Map.fromList [ (x, Just (z,1)) | x <- nodes graph, [z] <- [suc graph x]]
                    `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes graph]
         condNodes   = Map.fromList [ (x, succs) | x <- nodes graph, let succs = suc graph x, length succs > 1 ]
@@ -4724,7 +4727,7 @@ timingDependenceViaTwoFinger g =
                                                                                                   $ Map.union (Map.mapWithKey (\x [z] ->  assert (z /= x) $ Just (z,1)) noLongerCondNodes)
                                                                                                   $ restrict imdom0 toMS,
                                                                                             let g' = (flip delSuccessorEdges m) $ subgraph toM $ g,
-                                                                                            let itimdom = timdomOfTwoFingerFor g' condNodes' imdom0'
+                                                                                            let itimdom = timdomOfTwoFingerFor g' condNodes' imdom0' (invert''' $ fmap (liftM fst) $ imdom0')
                    ]
                                                
   where gRev = grev g

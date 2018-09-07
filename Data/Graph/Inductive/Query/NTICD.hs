@@ -4083,6 +4083,11 @@ instance JoinSemiLattice Reachability where
     | x == y ∧ n == m  = FixedStepsPlusOther x n 
     | otherwise = UndeterminedSteps
 
+{-
+  FixedStepsPlusOther x n  `join` FixedSteps          y   = {- assert (y >= x) $ -} FixedStepsPlusOther x n
+  FixedSteps          x    `join` FixedStepsPlusOther y m = {- assert (x >= y) $ -} FixedStepsPlusOther y m
+-}
+
   x         `join` y         = UndeterminedSteps
 
 instance BoundedJoinSemiLattice Reachability where
@@ -4317,24 +4322,33 @@ tdomRLfpF graph f = {-  fmap (\m -> Set.fromList [ (n, steps) | (n, steps) <- Ma
 
 ftdomR :: DynGraph gr => TimeDomFunctionalGenR gr a b
 ftdomR graph _ _ nextCond toNextCond = f 
-  where f timeDomOf = -- traceShow ((3,timeDomOf ! 3), (4,timeDomOf ! 4), (9,timeDomOf ! 9)) $ 
+  where f timeDomOf = {- traceShow ((7,timeDomOf ! 7 ! 6), (11,timeDomOf ! 11 ! 6), (13, timeDomOf ! 13 ! 6)) $ -}
                    Map.fromList [ (y, Map.fromList [(y, FixedSteps 0    )]) | y <- nodes graph]
                 ⊔  Map.fromList [ (y, Map.fromList [(n, FixedSteps steps) | (n,steps) <- zip (reverse $ toNextCond y) [0..] ])
                                                                                    | y <- nodes graph
                                    ]
-                ⊔  Map.fromList [ (y,
-                                         fmap ( `joinPlus` (steps+1)) $
+                ⊔  Map.fromList [ (y,    let plus = plusAt n in
+                                         fmap (noSelf y) $ 
+                                         fmap ( `plus` (steps)) $
                                          (flip without) (Set.fromList $ toNextCond y) $
-                                         (∐) [ timeDomOf ! x | x <- suc graph n ]
+                                         fmap (noSelf n) $
+                                         (∐) [ fmap (flip (plusAt x) 1) $ timeDomOf ! x | x <- suc graph n ]
                                      )
                                                                                    | y <- nodes graph,
                                                                                      Just n <- [nextCond y],
                                                                                      let steps = (toInteger $ length $ toNextCond y) - 1
                                    ]
+noSelf n r@(FixedStepsPlusOther _ m)
+ | n == m = UndeterminedSteps
+ | otherwise = r
+noSelf n r = r
+
 tdomROfLfp graph = tdomRLfpF graph ftdomR
 
 
-tdepR g = Map.fromList [ (n, Set.fromList [ m | m <- nodes g, let rs = Set.fromList [ r | x <- suc g n, let r = timdom ! x ! m, r /= Unreachable ], Set.size rs > 1 ])  | n <- condNodes ]
+tdepR g =
+       Map.fromList [ (n, Set.fromList [ m | m <- nodes g, let rs = Set.fromList [ r | x <- suc g n, let r = timdom ! x ! m, r /= Unreachable ], Set.size rs > 1 ])  | n <- condNodes ]
+       -- Map.fromList [ (n, Set.fromList [ m | m <- nodes g, let r = timdom ! n ! m,  r == UndeterminedSteps]) | n <- condNodes]
   where timdom = tdomROfLfp g
         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
 

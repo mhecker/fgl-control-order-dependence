@@ -4680,7 +4680,7 @@ timdomOfTwoFingerFor graph condNodes imdom0  imdom0Rev =
         toMap (Just (x, sx)) = Map.fromList [(x,sx)]
         worklist0   = condNodes
 
-        prevConds   = prevCondNodes graph
+        prevCondsImmediate = prevCondImmediateNodes graph
 
         twoFinger :: Integer -> Map Node [Node] ->  Map Node (Maybe (Node, Integer)) -> Map Node (Set Node) -> Map Node (Maybe (Node, Integer))
         twoFinger i worklist imdom imdomRev
@@ -4706,7 +4706,7 @@ timdomOfTwoFingerFor graph condNodes imdom0  imdom0Rev =
                 influenced = assert (imdomRev  == (invert''' $ fmap (liftM fst) imdom)) $
                              let preds = predsSeenFor (fmap Set.toList $ imdomRev) [x] [x]
                              in  -- traceShow (preds, imdomRev) $
-                                 restrict condNodes (Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n])
+                                 restrict condNodes (Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x, isNothing $ imdom ! n])
                 lca = lcaTimdomOfTwoFinger imdom
 
 timdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Integer))

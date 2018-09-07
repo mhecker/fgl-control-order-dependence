@@ -4701,6 +4701,14 @@ timdomOfTwoFinger graph = fmap toSet $ twoFinger 0 worklist0 imdom0
                                  Set.fromList $ [ n | n <- foldMap prevConds preds, n /= x, isNothing $ imdom ! n]
                 lca = lcaTimdomOfTwoFinger imdom
 
+timingDependenceViaTwoFinger g =
+      invert'' $
+      Map.fromList [ (m, Set.fromList [ n | (n, rs) <- Map.assocs itimdom, Set.null rs ]) | m <- nodes g,
+                                                                                            let g' = (flip delSuccessorEdges m) $ subgraph (reachable m gRev) $ g,
+                                                                                            let itimdom = timdomOfTwoFinger g'
+                   ]
+                                               
+  where gRev = grev g
 
 alternativeTimingXdependence :: DynGraph gr => (gr a b -> Map (Node, Node) (Map (Node, Node) Reachability)) -> gr a b -> Map Node (Set Node)
 alternativeTimingXdependence snmTiming graph = 

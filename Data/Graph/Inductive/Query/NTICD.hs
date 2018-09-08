@@ -4169,14 +4169,14 @@ timingF3EquationSystem graph condNodes reachable nextCond toNextCond =
   where toNextCondInOrder = reverse . toNextCond
 
 timingF3EquationSystem' :: DynGraph gr => SmnTimingEquationSystemGen gr a b
-timingF3EquationSystem' graph condNodes reachable nextCond toNextCond =
+timingF3EquationSystem' graph condNodes _ nextCond toNextCond =
                         Map.fromList [ ((m,p), Map.empty) | m <- nodes graph, p <- condNodes]
                  ⊔ (∐) [ Map.fromList [ ((m,p), Map.fromList  [ ((p,x), FixedSteps i) ]) ]
                          | p <- condNodes, x <- suc graph p,    (i,m) <- (zip [0..] (toNextCondInOrder x))
                        ]
                  ⊔ (∐) [ Map.fromList [ ((m,p), Map.fromList  [ ((p,x), reachability) ]) ]
                          | p <- condNodes, x <- suc graph p,    Just n <- [nextCond x],
-                                                                           m <- reachable x,
+                                                                           m <- reachable x graph,
                                                                            let plus = plusAt n,
                                                                            let toNextCondX = toNextCond x,
                                                                            not $ m ∊ toNextCondX,

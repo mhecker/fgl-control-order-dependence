@@ -1991,6 +1991,15 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "timdomOfLfp is transitive in unique-end-node-graphs"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let gs = [generatedGraph, grev generatedGraph] in (∀) gs (\g -> (∀) (nodes g) (\m ->
+                  let g' = delSuccessorEdges (subgraph (reachable m (grev g)) g) m
+                      timdom = NTICD.timdomOfLfp g'
+                  in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
+                       (z, steps+steps') ∈ timdom ! x
+                   )))
+                )),
     testPropertySized 60 "ntscdTimingSlice == ntscdTimingSlice == tscdSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph

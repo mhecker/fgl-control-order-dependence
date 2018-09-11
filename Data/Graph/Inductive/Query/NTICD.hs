@@ -2422,6 +2422,21 @@ isinkdomTwoFingercd = xDFcd isinkDFTwoFinger
 
 
 
+timDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timDFTwoFinger graph = idomToDFFast graph $ fmap (Set.map fst) $ timdomOfTwoFinger graph
+
+itimdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+itimdomTwoFingerGraphP = cdepGraphP itimdomTwoFingerGraph
+
+itimdomTwoFingerGraph :: DynGraph gr => gr a b ->  gr a Dependence
+itimdomTwoFingerGraph = cdepGraph itimdomTwoFingercd
+
+itimdomTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+itimdomTwoFingercd = xDFcd timDFTwoFinger
+
+
+
+
 type SmmnFunctional = Map (Node,Node,Node) (Set (T Node)) -> Map (Node,Node,Node) (Set (T Node))
 type SmmnFunctionalGen gr a b = gr a b -> [Node] -> (Map Node (Set Node)) -> (Node -> Maybe Node) -> (Node -> [Node]) -> SmmnFunctional
 
@@ -2624,6 +2639,28 @@ nticdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkDFTwoFinger graph
         w     = Map.empty
+
+
+nticdTimingSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdTimingSlice graph =  combinedBackwardSlice graph (nticd' ⊔ timing') w
+  where nticd'  = isinkDFTwoFinger graph
+        timing' = invert'' $ timingDependenceViaTwoFinger graph
+        w     = Map.empty
+
+
+ntscdTimingSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdTimingSlice graph =  combinedBackwardSlice graph (ntscd' ⊔ timing') w
+  where ntscd'  = invert'' $ ntscdF3 graph
+        timing' = invert'' $ timingDependenceViaTwoFinger graph
+        w     = Map.empty
+
+
+
+tscdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+tscdSlice graph =  combinedBackwardSlice graph tscd' w
+  where tscd' = timDFTwoFinger graph
+        w     = Map.empty
+
 
 nticdMyWodSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w

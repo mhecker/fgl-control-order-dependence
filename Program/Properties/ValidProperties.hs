@@ -70,7 +70,7 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
-import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent)
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     rotatePDomAround,
@@ -83,7 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd,
+    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
@@ -1991,6 +1991,66 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testPropertySized 60 "ntscdTimingSlice == ntscdTimingSlice == tscdSlice"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    g'   = grev g
+                    ntscdtimingslicer  = NTICD.ntscdTimingSlice g
+                    nticdtimingslicer  = NTICD.nticdTimingSlice g
+                    tscdslicer         = NTICD.tscdSlice        g
+                    ntscdtimingslicer' = NTICD.ntscdTimingSlice g'
+                    nticdtimingslicer' = NTICD.nticdTimingSlice g'
+                    tscdslicer'        = NTICD.tscdSlice        g'
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms =  Set.fromList [m1, m2] in 
+                       nticdtimingslicer  ms == ntscdtimingslicer  ms
+                     ∧ nticdtimingslicer' ms == ntscdtimingslicer' ms
+                   )),
+    testPropertySized 35 "ntscdTimingSlice is minimal wrt. timed traces and termination"
+                $ \(ARBITRARY(generatedGraph)) seed->
+                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        [m1,m2]    = sampleFrom seed 2 (nodes g)
+                        ms = Set.fromList [m1,m2]
+                        s = NTICD.ntscdTimingSlice g ms
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                       (∀) s (\n -> n == m1  ∨  n == m2  ∨
+                         let s' = Set.delete n s
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   isLowEquivalent = InfiniteDelay.isLowEquivalentTimed g s input
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        different = not $ isLowEquivalent input'
+                                     in different
+                                  )
+                               ))
+                         in (if differentobservation then id else traceShow (m1, m2, differentobservation)) $
+                            differentobservation
+                       ),
+    testPropertySized 25 "ntscdTimingSlice  is sound wrt. timed traces and termination"
+                $ \(ARBITRARY(generatedGraph)) seed->
+                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        [m1,m2]    = sampleFrom seed 2 (nodes g)
+                        ms = Set.fromList [m1,m2]
+                        s = NTICD.ntscdTimingSlice g ms
+                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   isLowEquivalent = InfiniteDelay.isLowEquivalentTimed g s input
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        different = not $ isLowEquivalent input'
+                                     in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                       (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
+                       not differentobservation,
     testPropertySized 25 "timingSolvedF3dependence  is minimal wrt. timed traces"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization

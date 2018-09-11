@@ -252,6 +252,12 @@ isLowTimingEquivalent g s input = \input' ->
 
 
 
+isLowEquivalentTimed g s input = \input' ->
+    let trace'  = runInput g input'
+        trace'Obs = observable s $ timed $ trace'
+    in  traceObs  == trace'Obs
+  where trace   = runInput g input
+        traceObs  = observable s $ timed $ trace
 
 allChoices :: Graph gr => gr a b  -> Map Node Node -> Set Node -> [Map Node Node]
 allChoices graph choice conds

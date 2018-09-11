@@ -74,12 +74,13 @@ import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
+import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    ntscdTimingSlice, tscdSlice,
     timingSolvedF3sparseDependence,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
     imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
-    controlSinks,
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay, myWodFastSlice,
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
     wodTEIL', wodTEILSlice,
@@ -100,8 +101,8 @@ balanced   = defaultMain                               $ expectFail $ testGroup 
 balancedX  = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "balanced"  [ mkTest [balancedParanthesesTests], mkProp [balancedParanthesesProps]]
 timing     = defaultMain                               $ expectFail $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
 timingX    = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "timing"    [ mkTest [timingClassificationDomPathsTests,precisionCounterExampleTests], mkProp [timingClassificationDomPathsProps] ]
-timingDep  = defaultMain                               $ expectFail $ testGroup "timingDep" [ mkProp [timingDepProps] ]
-timingDepX = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "timingDep" [ mkProp [timingDepProps] ]
+timingDep  = defaultMain                               $ expectFail $ testGroup "timingDep" [ mkTest [timingDepTests], mkProp [timingDepProps] ]
+timingDepX = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "timingDep" [ mkTest [timingDepTests], mkProp [timingDepProps] ]
 giffhorn   = defaultMain                               $ expectFail $ testGroup "giffhorn"  [ mkTest [giffhornTests], mkProp [giffhornProps] ]
 giffhornX  = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "giffhorn"  [ mkTest [giffhornTests], mkProp [giffhornProps] ]
 soundness  = defaultMain                               $ expectFail $ testGroup "soundness" [ mkTest [soundnessTests], mkProp [soundnessProps] ]
@@ -182,7 +183,17 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                              )
                            )
   ]
-       
+  
+timingDepTests = testGroup "(concerning timingDependence)" $
+  [ testCase "ntscdTimingSlice == tscdSlice"
+    $           let g    = mkGraph [(-48,()),(-19,()),(-13,()),(-6,()),(47,())] [(-48,-13,()),(-19,-48,()),(-13,-48,()),(-6,-19,()),(-6,-13,()),(47,-48,()),(47,-19,()),(47,-13,()),(47,-6,())] :: Gr () ()
+                    ntscdtimingslicer  = NTICD.ntscdTimingSlice g
+                    tscdslicer         = NTICD.tscdSlice        g
+                    ms = Set.fromList [-13]
+                in ntscdtimingslicer  ms == tscdslicer  ms @? ""
+  ] ++
+  []
+
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $
@@ -392,7 +403,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "rev sinkdom approximates pre-dom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        sinks = NTICD.controlSinks g
+                        sinks = controlSinks g
                     in (∀) sinks (\sink ->
                          let sinkGraph = subgraph sink g
                              imdomRev       = NTICD.imdomOfTwoFinger7 (grev sinkGraph)
@@ -407,7 +418,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "rev sinkdom approximates pre-dom"
     $ \(UNCONNECTED(generatedGraph)) ->
                     let g = delEdges [ e | e@(n,m) <- edges generatedGraph, n == m] generatedGraph
-                        sinks = NTICD.controlSinks g
+                        sinks = controlSinks g
                         imdom    = NTICD.imdomOfTwoFinger7    $        g
                         imdomrev = NTICD.imdomOfTwoFinger7    $ grev $ g
                         rofldom  = NTICD.rofldomOfTwoFinger7  $        g     
@@ -448,15 +459,15 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     g' = insEdge (exit, entry, ()) g
                     mywodslicer   = NTICD.myWodFastSlice g'
                     wodteilslicer = NTICD.wodTEILSlice   g
-                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
-                      mywodslicer m1 m2 == wodteilslicer m1 m2
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1, m2] in
+                      mywodslicer ms == wodteilslicer ms
                    )),
     testProperty  "wodTEIL' ∩ sinks = myWod"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         mywod    = Map.filter (not . Set.null) $ NTICD.myWodFast g
                         wodTEIL' = Map.filter (not . Set.null) $ NTICD.wodTEIL' g
-                        sinks    = NTICD.controlSinks g
+                        sinks    = controlSinks g
                         sinkNodes = (∐) [ Set.fromList [(m1,m2) | m1 <- sink, m2 <- sink, m1 /= m2] | sink <- sinks ]
                     in restrict wodTEIL' sinkNodes  == mywod,
     testProperty  "wodFast ⊑ myWodFast"
@@ -482,7 +493,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         ),
     testProperty  "myWodFromMay            == myWodFast in arbitrary control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
-               let sinks = NTICD.controlSinks generatedGraph
+               let sinks = controlSinks generatedGraph
                in (∀) sinks (\sink ->
                     let g = subgraph sink generatedGraph
                         myWodFromMay = NTICD.myWodFromMay g

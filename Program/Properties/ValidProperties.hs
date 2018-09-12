@@ -73,6 +73,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    itimdomTwoFingercd, tscdOfLfp,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -1991,30 +1992,40 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
-    testProperty "timdomOfLfp is transitive in unique-end-node-graphs"
+    testProperty "itimdomTwoFingercd == tscdOfLfp in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
-                let gs = [generatedGraph, grev generatedGraph] in (∀) gs (\g -> (∀) (nodes g) (\m ->
-                  let g' = delSuccessorEdges (subgraph (reachable m (grev g)) g) m
-                      timdom = NTICD.timdomOfLfp g'
-                  in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
+                let g = generatedGraph
+                    gRev = grev g
+                in (∀) (nodes g) (\m ->
+                     let ms   = Set.fromList [m]
+                         toMs = Set.fromList [ n | m <- Set.toList ms, n <- reachable m gRev ]
+                         g'   = Set.fold (flip delSuccessorEdges) (subgraph (Set.toList toMs) g) ms
+                     in NTICD.itimdomTwoFingercd g' == Map.mapWithKey Set.delete (NTICD.tscdOfLfp g')
+                 ),
+    testProperty "timdomOfLfp is transitive in graphs without non-trivial sinks"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    gRev = grev g
+                in (∀) (nodes g) (\m ->
+                     let ms   = Set.fromList [m]
+                         toMs = Set.fromList [ n | m <- Set.toList ms, n <- reachable m gRev ]
+                         g'   = Set.fold (flip delSuccessorEdges) (subgraph (Set.toList toMs) g) ms
+                         timdom = NTICD.timdomOfLfp g'
+                     in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
                        (z, steps+steps') ∈ timdom ! x
-                   )))
-                )),
-    testPropertySized 60 "ntscdTimingSlice == ntscdTimingSlice == tscdSlice"
+                     )))
+                ),
+    testProperty "ntscdTimingSlice == ntscdTimingSlice == tscdSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
                     ntscdtimingslicer  = NTICD.ntscdTimingSlice g
                     nticdtimingslicer  = NTICD.nticdTimingSlice g
                     tscdslicer         = NTICD.tscdSlice        g
-                    ntscdtimingslicer' = NTICD.ntscdTimingSlice g'
-                    nticdtimingslicer' = NTICD.nticdTimingSlice g'
-                    tscdslicer'        = NTICD.tscdSlice        g'
-                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms =  Set.fromList [m1, m2] in 
-                       nticdtimingslicer  ms == ntscdtimingslicer  ms
-                     ∧ nticdtimingslicer' ms == ntscdtimingslicer' ms
-                   )),
-    testPropertySized 35 "ntscdTimingSlice is minimal wrt. timed traces and termination"
+                in (∀) (nodes g) (\m -> let ms =  Set.fromList [m] in 
+                       nticdtimingslicer  ms == ntscdtimingslicer  ms   ∧   ntscdtimingslicer  ms == tscdslicer  ms
+                   ),
+    testPropertySized 35 "tscdSlice is minimal wrt. timed traces and termination"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
@@ -2022,7 +2033,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         ms = Set.fromList [m1,m2]
-                        s = NTICD.ntscdTimingSlice g ms
+                        s = NTICD.tscdSlice g ms
                     in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
@@ -2038,7 +2049,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                          in (if differentobservation then id else traceShow (m1, m2, differentobservation)) $
                             differentobservation
                        ),
-    testPropertySized 25 "ntscdTimingSlice  is sound wrt. timed traces and termination"
+    testPropertySized 25 "tscdSlice  is sound wrt. timed traces and termination"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
@@ -2046,7 +2057,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         ms = Set.fromList [m1,m2]
-                        s = NTICD.ntscdTimingSlice g ms
+                        s = NTICD.tscdSlice g ms
                         differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice
                                    isLowEquivalent = InfiniteDelay.isLowEquivalentTimed g s input

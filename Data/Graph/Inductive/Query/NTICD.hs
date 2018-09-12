@@ -2658,8 +2658,16 @@ ntscdTimingSlice graph =  combinedBackwardSlice graph (ntscd' ⊔ timing') w
 
 tscdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 tscdSlice graph =  combinedBackwardSlice graph tscd' w
-  where tscd' = timDFTwoFinger graph
+  where tscd' = invert'' $ tscdOfLfp graph
         w     = Map.empty
+
+
+tscdSliceForTrivialSinks :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+tscdSliceForTrivialSinks graph =  combinedBackwardSlice graph tscd' w
+  where tscd' = -- require ((∀) sinks (\sink -> length sink == 1)) $
+                timDFTwoFinger graph
+        w     = Map.empty
+        sinks = controlSinks graph
 
 
 nticdMyWodSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
@@ -4342,6 +4350,13 @@ fTimeDom graph _ _ nextCond toNextCond = f
                                                                                      let steps = (toInteger $ length $ toNextCond y) - 1
                                    ]
 timdomOfLfp graph = tdomOfLfp graph fTimeDom
+
+tscdOfLfp :: DynGraph gr => gr a b -> Map Node (Set Node)
+tscdOfLfp graph = Map.fromList [ (n, Set.fromList [ m | timdom <- timdoms,  (m, steps) <- Set.toList timdom, (∃) timdoms (\timdom' -> not $ (m, steps) ∈ timdom') ]) |
+                    n <- nodes graph,
+                    let timdoms = [ timdom ! x | x <- suc graph n]
+                  ]
+  where timdom = timdomOfLfp graph
 
 
 type TimeDomFunctionalR = Map Node (Map Node Reachability) ->  Map Node (Map Node Reachability)

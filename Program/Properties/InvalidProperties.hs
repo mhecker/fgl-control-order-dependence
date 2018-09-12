@@ -76,7 +76,7 @@ import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    ntscdTimingSlice, tscdSlice,
+    ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
@@ -185,10 +185,10 @@ timingDepProps = testGroup "(concerning timingDependence)" [
   ]
   
 timingDepTests = testGroup "(concerning timingDependence)" $
-  [ testCase "ntscdTimingSlice == tscdSlice"
+  [ testCase "ntscdTimingSlice == tscdSliceForTrivialSinks"
     $           let g    = mkGraph [(-48,()),(-19,()),(-13,()),(-6,()),(47,())] [(-48,-13,()),(-19,-48,()),(-13,-48,()),(-6,-19,()),(-6,-13,()),(47,-48,()),(47,-19,()),(47,-13,()),(47,-6,())] :: Gr () ()
                     ntscdtimingslicer  = NTICD.ntscdTimingSlice g
-                    tscdslicer         = NTICD.tscdSlice        g
+                    tscdslicer         = NTICD.tscdSliceForTrivialSinks        g
                     ms = Set.fromList [-13]
                 in ntscdtimingslicer  ms == tscdslicer  ms @? ""
   ] ++

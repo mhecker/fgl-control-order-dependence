@@ -2086,7 +2086,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         ms = Set.fromList [m1,m2]
                         s = ms ⊔ Set.fromList [n | (n, ms') <- Map.assocs $ NTICD.timingSolvedF3dependence g, (∃) ms (\m -> m ∈ ms')]
                     
-                    in traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
                              differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode -> 
@@ -2120,7 +2120,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                         different
                                   )
                                ))
-                    in traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
                        (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
                        not differentobservation,
     testPropertySized 30  "the  solved timingF3EquationSystem is correct"

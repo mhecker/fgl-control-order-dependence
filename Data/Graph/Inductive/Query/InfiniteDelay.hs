@@ -122,11 +122,11 @@ runInput graph = \(Input { startNode, choice}) ->
                     | n' ∈ seen = Looping prefix loop
                     | otherwise = run n' (Set.insert n' seen) ((n,n',()) : trace)
                   where (prefix, loop) = span (\(n,m,()) -> n /= n') $ reverse ((n, n',()) : trace)
-    in require  ((∀) (Map.assocs choice) (\(n,m) -> m `elem` suc graph n))
-       require  ((∀) (nodes graph)       (\n -> ((length $ suc graph n) > 1)   →   Map.member n choice))
-     $ require  ( startNode `elem` nodes graph)
+    in require  (Map.isSubmapOfBy (\succs n -> n ∈ succs) condNodes choice)
+     $ require  (startNode `elem` nodes graph)
      $ run startNode (Set.fromList [startNode]) []
-  where succsOf = Map.fromList [ (n, succs) | n <- nodes graph, let succs = suc graph n, length succs <= 1 ]
+  where (succsOf, condNodes0) = Map.partition (\succs -> length succs <= 1) $ Map.fromList [ (n, succs) | n <- nodes graph, let succs = suc graph n]
+        condNodes = fmap Set.fromList condNodes0
 
 observable :: Eq a => Set Node -> TraceWith a -> TraceWith a
 observable s (Finite trace)       = Finite   $ obs s trace
@@ -191,7 +191,7 @@ noLoop l = nub l == l
 
 infinitelyDelays :: Graph gr => gr a b ->  Set Node -> Input -> Set Trace
 infinitelyDelays graph s = \input@(Input { startNode, choice }) ->
-    let trace = runInput graph input
+    let trace = run input
         traceObs = observable s trace
     in case trace of
       Finite _     -> undefined
@@ -199,13 +199,14 @@ infinitelyDelays graph s = \input@(Input { startNode, choice }) ->
       Looping prefix loop ->  Set.fromList [ observable2 s trace trace'
                                            | choice' <- allChoices graph choice0 allowedToChange,
                                              startNode' <- fmap fst loop,
-                                             let trace' = runInput graph (Input { startNode = startNode' , choice = choice' })
+                                             let trace' = run (Input { startNode = startNode' , choice = choice' })
                                         ]
         where 
               choice0 = restrict choice s
   where condNodes = Set.fromList [ c | c <- nodes graph, let succs = suc graph c, length succs  > 1]
         allowedToChange = condNodes ∖ s
         fst (n,_,_) = n
+        run = runInput graph
 
 
 isAscending continuations =
@@ -240,7 +241,7 @@ timed (Looping prefix loop)    = Looping  [(n, m, i) | ((n,m,()), i) <- zip pref
 -- isLowTimingEquivalent g s input input' = isLowEquivalentFor (infinitelyDelays g s) (runInput g) (observable s) input
 
 isLowTimingEquivalent g s input = \input' ->
-    let trace'  = runInput g input'
+    let trace'  = run input'
     in (∀) s (\n -> 
         let  traceObs  = observable (Set.fromList [n]) $ timed $ trace
              trace'Obs = observable (Set.fromList [n]) $ timed $ trace'
@@ -248,15 +249,17 @@ isLowTimingEquivalent g s input = \input' ->
         in   traceObs  `isTracePrefixOf` trace'Obs
            ∨ trace'Obs `isTracePrefixOf` traceObs
        )
-  where trace   = runInput g input
+  where run = runInput g 
+        trace   = run input
 
 
 
 isLowEquivalentTimed g s input = \input' ->
-    let trace'  = runInput g input'
+    let trace'  = run input'
         trace'Obs = observable s $ timed $ trace'
     in  traceObs  == trace'Obs
-  where trace   = runInput g input
+  where run = runInput g
+        trace   = run input
         traceObs  = observable s $ timed $ trace
 
 allChoices :: Graph gr => gr a b  -> Map Node Node -> Set Node -> [Map Node Node]

@@ -2662,6 +2662,15 @@ tscdSlice graph =  combinedBackwardSlice graph tscd' w
         w     = Map.empty
 
 
+tscdSliceFast :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+tscdSliceFast graph msS = combinedBackwardSlice graph tscd' w msS
+  where ms = Set.toList msS
+        toMs   = rdfs ms graph
+        graph' = foldr (flip delSuccessorEdges) graph ms
+        tscd' =  timDFTwoFinger graph'
+        w     = Map.empty
+
+
 tscdSliceForTrivialSinks :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 tscdSliceForTrivialSinks graph =  combinedBackwardSlice graph tscd' w
   where tscd' = -- require ((∀) sinks (\sink -> length sink == 1)) $

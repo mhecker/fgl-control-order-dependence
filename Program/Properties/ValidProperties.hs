@@ -84,7 +84,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice,
+    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
@@ -2015,15 +2015,20 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        (z, steps+steps') ∈ timdom ! x
                      )))
                 ),
-    testProperty "ntscdTimingSlice == ntscdTimingSlice == tscdSlice"
+    testProperty "ntscdTimingSlice == ntscdTimingSlice == tscdSlice == tscdSliceFast "
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
-                    g'   = grev g
                     ntscdtimingslicer  = NTICD.ntscdTimingSlice g
                     nticdtimingslicer  = NTICD.nticdTimingSlice g
                     tscdslicer         = NTICD.tscdSlice        g
-                in (∀) (nodes g) (\m -> let ms =  Set.fromList [m] in 
-                       nticdtimingslicer  ms == ntscdtimingslicer  ms   ∧   ntscdtimingslicer  ms == tscdslicer  ms
+                    tscdslicerfast     = NTICD.tscdSliceFast    g
+                in (∀) (nodes g) (\m ->
+                     let ms = Set.fromList [m]
+                         s1 = nticdtimingslicer ms
+                         s2 = ntscdtimingslicer ms
+                         s3 = tscdslicer        ms
+                         s4 = tscdslicerfast    ms
+                     in s1 == s2  ∧  s2 == s3  ∧  s3 == s4
                    ),
     testPropertySized 35 "tscdSlice is minimal wrt. timed traces and termination"
                 $ \(ARBITRARY(generatedGraph)) seed->

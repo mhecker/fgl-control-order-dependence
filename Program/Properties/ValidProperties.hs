@@ -84,7 +84,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast,
+    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast, nticdSlice,  ntscdSlice,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
@@ -97,7 +97,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
-    idomToDF, idomToDFFast, dfViaJEdges, 
+    idomToDF, idomToDFFast, dfViaJEdges, idfViaJEdgesFast,
     imdomOf, imdomOfLfp,
     mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty, imdomTwoFingercd, mdomNaiveLfp,
     mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
@@ -307,6 +307,15 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "nticdSlice  == idfViaJEdgesFast"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        isinkdom = NTICD.isinkdomOfTwoFinger8      g
+                        idfViaJ  = NTICD.idfViaJEdgesFast g (fmap fromSet isinkdom)
+                        nticdslicer = NTICD.nticdSlice g
+                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
+                              nticdslicer ms == idfViaJ ms
+                    )),
     testProperty   "idomToDFFast _ == dfViaJEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -581,6 +590,15 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
+    testProperty   "ntscdSlice  == idfViaJEdgesFast"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        imdom    = NTICD.imdomOfTwoFinger7  g
+                        idfViaJ  = NTICD.idfViaJEdgesFast g (fmap fromSet imdom)
+                        ntscdslicer = NTICD.ntscdSlice g
+                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
+                              ntscdslicer ms == idfViaJ ms
+                    )),
     testProperty   "idomToDFFast _ == dfViaJEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

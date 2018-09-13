@@ -2373,16 +2373,16 @@ dfViaJEdges graph idom = \x -> Set.fromList [ z | y <- Set.toList $ reachableFro
         jEdges = Map.fromList [(y, [ z | z <- pre graph y, not $ y ∈ idomsOf z ]) | y <- nodes graph]
 
 
-dfViaJEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
-dfViaJEdgesFast graph idom = \xs0 -> if Set.null xs0 then
+idfViaJEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
+idfViaJEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                        Set.empty
                                      else
                                        let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (cycleOf ! x) xs xs0
   where 
         go processed x ys xs idf
-          | Set.null ys ∧ Set.null xs     = tr $  idf
-          | Set.null ys                   = tr $   go (Set.insert x processed) x' (Set.fromList [x'])        xs' idf
-          | y ∈ processed                 = tr $   go               processed  x' (Set.fromList [x'])        xs' idf
+          | (Set.null ys  ∨  y ∈ processed) ∧ Set.null xs     = tr $  idf
+          | Set.null ys                   = tr $   go (Set.insert x processed) x' (cycleOf ! x')        xs' idf
+          | y ∈ processed                 = tr $   go               processed  x  ys'                   xs  idf
           | otherwise     = tr $
                             let zs   = Set.filter (\z -> (not $ x ∈ reachableFromM idom (idomsOf z) Set.empty)) (jEdges ! y ∖ idf)
                             in case Map.lookup y idom' of
@@ -2392,7 +2392,7 @@ dfViaJEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                 Just yNew ->  go               processed  x  (ys' ∪ (yNew ∖ (cycleOf ! y)))  (xs ∪ zs) (idf ∪ zs)
           where (x', xs') = Set.deleteFindMin xs
                 ( y, ys') = Set.deleteFindMin ys
-                tr = traceShow (processed, x, ys, xs, idf)
+                tr = id -- traceShow (processed, x, ys, xs, idf)
 
         idom' = invert''' idom
         idomsOf z = case idom ! z of
@@ -2678,6 +2678,12 @@ ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
 nticdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkDFTwoFinger graph
+        w     = Map.empty
+
+
+ntscdSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdSlice graph =  combinedBackwardSlice graph ntscd w
+  where ntscd = mDFTwoFinger graph
         w     = Map.empty
 
 

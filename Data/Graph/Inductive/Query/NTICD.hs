@@ -2377,19 +2377,17 @@ idfViaJEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> S
 idfViaJEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                        Set.empty
                                      else
-                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (cycleOf ! x) xs xs0
+                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (reachableFrom idom' (Set.fromList [x]) Set.empty) (cycleOf ! x) xs xs0
   where 
-        go processed x ys xs idf
+        go processed x reachX ys xs idf
           | (Set.null ys  ∨  y ∈ processed) ∧ Set.null xs     = tr $  idf
-          | Set.null ys                   = tr $   go (Set.insert x processed) x' (cycleOf ! x')        xs' idf
-          | y ∈ processed                 = tr $   go               processed  x  ys'                   xs  idf
+          | Set.null ys                   = tr $   go (Set.insert x processed) x' (reachableFrom idom' (Set.fromList [x']) Set.empty) (cycleOf ! x')        xs' idf
+          | y ∈ processed                 = tr $   go               processed  x  reachX                                              ys'                   xs  idf
           | otherwise     = tr $
-                            let zs   = Set.filter (\z -> (not $ x ∈ reachableFromM idom (idomsOf z) Set.empty)) (jEdges ! y ∖ idf)
+                            let zs   = (jEdges ! y ∖ idf) ∖ reachX
                             in case Map.lookup y idom' of
-                                Nothing   -> {- if Set.null xs then idf' else
-                                              go (Set.insert x processed) x' (Set.fromList [x'])             xs' idf' -}
-                                              go               processed  x   ys'                            (xs ∪ zs) (idf ∪ zs)
-                                Just yNew ->  go               processed  x  (ys' ∪ (yNew ∖ (cycleOf ! y)))  (xs ∪ zs) (idf ∪ zs)
+                                Nothing   ->  go               processed  x  reachX  ys'                            (xs ∪ zs) (idf ∪ zs)
+                                Just yNew ->  go               processed  x  reachX (ys' ∪ (yNew ∖ (cycleOf ! y)))  (xs ∪ zs) (idf ∪ zs)
           where (x', xs') = Set.deleteFindMin xs
                 ( y, ys') = Set.deleteFindMin ys
                 tr = id -- traceShow (processed, x, ys, xs, idf)

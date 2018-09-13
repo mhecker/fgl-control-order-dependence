@@ -292,10 +292,10 @@ findBoth dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n
 fromIdom  m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]
 fromIdomM m idom = Map.insert m Nothing   $ Map.fromList [ (n, Just          m ) | (n,m) <- idom ]
 
-findCyclesM :: (Show a, Ord a) => Map a (Maybe a) -> Map a (Set a)
+findCyclesM :: (Show a, Ord a) => Map a (Maybe a) -> (Map a (Set a), [Set a])
 findCyclesM idom
-    | Map.null idom = Map.empty
-    | otherwise     = (Map.fromSet (\x -> Set.singleton x) nonCycles) `Map.union`  (foldr Map.union Map.empty [ Map.fromSet (\n -> cycle) cycle | cycle <- cycles])
+    | Map.null idom = (Map.empty, [])
+    | otherwise     = ((Map.fromSet (\x -> Set.singleton x) nonCycles) `Map.union`  (foldr Map.union Map.empty [ Map.fromSet (\n -> cycle) cycle | cycle <- cycles]), cycles)
   where (x:xs) = Map.keys idom
         (cycles, nonCycles) = find [x] (Set.fromList [x]) xs Set.empty Set.empty []
         find []         ps [] toCycle toLeaf cycles = (cycles, toLeaf ∪ toCycle)

@@ -2369,7 +2369,7 @@ dfViaJEdges graph idom = \x -> Set.fromList [ z | y <- Set.toList $ reachableFro
         idomsOf z = case idom ! z of
           Nothing -> Set.empty
           Just z' -> cycleOf ! z'
-        cycleOf =  findCyclesM $ idom
+        (cycleOf,_) =  findCyclesM $ idom
         jEdges = Map.fromList [(y, [ z | z <- pre graph y, not $ y ∈ idomsOf z ]) | y <- nodes graph]
 
 
@@ -2396,7 +2396,8 @@ idfViaJEdgesFast graph idom = \xs0 -> if Set.null xs0 then
         idomsOf z = case idom ! z of
           Nothing -> Set.empty
           Just z' -> cycleOf ! z'
-        cycleOf =  findCyclesM $ idom
+        (cycleOf, cycles) =  findCyclesM $ idom
+        roots = [ Set.fromList [n] | n <- Map.keys $ Map.filter (==Nothing) idom ] ++ cycles
         jEdges = Map.fromList [(y, Set.fromList [ z | z <- pre graph y, not $ y ∈ idomsOf z ]) | y <- nodes graph]
 
 

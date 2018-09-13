@@ -1,5 +1,6 @@
 module Util where
 
+import Debug.Trace
 
 import Data.List (find, nub, nubBy)
 import Data.Maybe (fromJust)
@@ -290,3 +291,29 @@ findBoth dom ms xs n = find (n ∈ xs) (Set.delete n xs) False n
 
 fromIdom  m idom = Map.insert m Set.empty $ Map.fromList [ (n, Set.fromList [m]) | (n,m) <- idom ]
 fromIdomM m idom = Map.insert m Nothing   $ Map.fromList [ (n, Just          m ) | (n,m) <- idom ]
+
+findCyclesM :: (Show a, Ord a) => Map a (Maybe a) -> Map a (Set a)
+findCyclesM idom
+    | Map.null idom = Map.empty
+    | otherwise     = (Map.fromSet (\x -> Set.singleton x) nonCycles) `Map.union`  (foldr Map.union Map.empty [ Map.fromSet (\n -> cycle) cycle | cycle <- cycles])
+  where (x:xs) = Map.keys idom
+        (cycles, nonCycles) = find [x] (Set.fromList [x]) xs Set.empty Set.empty []
+        find []         ps [] toCycle toLeaf cycles = (cycles, toLeaf ∪ toCycle)
+        find path@(x:_) ps xs toCycle toLeaf cycles
+                            |            x ∈ toLeaf  =   find path'      ps'                xs' toCycle  toLeaf' cycles
+                            |            x ∈ toCycle =   find path'      ps'                xs' toCycle' toLeaf  cycles
+                            | otherwise = case idom ! x of
+                                            Nothing ->   find path'      ps'                xs' toCycle  toLeaf' cycles
+                                            Just x' -> if x' ∈ ps then
+                                                         let cycle = cycleOf x' in
+                                                         find path'      ps'                xs' (toCycle ∪ (ps ∖ cycle)) toLeaf  (cycle : cycles)
+                                                       else
+                                                         find (x':path)  (Set.insert x' ps) xs  toCycle  toLeaf  cycles
+                          where (path', xs', ps') = case xs of
+                                                []     -> ([], [], Set.empty)
+                                                (y:ys) -> ([y], ys, Set.fromList [y])
+                                toCycle'   = toCycle ∪ ps
+                                toLeaf'    = toLeaf  ∪ ps
+                                cycleOf x' = Set.insert x' $ Set.fromList $ takeWhile (/= x') path
+
+  

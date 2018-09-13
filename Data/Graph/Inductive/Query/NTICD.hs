@@ -44,7 +44,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM)
 import Unicode
 
 
@@ -2360,6 +2360,46 @@ idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
 
 idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph (fmap fromSet idom)
 
+dfViaJEdges :: Graph gr => gr a b -> Map Node (Maybe Node) -> Node -> Set Node
+dfViaJEdges graph idom = \x -> Set.fromList [ z | y <- Set.toList $ reachableFrom idom' (Set.fromList [x]) Set.empty,
+                                                  z <- jEdges ! y, {- z <- pre graph y, not $ y ∈ idomsOf z -}
+                                                  (not $ x ∈ reachableFromM idom (idomsOf z) Set.empty)
+                         ]
+  where idom' = invert''' idom
+        idomsOf z = case idom ! z of
+          Nothing -> Set.empty
+          Just z' -> cycleOf ! z'
+        cycleOf =  findCyclesM $ idom
+        jEdges = Map.fromList [(y, [ z | z <- pre graph y, not $ y ∈ idomsOf z ]) | y <- nodes graph]
+
+
+dfViaJEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
+dfViaJEdgesFast graph idom = \xs0 -> if Set.null xs0 then
+                                       Set.empty
+                                     else
+                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (cycleOf ! x) xs xs0
+  where 
+        go processed x ys xs idf
+          | Set.null ys ∧ Set.null xs     = tr $  idf
+          | Set.null ys                   = tr $   go (Set.insert x processed) x' (Set.fromList [x'])        xs' idf
+          | y ∈ processed                 = tr $   go               processed  x' (Set.fromList [x'])        xs' idf
+          | otherwise     = tr $
+                            let zs   = Set.filter (\z -> (not $ x ∈ reachableFromM idom (idomsOf z) Set.empty)) (jEdges ! y ∖ idf)
+                            in case Map.lookup y idom' of
+                                Nothing   -> {- if Set.null xs then idf' else
+                                              go (Set.insert x processed) x' (Set.fromList [x'])             xs' idf' -}
+                                              go               processed  x   ys'                            (xs ∪ zs) (idf ∪ zs)
+                                Just yNew ->  go               processed  x  (ys' ∪ (yNew ∖ (cycleOf ! y)))  (xs ∪ zs) (idf ∪ zs)
+          where (x', xs') = Set.deleteFindMin xs
+                ( y, ys') = Set.deleteFindMin ys
+                tr = traceShow (processed, x, ys, xs, idf)
+
+        idom' = invert''' idom
+        idomsOf z = case idom ! z of
+          Nothing -> Set.empty
+          Just z' -> cycleOf ! z'
+        cycleOf =  findCyclesM $ idom
+        jEdges = Map.fromList [(y, Set.fromList [ z | z <- pre graph y, not $ y ∈ idomsOf z ]) | y <- nodes graph]
 
 
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))

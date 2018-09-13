@@ -97,7 +97,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
-    idomToDF, idomToDFFast,
+    idomToDF, idomToDFFast, dfViaJEdges, 
     imdomOf, imdomOfLfp,
     mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty, imdomTwoFingercd, mdomNaiveLfp,
     mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
@@ -307,6 +307,15 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "idomToDFFast _ == dfViaJEdges _"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
+                    in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
+                         let dfViaJ = NTICD.dfViaJEdges g (fmap fromSet isinkdom) in
+                         NTICD.idomToDFFast g isinkdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
+                    ),
     testProperty   "idomToDFFast _ isinkdom == sinkDF _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -572,6 +581,15 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
+    testProperty   "idomToDFFast _ == dfViaJEdges _"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        imdom6 = NTICD.imdomOfTwoFinger6 g
+                        imdom7 = NTICD.imdomOfTwoFinger7 g
+                    in (∀) [imdom7] (\imdom ->
+                         let dfViaJ = NTICD.dfViaJEdges g (fmap fromSet imdom) in
+                         NTICD.idomToDFFast g imdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
+                    ),
     testPropertySized 80   "mDFFromUpLocalDefViaSMdoms == mDF"
                 $ \((CG _ g) :: (Connected Gr () ())) ->
                        NTICD.mDFFromUpLocalDefViaMdoms g ==

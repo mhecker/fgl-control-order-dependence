@@ -46,6 +46,8 @@ treeDfs m roots = dfs roots
         dfs [] = []
         dfs (n:ns) = n : (dfs ( m' ! n ++ ns ))
 
+
+
 invert' :: (Ord k, Ord v) => Map k [v] -> Map v [k]
 invert' m = Map.fromListWith (++) pairs
     where pairs = [(v, [k]) | (k, vs) <- Map.toList m, v <- vs]
@@ -69,6 +71,12 @@ dfsTree idom' roots = foldr (:) (dfs [ m | root <- roots, n <- Set.toList root, 
   where dfs []       = []
         dfs (n : ns) = (Set.singleton n) : dfs ns'
           where ns' = Set.fold (:) ns $ Map.findWithDefault Set.empty n idom'
+
+treeLevel :: Ord a => Map a (Set a) -> [Set a] -> [[(a,Integer)]]
+treeLevel idom' roots = [ foldr (:) (lvl 1 [ m | n <- Set.toList root, m <- Set.toList $ Map.findWithDefault Set.empty n idom', not $ m ∈ root]) [(n,0) | n <- Set.toList root] | root <- roots]
+  where lvl l []  = []
+        lvl l ns  = foldr (:) (lvl (l+1) [ n' | n <- ns, n' <- Set.toList $ Map.findWithDefault Set.empty n idom']) [(n,l) | n <- ns]
+
 
 reallyInvert m = fmap (base ∖) m
   where base =      (Map.keysSet m)

@@ -73,6 +73,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    mdomsOf,
     itimdomTwoFingercd, tscdOfLfp,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
@@ -307,6 +308,22 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "idfViaJEdgesFast properties"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        mdom = NTICD.mdomOfLfp g
+                        imdomsOf = NTICD.mdomsOf g
+                        jEdges = Map.fromList [(y, [ z | z <- pre g y, not $ y ∈ imdomsOf ! z ]) | y <- nodes g]
+                    in   (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  mdom ! x   ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                      ∧  (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  not $  x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z -> (       x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
+                                                                                   ↔ (not $ mdom ! x    ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
+                         )))
+                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z ->
+                           (   ( (mdom ! x  ⊃  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (not $ x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                             ∨ ( (mdom ! x  ⊆  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (      x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                           )
+                         ))),
     testProperty   "nticdSlice  == idfViaJEdgesFast"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -590,6 +607,22 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
+    testProperty   "idfViaJEdgesFast properties"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        mdom = NTICD.mdomOfLfp g
+                        imdomsOf = NTICD.mdomsOf g
+                        jEdges = Map.fromList [(y, [ z | z <- pre g y, not $ y ∈ imdomsOf ! z ]) | y <- nodes g]
+                    in   (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  mdom ! x   ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                      ∧  (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  not $  x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z -> (       x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
+                                                                                   ↔ (not $ mdom ! x    ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
+                         )))
+                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z ->
+                           (   ( (mdom ! x  ⊃  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (not $ x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                             ∨ ( (mdom ! x  ⊆  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (      x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                           )
+                         ))),
     testProperty   "ntscdSlice  == idfViaJEdgesFast"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

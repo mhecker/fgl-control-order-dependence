@@ -2368,8 +2368,9 @@ dfViaCEdges graph idom = \x -> Set.fromList [ y | z <- Set.toList $ reachableFro
   where idom' = invert''' idom
         idomsOf y = case idom ! y of
           Nothing -> Set.empty
-          Just y' -> cycleOf ! y'
-        (cycleOf,_) =  findCyclesM $ idom
+          Just y' -> cycleOf y'
+        (cycleOfM,_) =  findCyclesM $ idom
+        cycleOf x = Map.findWithDefault (Set.singleton x) x cycleOfM
         cEdges = Map.fromList [(z, [ y | y <- pre graph z, not $ z ∈ idomsOf y ]) | z <- nodes graph]
 
 
@@ -2377,17 +2378,17 @@ idfViaCEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> S
 idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                        Set.empty
                                      else
-                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (levelOf ! x) (cycleOf ! x) xs xs0
+                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (levelOf ! x) (cycleOf x) xs xs0
   where 
         go processed x lvlX zs xs idf
           | (Set.null zs  ∨  z ∈ processed) ∧ Set.null xs     = idf
-          | Set.null zs                   = go (Set.insert x processed) x' (levelOf ! x') (cycleOf ! x')        xs' idf
+          | Set.null zs                   = go (Set.insert x processed) x' (levelOf ! x') (cycleOf x')        xs' idf
           | z ∈ processed                 = go               processed  x  lvlX           zs'                   xs  idf
           | otherwise     = let isDf y = case idom ! y of
                                   Nothing -> True
                                   Just y' -> lvlX > levelOf ! y'
-                                ys = assert ((∀) (cEdges ! z) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
-                                     Set.filter (\y -> isDf y ∧ (not $ y ∈ idf)) (cEdges ! z)
+                                ys = assert ((∀) (Map.findWithDefault Set.empty z cEdges) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
+                                     Set.filter (\y -> isDf y ∧ (not $ y ∈ idf)) (Map.findWithDefault Set.empty z cEdges)
                             in case Map.lookup z idom'' of
                                 Nothing   -> go               processed  x lvlX  zs'          (xs ∪ ys) (idf ∪ ys)
                                 Just zNew -> go               processed  x lvlX (zs' ∪ zNew)  (xs ∪ ys) (idf ∪ ys)
@@ -2395,14 +2396,15 @@ idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                 ( z, zs') = Set.deleteFindMin zs
 
         idom'  = invert''' idom
-        idom'' = Map.mapWithKey (\z z's -> z's ∖ (cycleOf ! z)) idom'
+        idom'' = Map.mapWithKey (\z z's -> z's ∖ (cycleOf z)) idom'
         idomsOf y = case idom ! y of
           Nothing -> Set.empty
-          Just y' -> cycleOf ! y'
-        (cycleOf, cycles) =  findCyclesM $ idom
+          Just y' -> cycleOf y'
+        (cycleOfM, cycles) =  findCyclesM $ idom
+        cycleOf x = Map.findWithDefault (Set.singleton x) x cycleOfM
         roots = [ Set.fromList [n] | n <- Map.keys $ Map.filter (==Nothing) idom ] ++ cycles
         levelOf = Map.fromList [ (n,l) | nl <- treeLevel idom' roots, (n,l) <- nl]
-        cEdges = Map.fromList [(z, Set.fromList [ y | y <- pre graph z, not $ z ∈ idomsOf y ]) | z <- nodes graph]
+        cEdges = foldr (\(y,z) cEdges -> if z ∈ idomsOf y then cEdges else Map.insertWith (∪) z (Set.fromList [y]) cEdges) Map.empty (edges graph)
 
 
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))

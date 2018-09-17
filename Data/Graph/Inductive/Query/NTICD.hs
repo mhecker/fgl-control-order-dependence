@@ -2377,24 +2377,25 @@ idfViaCEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> S
 idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                        Set.empty
                                      else
-                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x  (cycleOf ! x) xs xs0
+                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (levelOf ! x) (cycleOf ! x) xs xs0
   where 
-        go processed x zs xs idf
+        go processed x lvlX zs xs idf
           | (Set.null zs  ∨  z ∈ processed) ∧ Set.null xs     = idf
-          | Set.null zs                   = go (Set.insert x processed) x' (cycleOf ! x')        xs' idf
-          | z ∈ processed                 = go               processed  x  zs'                   xs  idf
+          | Set.null zs                   = go (Set.insert x processed) x' (levelOf ! x') (cycleOf ! x')        xs' idf
+          | z ∈ processed                 = go               processed  x  lvlX           zs'                   xs  idf
           | otherwise     = let isDf y = case idom ! y of
                                   Nothing -> True
-                                  Just y' -> levelOf ! x > levelOf ! y'
+                                  Just y' -> lvlX > levelOf ! y'
                                 ys = assert ((∀) (cEdges ! z) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
-                                     Set.filter isDf (cEdges ! z ∖ idf)
-                            in case Map.lookup z idom' of
-                                Nothing   -> go               processed  x   zs'                            (xs ∪ ys) (idf ∪ ys)
-                                Just zNew -> go               processed  x  (zs' ∪ (zNew ∖ (cycleOf ! z)))  (xs ∪ ys) (idf ∪ ys)
+                                     Set.filter (\y -> isDf y ∧ (not $ y ∈ idf)) (cEdges ! z)
+                            in case Map.lookup z idom'' of
+                                Nothing   -> go               processed  x lvlX  zs'          (xs ∪ ys) (idf ∪ ys)
+                                Just zNew -> go               processed  x lvlX (zs' ∪ zNew)  (xs ∪ ys) (idf ∪ ys)
           where (x', xs') = Set.deleteFindMin xs
                 ( z, zs') = Set.deleteFindMin zs
 
-        idom' = invert''' idom
+        idom'  = invert''' idom
+        idom'' = Map.mapWithKey (\z z's -> z's ∖ (cycleOf ! z)) idom'
         idomsOf y = case idom ! y of
           Nothing -> Set.empty
           Just y' -> cycleOf ! y'

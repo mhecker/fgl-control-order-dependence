@@ -73,7 +73,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    mdomsOf,
+    mdomsOf, sinkdomsOf,
     itimdomTwoFingercd, tscdOfLfp,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
@@ -98,7 +98,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
-    idomToDF, idomToDFFast, dfViaJEdges, idfViaJEdgesFast,
+    idomToDF, idomToDFFast, dfViaCEdges, idfViaCEdgesFast,
     imdomOf, imdomOfLfp,
     mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty, imdomTwoFingercd, mdomNaiveLfp,
     mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
@@ -308,38 +308,38 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
-    testProperty   "idfViaJEdgesFast properties"
+    testProperty   "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        mdom = NTICD.mdomOfLfp g
-                        imdomsOf = NTICD.mdomsOf g
-                        jEdges = Map.fromList [(y, [ z | z <- pre g y, not $ y ∈ imdomsOf ! z ]) | y <- nodes g]
-                    in   (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  mdom ! x   ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
-                      ∧  (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  not $  x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
-                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z -> (       x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
-                                                                                   ↔ (not $ mdom ! x    ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
+                        sinkdom = NTICD.sinkdomOfLfp g
+                        isinkdomsOf = NTICD.sinkdomsOf g
+                        cEdges = Map.fromList [(z, [ y | y <- pre g z, not $ z ∈ isinkdomsOf ! y ]) | z <- nodes g]
+                    in   (∀) (nodes g)                       (\x -> (∀) (cEdges ! x) (\y ->  sinkdom ! x   ⊃   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
+                      ∧  (∀) (nodes g)                       (\x -> (∀) (cEdges ! x) (\y ->  not $  x   ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
+                      ∧  (∀) (nodes g) (\z -> (∀) (sinkdom ! z) (\x -> (∀) (cEdges ! z) (\y -> (       x   ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y])
+                                                                                   ↔ (not $ sinkdom ! x    ⊃   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y])
                          )))
-                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z ->
-                           (   ( (mdom ! x  ⊃  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (not $ x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
-                             ∨ ( (mdom ! x  ⊆  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (      x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                      ∧  (∀) (nodes g) (\z -> (∀) (sinkdom ! z) (\x -> (∀) (cEdges ! z) (\y ->
+                           (   ( (sinkdom ! x  ⊃  (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y])  ∧  (not $ x  ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
+                             ∨ ( (sinkdom ! x  ⊆  (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y])  ∧  (      x  ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
                            )
                          ))),
-    testProperty   "nticdSlice  == idfViaJEdgesFast"
+    testProperty   "nticdSlice  == idfViaCEdgesFast"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom = NTICD.isinkdomOfTwoFinger8      g
-                        idfViaJ  = NTICD.idfViaJEdgesFast g (fmap fromSet isinkdom)
+                        idfViaJ  = NTICD.idfViaCEdgesFast g (fmap fromSet isinkdom)
                         nticdslicer = NTICD.nticdSlice g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               nticdslicer ms == idfViaJ ms
                     )),
-    testProperty   "idomToDFFast _ == dfViaJEdges _"
+    testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom1 = NTICD.isinkdomOfSinkContraction g
                         isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                         let dfViaJ = NTICD.dfViaJEdges g (fmap fromSet isinkdom) in
+                         let dfViaJ = NTICD.dfViaCEdges g (fmap fromSet isinkdom) in
                          NTICD.idomToDFFast g isinkdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
                     ),
     testProperty   "idomToDFFast _ isinkdom == sinkDF _"
@@ -607,38 +607,38 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
-    testProperty   "idfViaJEdgesFast properties"
+    testProperty   "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         mdom = NTICD.mdomOfLfp g
                         imdomsOf = NTICD.mdomsOf g
-                        jEdges = Map.fromList [(y, [ z | z <- pre g y, not $ y ∈ imdomsOf ! z ]) | y <- nodes g]
-                    in   (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  mdom ! x   ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
-                      ∧  (∀) (nodes g)                       (\x -> (∀) (jEdges ! x) (\z ->  not $  x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
-                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z -> (       x   ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
-                                                                                   ↔ (not $ mdom ! x    ⊃   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])
+                        cEdges = Map.fromList [(z, [ y | y <- pre g z, not $ z ∈ imdomsOf ! y ]) | z <- nodes g]
+                    in   (∀) (nodes g)                       (\x -> (∀) (cEdges ! x) (\y ->  mdom ! x   ⊃   (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y]))
+                      ∧  (∀) (nodes g)                       (\x -> (∀) (cEdges ! x) (\y ->  not $  x   ∈   (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y]))
+                      ∧  (∀) (nodes g) (\z -> (∀) (mdom ! z) (\x -> (∀) (cEdges ! z) (\y -> (       x   ∈   (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y])
+                                                                                   ↔ (not $ mdom ! x    ⊃   (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y])
                          )))
-                      ∧  (∀) (nodes g) (\y -> (∀) (mdom ! y) (\x -> (∀) (jEdges ! y) (\z ->
-                           (   ( (mdom ! x  ⊃  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (not $ x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
-                             ∨ ( (mdom ! x  ⊆  (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z])  ∧  (      x  ∈   (∐) [ mdom ! z' | z' <- Set.toList $ imdomsOf ! z]))
+                      ∧  (∀) (nodes g) (\z -> (∀) (mdom ! z) (\x -> (∀) (cEdges ! z) (\y ->
+                           (   ( (mdom ! x  ⊃  (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y])  ∧  (not $ x  ∈   (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y]))
+                             ∨ ( (mdom ! x  ⊆  (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y])  ∧  (      x  ∈   (∐) [ mdom ! y' | y' <- Set.toList $ imdomsOf ! y]))
                            )
                          ))),
-    testProperty   "ntscdSlice  == idfViaJEdgesFast"
+    testProperty   "ntscdSlice  == idfViaCEdgesFast"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom    = NTICD.imdomOfTwoFinger7  g
-                        idfViaJ  = NTICD.idfViaJEdgesFast g (fmap fromSet imdom)
+                        idfViaJ  = NTICD.idfViaCEdgesFast g (fmap fromSet imdom)
                         ntscdslicer = NTICD.ntscdSlice g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               ntscdslicer ms == idfViaJ ms
                     )),
-    testProperty   "idomToDFFast _ == dfViaJEdges _"
+    testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom6 = NTICD.imdomOfTwoFinger6 g
                         imdom7 = NTICD.imdomOfTwoFinger7 g
                     in (∀) [imdom7] (\imdom ->
-                         let dfViaJ = NTICD.dfViaJEdges g (fmap fromSet imdom) in
+                         let dfViaJ = NTICD.dfViaCEdges g (fmap fromSet imdom) in
                          NTICD.idomToDFFast g imdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
                     ),
     testPropertySized 80   "mDFFromUpLocalDefViaSMdoms == mDF"

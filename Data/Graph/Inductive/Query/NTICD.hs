@@ -2360,50 +2360,48 @@ idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
 
 idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph (fmap fromSet idom)
 
-dfViaJEdges :: Graph gr => gr a b -> Map Node (Maybe Node) -> Node -> Set Node
-dfViaJEdges graph idom = \x -> Set.fromList [ z | y <- Set.toList $ reachableFrom idom' (Set.fromList [x]) Set.empty,
-                                                  z <- jEdges ! y, {- z <- pre graph y, not $ y ∈ idomsOf z -}
-                                                  (not $ x ∈ reachableFromM idom (idomsOf z) Set.empty)
+dfViaCEdges :: Graph gr => gr a b -> Map Node (Maybe Node) -> Node -> Set Node
+dfViaCEdges graph idom = \x -> Set.fromList [ y | z <- Set.toList $ reachableFrom idom' (Set.fromList [x]) Set.empty,
+                                                  y <- cEdges ! z, {- y <- pre graph z, not $ z ∈ idomsOf y -}
+                                                  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty)
                          ]
   where idom' = invert''' idom
-        idomsOf z = case idom ! z of
+        idomsOf y = case idom ! y of
           Nothing -> Set.empty
-          Just z' -> cycleOf ! z'
+          Just y' -> cycleOf ! y'
         (cycleOf,_) =  findCyclesM $ idom
-        jEdges = Map.fromList [(y, [ z | z <- pre graph y, not $ y ∈ idomsOf z ]) | y <- nodes graph]
+        cEdges = Map.fromList [(z, [ y | y <- pre graph z, not $ z ∈ idomsOf y ]) | z <- nodes graph]
 
 
-idfViaJEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
-idfViaJEdgesFast graph idom = \xs0 -> if Set.null xs0 then
+idfViaCEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
+idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                        Set.empty
                                      else
                                        let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x  (cycleOf ! x) xs xs0
   where 
-        go processed x ys xs idf
-          | (Set.null ys  ∨  y ∈ processed) ∧ Set.null xs     = tr $  idf
-          | Set.null ys                   = tr $   go (Set.insert x processed) x' (cycleOf ! x')        xs' idf
-          | y ∈ processed                 = tr $   go               processed  x  ys'                   xs  idf
-          | otherwise     = tr $
-                            let isDf z = case idom ! z of
+        go processed x zs xs idf
+          | (Set.null zs  ∨  z ∈ processed) ∧ Set.null xs     = idf
+          | Set.null zs                   = go (Set.insert x processed) x' (cycleOf ! x')        xs' idf
+          | z ∈ processed                 = go               processed  x  zs'                   xs  idf
+          | otherwise     = let isDf y = case idom ! y of
                                   Nothing -> True
-                                  Just z' -> levelOf ! x > levelOf ! z'
-                                zs = assert ((∀) (jEdges ! y) (\z -> isDf z ==  (not $ x ∈ reachableFromM idom (idomsOf z) Set.empty ))) $
-                                     Set.filter isDf (jEdges ! y ∖ idf)
-                            in case Map.lookup y idom' of
-                                Nothing   ->  go               processed  x   ys'                            (xs ∪ zs) (idf ∪ zs)
-                                Just yNew ->  go               processed  x  (ys' ∪ (yNew ∖ (cycleOf ! y)))  (xs ∪ zs) (idf ∪ zs)
+                                  Just y' -> levelOf ! x > levelOf ! y'
+                                ys = assert ((∀) (cEdges ! z) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
+                                     Set.filter isDf (cEdges ! z ∖ idf)
+                            in case Map.lookup z idom' of
+                                Nothing   -> go               processed  x   zs'                            (xs ∪ ys) (idf ∪ ys)
+                                Just zNew -> go               processed  x  (zs' ∪ (zNew ∖ (cycleOf ! z)))  (xs ∪ ys) (idf ∪ ys)
           where (x', xs') = Set.deleteFindMin xs
-                ( y, ys') = Set.deleteFindMin ys
-                tr = id -- traceShow (processed, x, ys, xs, idf)
+                ( z, zs') = Set.deleteFindMin zs
 
         idom' = invert''' idom
-        idomsOf z = case idom ! z of
+        idomsOf y = case idom ! y of
           Nothing -> Set.empty
-          Just z' -> cycleOf ! z'
+          Just y' -> cycleOf ! y'
         (cycleOf, cycles) =  findCyclesM $ idom
         roots = [ Set.fromList [n] | n <- Map.keys $ Map.filter (==Nothing) idom ] ++ cycles
         levelOf = Map.fromList [ (n,l) | nl <- treeLevel idom' roots, (n,l) <- nl]
-        jEdges = Map.fromList [(y, Set.fromList [ z | z <- pre graph y, not $ y ∈ idomsOf z ]) | y <- nodes graph]
+        cEdges = Map.fromList [(z, Set.fromList [ y | y <- pre graph z, not $ z ∈ idomsOf y ]) | z <- nodes graph]
 
 
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))

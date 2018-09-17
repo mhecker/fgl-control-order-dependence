@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 module Util where
 
 import Debug.Trace
@@ -304,22 +305,21 @@ findCyclesM :: (Show a, Ord a) => Map a (Maybe a) -> (Map a (Set a), [Set a])
 findCyclesM idom
     | Map.null idom = (Map.empty, [])
     | otherwise     = ((foldr Map.union Map.empty [ Map.fromSet (\n -> cycle) cycle | cycle <- cycles]), cycles)
-  where (x:xs) = Map.keys idom
-        cycles = find [x] (Set.fromList [x]) xs Set.empty []
-        find []         ps [] seen cycles = cycles
-        find path@(x:_) ps xs seen cycles
-                            | x ∈ seen  =                find path'      ps'                xs' seen'   cycles
-                            | otherwise = case idom ! x of
-                                            Nothing ->   find path'      ps'                xs' seen'   cycles
-                                            Just x' -> if x' ∈ ps then
-                                                         let cycle = cycleOf x' in
-                                                         find path'      ps'                xs' seen'   (cycle : cycles)
-                                                       else
-                                                         find (x':path)  (Set.insert x' ps) xs  seen    cycles
-                          where (path', xs', ps') = case xs of
-                                                []     -> ([], [], Set.empty)
-                                                (y:ys) -> ([y], ys, Set.fromList [y])
-                                seen'   = seen ∪ ps
+  where (x,_) = Map.findMin idom
+        cycles = find [x] (Set.fromList [x]) idom []
+        find []         ps idom cycles = assert (Map.null idom) $ cycles
+        find path@(x:_) ps idom cycles = case mx' of 
+                              Nothing        ->   find     path'                 ps'  idom'          cycles
+                              Just Nothing   ->   find     path'                 ps'  idom'          cycles
+                              Just (Just x') -> if x' ∈ ps then let cycle = cycleOf x' in
+                                                  find     path'                 ps'  idom' (cycle : cycles)
+                                                else
+                                                  find (x':path)  (Set.insert x' ps)  idomX          cycles
+                          where (mx', idomX) = Map.updateLookupWithKey (\_ _ -> Nothing) x idom 
+                                (path', idom', ps')
+                                    | Map.null idomX = ([], Map.empty, Set.empty)
+                                    | otherwise      = ([y], idomX, Set.fromList [y])
+                                  where (y,_) = Map.findMin idomX
                                 cycleOf x' = Set.insert x' $ Set.fromList $ takeWhile (/= x') path
 
   

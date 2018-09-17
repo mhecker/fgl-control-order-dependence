@@ -308,6 +308,23 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "nticdSlice  == idfViaCEdgesFast for CFG-shaped graphs and randomly selected nodes"
+    $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
+  --               let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+  --                   [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+  --                   g = insEdge (exit, entry, ()) generatedGraph
+                let g = generatedGraph
+                    nrSlices = 10
+                    n = length $ nodes g
+                    mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
+                                                        let m1 = nodes g !! (s1 `mod` n),
+                                                        let m2 = nodes g !! (s2 `mod` n),
+                                                        let m3 = nodes g !! (s3 `mod` n)
+                          ]
+                    isinkdom = NTICD.isinkdomOfTwoFinger8      g
+                    idfViaJ  = NTICD.idfViaCEdgesFast g (fmap fromSet isinkdom)
+                    nticdslicer = NTICD.nticdSlice g
+                in (∀) mss (\ms -> nticdslicer ms == idfViaJ ms),
     testProperty   "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

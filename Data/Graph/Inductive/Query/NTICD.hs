@@ -2376,8 +2376,8 @@ dfViaCEdges graph idom = \x -> Set.fromList [ y | z <- Set.toList $ reachableFro
         cEdges = Map.fromList [(z, [ y | y <- pre graph z, not $ z ∈ idomsOf y ]) | z <- nodes graph]
 
 
-idfViaCEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
-idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
+idfViaCEdgesFastForCycles :: Graph gr => (Map Node (Set Node), [Set Node]) -> gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
+idfViaCEdgesFastForCycles (cycleOfM, cycles) graph idom = \xs0 -> if Set.null xs0 then
                                        Set.empty
                                      else
                                        let queue0 = Prio.Max.fromList [ (levelOf ! x, x) | x <- Set.toList xs0 ]
@@ -2407,12 +2407,28 @@ idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
         idomsOf y = case idom ! y of
           Nothing -> Set.empty
           Just y' -> cycleOf y'
-        (cycleOfM, cycles) =  findCyclesM $ idom
         cycleOf x = Map.findWithDefault (Set.singleton x) x cycleOfM
-        roots = [ Set.fromList [n] | n <- Map.keys $ Map.filter (==Nothing) idom ] ++ cycles
+        roots = foldr (\(n,m) roots -> if m == Nothing then Set.fromList [n] : roots else roots) cycles (Map.assocs idom)
         levelOf = Map.fromList [ (n,l) | nl <- treeLevel idom' roots, (n,l) <- nl]
         cEdges = foldr (\(y,z) cEdges -> if z ∈ idomsOf y then cEdges else Map.insertWith (++) z [y] cEdges) Map.empty (edges graph)
 
+
+idfViaCEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node
+idfViaCEdgesFast graph idom = idfViaCEdgesFastForCycles cycles graph idom
+  where cycles = findCyclesM idom
+
+
+nticdSliceViaCEdgesFast graph = \ms -> idf ms
+  where sinks            = controlSinks graph
+        sinkS            = fmap Set.fromList sinks
+        sinkNodes        = (∐) [ sink | sink <- sinkS]
+        nonSinkCondNodes = Map.fromList [ (n, succs) | n <- nodes graph, not $ n ∈ sinkNodes, let succs = suc graph n, length succs > 1 ]
+
+        idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph
+
+        cycles = (foldr Map.union Map.empty [ Map.fromSet (\n -> sink) sink | sink <- sinkS], sinkS)
+
+        idf = idfViaCEdgesFastForCycles cycles graph idom
 
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))
 idomToDFFastLazy graph cycleOf idom' = \df x -> case Map.lookup x df of

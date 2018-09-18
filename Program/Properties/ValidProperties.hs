@@ -98,7 +98,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
-    idomToDF, idomToDFFast, dfViaCEdges, idfViaCEdgesFast,
+    idomToDF, idomToDFFast, dfViaCEdges, idfViaCEdgesFast, nticdSliceViaCEdgesFast,
     imdomOf, imdomOfLfp,
     mdomOf,                   mdomOfLfp,   mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,    mdomOfimdomProperty, imdomTwoFingercd, mdomNaiveLfp,
     mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
@@ -308,7 +308,7 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
-    testProperty   "nticdSlice  == idfViaCEdgesFast for CFG-shaped graphs and randomly selected nodes"
+    testProperty   "nticdSlice  == nticdSliceViaCEdgesFast for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
   --               let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
   --                   [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -321,10 +321,9 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                                                         let m2 = nodes g !! (s2 `mod` n),
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
-                    isinkdom = NTICD.isinkdomOfTwoFinger8      g
-                    idfViaJ  = NTICD.idfViaCEdgesFast g (fmap fromSet isinkdom)
-                    nticdslicer = NTICD.nticdSlice g
-                in (∀) mss (\ms -> nticdslicer ms == idfViaJ ms),
+                    nticdslicer        = NTICD.nticdSlice              g
+                    nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
+                in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
     testProperty   "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -341,14 +340,13 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                              ∨ ( (sinkdom ! x  ⊆  (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y])  ∧  (      x  ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
                            )
                          ))),
-    testProperty   "nticdSlice  == idfViaCEdgesFast"
+    testProperty   "nticdSlice  == nticdslicerCEdges"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom = NTICD.isinkdomOfTwoFinger8      g
-                        idfViaJ  = NTICD.idfViaCEdgesFast g (fmap fromSet isinkdom)
-                        nticdslicer = NTICD.nticdSlice g
+                        nticdslicer        = NTICD.nticdSlice              g
+                        nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
-                              nticdslicer ms == idfViaJ ms
+                              nticdslicer ms == nticdslicerCEdges ms
                     )),
     testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->

@@ -2392,14 +2392,14 @@ idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                             let isDf y = case idom ! y of
                                   Nothing -> True
                                   Just y' -> lvlX > levelOf ! y'
-                                ys = assert ((∀) (Map.findWithDefault Set.empty z cEdges) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
-                                     Set.filter (\y -> (not $ y ∈ idf) ∧ isDf y) (Map.findWithDefault Set.empty z cEdges)
+                                ys = assert ((∀) (Map.findWithDefault [] z cEdges) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
+                                     List.filter (\y -> (not $ y ∈ idf) ∧ isDf y) (Map.findWithDefault [] z cEdges)
                             in case Map.lookup z idom'' of
-                                Nothing   -> go               processed  x lvlX  zs'                    (queue `with` ys) (idf ∪ ys)
-                                Just zNew -> go               processed  x lvlX (Set.fold (:) zs' zNew) (queue `with` ys) (idf ∪ ys)
+                                Nothing   -> go               processed  x lvlX  zs'                    (queue `with` ys) (foldr Set.insert idf ys)
+                                Just zNew -> go               processed  x lvlX (Set.fold (:) zs' zNew) (queue `with` ys) (foldr Set.insert idf ys)
           where ((lvlX', x'), queue') = Prio.Max.deleteFindMax queue
                 (z:zs') = zs
-                with queue ys = Set.fold (\y queue -> Prio.Max.insert (levelOf ! y) y queue) queue ys
+                with queue ys = foldr (\y queue -> Prio.Max.insert (levelOf ! y) y queue) queue ys
                 tr = id -- traceShow (levelOf, processed, x, lvlX, zs, queue, idf)
 
         idom'  = invert''' idom
@@ -2411,7 +2411,7 @@ idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
         cycleOf x = Map.findWithDefault (Set.singleton x) x cycleOfM
         roots = [ Set.fromList [n] | n <- Map.keys $ Map.filter (==Nothing) idom ] ++ cycles
         levelOf = Map.fromList [ (n,l) | nl <- treeLevel idom' roots, (n,l) <- nl]
-        cEdges = foldr (\(y,z) cEdges -> if z ∈ idomsOf y then cEdges else Map.insertWith (∪) z (Set.fromList [y]) cEdges) Map.empty (edges graph)
+        cEdges = foldr (\(y,z) cEdges -> if z ∈ idomsOf y then cEdges else Map.insertWith (++) z [y] cEdges) Map.empty (edges graph)
 
 
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))

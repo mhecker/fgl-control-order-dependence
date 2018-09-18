@@ -2382,12 +2382,12 @@ idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                      else
                                        let queue0 = Prio.Max.fromList [ (levelOf ! x, x) | x <- Set.toList xs0 ]
                                            ((lvlX,x), queue) = Prio.Max.deleteFindMax queue0
-                                       in go Set.empty x lvlX (cycleOf x) queue (Set.delete x xs0) xs0
+                                       in go Set.empty x lvlX (Set.toList $ cycleOf x) queue (Set.delete x xs0) xs0
   where 
         go processed x lvlX zs queue queueNodes idf
-          | Set.null zs  ∧ Prio.Max.null queue = tr $ idf
-          | Set.null zs                   = tr $ go (Set.insert x processed) x' lvlX'  (cycleOf x')        queue' queueNodes' idf
-          | z ∈ processed                 = tr $ go               processed  x  lvlX   zs'                 queue  queueNodes  idf
+          | List.null zs  ∧ Prio.Max.null queue = tr $ idf
+          | List.null zs                  = tr $ go (Set.insert x processed) x' lvlX'  (Set.toList $ cycleOf x')   queue' queueNodes' idf
+          | z ∈ processed                 = tr $ go               processed  x  lvlX   zs'                         queue  queueNodes  idf
           | otherwise     = tr $
                             let isDf y = case idom ! y of
                                   Nothing -> True
@@ -2395,11 +2395,11 @@ idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                 ys = assert ((∀) (Map.findWithDefault Set.empty z cEdges) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
                                      Set.filter (\y -> (not $ y ∈ idf) ∧ isDf y) (Map.findWithDefault Set.empty z cEdges)
                             in case Map.lookup z idom'' of
-                                Nothing   -> go               processed  x lvlX  zs'         (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)
-                                Just zNew -> go               processed  x lvlX (zs' ∪ zNew) (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)
+                                Nothing   -> go               processed  x lvlX  zs'                    (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)
+                                Just zNew -> go               processed  x lvlX (Set.fold (:) zs' zNew) (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)
           where ((lvlX', x'), queue') = Prio.Max.deleteFindMax queue
                 queueNodes' = Set.delete x' queueNodes
-                ( z, zs') = Set.deleteFindMin zs
+                (z:zs') = zs
                 with queue ys = Set.fold (\y queue -> if y ∈ queueNodes then queue else Prio.Max.insert (levelOf ! y) y queue) queue ys
                 tr = id -- traceShow (levelOf, processed, x, lvlX, zs, queue, idf)
 

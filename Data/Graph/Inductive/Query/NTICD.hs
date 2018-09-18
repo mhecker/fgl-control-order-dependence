@@ -2389,18 +2389,20 @@ idfViaCEdgesFastForCycles (cycleOfM, cycles) graph idom = \xs0 -> if Set.null xs
           | List.null zs                  = tr $ go (Set.insert x processed) x' lvlX'  (Set.toList $ cycleOf x')   queue' idf
           | z ∈ processed                 = tr $ go               processed  x  lvlX   zs'                         queue  idf
           | otherwise     = tr $
-                            let isDf y = case idom ! y of
-                                  Nothing -> True
-                                  Just y' -> lvlX > levelOf ! y'
-                                ys = assert ((∀) (Map.findWithDefault [] z cEdges) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
-                                     List.filter (\y -> (not $ y ∈ idf) ∧ isDf y) (Map.findWithDefault [] z cEdges)
+                            let isDf (y,_,mlvlY') = case mlvlY' of
+                                  Nothing    -> True
+                                  Just lvlY' -> lvlX > lvlY'
+                                ys = assert ((∀) (Map.findWithDefault [] z cEdges) (\p@(y,_,_) -> isDf p ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
+                                     List.filter (\p@(y,_,_) -> (not $ y ∈ idf) ∧ isDf p) (Map.findWithDefault [] z cEdges)
                             in case Map.lookup z idom'' of
-                                Nothing   -> go               processed  x lvlX  zs'                    (queue `with` ys) (foldr Set.insert idf ys)
-                                Just zNew -> go               processed  x lvlX (Set.fold (:) zs' zNew) (queue `with` ys) (foldr Set.insert idf ys)
+                                Nothing   -> go               processed  x lvlX  zs'                    (queue `with` ys) (foldr (Set.insert . fst) idf ys)
+                                Just zNew -> go               processed  x lvlX (Set.fold (:) zs' zNew) (queue `with` ys) (foldr (Set.insert . fst) idf ys)
           where ((lvlX', x'), queue') = Prio.Max.deleteFindMax queue
                 (z:zs') = zs
-                with queue ys = foldr (\y queue -> Prio.Max.insert (levelOf ! y) y queue) queue ys
+                with queue ys = foldr (\(y,lvlY,_) queue -> Prio.Max.insert lvlY y queue) queue ys
+                fst (a,_,_) = a
                 tr = id -- traceShow (levelOf, processed, x, lvlX, zs, queue, idf)
+                
 
         idom'  = invert''' idom
         idom'' = Map.mapWithKey (\z z's -> z's ∖ (cycleOf z)) idom'
@@ -2410,7 +2412,11 @@ idfViaCEdgesFastForCycles (cycleOfM, cycles) graph idom = \xs0 -> if Set.null xs
         cycleOf x = Map.findWithDefault (Set.singleton x) x cycleOfM
         roots = foldr (\(n,m) roots -> if m == Nothing then Set.fromList [n] : roots else roots) cycles (Map.assocs idom)
         levelOf = Map.fromList [ (n,l) | nl <- treeLevel idom' roots, (n,l) <- nl]
-        cEdges = foldr (\(y,z) cEdges -> if z ∈ idomsOf y then cEdges else Map.insertWith (++) z [y] cEdges) Map.empty (edges graph)
+        cEdges :: Map Node [(Node, Integer, Maybe Integer)]
+        cEdges = foldr f Map.empty (edges graph)
+          where f (y,z) cEdges = case idom ! y of
+                           Nothing ->                                      Map.insertWith (++) z [(y,levelOf ! y, Nothing            )] cEdges
+                           Just y' -> if z ∈ (cycleOf y') then cEdges else Map.insertWith (++) z [(y,levelOf ! y, Just $ levelOf ! y')] cEdges
 
 
 idfViaCEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> Set Node

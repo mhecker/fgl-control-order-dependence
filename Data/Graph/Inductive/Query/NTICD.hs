@@ -2393,7 +2393,7 @@ idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                   Nothing -> True
                                   Just y' -> lvlX > levelOf ! y'
                                 ys = assert ((∀) (Map.findWithDefault Set.empty z cEdges) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
-                                     Set.filter (\y -> isDf y ∧ (not $ y ∈ idf)) (Map.findWithDefault Set.empty z cEdges)
+                                     Set.filter (\y -> (not $ y ∈ idf) ∧ isDf y) (Map.findWithDefault Set.empty z cEdges)
                             in case Map.lookup z idom'' of
                                 Nothing   -> go               processed  x lvlX  zs'         (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)
                                 Just zNew -> go               processed  x lvlX (zs' ∪ zNew) (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)

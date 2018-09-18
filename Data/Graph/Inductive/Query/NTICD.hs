@@ -2430,6 +2430,7 @@ nticdSliceViaCEdgesFast graph = \ms -> idf ms
 
         idf = idfViaCEdgesFastForCycles cycles graph idom
 
+
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))
 idomToDFFastLazy graph cycleOf idom' = \df x -> case Map.lookup x df of
     Just dfs -> (dfs, df)
@@ -2829,12 +2830,14 @@ wodTEILSliceViaNticd g =  \ms ->
                 isCond _   = True
         nonSinkCondNodes' = condNodes'
 
-        cycleOf' =  Map.fromList [ (s, cycle) | sink <- sinks', let cycle = Set.fromList sink, s <- sink ]
+        sinkS' = fmap Set.fromList sinks'
+        cycleOf' =  Map.fromList [ (s, sink) | sink <- sinkS', s <- Set.toList $ sink ]
         
         idom'Direct = Map.fromList $ iPDomForSinks sinks' g'
     in -- (if idom' == idom'Direct then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
        assert (idom' == idom'Direct) $
-       nticdSliceLazy g' cycleOf' (invert''' idom'Direct) ms
+       -- nticdSliceLazy g' cycleOf' (invert''' idom'Direct) ms
+       idfViaCEdgesFastForCycles (cycleOf', sinkS') g' idom'Direct ms
   where
         sinks            = controlSinks g
         sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]

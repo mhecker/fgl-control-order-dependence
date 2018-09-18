@@ -2385,10 +2385,10 @@ idfViaCEdgesFastForCycles (cycleOfM, cycles) graph idom = \xs0 -> if Set.null xs
                                        in go Set.empty x lvlX (Set.toList $ cycleOf x) queue xs0
   where 
         go processed x lvlX zs queue idf
-          | List.null zs  ∧ Prio.Max.null queue = tr $ idf
-          | List.null zs                  = tr $ go (Set.insert x processed) x' lvlX'  (Set.toList $ cycleOf x')   queue' idf
-          | z ∈ processed                 = tr $ go               processed  x  lvlX   zs'                         queue  idf
-          | otherwise     = tr $
+          | List.null zs  ∧ Prio.Max.null queue = idf
+          | List.null zs                  =  go (Set.insert x processed) x' lvlX'  (Set.toList $ cycleOf x')   queue' idf
+          | z ∈ processed                 =  go               processed  x  lvlX   zs'                         queue  idf
+          | otherwise     = 
                             let isDf (y,_,mlvlY') = case mlvlY' of
                                   Nothing    -> True
                                   Just lvlY' -> lvlX > lvlY'
@@ -2401,8 +2401,6 @@ idfViaCEdgesFastForCycles (cycleOfM, cycles) graph idom = \xs0 -> if Set.null xs
                 (z:zs') = zs
                 with queue ys = foldr (\(y,lvlY,_) queue -> Prio.Max.insert lvlY y queue) queue ys
                 fst (a,_,_) = a
-                tr = id -- traceShow (levelOf, processed, x, lvlX, zs, queue, idf)
-                
 
         idom'  = invert''' idom
         idom'' = Map.mapWithKey (\z z's -> z's ∖ (cycleOf z)) idom'

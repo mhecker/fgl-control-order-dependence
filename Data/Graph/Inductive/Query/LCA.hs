@@ -84,8 +84,7 @@ lcaSingleNodeSinks imdom nxs n m = lcaDown' (n, Set.fromList [n]) (m, Set.fromLi
                                   assert (not $ n ∈ ms) $ 
                                   caseN
                   where caseN = case imdom ! n of
-                                  Nothing -> assert (n ∈ nxs) $
-                                             lcaDownLin ns m
+                                  Nothing -> lcaDownLin ns m
                                   Just n' -> lcaDown' (m, ms) (n', Set.insert n' ns)
                 lcaDownLin ns m = assert (not $ m ∈ ns) $ lcaDown'' m
                   where lcaDown'' m = case imdom ! m of

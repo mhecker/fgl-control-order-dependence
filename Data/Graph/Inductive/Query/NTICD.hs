@@ -18,6 +18,8 @@ import Data.List(foldl', intersect,foldr1, partition)
 import qualified Data.Tree as Tree
 import Data.Tree (Tree(..))
 
+import qualified Data.PQueue.Prio.Max as Prio.Max
+
 import Data.Maybe (isNothing, maybeToList)
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -2378,22 +2380,28 @@ idfViaCEdgesFast :: Graph gr => gr a b -> Map Node (Maybe Node) -> Set Node -> S
 idfViaCEdgesFast graph idom = \xs0 -> if Set.null xs0 then
                                        Set.empty
                                      else
-                                       let (x, xs) = Set.deleteFindMin xs0 in  go Set.empty x (levelOf ! x) (cycleOf x) xs xs0
+                                       let queue0 = Prio.Max.fromList [ (levelOf ! x, x) | x <- Set.toList xs0 ]
+                                           ((lvlX,x), queue) = Prio.Max.deleteFindMax queue0
+                                       in go Set.empty x lvlX (cycleOf x) queue (Set.delete x xs0) xs0
   where 
-        go processed x lvlX zs xs idf
-          | (Set.null zs  ∨  z ∈ processed) ∧ Set.null xs     = idf
-          | Set.null zs                   = go (Set.insert x processed) x' (levelOf ! x') (cycleOf x')        xs' idf
-          | z ∈ processed                 = go               processed  x  lvlX           zs'                   xs  idf
-          | otherwise     = let isDf y = case idom ! y of
+        go processed x lvlX zs queue queueNodes idf
+          | Set.null zs  ∧ Prio.Max.null queue = tr $ idf
+          | Set.null zs                   = tr $ go (Set.insert x processed) x' lvlX'  (cycleOf x')        queue' queueNodes' idf
+          | z ∈ processed                 = tr $ go               processed  x  lvlX   zs'                 queue  queueNodes  idf
+          | otherwise     = tr $
+                            let isDf y = case idom ! y of
                                   Nothing -> True
                                   Just y' -> lvlX > levelOf ! y'
                                 ys = assert ((∀) (Map.findWithDefault Set.empty z cEdges) (\y -> isDf y ==  (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty ))) $
                                      Set.filter (\y -> isDf y ∧ (not $ y ∈ idf)) (Map.findWithDefault Set.empty z cEdges)
                             in case Map.lookup z idom'' of
-                                Nothing   -> go               processed  x lvlX  zs'          (xs ∪ ys) (idf ∪ ys)
-                                Just zNew -> go               processed  x lvlX (zs' ∪ zNew)  (xs ∪ ys) (idf ∪ ys)
-          where (x', xs') = Set.deleteFindMin xs
+                                Nothing   -> go               processed  x lvlX  zs'         (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)
+                                Just zNew -> go               processed  x lvlX (zs' ∪ zNew) (queue `with` ys) (queueNodes ∪ ys) (idf ∪ ys)
+          where ((lvlX', x'), queue') = Prio.Max.deleteFindMax queue
+                queueNodes' = Set.delete x' queueNodes
                 ( z, zs') = Set.deleteFindMin zs
+                with queue ys = Set.fold (\y queue -> if y ∈ queueNodes then queue else Prio.Max.insert (levelOf ! y) y queue) queue ys
+                tr = id -- traceShow (levelOf, processed, x, lvlX, zs, queue, idf)
 
         idom'  = invert''' idom
         idom'' = Map.mapWithKey (\z z's -> z's ∖ (cycleOf z)) idom'

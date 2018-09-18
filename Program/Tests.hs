@@ -14,6 +14,7 @@ import qualified Data.Dequeue as Dequeue
 import Data.Dequeue (pushBack, popFront)
 import Data.Dequeue.SimpleDequeue (SimpleDequeue)
 
+import qualified Data.PQueue.Prio.Max as Prio.Max
 
 import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random

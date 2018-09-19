@@ -2753,7 +2753,7 @@ nticdSlice graph =  combinedBackwardSlice graph nticd w
         w     = Map.empty
 
 nticdSliceFor :: DynGraph gr => [[Node]] -> gr a b -> Map Node (Maybe Node) ->  Set Node -> Set Node
-nticdSliceFor roots graph idom =  combinedBackwardSlice graph nticd' w
+nticdSliceFor roots graph idom = traceShow (Map.fold (\ns sum -> sum + Set.size ns) 0 nticd') $ combinedBackwardSlice graph nticd' w
   where nticd' = idomToDFFastForRoots roots graph idom
         w      = Map.empty
 

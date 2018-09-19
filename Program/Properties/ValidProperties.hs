@@ -310,12 +310,15 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
     testProperty   "nticdSliceNumbered  == nticdSliceNumberedViaCEdgesFast for ladder-graphs and randomly selected nodes"
     $ \(size :: Int) seed1 seed2 seed3 ->
-                let g = ladder ((abs size) `div` 2) :: Gr () ()
-                    idom =             Map.fromList [(i, Nothing)   | i <- [0   ..(n-1)]]
-                           `Map.union` Map.fromList [(i, Just (i+2))| i <- [1,3 ..(n-1)]]
-                    roots = fmap (\n -> [n]) $  Map.keys $ Map.filter (== Nothing) idom
+                let n0 = (abs size) `div` 2
+                    g = ladder n0  :: Gr () ()
+                    idom = assert (n == 2*n0 + 3) $ 
+                                       Map.fromList [(i, Just (i+2))| i <- [1,3 ..(n-3)]]
+                           `Map.union` Map.fromList [(i, Nothing)   | i <- [0   ..(n-1)]]
+                    roots = assert (idom == fmap fromSet (NTICD.isinkdomOfTwoFinger8 g)) $
+                            fmap (\n -> [n]) $  Map.keys $ Map.filter (== Nothing) idom
                     
-                    nrSlices = 10
+                    nrSlices = 1
                     n = length $ nodes g
                     mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
                                                         let m1 = nodes g !! (s1 `mod` n),
@@ -324,7 +327,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                           ]
                     nticdslicer        = NTICD.nticdSliceFor              roots g idom
                     nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFastFor roots g idom
-                in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
+                in traceShow n $ (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
     testProperty   "nticdSlice  == nticdSliceViaCEdgesFast for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
   --               let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]

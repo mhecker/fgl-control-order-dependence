@@ -2434,6 +2434,23 @@ nticdSliceViaCEdgesFast graph = \ms -> idf ms
 
         idf = idfViaCEdgesFastForCycles cycles graph idom
 
+nticdSliceNumberedViaCEdgesFast graph = \ms -> idf ms
+  where sinks            = controlSinks graph
+        sinkS            = fmap Set.fromList sinks
+        
+        idom = Map.fromList $ iPDomForSinks sinks graph
+
+        cycles = (foldr Map.union Map.empty [ Map.fromSet (\n -> sink) sink | sink <- sinkS], sinkS)
+
+        idf = idfViaCEdgesFastForCycles cycles graph idom
+
+
+nticdSliceViaCEdgesFastFor :: DynGraph gr => [[Node]] -> gr a b -> Map Node (Maybe Node) ->  Set Node -> Set Node
+nticdSliceViaCEdgesFastFor roots graph idom =  \ms -> idf ms
+  where sinkS = [ Set.fromList root | root@(_:_:_) <- roots ]
+        cycles = (foldr Map.union Map.empty [ Map.fromSet (\n -> sink) sink | sink <- sinkS], sinkS)
+        idf = idfViaCEdgesFastForCycles cycles graph idom
+
 
 idomToDFFastLazy :: forall gr a b. Graph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Map Node (Set Node) -> Node -> (Set Node, Map Node (Set Node))
 idomToDFFastLazy graph cycleOf idom' = \df x -> case Map.lookup x df of
@@ -2695,6 +2712,28 @@ nticdSliceLazy graph cycleOf idom' = \ms ->
                  (fromNTICD, df') = idomToDFFastLazy graph cycleOf idom' df m
       in result
 
+isinkDFNumberedForSinks :: forall gr a b. DynGraph gr => [[Node]] -> gr a b ->  Map Node (Set Node)
+isinkDFNumberedForSinks sinks graph =
+    require (Set.fromList sinks == Set.fromList (controlSinks graph)) $
+    idomToDFFastForRoots roots graph idom
+  where idom = Map.fromList $ iPDomForSinks sinks graph
+        roots = go (Map.assocs idom) [ sink | sink@(_:_:_) <- sinks ]
+          where go []     roots = roots
+                go ((n, m):as) roots = case m of 
+                  Nothing -> go as ([n]:roots)
+                  _       -> go as      roots
+
+isinkDFNumbered :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+isinkDFNumbered graph = isinkDFNumberedForSinks sinks graph
+  where sinks = controlSinks graph
+
+
+nticdSliceNumbered :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdSliceNumbered graph =  combinedBackwardSlice graph nticd w
+  where nticd = isinkDFNumbered graph
+        w     = Map.empty
+
+
 
 ntscdMyDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
@@ -2712,6 +2751,11 @@ nticdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = isinkDFTwoFinger graph
         w     = Map.empty
+
+nticdSliceFor :: DynGraph gr => [[Node]] -> gr a b -> Map Node (Maybe Node) ->  Set Node -> Set Node
+nticdSliceFor roots graph idom =  combinedBackwardSlice graph nticd' w
+  where nticd' = idomToDFFastForRoots roots graph idom
+        w      = Map.empty
 
 
 ntscdSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node

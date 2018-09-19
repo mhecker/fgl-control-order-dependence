@@ -270,3 +270,25 @@ controlSinks graph =
                            )
                    ]
     where sccs = scc graph
+
+{-
+   0  ----->  1
+   |          |
+   |          |
+   ∨          ∨  
+   2  ----->  3
+   |          |
+   .          .
+   .          .
+   .          .
+   ∨          ∨  
+ (2n) -----> (2n+1)
+   |
+   |
+   ∨
+ (2n+2)
+-}
+ladder :: Graph gr => Int -> gr () ()
+ladder n = mkGraph [(i,()) | i <- [0..2*n+2]] (eds n)
+  where eds 0 = [(0,1,()), (0,2,())]
+        eds n = [(2*n, 2*n+1, ()), (2*n, 2*n+2, ()), (2*n-1, 2*n+1, ())] ++ eds (n-1)

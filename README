@@ -5,4 +5,4 @@ cabal install  lattices-1.5.0 fgl-arbitrary-0.2.0.3 containers-unicode-symbols-0
 
 # or: be on debian 9.3
 sudo aptitude install libghc-fgl-dev libghc-quickcheck2-dev libghc-tasty-dev libghc-tasty-hunit-dev libghc-tasty-quickcheck-dev libghc-base-unicode-symbols-dev libghc-data-default-instances-containers-dev libghc-logict-dev
-cabal install MonadRandom-0.5.1 monad-gen containers-unicode-symbols lattices-1.5.0 fgl-arbitrary fgl-visualize tasty-ant-xml tasty-expected-failure bitwise-0.1.1.1 dequeue-0.1.12 --constraint='tasty installed'
+cabal install MonadRandom-0.5.1 monad-gen containers-unicode-symbols lattices-1.5.0 fgl-arbitrary fgl-visualize tasty-ant-xml tasty-expected-failure bitwise-0.1.1.1 dequeue-0.1.12 pqueue-1.4.1.1  --constraint='tasty installed'

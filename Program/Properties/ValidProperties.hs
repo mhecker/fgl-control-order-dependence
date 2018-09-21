@@ -642,6 +642,14 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
+    testProperty   "idomToDFFast _ imdom6  == idomToDFFast _ imdom7"
+                $ \(SIMPLECFG(generatedGraph)) ->
+                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                    g = insEdge (exit, entry, ()) generatedGraph
+                    imdom6 = NTICD.imdomOfTwoFinger6 g
+                    imdom7 = NTICD.imdomOfTwoFinger7 g
+                in NTICD.idomToDFFast g imdom6 == NTICD.idomToDFFast g imdom7,
     testProperty   "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

@@ -1983,6 +1983,7 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks nonSinkCondNodes = twoFingerDown
         twoFingerDown worklist imdom
             | Map.null worklist   = imdom
             | otherwise           = assert (influenced == influencedSlow) $ 
+                                    assert ((imdom ! x == Nothing) → (zs == Nothing)) $
                                     if (not $ changed) then twoFingerDown                          worklist'                                   imdom
                                     else                    twoFingerDown  (influenced `Map.union` worklist')  (Map.insert x zs                imdom)
           where ((x, succs), worklist')  = Map.deleteFindMin worklist
@@ -1995,8 +1996,8 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks nonSinkCondNodes = twoFingerDown
                                     Just s1 -> Just s1
                                     Nothing -> Just z
                 changed = imdom ! x /= zs
-                influenced = let imdomRev = invert' $ fmap maybeToList imdom
-                                 preds = predsSeenFor imdomRev [x] [x]
+                influenced = let imdomRev = invert''' $ imdom
+                                 preds = reachableFrom imdomRev (Set.fromList [x]) Set.empty 
                              in Map.fromList $ [ (n, succ) | n <- foldMap prevCondsImmediate preds, Just succ <- [Map.lookup n nonSinkCondNodes]]
                 influencedSlow = Map.fromList [ (n, succ) | (n, succ) <- Map.assocs nonSinkCondNodes, (∃) succ (\y -> reachableFromSeen imdom y x Set.empty) ]
 

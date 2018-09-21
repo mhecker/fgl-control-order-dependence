@@ -1821,52 +1821,53 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
         prevCondsImmediate = prevCondImmediateNodes graph
 
         solution = mdomOfLfp graph
+        dom = solution
+        doms = domsOf graph dom
         invariant worklist imdom = -- if (True) then True else
                                    -- (if (not inv) then (traceShow (worklist, imdom, imdomWorklist)) else id) $
                                    inv
-          where inv =   (∀) (nodes graph) (\n -> (∀) (solution ! n) (\m ->
-                                (m ∊ (suc imdomWorklistTrc  n))
+          where inv =   (∀) (nodes graph) (\n -> (∀) (nodes graph) (\m ->
+                                (m ∊ (suc imdomWorklistTrc  n)) ↔ (m ∈ solution ! n)
                         ))
                        ∧
                         (∀) (nodes graph) (\n -> let ms = imdom ! n  in
-                          case Set.toList ms of
-                            []  -> True
-                            [m] -> (m ∈ solution ! n) ∧ (∀) (solution ! n) (\m' -> m' == n  ∨  (m' ∈ solution ! m))
+                          case ms of
+                            Nothing -> True
+                            Just m  -> (m ∈ solution ! n) ∧ (∀) (solution ! n) (\m' -> m' == n  ∨  (m' ∈ solution ! m))
                         )
                        ∧
                         (∀) (nodes graph) (\n -> let ms = imdom ! n  in
-                          (Set.null ms  ∧  (∃) (solution ! n) (\m -> m /= n)) → (
+                          case ms of
+                            Nothing -> True
+                            Just m  -> m ∈ doms ! n
+                        )
+                       ∧
+                        (∀) (nodes graph) (\n -> let ms = imdom ! n  in
+                          (isNothing ms  ∧  (∃) (solution ! n) (\m -> m /= n)) → (
                             n ∈ worklistLfp
                           )
                         )
-                imdomTrc = trc $ (fromSuccMap imdom :: gr () ())
+                imdomTrc = trc $ (fromSuccMap (fmap toSet imdom) :: gr () ())
                 worklistLfp = (㎲⊒) Set.empty f
                   where f wl = worklist
-                             ⊔ Set.fromList [ p | p <- Set.toList condNodes,
+                             ⊔ Set.fromList [ n | n <- Set.toList condNodes,
                                                   w <- Set.toList wl,
-                                                  n <- nodes graph,
-                                                  (∃) (solution ! n) (\m -> m /= n),
-                                                  w ∈ solution ! n,
-                                                  (∀) (solution ! n) (\m -> m == n  ∨  (m ∈ solution ! w)),
-                                                  p ∊ prevConds n
+                                                  (∃) (suc graph n) (\y -> reachableFromSeen imdom y w Set.empty),
+                                                  (∃) (nodes graph) (\m -> m ∈ doms ! w)
                                             ]
-                imdomWorklist = imdom
-                              ⊔ Map.fromList [ (w, Set.fromList [ m | m <- Set.toList $ solution ! w,
-                                                                      (∀) (solution ! w) (\m' -> m' == w  ∨  (m' ∈ solution ! m))
-                                                                ]
-                                               )
-                                             | w <- Set.toList $ worklistLfp ]
+                imdomWorklist = fmap toSet imdom
+                              ⊔ Map.fromList [ (w, doms ! w) | w <- Set.toList $ worklistLfp ]
                 imdomWorklistTrc = trc $ (fromSuccMap  imdomWorklist :: gr () ())
 
         twoFinger :: Integer -> Set Node ->  Map Node (Maybe Node) ->  Map Node (Set Node) -> Map Node (Maybe Node)
         twoFinger i worklist imdom imdomRev
             | Set.null worklist = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                   -- traceShow (Set.size worklist0, i) $ 
-                                  assert (invariant worklist (fmap toSet imdom)) $
+                                  assert (invariant worklist imdom) $
                                   imdom
             | otherwise         = -- traceShow (x, mz, zs, influenced, influencedSlow, worklist, imdom) $
                                   assert (influenced == influencedSlow) $ 
-                                  assert (invariant worklist (fmap toSet imdom)) $
+                                  assert (invariant worklist imdom) $
                                   assert (changed → (imdom ! x == Nothing)) $
                                   if (not $ changed) then twoFinger (i+1)               worklist'                                   imdom                                          imdomRev
                                                      else twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom) (Map.insertWith (∪) z (Set.singleton x) imdomRev)

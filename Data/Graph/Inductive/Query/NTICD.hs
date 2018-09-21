@@ -1867,11 +1867,12 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
             | otherwise         = -- traceShow (x, mz, zs, influenced, influencedSlow, worklist, imdom) $
                                   assert (influenced == influencedSlow) $ 
                                   assert (invariant worklist (fmap toSet imdom)) $
+                                  assert (changed → (imdom ! x == Nothing)) $
                                   if (not $ changed) then twoFinger (i+1)               worklist'                                   imdom                                          imdomRev
                                                      else twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom) (Map.insertWith (∪) z (Set.singleton x) imdomRev)
           where (x, worklist')  = Set.deleteFindMin worklist
                 mz = foldM1 (lca imdom) (suc graph x)
-                Just z = mz
+                Just z = zs
                 zs = case mz of
                       Just z  -> if z/= x then
                                    Just z

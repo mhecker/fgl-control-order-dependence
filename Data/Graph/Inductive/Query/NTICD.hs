@@ -2156,8 +2156,7 @@ isinkdomOftwoFinger8Up graph nonSinkCondNodes  worklist processed imdomRev imdom
                       Just z  -> Just z
                   where succs    = require (succs0 == (suc graph x)) $
                                    [ y | y <- succs0, y ∈ processed ]
-                new     = assert (isNothing $ imdom ! x) $
-                          (not $ isNothing mz)
+                new     = not $ isNothing mz
 
 
 isinkdomOftwoFinger8UpDfs ::  forall gr a b. (DynGraph gr) => gr a b -> [[Node]] -> Map Node (Maybe Node) -> Map Node (Maybe Node)

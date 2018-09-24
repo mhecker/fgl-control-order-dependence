@@ -6,6 +6,7 @@ import System.Process
 
 import Data.Graph.Inductive.Dot
 
+import Data.Array (array)
 import Data.List
 
 import Data.Maybe (fromJust)

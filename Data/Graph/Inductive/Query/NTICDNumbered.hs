@@ -19,8 +19,7 @@ import Debug.Trace
 
 import Data.Graph.Inductive.Util (controlSinks)
 
-import Data.Ord (Down(..))
-import Data.List (sortOn)
+import Data.List (sort)
 
 import Control.Exception.Base (assert)
 
@@ -69,13 +68,15 @@ type FromNode = IntMap Node'
 idomWork :: (Graph gr) => gr a b -> [[Node]] -> (IPDom, ToNode, FromNode)
 idomWork g sinks = let
     -- use depth first tree from root do build the first approximation
-    tree = Node undefined $ rdff [ s| (s:_) <- sinks] g
+    forest = rdff [ s| (s:_) <- sinks] g
+    tree = Node undefined forest
     -- relabel the tree so that paths from the root have increasing nodes
-    (s, ntree) = numberTree 0 tree
+    (s, nforest) = numberForest 1 forest
+    ntree = Node undefined nforest
     -- sink nodes must be given a fixed idom s.t. node from the same sink form a cycle
-    sinkSuccs = [ (s1, s2) | sink@(_:_:_) <- sinks, let (s:sorted) = sortOn Down $ fmap (fromNode I.!) sink, (s1,s2) <- zip (s:sorted) (sorted ++ [s]) ]
+    sinkSuccs = [ (s1, s2) | sink@(_:_:_) <- sinks, let (s:sorted) = sort $ fmap (fromNode I.!) sink, (s1,s2) <- zip (s:sorted) (sorted ++ [s]) ]
     -- the approximation iPDom0 just maps each node to its parent
-    iPD0 = array (1, s-1) (tail $ treeEdges (-1) ntree)   // sinkSuccs
+    iPD0 = array (1, s-1) [(i,0) | i <- [1..s-1]] // (fmap (\(a,b) -> (b,a)) $ forestEdges nforest) // sinkSuccs
     -- in order to preserve sink-cycles in idom, chose a canonical representative for each sink
     toCanonical = array (1, s-1)  [(i,i) | i <- [1..s-1]] // [ (fromNode I.! s', fromNode I.! s ) | (s:sink) <- sinks, s' <- (s:sink) ]
     -- fromNode translates graph nodes to relabeled (internal) nodes
@@ -109,9 +110,9 @@ intersect ::  ToCanonical -> IPDom -> Node' -> Node' -> Node'
 intersect toCanonical iD a b
   | a == nothing  || b == nothing = nothing
   | otherwise = case a `compare` b of
-    LT -> let b' = (iD ! b) in if (b' >= b) then nothing else intersect toCanonical iD  a  b'
+    LT -> let a' = (iD ! a) in if (a' <= a) then nothing else intersect toCanonical iD  a' b
     EQ -> toCanonical ! a
-    GT -> let a' = (iD ! a) in if (a' >= a) then nothing else intersect toCanonical iD  a' b
+    GT -> let b' = (iD ! b) in if (b' <= b) then nothing else intersect toCanonical iD  a  b'
 
 
 -- convert an IDom to dominance sets. we translate to graph nodes here
@@ -125,10 +126,10 @@ getDom fromNode toNode sinks iD = let
   in
     res
 
--- relabel tree, labeling vertices with consecutive numbers in depth first order
+-- relabel tree, labeling vertices with consecutive numbers in a post order traversal
 numberTree :: Node' -> Tree a -> (Node', Tree Node')
-numberTree n (Node _ ts) = let (n', ts') = numberForest (n+1) ts
-                           in  (n', Node n ts')
+numberTree n (Node _ ts) = let (n', ts') = numberForest n ts
+                           in  (n'+1, Node n' ts')
 
 -- same as numberTree, for forests.
 numberForest :: Node' -> [Tree a] -> (Node', [Tree Node'])
@@ -137,9 +138,11 @@ numberForest n (t:ts) = let (n', t')   = numberTree n t
                             (n'', ts') = numberForest n' ts
                         in  (n'', t':ts')
 
--- return the edges of the tree, with an added dummy root node.
-treeEdges :: a -> Tree a -> [(a,a)]
-treeEdges a (Node b ts) = (b,a) : concatMap (treeEdges b) ts
+treeEdges :: Tree a -> [(a,a)]
+treeEdges (Node a ts) = [(a, b) | b <- fmap rootLabel ts] ++ forestEdges ts
+
+forestEdges [] = []
+forestEdges (t:ts) = treeEdges t ++ forestEdges ts
 
 -- find a fixed point of f, iteratively
 fixEq :: (Eq a) => (a -> a) -> a -> a

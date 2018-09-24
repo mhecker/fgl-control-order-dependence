@@ -49,13 +49,17 @@ import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List as List
+import qualified Data.Tree as Tree
+
+import Data.Ord (Down(..))
+import Data.List (sortOn)
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..))
 
 import Data.Graph.Inductive.Arbitrary.Reducible
-import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, reachable)
+import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
@@ -71,7 +75,7 @@ import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
-import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom)
+import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mdomsOf, sinkdomsOf,
     itimdomTwoFingercd, tscdOfLfp,
@@ -308,6 +312,29 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "dfs numbering properties"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        n = length $ nodes g
+                        sinks = controlSinks g
+                        
+                        forest = rdff [ s| (s:_) <- sinks] g
+                        tree = Tree.Node undefined forest
+                        
+                        (_, nforest) = NTICDNumbered.numberForest 1 forest
+                        ntree = Tree.Node undefined nforest
+                        fromNode = Map.fromList $ zip (tail $ Tree.flatten  tree) (tail $ Tree.flatten ntree)
+                        toNode   = Map.fromList $ zip (tail $ Tree.flatten ntree) (tail $ Tree.flatten  tree)
+                        sinkSuccs = [ (s1, s2) | sink@(_:_:_) <- sinks, let (s:sorted) = sortOn Down $ fmap (fromNode Map.!) sink, (s1,s2) <- zip (s:sorted) (sorted ++ [s]) ]
+                        sinkOf        = Map.fromList [ (s, s0)  | sink@(s0:_) <- sinks, s <- sink ]
+                        sinkNodes = Set.fromList [ s | sink <- sinks, s <- sink]
+
+                        sinkdom = NTICD.sinkdomOfGfp g
+                    in (∀) (Map.assocs sinkdom) (\(n, ms) -> (∀) ms (\m ->
+                           (       n ∈ sinkNodes   ∧  m ∈ sinkNodes  ∧  sinkOf ! n == sinkOf ! m) 
+                         ∨ ((not $ n ∈ sinkNodes)  ∧  m ∈ sinkNodes  ∧  (fromNode ! (sinkOf ! m) >= fromNode ! m))
+                         ∨ (fromNode ! m >= fromNode ! n)
+                       )),
     testProperty   "nticdSliceNumbered  == nticdSliceNumberedViaCEdgesFast for ladder-graphs and randomly selected nodes"
     $ \(size :: Int) seed1 seed2 seed3 ->
                 let n0 = (abs size) `div` 2

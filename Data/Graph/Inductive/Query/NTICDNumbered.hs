@@ -22,6 +22,7 @@ import Data.Graph.Inductive.Util (controlSinks)
 import Data.Ord (Down(..))
 import Data.List (sortOn)
 
+import Control.Exception.Base (assert)
 
 {-# ANN iPDom "HLint: ignore Use ***" #-}
 -- | return immediate post-dominators for each node of a graph
@@ -108,16 +109,10 @@ intersect ::  ToCanonical -> IPDom -> Node' -> Node' -> Node'
 intersect toCanonical iD a b
   | a == nothing  || b == nothing = nothing
   | otherwise = case a `compare` b of
-    LT -> let b' = (iD ! b) in if (b' >= b) then lin toCanonical iD b a else intersect toCanonical iD  a  b'
+    LT -> let b' = (iD ! b) in if (b' >= b) then nothing else intersect toCanonical iD  a  b'
     EQ -> toCanonical ! a
-    GT -> let a' = (iD ! a) in if (a' >= a) then lin toCanonical iD a b else intersect toCanonical iD  a' b
+    GT -> let a' = (iD ! a) in if (a' >= a) then nothing else intersect toCanonical iD  a' b
 
-lin toCanonical iD min x
- | x == nothing = nothing
- | otherwise = case min `compare` x of
-     LT -> let x' = (iD ! x) in if (x' >= x) then nothing else lin toCanonical iD min x'
-     EQ -> toCanonical ! x
-     GT -> nothing
 
 -- convert an IDom to dominance sets. we translate to graph nodes here
 -- because mapping later would be more expensive and lose sharing.

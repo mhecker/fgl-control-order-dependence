@@ -2945,16 +2945,11 @@ wodTEIL graph = xodTEIL smmnMustBefore smmnMay graph
 
 wodTEIL'PDom :: (DynGraph gr) => gr a b -> Map (Node, Node) (Set Node)
 wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
-  where left  = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- condNodes, n /= m2, n /= m1, n `elem` (nodes gToM2),
-                                                let (y, relevant) = lcaRKnownM (fmap fromSet isinkdom) n (suc gToM2 n),
-                                                m1 /= y,
-                                                m1 `elem` relevant
-                                            ]) | m2 <- nodes graph,
-                                                 let gM2   = delSuccessorEdges graph m2,
-                                                 let gToM2 = subgraph (reachable m2 (grev gM2)) gM2,
-                                                 let isinkdom = isinkdomOfTwoFinger8 gToM2,
-                                                 m1 <- nodes graph,
-                                                 m2 /= m1
+  where left  = (∐) [ Map.fromList [ ((m1, m2), Set.fromList [ n ]) ] | m2 <- nodes graph,
+                                                                         let gM2   = delSuccessorEdges graph m2,
+                                                                         let gToM2 = subgraph (reachable m2 (grev gM2)) gM2,
+                                                                         let nticd = nticdF3 gToM2,
+                                                                         (n, ms) <- Map.assocs nticd, m1 <- Set.toList ms
                 ]
         right = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs left]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]

@@ -54,7 +54,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
 import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Graph.Inductive.Query.DFS (dfs, rdfs)
+import Data.Graph.Inductive.Query.DFS (dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 
 import Program (Program, tcfg)
@@ -76,6 +76,7 @@ import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    noJoins, mmayOf,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence,
     smmnFMustDod,
@@ -452,6 +453,12 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testPropertySized 40 "noJoins mmay"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in (∀) (nodes g) (\m ->
+                         NTICD.noJoins g $ NTICD.mmayOf g m
+                       ),
     testProperty "myWodSlice g' == wodTEILSlice g for CFG-shaped graphs g (with exit->entry edge: g')"
     $ \(SIMPLECFG(g)) ->
                 let [entry] = [ n | n <- nodes g, pre g n == [] ]

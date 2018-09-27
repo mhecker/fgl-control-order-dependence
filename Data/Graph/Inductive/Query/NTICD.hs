@@ -2757,7 +2757,7 @@ nticdSlice graph =  combinedBackwardSlice graph nticd w
         w     = Map.empty
 
 nticdSliceFor :: DynGraph gr => [[Node]] -> gr a b -> Map Node (Maybe Node) ->  Set Node -> Set Node
-nticdSliceFor roots graph idom = traceShow (Map.fold (\ns sum -> sum + Set.size ns) 0 nticd') $ combinedBackwardSlice graph nticd' w
+nticdSliceFor roots graph idom = {- traceShow (Map.fold (\ns sum -> sum + Set.size ns) 0 nticd') $ -} combinedBackwardSlice graph nticd' w
   where nticd' = idomToDFFastForRoots roots graph idom
         w      = Map.empty
 
@@ -2944,6 +2944,20 @@ wodTEIL graph = xodTEIL smmnMustBefore smmnMay graph
         smmnMay  = smmnFMayWod graph
 
 
+mmay :: (Graph gr) => gr a b -> Node -> Node -> Node -> Bool
+mmay graph m2 m1 x =   (not $ m2 `elem` reachable x graph)
+                     ∧ (      m1 `elem` reachable x graph)
+
+mmayOf :: (DynGraph gr) => gr a b -> Node -> Map Node (Set Node)
+mmayOf graph m2 = Map.fromList [ (x, Set.fromList [ m1 | m1 <- reachable x graph]) | x <- Set.toList $ (Set.fromList $ nodes graph) ∖ (Set.fromList $ reachable m2 (grev graph)) ]
+                ⊔ Map.fromList [ (x, Set.empty) | x <- nodes graph]
+
+noJoins :: Graph gr => gr a b -> Map Node (Set Node) -> Bool
+noJoins g m = (∀) (nodes g) (\x -> (∀) (nodes g) (\z -> (∀) (nodes g) (\v -> (∀) (nodes g) (\s ->
+                if (z /= v) ∧ (x ∈ doms ! v) ∧ (x ∈ doms ! z) ∧ (v ∈ m ! s) ∧ (z ∈ m ! s) then (v ∈ doms ! z) ∨ (z ∈ doms ! v) else True
+              ))))
+  where doms = domsOf g m
+
 wodTEIL'PDom :: (DynGraph gr) => gr a b -> Map (Node, Node) (Set Node)
 wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
   where left  = (∐) [ Map.fromList [ ((m1, m2), Set.fromList [ n ]) ] | m2 <- nodes graph,
@@ -2956,16 +2970,15 @@ wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
         unreachableLeft = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph, n /= m1, n /= m2,
-                                                                   m1 `elem` reachable n graph,
-                                                                {- m2 `elem` reachable n graph, -}
-                                                                   (∃) (suc graph n) (\x -> (not $ m1 `elem` reachable x graph)  ∧  ( m2 `elem` reachable x graph))
+                                                                       not $ m1 ∈ m2onedom n,
+                                                                       (∃) (suc graph n) (\x ->       m1 ∈ m2may ! x)
                                                 ]
-                                     ) | m1 <- nodes graph, m2 <- nodes graph, m2 /= m1,
-                                         not $ m1 `elem` reachable m2 graph
+                                     ) | m2 <- nodes graph,
+                                         let m2may = mmayOf graph m2,
+                                         let m2onedom = onedomOf m2may,
+                                         m1 <- nodes graph, m1 /= m2
                     ]
         unreachableRight = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs unreachableLeft]
-
-
 
 
 wodTEIL' :: (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)

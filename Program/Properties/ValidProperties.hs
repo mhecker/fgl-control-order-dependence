@@ -77,6 +77,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    mmayOf, noJoins,
     mdomsOf, sinkdomsOf,
     itimdomTwoFingercd, tscdOfLfp,
     rotatePDomAround,
@@ -312,6 +313,11 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testPropertySized 40 "noJoins sinkdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                    in NTICD.noJoins g sinkdom,
     testProperty   "dfs numbering properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -354,7 +360,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                           ]
                     nticdslicer        = NTICD.nticdSliceFor              roots g idom
                     nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFastFor roots g idom
-                in traceShow n $ (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
+                in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
     testProperty   "nticdSlice  == nticdSliceViaCEdgesFast for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
   --               let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
@@ -669,6 +675,11 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
+    testPropertySized 40 "noJoins sinkdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        mdom = NTICD.mdomOfLfp g
+                    in NTICD.noJoins g mdom,
     testProperty   "idomToDFFast _ imdom6  == idomToDFFast _ imdom7"
                 $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]

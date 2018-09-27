@@ -1811,7 +1811,7 @@ imdomOfTwoFinger6 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                           fmap toSet $ 
                           twoFinger 0 worklist0 imdom0 imdom0Rev
-  where imdom0   =             Map.fromList [ (x, Just x')       | x <- nodes graph, [x'] <- [suc graph x]]
+  where imdom0   =             Map.fromList [ (x, Just z )       | x <- nodes graph, [z] <- [suc graph x], z /= x]
                    `Map.union` Map.fromList [ (x, Nothing)       | x <- nodes graph]
         imdom0Rev = invert''' imdom0
         worklist0   = condNodes
@@ -1868,7 +1868,8 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
             | otherwise         = -- traceShow (x, mz, zs, influenced, influencedSlow, worklist, imdom) $
                                   assert (influenced == influencedSlow) $ 
                                   assert (invariant worklist imdom) $
-                                  assert (changed → (imdom ! x == Nothing)) $
+                                  assert (changed → ( case imdom ! x of { Nothing -> True ; Just z0 -> (z0 ∈ reachableFromM imdom (Set.fromList [z ]) Set.empty)
+                                                                                                      ∧ ( z ∈ reachableFromM imdom (Set.fromList [z0]) Set.empty) } )) $
                                   if (not $ changed) then twoFinger (i+1)               worklist'                                   imdom                                          imdomRev
                                                      else twoFinger (i+1) (influenced ⊔ worklist')  (Map.insert x zs                imdom) (Map.insertWith (∪) z (Set.singleton x) imdomRev)
           where (x, worklist')  = Set.deleteFindMin worklist

@@ -2949,8 +2949,11 @@ mmay graph m2 m1 x =   (not $ m2 `elem` reachable x graph)
                      ∧ (      m1 `elem` reachable x graph)
 
 mmayOf :: (DynGraph gr) => gr a b -> Node -> Map Node (Set Node)
-mmayOf graph m2 = Map.fromList [ (x, Set.fromList [ m1 | m1 <- reachable x graph]) | x <- Set.toList $ (Set.fromList $ nodes graph) ∖ (Set.fromList $ reachable m2 (grev graph)) ]
-                ⊔ Map.fromList [ (x, Set.empty) | x <- nodes graph]
+mmayOf graph = \m2 ->
+           let reachM2 = Set.fromList $ reachable m2 g' 
+           in Map.fromSet (\x -> Set.empty) reachM2  `Map.union` reach
+  where g' = grev graph
+        reach = Map.fromList [(x, Set.fromList $ reachable x graph) | x <- nodes graph ]
 
 noJoins :: Graph gr => gr a b -> Map Node (Set Node) -> Bool
 noJoins g m = (∀) (nodes g) (\x -> (∀) (nodes g) (\z -> (∀) (nodes g) (\v -> (∀) (nodes g) (\s ->
@@ -2959,26 +2962,59 @@ noJoins g m = (∀) (nodes g) (\x -> (∀) (nodes g) (\z -> (∀) (nodes g) (\v 
   where doms = domsOf g m
 
 wodTEIL'PDom :: (DynGraph gr) => gr a b -> Map (Node, Node) (Set Node)
-wodTEIL'PDom graph  = unreachableLeft ⊔  unreachableRight ⊔  left ⊔ right
-  where left  = (∐) [ Map.fromList [ ((m1, m2), Set.fromList [ n ]) ] | m2 <- nodes graph,
-                                                                         let gM2   = delSuccessorEdges graph m2,
-                                                                         let gToM2 = subgraph (reachable m2 (grev gM2)) gM2,
-                                                                         let nticd = nticdF3 gToM2,
-                                                                         (n, ms) <- Map.assocs nticd, m1 <- Set.toList ms
-                ]
-        right = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs left]
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+wodTEIL'PDom graph  =
+     assert (unreachable == unreachableLeftDef ⊔ unreachableRightDef) $
+     unreachable ⊔ nticd
+  where nticd       = convert [ (n, m1, m2)  | m2 <- nodes graph,
+                                               let gM2    = delSuccessorEdges graph m2,
+                                               let gToM2  = subgraph (reachable m2 (grev gM2)) gM2,
+                                               let nticd' = isinkDFNumberedForSinks [[m2]] gToM2,
+                                               (m1, ns) <- Map.assocs nticd', n <- Set.toList ns, n /= m1
+                      ]
 
-        unreachableLeft = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph, n /= m1, n /= m2,
-                                                                       not $ m1 ∈ m2onedom n,
+        unreachable = convert [ (n, m1, m2) | m2 <- nodes graph,
+                                              let m2may = mmay m2,
+                                              n <- condNodes, n /= m2,
+                                              m1 <- Set.toList $ (Set.unions [ m2may ! x | x <- suc graph n ]) ∖ (m2may ! n), m1 /= n, m1 /= m2
+                      ]
+
+        unreachableLeftDef = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph,  n /= m1, n /= m2,
+                                                              assert ( (not $ m1 ∈ m2may ! n) ↔ (not $ m1 ∈ m2onedom n)) True,
+                                                                       (not $ m1 ∈ m2may ! n),
                                                                        (∃) (suc graph n) (\x ->       m1 ∈ m2may ! x)
                                                 ]
                                      ) | m2 <- nodes graph,
-                                         let m2may = mmayOf graph m2,
+                                         let m2may = mmay m2,
                                          let m2onedom = onedomOf m2may,
                                          m1 <- nodes graph, m1 /= m2
                     ]
-        unreachableRight = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs unreachableLeft]
+        unreachableRightDef = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs unreachableLeftDef]
+
+        mmay = mmayOf graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
+        convert :: [(Node, Node, Node)] ->  Map (Node,Node) (Set Node)
+        convert triples = runST $ do
+            let keys = [ (m1,m2) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2]
+
+            assocs <- forM keys (\(m1,m2) -> do
+              ns <- newSTRef Set.empty
+              return ((m1,m2),ns)
+             )
+
+            let m = assert (List.sort keys == keys)
+                  $ Map.fromDistinctAscList assocs
+
+            forM_ triples (\(n,m1,m2) -> do
+               let nsRef  = m ! (m1,m2)
+               let nsRef' = m ! (m2,m1)
+               modifySTRef nsRef  (Set.insert n)
+               modifySTRef nsRef' (Set.insert n)
+             )
+
+            m' <- forM m readSTRef
+
+            return m'
 
 
 wodTEIL' :: (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)

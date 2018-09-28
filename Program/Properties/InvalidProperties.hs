@@ -76,7 +76,7 @@ import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    noJoins, mmayOf,
+    noJoins, mmayOf, mmayOf', stepsCL,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence,
     smmnFMustDod,
@@ -453,6 +453,18 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testPropertySized 40 "stepsCL mmay'"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in (∀) (nodes g) (\m ->
+                         NTICD.stepsCL g $ NTICD.mmayOf' g m
+                       ),
+    testPropertySized 40 "stepsCL mmay"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in (∀) (nodes g) (\m ->
+                         NTICD.stepsCL g $ NTICD.mmayOf g m
+                       ),
     testPropertySized 40 "noJoins mmay"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

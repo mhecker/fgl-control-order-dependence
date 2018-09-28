@@ -1403,6 +1403,14 @@ sinkDF graph =
   where sinkdom = sinkdomOf graph
         onedom = onedomOf sinkdom
 
+dfFor graph dom =
+      Map.fromList [ (x, Set.fromList [ y | y <- nodes graph,
+                                            p <- suc graph y,
+                                                   x ∈ dom ! p,
+                                            not $  x ∈ onedom    y ])
+                   | x <- nodes graph ]
+  where onedom = onedomOf dom
+
 
 sinkDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
 sinkDFGraphP = cdepGraphP sinkDFGraph
@@ -2955,11 +2963,22 @@ mmayOf graph = \m2 ->
   where g' = grev graph
         reach = Map.fromList [(x, Set.fromList $ reachable x graph) | x <- nodes graph ]
 
+
+mmayOf' :: (DynGraph gr) => gr a b -> Node -> Map Node (Set Node)
+mmayOf' graph = \m1 ->   Map.fromList [ (x, Set.fromList [ m2 | m2 <- nodes graph, not $ m2 ∈ reach ! x ]) | x <- reachable m1 g' ]
+                       ⊔ Map.fromList [ (x, Set.empty) | x <- nodes graph ]
+  where g' = grev graph
+        reach = Map.fromList [(x, Set.fromList $ reachable x graph) | x <- nodes graph ]
+
 noJoins :: Graph gr => gr a b -> Map Node (Set Node) -> Bool
 noJoins g m = (∀) (nodes g) (\x -> (∀) (nodes g) (\z -> (∀) (nodes g) (\v -> (∀) (nodes g) (\s ->
                 if (z /= v) ∧ (x ∈ doms ! v) ∧ (x ∈ doms ! z) ∧ (v ∈ m ! s) ∧ (z ∈ m ! s) then (v ∈ doms ! z) ∨ (z ∈ doms ! v) else True
               ))))
   where doms = domsOf g m
+
+stepsCL g dom = (∀) (nodes g) (\x -> (∀) (nodes g) (\y -> (∀) (nodes g) (\x' ->
+             if (x' /= y) ∧ (y `elem` pre g x) ∧ (x' ∈ dom ! y) then (x'  ∈ dom ! x) else True
+           )))
 
 wodTEIL'PDom :: (DynGraph gr) => gr a b -> Map (Node, Node) (Set Node)
 wodTEIL'PDom graph  =

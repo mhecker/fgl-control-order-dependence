@@ -2972,10 +2972,9 @@ wodTEIL'PDom graph  =
                                                (m1, ns) <- Map.assocs nticd', n <- Set.toList ns, n /= m1
                       ]
 
-        unreachable = convert [ (n, m1, m2) | m2 <- nodes graph,
-                                              let toM2 = Set.fromList $ reachable m2 graph',
-                                              n <- Set.toList $ condNodes ∩ toM2, n /= m2,
-                                              m1 <- Set.toList $ (Set.unions [ reach ! x | x <- suc graph n, not $ x ∈ toM2 ]) , m1 /= n, m1 /= m2
+        unreachable = convert [ (n, m1, m2) | n <- Set.toList condNodes,
+                                              m2 <- Set.toList $ reach ! n, m2 /= n,
+                                              m1 <- Set.toList $ (Set.unions [ reach ! x | x <- suc graph n, not $ m2 ∈ reach ! x ]) , m1 /= n, m1 /= m2
                       ]
           where reach = Map.fromList [(x, Set.fromList $ reachable x graph) | x <- nodes graph ]
                 graph' = grev graph

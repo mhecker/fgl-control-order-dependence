@@ -2973,10 +2973,14 @@ wodTEIL'PDom graph  =
                       ]
 
         unreachable = convert [ (n, m1, m2) | m2 <- nodes graph,
-                                              let m2may = mmay m2,
-                                              n <- condNodes, n /= m2,
-                                              m1 <- Set.toList $ (Set.unions [ m2may ! x | x <- suc graph n ]) ∖ (m2may ! n), m1 /= n, m1 /= m2
+                                              let toM2 = Set.fromList $ reachable m2 graph',
+                                              n <- Set.toList $ condNodes ∩ toM2, n /= m2,
+                                              m1 <- Set.toList $ (Set.unions [ reach ! x | x <- suc graph n, not $ x ∈ toM2 ]) , m1 /= n, m1 /= m2
                       ]
+          where reach = Map.fromList [(x, Set.fromList $ reachable x graph) | x <- nodes graph ]
+                graph' = grev graph
+                condNodes = Set.fromList [ n | n <- nodes graph, length (suc graph n) > 1 ]
+
 
         unreachableLeftDef = Map.fromList [ ((m1, m2), Set.fromList [ n | n <- nodes graph,  n /= m1, n /= m2,
                                                               assert ( (not $ m1 ∈ m2may ! n) ↔ (not $ m1 ∈ m2onedom n)) True,
@@ -2988,10 +2992,10 @@ wodTEIL'PDom graph  =
                                          let m2onedom = onedomOf m2may,
                                          m1 <- nodes graph, m1 /= m2
                     ]
+          where mmay = mmayOf graph
+
         unreachableRightDef = Map.fromList [ ((m2, m1), ns) | ((m1,m2),ns) <- Map.assocs unreachableLeftDef]
 
-        mmay = mmayOf graph
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
 
         convert :: [(Node, Node, Node)] ->  Map (Node,Node) (Set Node)
         convert triples = runST $ do

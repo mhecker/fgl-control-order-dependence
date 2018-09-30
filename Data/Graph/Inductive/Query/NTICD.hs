@@ -2032,17 +2032,20 @@ isinkdomOfTwoFinger8DownFixedTraversalForOrder order graph sinkNodes sinks toCon
         twoFingerDown []                       _         imdom False   = imdom
         twoFingerDown []                       workRight imdom True    = twoFingerDown workLeft'  []                          imdom    False
           where workLeft'  = reverse workRight
-        twoFingerDown (w@(x, succs):workLeft') workRight imdom changed = twoFingerDown workLeft'  workRight' (Map.insert x zs imdom)  (changed ∨ changed')
+        twoFingerDown (w@(x, succs):workLeft') workRight imdom changed = traceShow (x, imdom, imdom ! x, zs) $ twoFingerDown workLeft'  workRight' (Map.insert x zs imdom)  (changed ∨ changed')
           where workRight' = if done then workRight else w:workRight
                 mz = require (succs == suc graph x) $
                      foldM1 (lca imdom) succs
                 changed' = imdom ! x /= zs
                 (zs, done) = case mz of
                        Nothing -> (Nothing, True)
-                       Just z  -> assert (z /= x) $
-                                  case Map.lookup z sinkNodesToCanonical of
-                                    Just s1 -> (Just s1, False)
-                                    Nothing -> (Just z, False)
+                       Just z  -> assert (z /= x) $ (Just z, False)
+                                  -- case Map.lookup z sinkNodesToCanonical of
+                                  --   Just s1 -> (Just s1, False)
+                                  --   Nothing -> (Just z, False)
+                                  -- case Map.lookup z sinkNodesToCanonical of
+                                  --   Just s1 -> (Just s1, False)
+                                  --   Nothing -> (Just z, False)
 
 
 isinkdomOfTwoFinger8DownSingleNodeSinks :: forall gr a b. (DynGraph gr) =>

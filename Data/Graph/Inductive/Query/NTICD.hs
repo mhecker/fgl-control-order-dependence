@@ -46,7 +46,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM)
 import Unicode
 
 
@@ -1061,8 +1061,8 @@ roflDomDef graph = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
                                                         --                           ∨ m ∈ (reachableFrom (                      doms ! n) (Set.fromList [y]) Set.empty)
                                                         -- )
                                                         (∀) (nodes graph) (\n ->
-                                                                                    y ∈ (reachableFrom (                      doms ! n) (Set.fromList [m]) Set.empty)
-                                                                                  ∨ m ∈ (reachableFrom (                      doms ! n) (Set.fromList [y]) Set.empty)
+                                                                                    y ∈ (reachableFrom (                      doms ! n) (Set.fromList [m]))
+                                                                                  ∨ m ∈ (reachableFrom (                      doms ! n) (Set.fromList [y]))
                                                         )
                                                         -- (∃) (nodes graph) (\n -> (n /= m   ∧   m ∈ doms ! n ! y)),
                                                         -- (∀) (nodes graph) (\n -> (n /= m   ∧   m ∈ doms ! n ! y)   ∨  (n == m)   ∨   y ∈ (reachableFrom (doms ! n) (Set.fromList [m]) Set.empty))
@@ -1090,8 +1090,8 @@ lolDomDef graph0 = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
                                                         --                           ∨ m ∈                                       doms ! y               ! n
                                                         -- )
                                                         (∀) (nodes graph) (\n ->
-                                                                                    n ∈ (reachableFrom (                      doms ! y) (Set.fromList [m]) Set.empty)
-                                                                                  ∨ m ∈ (reachableFrom (                      doms ! y) (Set.fromList [n]) Set.empty)
+                                                                                    n ∈ (reachableFrom (                      doms ! y) (Set.fromList [m]))
+                                                                                  ∨ m ∈ (reachableFrom (                      doms ! y) (Set.fromList [n]))
                                                         )
                                                      -- (∀) (nodes graph) (\n ->
                                                      --                                (                                m ∈ (reachableFrom (                      pdoms ! n) (Set.fromList [y]) Set.empty))
@@ -1129,7 +1129,7 @@ lolDomDef graph0 = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
 omegaLulDomDef graph = Map.fromList [ (y, Set.fromList [ m | m <- nodes graph,
                                                              -- (∃) (nodes graph) (\m' -> m ∈ doms ! y ! m')
                                                               (∀) (suc graph y) (\x -> 
-                                                                                    m ∈ (reachableFrom (                      pdoms ! y) (Set.fromList [x]) Set.empty)
+                                                                                    m ∈ (reachableFrom (                      pdoms ! y) (Set.fromList [x]))
                                                               )
                                       ]
                                   ) | y <- nodes graph ]
@@ -1890,7 +1890,7 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                                    Nothing
                       Nothing -> Nothing
                 changed = zs /= (imdom ! x)
-                influenced = let preds = reachableFrom imdomRev (Set.fromList [x]) Set.empty
+                influenced = let preds = reachableFrom imdomRev (Set.fromList [x])
                              in Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds,  n /= x]
                 influencedSlow = Set.fromList [ n | n <- Set.toList condNodes, n /= x, (∃) (suc graph n) (\y -> reachableFromSeen imdom y x Set.empty) ]
 
@@ -2006,7 +2006,7 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks nonSinkCondNodes = twoFingerDown
                                     Nothing -> Just z
                 changed = imdom ! x /= zs
                 influenced = let imdomRev = invert''' $ imdom
-                                 preds = reachableFrom imdomRev (Set.fromList [x]) Set.empty 
+                                 preds = reachableFrom imdomRev (Set.fromList [x])
                              in Map.fromList $ [ (n, succ) | n <- foldMap prevCondsImmediate preds, Just succ <- [Map.lookup n nonSinkCondNodes]]
                 influencedSlow = Map.fromList [ (n, succ) | (n, succ) <- Map.assocs nonSinkCondNodes, (∃) succ (\y -> reachableFromSeen imdom y x Set.empty) ]
 
@@ -2154,7 +2154,7 @@ isinkdomOftwoFinger8Up graph nonSinkCondNodes  worklist processed imdomRev imdom
                                     if   (not $ new) then twoFinger (pushBack worklist' w)   processed                      imdom                                           imdomRev
                                     else                  twoFinger (         worklist'  )   processed' (Map.insert x mz    imdom) (Map.insertWith (∪) z (Set.fromList [x]) imdomRev)
           where Just (w@(x, succs0), worklist')  = popFront worklist
-                processed' = processed ∪ (reachableFrom imdomRev (Set.fromList [x]) Set.empty)
+                processed' = processed ∪ (reachableFrom imdomRev (Set.fromList [x]))
                 z = case mz of
                   Nothing -> undefined
                   Just z  -> z
@@ -2375,7 +2375,7 @@ idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
 idomToDFFast graph idom = idomToDFFastForRoots (roots idom) graph (fmap fromSet idom)
 
 dfViaCEdges :: Graph gr => gr a b -> Map Node (Maybe Node) -> Node -> Set Node
-dfViaCEdges graph idom = \x -> Set.fromList [ y | z <- Set.toList $ reachableFrom idom' (Set.fromList [x]) Set.empty,
+dfViaCEdges graph idom = \x -> Set.fromList [ y | z <- Set.toList $ reachableFrom idom' (Set.fromList [x]),
                                                   y <- cEdges ! z, {- y <- pre graph z, not $ z ∈ idomsOf y -}
                                                   (not $ x ∈ reachableFromM idom (idomsOf y) Set.empty)
                          ]
@@ -2871,7 +2871,7 @@ wodTEILSliceViaNticd g =  \ms ->
                   | x ∈ toMsS = n
                   | otherwise = Nothing
         idom'0Rev   = invert''' idom'0
-        processed'0 = reachableFrom idom'0Rev ms Set.empty
+        processed'0 = reachableFrom idom'0Rev ms
         todo'0      = without nonSinkCondNodes' processed'0
         worklist'0  = Dequeue.fromList $ Map.assocs todo'0
         idom'1 = Map.union (fmap (\x -> Nothing) todo'0)
@@ -3483,8 +3483,8 @@ myCDForNode graph n = Set.fromList [ m |       -- m <- Set.toList $ reachableFro
                                                   -- let (z,relevant) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n],
                                                   -- m <- Set.toList relevant, m /= z
                                                   m <- nodes graph,
-                                                  (∃) (suc graph n) (\x ->       m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty),
-                                                  (∃) (suc graph n) (\x -> not $ m ∈ reachableFrom isinkdomN (Set.fromList [x]) Set.empty)
+                                                  (∃) (suc graph n) (\x ->       m ∈ reachableFrom isinkdomN (Set.fromList [x])),
+                                                  (∃) (suc graph n) (\x -> not $ m ∈ reachableFrom isinkdomN (Set.fromList [x]))
                                    ]
   where lcaR = lcaRMyCDForNode
 
@@ -3692,7 +3692,7 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               n /= m2,
                                                               let (z,relevant) = lcaRKnownM pdom n (suc graph n),
                                                        assert (Just z == foldM1 (lca pdom) (suc graph n)) True,
-                                                       assert (Set.fromList relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])  (Set.fromList [z])) ] ) True,
+                                                       assert (Set.fromList relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])), isReachableBeforeFromTreeM pdom m1 z x ] ) True,
                                                               m1 <- relevant, m1 /= z,
                                                               m1 /= n,
                                                               m1 ∈ cycleS,
@@ -4954,7 +4954,7 @@ timdomOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing zs)
                 influenced = assert (imdomRev  == (invert''' $ fmap (liftM fst) imdom)) $
-                             let preds = reachableFrom imdomRev (Set.fromList [x]) Set.empty
+                             let preds = reachableFrom imdomRev (Set.fromList [x])
                              in  restrict condNodes (Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x, isNothing $ imdom ! n])
                 lca = lcaTimdomOfTwoFinger imdom
 
@@ -4972,7 +4972,7 @@ timingDependenceViaTwoFinger g =
                                                                                             let toM  = reachable m gRev,
                                                                                             let toMS = Set.fromList toM,
                                                                                             let (condNodes', noLongerCondNodes) = Map.partition isCond $ fmap (List.filter (∈ toMS)) $ Map.delete m  $ restrict condNodes toMS,
-                                                                                            let usingMS = reachableFrom (fmap toSet itimdom) (Set.fromList [m]) Set.empty,
+                                                                                            let usingMS = reachableFrom (fmap toSet itimdom) (Set.fromList [m]),
                                                                                             let imdom0' = id
                                                                                                   $ Map.insert m Nothing
                                                                                                   $ Map.union (Map.mapWithKey (\x [z] ->  assert (z /= x) $ Just (z,1)) noLongerCondNodes)

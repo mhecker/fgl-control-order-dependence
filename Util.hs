@@ -120,13 +120,17 @@ updateAt n y (x:xs)
    | otherwise = x:(updateAt (n-1) y xs)
 
 
-reachableFrom :: Ord α => Map α (Set α) -> Set α -> Set α -> Set α
-reachableFrom m xs seen
+reachableFromSeen :: Ord α => Map α (Set α) -> Set α -> Set α -> Set α
+reachableFromSeen m xs seen
     | Set.null xs = seen
-    | otherwise   = reachableFrom m new (seen ∪ xs)
+    | otherwise   = reachableFromSeen m new (seen ∪ xs)
   where seen' = seen ∪ xs
         -- new   = Set.unions [ (Map.findWithDefault Set.empty x m) ∖ seen' | x <- Set.toList $ xs ]
         new   = Set.unions [ (Map.findWithDefault Set.empty x m) ∖ seen' | x <- Set.toList $ xs ]
+
+
+reachableFrom :: Ord α => Map α (Set α) -> Set α -> Set α
+reachableFrom m xs = reachableFromSeen m xs Set.empty
 
 
 reachableFromM :: Ord α => Map α (Maybe α) -> Set α -> Set α -> Set α

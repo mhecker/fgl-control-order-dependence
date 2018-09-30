@@ -65,7 +65,7 @@ inSameBranch g = \start n m -> {-(m `elem` reachable n g) ∧ -} (n `elem` reach
         -- in pns == pms  ∧  (not $ Set.null pms) ∧  (∀) pms (\p ->  (∃) (suc g p) (\x -> n ∈ sinkdom ! x  ∧  m ∈ sinkdom ! x))
         (∃) (Map.assocs nticd) (\(p,ns) -> p `elem` reachable start g   ∧    m ∈ ns   ∧         n ∈ ns  ∧  (∃) (suc g p) (\x -> n ∈ sinkdom ! x  ∧  m ∈ sinkdom ! x))
       -- ∨ (∀) (Map.assocs nticd) (\(p,ns) -> (not $ m ∈ ns)  ∧  (not $ n ∈ ns))
-      ∨ (Set.fromList [n,m] ⊆ reachableFrom sinkdom (Set.fromList [start]) (Set.empty))
+      ∨ (Set.fromList [n,m] ⊆ reachableFrom sinkdom (Set.fromList [start]))
     )
   where nticd = nticdF3 g
         sinkdom = sinkdomOfGfp g

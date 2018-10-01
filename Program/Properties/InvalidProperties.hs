@@ -85,6 +85,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay, myWodFastSlice,
     smmnLfp, smmnGfp, fMustBefore, fMust,
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
+    dodColoredDagFixed, dodColoredDag,
     wodTEIL', wodTEILSlice,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
@@ -380,6 +381,11 @@ miscProps = testGroup "(misc)" [
   ]
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "dodColoredDag     == dodColoredDagFixed"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.dodColoredDag       g ==
+                       NTICD.dodColoredDagFixed  g,
     testProperty  "lfp fMustBefore      == lfp fMust"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

@@ -2670,23 +2670,6 @@ mustOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond
         trncl = trc graph
 
 
-ffMust :: DynGraph gr => MustFunctionalGen gr a b
-ffMust graph condNodes reachable nextCond toNextCond dom =
-                  Map.fromList [ ((m1,m2), Set.fromList  [ n | n <- nodes graph,
-                                                                let toNxtCondX = toNextCond n,
-                                                                m1 ∊ toNxtCondX,
-                                                                not $ m2 ∊ (m1 : (takeWhile (/= m1) $ reverse toNxtCondX))
-                                                          ]
-                                  ) | m1 <- nodes graph, m2 <- nodes graph]
-                ⊔ Map.fromList [ ((m1,m2), Set.fromList  [ n | n <- nodes graph,
-                                                               Just p <- [nextCond n],
-                                                               (∀) (suc graph p) (\x -> x ∈ dom ! (m1,m2)),
-                                                               let toNxtCondX = toNextCond n,
-                                                               not $ m2 ∊ toNxtCondX,
-                                                               m1 ∊ (reachable n)
-                                               ]
-                                  ) | m1 <- nodes graph, m2 <- nodes graph]
-
 
 combinedBackwardSliceSlow :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
 combinedBackwardSliceSlow graph cd od = \ms -> (㎲⊒) ms f

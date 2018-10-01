@@ -83,6 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     isinkdomOfTwoFinger8,
     imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay, myWodFastSlice,
+    smmnLfp, smmnGfp, fMustBefore, fMust,
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
     wodTEIL', wodTEILSlice,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
@@ -379,6 +380,11 @@ miscProps = testGroup "(misc)" [
   ]
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "lfp fMustBefore      == lfp fMust"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.smmnLfp g NTICD.fMustBefore        ==
+                       NTICD.smmnLfp g NTICD.fMust,
     -- TODO: select a counter examples, since counter examples arent realiably found within 100 graphs
     -- testProperty  "some myDod-outside-of-imdom-sccs-property"
     -- $ \(ARBITRARY(generatedGraph)) ->
@@ -453,6 +459,11 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty  "gfp fMustBefore      == gfp fMust"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.smmnGfp g NTICD.fMustBefore        ==
+                       NTICD.smmnGfp g NTICD.fMust,
     testPropertySized 40 "stepsCL mmay'"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

@@ -93,7 +93,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast, nticdSlice,  nticdSliceNumberedViaCEdgesFast, ntscdSlice, nticdSliceFor, 
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
-    smmnGfp, smmnLfp, fMust, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
+    smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
@@ -1741,7 +1741,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     let g = generatedGraph
                     in NTICD.dodFast       g ==
                        NTICD.dodDef        g,
-    testProperty  "lfp fWOMustNoReachCheck      == lfp fWOMust"
+    testProperty  "lfp fMustNoReachCheck      == lfp fMust"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.smmnLfp g NTICD.fMustNoReachCheck        ==

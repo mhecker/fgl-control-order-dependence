@@ -1876,6 +1876,7 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
             | otherwise         = -- traceShow (x, mz, zs, influenced, influencedSlow, worklist, imdom) $
                                   assert (influenced == influencedSlow) $ 
                                   assert (invariant worklist imdom) $
+                                  assert (changed → (zs /= Nothing)) $
                                   assert (changed → ( case imdom ! x of { Nothing -> True ; Just _  -> not $ x ∈ reachableFromM imdom (Set.fromList [ z ]) Set.empty })) $
                                   assert (changed → ( case imdom ! x of { Nothing -> True ; Just z0 -> (z0 ∈ reachableFromM imdom (Set.fromList [z ]) Set.empty)
                                                                                                       ∧ ( z ∈ reachableFromM imdom (Set.fromList [z0]) Set.empty) } )) $

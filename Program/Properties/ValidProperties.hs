@@ -1721,6 +1721,11 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                                ↔ (m ∊ (suc imdomTrc n))
                          )
                        ),
+    testProperty  "dodColoredDagFixedFast     == dodFast"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.dodColoredDagFixedFast g ==
+                       NTICD.dodFast                 g,
     testProperty  "dodColoredDagFixedFast     == dodDef"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

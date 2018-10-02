@@ -1704,6 +1704,9 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
+                        ∧ (∀) ns (\n -> (∀) (imdom ! n) (\m ->
+                              (m == n) ∨ (m ∊ suc imdomTrc m1 ∧ m1 ∊ suc imdomTrc m   ∧   m ∊ suc imdomTrc m2 ∧ m2 ∊ suc imdomTrc m)
+                          ))
                         ∧ (∀) ns (\n ->
                               not $
                               (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
@@ -1765,6 +1768,9 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                           ((not $ Set.null ns) → (m1 ∊ suc imdomTrc m2 ∧ m1 ∊ suc imdomTrc m2))
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
+                          ))
+                        ∧ (∀) ns (\n -> (∀) (imdom ! n) (\m ->
+                              (m == n) ∨ (m ∊ suc imdomTrc m1 ∧ m1 ∊ suc imdomTrc m   ∧   m ∊ suc imdomTrc m2 ∧ m2 ∊ suc imdomTrc m)
                           ))
                         ∧ (∀) ns (\n ->
                               not $

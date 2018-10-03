@@ -1711,6 +1711,10 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                               not $
                               (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
                           )
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∊ reachable m1 g  ∨ n  ∊ reachable m2 g)
+                          )
                         ),
     testProperty  "snmF3Lfp reachable          == imdom reachable "
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -1828,9 +1832,16 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
+                        ∧ (∀) ns (\n -> (∀) (imdom ! n) (\m ->
+                              (m == n) ∨ (m ∊ suc imdomTrc m1 ∧ m1 ∊ suc imdomTrc m   ∧   m ∊ suc imdomTrc m2 ∧ m2 ∊ suc imdomTrc m)
+                          ))
                         ∧ (∀) ns (\n ->
                               not $
                               (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
+                          )
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∊ reachable m1 g  ∨ n  ∊ reachable m2 g)
                           )
                         ) @? ""
   | (exampleName, g) <- interestingDodWod

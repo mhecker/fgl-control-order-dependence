@@ -3781,6 +3781,61 @@ myDodFast graph =
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∊ cycle]
         myDependence = myDependenceFor graph
 
+myDodFastPDom :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
+myDodFastPDom graph =
+        convert $
+        [ (n,m1,m2)  |                                        cycle <- imdomCycles, length cycle > 1,
+                                                              let cycleS = Set.fromList cycle,
+                                                              let entries = entriesFor cycle,
+                                                              let nodesTowardsCycle = dfs (head cycle : entries) graph,
+                                                              let condsTowardCycle = condsIn nodesTowardsCycle,
+                                                              let condsInCycle = restrict condsTowardCycle cycleS,
+                                                              let cycleGraph = subgraph nodesTowardsCycle graph,
+                                                              m2 <- cycle,
+                                                              let pdom = fmap fromSet $ imdomOfTwoFinger7 $ delSuccessorEdges cycleGraph m2,
+                                                              n <- entries,
+                                                              n /= m2,
+                                                              let (z,relevant) = lcaRKnownM pdom n (suc graph n),
+                                                       assert (Just z == foldM1 (lca pdom) (suc graph n)) True,
+                                                       assert (Set.fromList relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])), isReachableBeforeFromTreeM pdom m1 z x ] ) True,
+                                                              m1 <- relevant, m1 /= z,
+                                                              m1 /= n,
+                                                              m1 ∈ cycleS,
+                                                       assert (m2 /= m1) True,
+                                                       assert (m1 ∊ (suc imdomTrc n)) True,
+                                                       assert (m2 ∊ (suc imdomTrc n)) True
+      ]
+  where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        convert :: [(Node, Node, Node)] ->  Map (Node,Node) (Set Node)
+        convert triples = runST $ do
+            let keys = [ (m1,m2) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2]
+
+            assocs <- forM keys (\(m1,m2) -> do
+              ns <- newSTRef Set.empty
+              return ((m1,m2),ns)
+             )
+
+            let m = assert (List.sort keys == keys)
+                  $ Map.fromDistinctAscList assocs
+
+            forM_ triples (\(n,m1,m2) -> do
+               let nsRef = m ! (m1,m2)
+               modifySTRef nsRef (Set.insert n)
+             )
+
+            m' <- forM m readSTRef
+
+            return m'
+
+        imdom = imdomOfTwoFinger7 graph
+        imdomG = fromSuccMap imdom :: gr () ()
+        imdomTrc = trc $ imdomG
+        imdomCycles = scc imdomG
+
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∊ cycle]
+        condsIn ns    = Map.fromList [ (n, succs) | n <- ns, let succs = suc graph n, length succs > 1]
+
+
 
 
 dodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)

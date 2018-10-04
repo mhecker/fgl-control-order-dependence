@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''')
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡))
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -93,7 +93,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast, nticdSlice,  nticdSliceNumberedViaCEdgesFast, ntscdSlice, nticdSliceFor, 
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
-    smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
+    smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
@@ -1618,6 +1618,22 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty  "|myDodFastPDom|             >= |dodColoredDagFixedFast|"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sum = Map.fold (\ns s -> Set.size ns + s) 0
+                    in (sum $ NTICD.myDodFastPDom          g) >=
+                       (sum $ NTICD.dodColoredDagFixedFast g),
+    testProperty  "myDodFastPDom               ≡ myDodFast"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.myDodFastPDom   g ≡
+                       NTICD.myDodFast       g,
+    testProperty  "myDodFastPDom               ≡ myDod"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.myDodFastPDom   g ≡
+                       NTICD.myDod           g,
     testProperty  "myDodFast                 == myDod"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -1634,9 +1650,16 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         ∧ (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc imdomTrc n2 ∨ n2 ∊ suc imdomTrc n1) → (n1 == n2)
                           ))
+                        ∧ (∀) ns (\n -> (∀) (imdom ! n) (\m ->
+                              (m == n) ∨ (m ∊ suc imdomTrc m1 ∧ m1 ∊ suc imdomTrc m   ∧   m ∊ suc imdomTrc m2 ∧ m2 ∊ suc imdomTrc m)
+                          ))
                         ∧ (∀) ns (\n ->
                               not $
                               (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
+                          )
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∊ reachable m1 g  ∨ n  ∊ reachable m2 g)
                           )
                         ),
     testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
@@ -1647,7 +1670,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
-                                        (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
+                                        (∃) (ns ∩ (myDod ! (m2, m1))) (\n' -> n' ∊ (suc ntscdTrc n))
                           )
                         ),
     testProperty  "ntscdDodSlice == ntscdMyDodSlice"
@@ -1760,6 +1783,14 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "myDodFastPDom             ≡ myDodFast for " ++ exampleName)
+            $ NTICD.myDodFastPDom      g      ≡ NTICD.myDodFast g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "myDodFastPDom             ≡ myDod for " ++ exampleName)
+            $ NTICD.myDodFastPDom      g      ≡ NTICD.myDod g @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "myDodFast                 == myDod for " ++ exampleName)
             $ NTICD.myDodFast          g      == NTICD.myDod g @? ""
   | (exampleName, g) <- interestingDodWod
@@ -1780,6 +1811,10 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                               not $
                               (n  ∊ suc imdomTrc m1 ∨ n  ∊ suc imdomTrc m2)
                           )
+                        ∧ (∀) ns (\n ->
+                              not $
+                              (n  ∊ reachable m1 g  ∨ n  ∊ reachable m2 g)
+                          )
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
@@ -1789,7 +1824,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
-                                        (∃) (ns) (\n' -> n' ∊ (suc ntscdTrc n))
+                                        (∃) (ns ∩ (myDod ! (m2, m1))) (\n' -> n' ∊ (suc ntscdTrc n))
                           )
                         ) @? ""
   | (exampleName, g) <- interestingDodWod

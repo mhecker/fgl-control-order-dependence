@@ -3787,10 +3787,8 @@ myDodFastPDom graph =
         convert $
         [ (n,m1,m2)  |                                        cycle <- imdomCycles, length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
-                                                              let entries = entriesFor cycle,
+                                                              let entries = entriesFor cycleS,
                                                               let nodesTowardsCycle = dfs (head cycle : entries) graph,
-                                                              let condsTowardCycle = condsIn nodesTowardsCycle,
-                                                              let condsInCycle = restrict condsTowardCycle cycleS,
                                                               let cycleGraph = subgraph nodesTowardsCycle graph,
                                                               m2 <- cycle,
                                                               let graph' = delSuccessorEdges cycleGraph m2,
@@ -3816,7 +3814,7 @@ myDodFastPDom graph =
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
         convert :: [(Node, Node, Node)] ->  Map (Node,Node) (Set Node)
         convert triples = runST $ do
-            let keys = [ (m1,m2) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2]
+            let keys = Set.toList $ Set.fromList [ (m1,m2) | (_,m1,m2) <- triples]
 
             assocs <- forM keys (\(m1,m2) -> do
               ns <- newSTRef Set.empty
@@ -3840,8 +3838,7 @@ myDodFastPDom graph =
         imdomTrc = trc $ imdomG
         imdomCycles = scc imdomG
 
-        entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∊ cycle]
-        condsIn ns    = Map.fromList [ (n, succs) | n <- ns, let succs = suc graph n, length succs > 1]
+        entriesFor cycle = [ n | n <- condNodes, not $ n ∈ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∈ cycle]
 
 
 

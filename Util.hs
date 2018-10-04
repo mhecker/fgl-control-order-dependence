@@ -326,4 +326,10 @@ findCyclesM idom
                                   where (y,_) = Map.findMin idomX
                                 cycleOf x' = Set.insert x' $ Set.fromList $ takeWhile (/= x') path
 
-  
+
+infix 4 ≡
+(≡) m1 m2 = (∀) (Map.elems $ Map.unionWith f m1 m2) Set.null
+  where f ns ns'
+         | ns == ns'    = Set.empty
+         | Set.null ns  = ns'
+         | otherwise    = ns

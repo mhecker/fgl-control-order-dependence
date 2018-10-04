@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 #define require assert
+#define PDOMUSESDF
 module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Ord (comparing)
@@ -3792,15 +3793,22 @@ myDodFastPDom graph =
                                                               let condsInCycle = restrict condsTowardCycle cycleS,
                                                               let cycleGraph = subgraph nodesTowardsCycle graph,
                                                               m2 <- cycle,
-                                                              let pdom = fmap fromSet $ imdomOfTwoFinger7 $ delSuccessorEdges cycleGraph m2,
+                                                              let graph' = delSuccessorEdges cycleGraph m2,
+                                                              let pdom = fmap fromSet $ imdomOfTwoFinger7 graph',
+#ifdef PDOMUSESDF
+                                                              (m1, ns) <- Map.assocs $ idomToDFFastForRoots [[m2]] graph' pdom,
+                                                              m1 ∈ cycleS,
+                                                              n <- Set.toList ns,
+#else
                                                               n <- entries,
-                                                              n /= m2,
                                                               let (z,relevant) = lcaRKnownM pdom n (suc graph n),
                                                        assert (Just z == foldM1 (lca pdom) (suc graph n)) True,
                                                        assert (Set.fromList relevant == Set.fromList [ m1 | x <- suc graph n, m1 <- Set.toList $ (reachableFrom (fmap toSet pdom)  (Set.fromList [x])), isReachableBeforeFromTreeM pdom m1 z x ] ) True,
                                                               m1 <- relevant, m1 /= z,
-                                                              m1 /= n,
                                                               m1 ∈ cycleS,
+#endif
+                                                       assert (m1 /= n) True,
+                                                       assert (m2 /= n) True,
                                                        assert (m2 /= m1) True,
                                                        assert (m1 ∊ (suc imdomTrc n)) True,
                                                        assert (m2 ∊ (suc imdomTrc n)) True

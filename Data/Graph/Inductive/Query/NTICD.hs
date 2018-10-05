@@ -2647,28 +2647,23 @@ fMay' graph condNodes reachable nextCond toNextCond s =
 
 
 
-type MustFunctional = Map (Node, Node) (Set Node) ->  Map (Node, Node) (Set Node)
-type MustFunctionalGen gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> MustFunctional
+type MustFunctional = Map Node (Set (Node, Node)) -> Map Node (Set (Node, Node))
+type MustFunctionalGen gr a b = gr a b -> MustFunctional
 
-mustOfLfp :: DynGraph gr => gr a b -> MustFunctionalGen gr a b -> Map (Node, Node) (Set Node)
-mustOfLfp graph f = (㎲⊒) init (f graph condNodes reachable nextCond toNextCond)
-  where init = Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph]
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        reachable x = suc trncl x
-        nextCond = nextCondNode graph
-        toNextCond = toNextCondNode graph
-        trncl = trc graph
+mustOfLfp :: DynGraph gr => gr a b -> Map Node (Set (Node, Node))
+mustOfLfp graph = (㎲⊒) init (fMustNaive graph)
+  where init = Map.fromList [ (n, Set.empty) | n <- nodes graph]
 
 
-mustOfGfp :: DynGraph gr => gr a b -> MustFunctionalGen gr a b -> Map (Node, Node) (Set Node)
-mustOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
-  where init = Map.fromList [ ((m1,m2), Set.empty)                              | m1 <- nodes graph, m2 <- nodes graph]
-             ⊔ Map.fromList [ ((m1,m2), Set.fromList [ n | n <- nodes graph ])  | m1 <- nodes graph, m2 <- nodes graph]
-        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        reachable x = suc trncl x
-        nextCond = nextCondNode graph
-        toNextCond = toNextCondNode graph
-        trncl = trc graph
+mustOfGfp :: DynGraph gr => gr a b -> Map Node (Set (Node, Node))
+mustOfGfp graph = (𝝂) init (fMustNaive graph)
+  where init = Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph, m2 <- nodes graph]) | n <- nodes graph ]
+
+
+fMustNaive :: DynGraph gr => MustFunctionalGen gr a b
+fMustNaive graph  must =
+                      Map.fromList [ (n, Set.fromList [(n,m2) | m2 <- nodes graph, m2 /= n ])                                             | n <- nodes graph]
+                    ⊔ Map.fromList [ (n, Set.fromList [(m1,m2) | (m1,m2) <- Set.toList $ (∏) [ must ! x | x <- suc graph n ], m2 /= n])   | n <- nodes graph, suc graph n /= []]
 
 
 
@@ -3787,8 +3782,8 @@ myDodFastPDom graph =
         convert $
         [ (n,m1,m2)  |                                        cycle <- imdomCycles, length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
-                                                              let entries = entriesFor cycleS,
-                                                              let nodesTowardsCycle = dfs (head cycle : entries) graph,
+                                                              let entries = entriesFor cycleS, not $ entries == [],
+                                                              let nodesTowardsCycle = dfs entries graph,
                                                               let cycleGraph = subgraph nodesTowardsCycle graph,
                                                               m2 <- cycle,
                                                               let graph' = delSuccessorEdges cycleGraph m2,

@@ -77,6 +77,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    mustOfLfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf,
     itimdomTwoFingercd, tscdOfLfp,
@@ -1618,6 +1619,30 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+      testProperty  "mdomOfLfp m2                 == mustOfLfp"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = NTICD.mustOfLfp g
+                    in  (∀) (nodes g) (\m2 ->
+                           let g2    = delSuccessorEdges g m2
+                               mdom2 = NTICD.mdomOfLfp g2
+                           in (∀) (nodes g) (\n -> (∀) (nodes g) (\m1 ->  if m1 == m2  then True else
+                                ((m1,m2) ∈ must ! n) ↔ (m1 ∈ mdom2 ! n)
+                           ))
+                       ),
+    testProperty  "|myDodFastPDom|             >= |dodColoredDagFixedFast|"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = NTICD.smmnFMustDod g
+                        condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
+                    in  (∀) (nodes g) (\m2 ->
+                           let g2    = delSuccessorEdges g m2
+                               mdom2 = NTICD.mdomOfLfp g2
+                           in (∀) condNodes (\n -> (∀) (nodes g) (\m1 -> if m1 == m2 ∨ m1 == n ∨ m2 == n then True else
+                                let s12n = must ! (m1,m2,n) in
+                                (Set.size s12n == (Set.size $ Set.fromList $ suc g n)) ↔ (m1 ∈ mdom2 ! n)
+                           ))
+                       ),
     testProperty  "|myDodFastPDom|             >= |dodColoredDagFixedFast|"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -1783,6 +1808,17 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        NTICD.smmnLfp g NTICD.fMust
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "mdomOfLfp m2              == mustOfLfp for " ++ exampleName)
+            $       let  must = NTICD.mustOfLfp g
+                    in  (∀) (nodes g) (\m2 ->
+                           let g2    = delSuccessorEdges g m2
+                               mdom2 = NTICD.mdomOfLfp g2
+                           in (∀) (nodes g) (\n -> (∀) (nodes g) (\m1 ->  if m1 == m2  then True else
+                                ((m1,m2) ∈ must ! n) ↔ (m1 ∈ mdom2 ! n)
+                           ))
+                       ) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   [  testCase    ( "myDodFastPDom             ≡ myDodFast for " ++ exampleName)
             $ NTICD.myDodFastPDom      g      ≡ NTICD.myDodFast g @? ""
   | (exampleName, g) <- interestingDodWod

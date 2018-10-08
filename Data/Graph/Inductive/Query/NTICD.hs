@@ -2733,6 +2733,12 @@ ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdF3 graph
         d     = myDod graph
 
+ntscdMyDodFastPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdMyDodFastPDomSlice graph =  combinedBackwardSlice graph ntscd d
+  where ntscd = invert'' $ ntscdF3 graph
+        d     = myDodFastPDom graph
+
+
 ntscdDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdF3 graph

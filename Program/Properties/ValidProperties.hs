@@ -3040,6 +3040,64 @@ delayProps = testGroup "(concerning inifinte delay)" [
                        ))
   ]
 delayTests = testGroup "(concerning  inifinite delay)" $
+  [  testCase    ( "ntscdMyDodFastPDomSlice  is minimal for " ++ exampleName) $
+               let n = toInteger $ length $ nodes g
+                   condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                   choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                   runInput   = InfiniteDelay.runInput         g
+               in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                    let s = NTICD.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
+                       (∀) s (\n -> n == m1  ∨  n == m2  ∨
+                         let s' = Set.delete n s
+                             observable       = InfiniteDelay.observable         s'
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode ->
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   obs   = observable trace
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        obs'   = observable trace'
+                                        different = not $ obs == obs'
+                                    in different
+                                  )
+                               ))
+                         in -- traceShow (length startNodes, length choices, length continuations, startNode) $
+                            -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
+                            (if differentobservation then id else traceShow (m1, m2, n, differentobservation)) $
+                            differentobservation
+                       )
+                  )) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
+  [  testCase    ( "ntscdMyDodFastPDomSlice  is sound for " ++ exampleName) $ 
+               let n = toInteger $ length $ nodes g
+                   condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                   choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                   runInput   = InfiniteDelay.runInput         g
+               in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                    let s = NTICD.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                        observable       = InfiniteDelay.observable         s
+                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   obs   = observable trace
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        obs'   = observable trace'
+                                        different = not $ obs == obs'
+                                     in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                       (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
+                       not differentobservation
+                  )) @? ""
+  | (exampleName, g) <- interestingDodWod
+  ] ++
   []
 
 

@@ -168,8 +168,16 @@ stripPostfix postfix list = case stripPrefix (reverse postfix) (reverse list) of
   Nothing -> list
   Just stripped -> reverse stripped
 
-isTracePrefixOf (Finished trace n) (Finished trace' n' ) = trace == trace'   ∧   n == n'
-isTracePrefixOf (Finished trace n)  _                    = False
+isTracePrefixOf (Finished trace n) (Finished trace' n' )   = trace == trace'   ∧   n == n'
+isTracePrefixOf (Finished trace (n,_)) (Finite trace')         =
+      require ((snd $ last trace) == n)
+    $ List.isPrefixOf trace trace'
+  where snd (_,m,_) = m
+isTracePrefixOf (Finished trace (n,_)) (Looping prefix' loop') = 
+      require ((snd $ last trace) == n)
+    $ require (noLoop prefix') 
+    $ List.isPrefixOf trace (prefix' ++ (cycle loop'))
+  where snd (_,m,_) = m
 isTracePrefixOf (Finite trace)   (Finite   trace')       = List.isPrefixOf trace trace'
 isTracePrefixOf (Finite trace)   (Finished trace' (n',_))=
       require (not $ elem n' $ map fst trace)

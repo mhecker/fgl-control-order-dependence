@@ -3096,7 +3096,7 @@ delayTests = testGroup "(concerning  inifinite delay)" $
                        (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
                        not differentobservation
                   )) @? ""
-  | (exampleName, g) <- interestingDodWod
+  | (exampleName, g) <- interestingDodWod, exampleName /= "wodDodInteresting4"
   ] ++
   []
 

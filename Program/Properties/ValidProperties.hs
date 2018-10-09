@@ -2325,7 +2325,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                      in different
                                   )
                                ))
-                         in (if differentobservation then id else traceShow (m1, m2, differentobservation)) $
+                         in (if differentobservation then id else traceShow (m1, m2, n, differentobservation)) $
                             differentobservation
                        ),
     testPropertySized 25 "tscdSlice  is sound wrt. timed traces and termination"
@@ -2350,31 +2350,6 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
                        (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
                        not differentobservation,
-    testPropertySized 25 "timingSolvedF3dependence  is minimal wrt. timed traces"
-                $ \(ARBITRARY(generatedGraph)) seed->
-                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
-                        n = toInteger $ length $ nodes g
-                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
-                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
-                        [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        ms = Set.fromList [m1,m2]
-                        s = ms ⊔ Set.fromList [n | (n, ms') <- Map.assocs $ NTICD.timingSolvedF3dependence g, (∃) ms (\m -> m ∈ ms')]
-                    
-                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
-                       (∀) s (\n -> n == m1  ∨  n == m2  ∨
-                         let s' = Set.delete n s
-                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode -> 
-                               let input = InfiniteDelay.Input startNode choice
-                                   isLowEquivalent = InfiniteDelay.isLowTimingEquivalent g s input
-                               in (∃) choices' (\choice' ->
-                                    let input' = InfiniteDelay.Input startNode choice'
-                                        different = not $ isLowEquivalent input'
-                                     in different
-                                  )
-                               ))
-                         in (if differentobservation then id else traceShow (m1, m2, differentobservation)) $
-                            differentobservation
-                       ),
     testPropertySized 25 "timingSolvedF3dependence  is sound wrt. timed traces"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization

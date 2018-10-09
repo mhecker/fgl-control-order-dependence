@@ -48,14 +48,15 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map ( Map, (!) )
 
-import Util(restrict)
+import Util(restrict, sampleFrom)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges)
 import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..), runInput, observable, allChoices, isLowTimingEquivalent)
 
 import Program (Program, tcfg)
 import Program.Defaults
@@ -78,7 +79,7 @@ import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     noJoins, mmayOf, mmayOf', stepsCL,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
-    timingSolvedF3sparseDependence,
+    timingSolvedF3sparseDependence, timingSolvedF3dependence,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
     imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
@@ -166,6 +167,32 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testPropertySized 25 "timingSolvedF3dependence  is minimal wrt. timed traces in graphs without self-node"
+                $ \(ARBITRARY(generatedGraph)) seed->
+                    let g0 = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
+                        g = efilter (\(n,m,_) -> n /= m) g0
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        [m1,m2]    = sampleFrom seed 2 (nodes g)
+                        ms = Set.fromList [m1,m2]
+                        s = ms ⊔ Set.fromList [n | (n, ms') <- Map.assocs $ NTICD.timingSolvedF3dependence g, (∃) ms (\m -> m ∈ ms')]
+                    
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                       (∀) s (\n -> n == m1  ∨  n == m2  ∨
+                         let s' = Set.delete n s
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   isLowEquivalent = InfiniteDelay.isLowTimingEquivalent g s input
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        different = not $ isLowEquivalent input'
+                                     in different
+                                  )
+                               ))
+                         in (if differentobservation then id else traceShow (m1, m2, n, differentobservation)) $
+                            differentobservation
+                       ),
       testProperty  "timingSolvedF3sparseDependence is intransitive for graphs with unique end Node"
                 $ \(ARBITRARY(generatedGraph)) ->
                        let (_, g) = withUniqueEndNode () () generatedGraph

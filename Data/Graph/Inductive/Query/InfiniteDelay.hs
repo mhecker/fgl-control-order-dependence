@@ -106,7 +106,7 @@ sampleLoopPaths         k g
 
 
 data Input = Input { startNode :: Node, choice :: Map Node Node } deriving (Show, Eq, Ord)
-data TraceWith a = Finite [(Node, Node, a)] |  Finished [(Node, Node, a)] (Node, a) | Looping [(Node, Node, a)] [(Node,Node, a)] deriving (Show, Eq, Ord)
+data TraceWith a = Finite [(Node, a)] | Looping [(Node, a)] [(Node,a)] deriving (Show, Eq, Ord)
 type Trace = TraceWith ()
 
 
@@ -114,14 +114,14 @@ runInput :: Graph gr => gr a b -> Input -> Trace
 runInput graph = \(Input { startNode, choice}) ->
     let run n seen trace = case Map.lookup n choice of
                              Nothing -> case succs of
-                                          []   -> Finished (reverse trace) (n, ())
+                                          []   -> Finite (reverse $ (n,()) : trace)
                                           [n'] -> next n'
                              Just n' -> next n'
           where succs = succsOf ! n
                 next n'
                     | n' ∈ seen = Looping prefix loop
-                    | otherwise = run n' (Set.insert n' seen) ((n,n',()) : trace)
-                  where (prefix, loop) = span (\(n,m,()) -> n /= n') $ reverse ((n, n',()) : trace)
+                    | otherwise = run n' (Set.insert n' seen) ((n,()) : trace)
+                  where (prefix, loop) = span (\(n,()) -> n /= n') $ reverse ((n,()) : trace)
     in require  (Map.isSubmapOfBy (\succs n -> n ∈ succs) condNodes choice)
      $ require  (startNode `elem` nodes graph)
      $ run startNode (Set.fromList [startNode]) []
@@ -130,9 +130,6 @@ runInput graph = \(Input { startNode, choice}) ->
 
 observable :: Eq a => Set Node -> TraceWith a -> TraceWith a
 observable s (Finite trace)       = Finite   $ obs s trace
-observable s (Finished trace (n, a))
-    | n ∈ s       = Finished (obs s trace) (n, a)
-    | otherwise  = Finite   (obs s trace)
 observable s (Looping prefix loop)
     | loop' == [] = Finite   prefix'
     | otherwise   = Looping  prefix' loop'
@@ -140,20 +137,18 @@ observable s (Looping prefix loop)
         loop'   = obs s loop
 
 
-obs s =  filter (\(n,m,_) -> n ∈ s)
+obs s =  filter (\(n,_) -> n ∈ s)
 
 observable2 :: Set Node -> Trace -> Trace -> Trace
 observable2 s trace trace' = obs2 traceObs trace'Obs
   where traceObs  = observable s trace
         trace'Obs = observable s trace'
-        obs2 (Finite   trace)       (Finished trace' n'    ) = Finished (trace ++ trace') n'
         obs2 (Finite   trace)       (Finite   trace'       ) = Finite   (trace ++ trace')
         obs2 (Finite   trace)       (Looping  prefix' loop') = Looping  prefix'' loop''
           where (prefix'', loop'') = case splitAtLoop [] (trace ++ prefix' ++ loop') of
                   Nothing                 -> (trace ++ prefix', loop')
                   Just (prefix'', loop'') -> (prefix'', loop'')
 
-        obs2 (Finished trace _)     _                        = undefined
 
         obs2 (Looping  prefix loop) _                        = Looping prefix loop
 
@@ -168,23 +163,7 @@ stripPostfix postfix list = case stripPrefix (reverse postfix) (reverse list) of
   Nothing -> list
   Just stripped -> reverse stripped
 
-isTracePrefixOf (Finished trace n) (Finished trace' n' )   = trace == trace'   ∧   n == n'
-isTracePrefixOf (Finished trace (n,_)) (Finite trace')         =
-      require ((snd $ last trace) == n)
-    $ List.isPrefixOf trace trace'
-  where snd (_,m,_) = m
-isTracePrefixOf (Finished trace (n,_)) (Looping prefix' loop') = 
-      require ((snd $ last trace) == n)
-    $ require (noLoop prefix') 
-    $ List.isPrefixOf trace (prefix' ++ (cycle loop'))
-  where snd (_,m,_) = m
 isTracePrefixOf (Finite trace)   (Finite   trace')       = List.isPrefixOf trace trace'
-isTracePrefixOf (Finite trace)   (Finished trace' (n',_))=
-      require (not $ elem n' $ map fst trace)
-    $ require (not $ elem n' $ map snd trace)
-    $ List.isPrefixOf trace trace' -- TODO: ∧ snd $ last trace == n'
-  where fst (n,_,_) = n
-        snd (_,m,_) = m
 isTracePrefixOf (Finite trace)   (Looping prefix loop) =
       require (noLoop prefix) 
     $ List.isPrefixOf trace (prefix ++ (cycle loop))
@@ -202,8 +181,7 @@ infinitelyDelays graph s = \input@(Input { startNode, choice }) ->
     let trace = run input
         traceObs = observable s trace
     in case trace of
-      Finite _     -> undefined
-      Finished _ _ -> Set.fromList [traceObs]
+      Finite _ -> Set.fromList [traceObs]
       Looping prefix loop ->  Set.fromList [ observable2 s trace trace'
                                            | choice' <- allChoices graph choice0 allowedToChange,
                                              startNode' <- fmap fst loop,
@@ -213,7 +191,7 @@ infinitelyDelays graph s = \input@(Input { startNode, choice }) ->
               choice0 = restrict choice s
   where condNodes = Set.fromList [ c | c <- nodes graph, let succs = suc graph c, length succs  > 1]
         allowedToChange = condNodes ∖ s
-        fst (n,_,_) = n
+        fst (n,_) = n
         run = runInput graph
 
 
@@ -240,9 +218,8 @@ isLowEquivalentFor infinitelyDelays runInput observable input  = \input' ->
 
 
 timed :: Trace -> TraceWith Integer
-timed (Finite   trace)         = Finite   [(n, m, i) | ((n,m,()), i) <- zip trace  [0..]]
-timed (Finished trace (n, ())) = Finished [(n, m, i) | ((n,m,()), i) <- zip trace  [0..]] (n, List.genericLength trace)
-timed (Looping prefix loop)    = Looping  [(n, m, i) | ((n,m,()), i) <- zip prefix [0..]] [(n, m, i) | ((n,m,()), i) <- zip loop [(List.genericLength prefix)..]]
+timed (Finite   trace)         = Finite   [(n, i) | ((n,()), i) <- zip trace  [0..]]
+timed (Looping prefix loop)    = Looping  [(n, i) | ((n,()), i) <- zip prefix [0..]] [(n, i) | ((n,()), i) <- zip loop [(List.genericLength prefix)..]]
 
 
 

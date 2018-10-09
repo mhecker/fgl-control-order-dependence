@@ -2870,16 +2870,17 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
 
 delayProps = testGroup "(concerning inifinte delay)" [
     testPropertySized 25 "ntscdMyDodFastPDomSlice  is sound"
-                $ \(ARBITRARY(generatedGraph)) seed->
+                $ \(ARBITRARY(generatedGraph)) ->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
-                        [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = NTICD.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
-                        runInput         = InfiniteDelay.runInput         g
-                        observable       = InfiniteDelay.observable         s
-                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                        slicer     = NTICD.ntscdMyDodFastPDomSlice g
+                        ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
+                        runInput   = InfiniteDelay.runInput         g
+                    in (∀) ss (\s ->
+                         let observable   = InfiniteDelay.observable s
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice
                                    trace = runInput input
                                    obs   = observable trace
@@ -2888,14 +2889,13 @@ delayProps = testGroup "(concerning inifinte delay)" [
                                         trace' = runInput input'
                                         obs'   = observable trace'
                                         different = not $ obs == obs'
-                                     in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
+                                     in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
                                         different
                                   )
                                ))
-                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
-                       (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
-                       not differentobservation,
-    testPropertySized 30 "ntscdMyDodFastPDomSlice  is minimal"
+                         in not differentobservation
+                    ),
+    testPropertySized 25 "ntscdMyDodFastPDomSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g

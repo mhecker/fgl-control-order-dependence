@@ -144,21 +144,18 @@ observable s (Looping prefix loop)
 
 obs s =  filter (\(n,m,_) -> n ∈ s)
 
-observable2 :: Set Node -> Trace -> Trace -> Trace
-observable2 s trace trace' = obs2 traceObs trace'Obs
-  where traceObs  = observable s trace
-        trace'Obs = observable s trace'
-        obs2 (Finite   trace)       (Finite   trace'       ) =
+app trace trace' = ap trace trace'
+  where ap (Finite   trace)       (Finite   trace'       ) =
             require ((∀) (fmap snd trace) (/=Nothing))
           $ Finite   (trace ++ trace')
-        obs2 (Finite   trace)       (Looping  prefix' loop') =
+        ap (Finite   trace)       (Looping  prefix' loop') =
             require ((∀) (fmap snd trace) (/=Nothing))
           $ Looping  prefix'' loop''
           where (prefix'', loop'') = case splitAtLoop [] (trace ++ prefix' ++ loop') of
                   Nothing                 -> (trace ++ prefix', loop')
                   Just (prefix'', loop'') -> (prefix'', loop'')
 
-        obs2 (Looping  prefix loop) _                        = Looping prefix loop
+        ap (Looping  prefix loop) _                        = Looping prefix loop
 
         snd (_,m,_) = m
 
@@ -192,10 +189,11 @@ infinitelyDelays graph s = \input@(Input { startNode, choice }) ->
         traceObs = observable s trace
     in case trace of
       Finite _ -> Set.fromList [traceObs]
-      Looping prefix loop ->  Set.fromList [ observable2 s trace trace'
+      Looping prefix loop ->  Set.fromList [ traceObs `app` trace'Obs
                                            | choice' <- allChoices graph choice0 allowedToChange,
                                              startNode' <- fmap fst loop,
-                                             let trace' = run (Input { startNode = startNode' , choice = choice' })
+                                             let trace' = run (Input { startNode = startNode' , choice = choice' }),
+                                             let trace'Obs = observable s trace'
                                         ]
         where 
               choice0 = restrict choice s

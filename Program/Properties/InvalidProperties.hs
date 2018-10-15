@@ -88,6 +88,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
     dodColoredDagFixed, dodColoredDag,
     wodTEIL', wodTEILSlice,
+    wodTEILPDomSlice,
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF4WithReachCheckGfp,
@@ -492,6 +493,23 @@ dodTests = testGroup "(concerning decisive order dependence)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "unique node property2 for wodTEIL"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    wodteilslicer = NTICD.wodTEILPDomSlice g
+                    property2 s s' g' unique = (∀) s' (\n -> (∀) (suc g n) (\n' ->
+                                                 (n' ∈ s) ∨ (unique ! n == unique ! n')
+                                               ))
+                    uniqueOf s s' g' = Map.fromList [ (n, [ m | m <- reachable n g', m ∈ s]) | n <- Set.toList s' ]
+
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                     let ms = Set.fromList [m1,m2]
+                         s  = wodteilslicer ms
+                         s' = Set.fromList (nodes g) ∖ s
+                         g' = efilter ((\(n,m,_) -> n ∈ s')) g
+                         unique = uniqueOf s s' g'
+                     in property2 s s' g' unique
+                   )),
     testProperty  "gfp fMustBefore      == gfp fMust"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

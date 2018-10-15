@@ -961,6 +961,49 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "unique node property for nticdMyWodPDomSimpleHeuristic"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    mywodslicer   = NTICD.nticdMyWodPDomSimpleHeuristic g
+                    wodteilslicer = NTICD.wodTEILPDomSlice g
+                    property1 s s' g' unique = (∀) s' (\n -> (length (unique ! n) <= 1))
+                    property2 s s' g' unique = (∀) s' (\n -> (∀) (suc g n) (\n' ->
+                                                 (n' ∈ s) ∨ (unique ! n == unique ! n')
+                                               ))
+                    uniqueOf s s' g' = Map.fromList [ (n, [ m | m <- reachable n g', m ∈ s]) | n <- Set.toList s' ]
+
+                in   (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                       let ms = Set.fromList [m1,m2]
+                           s  = mywodslicer ms
+                           s' = Set.fromList (nodes g) ∖ s
+                           g' = efilter ((\(n,m,_) -> n ∈ s')) g
+                           unique = uniqueOf s s' g'
+                       in   property1 s s' g' unique
+                          ∧ property2 s s' g' unique
+                          ∧ (∀) s (\n -> n ∈ ms  ∨
+                              let sn  = Set.delete n s
+                                  sn' = Set.insert n s'
+                                  gn' = efilter ((\(n,m,_) -> n ∈ sn')) g
+                                  uniquen = uniqueOf sn sn' gn'
+                              in  (not $ property1 sn sn' gn' uniquen)
+                                ∨ (not $ property2 sn sn' gn' uniquen)
+                           )
+                     ))
+                   ∧ (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+                       let ms = Set.fromList [m1,m2]
+                           s  = wodteilslicer ms
+                           s' = Set.fromList (nodes g) ∖ s
+                           g' = efilter ((\(n,m,_) -> n ∈ s')) g
+                           unique = uniqueOf s s' g'
+                       in   property1 s s' g' unique
+                          ∧ (∀) s (\n -> n ∈ ms  ∨
+                              let sn  = Set.delete n s
+                                  sn' = Set.insert n s'
+                                  gn' = efilter ((\(n,m,_) -> n ∈ sn')) g
+                                  uniquen = uniqueOf sn sn' gn'
+                              in  (not $ property1 sn sn' gn' uniquen)
+                           )
+                     )),
     testPropertySized 40 "noJoins mmay'"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

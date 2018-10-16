@@ -2657,7 +2657,7 @@ mustOfLfp graph = (㎲⊒) init (fMustNaive graph)
 
 mustOfGfp :: DynGraph gr => gr a b -> Map Node (Set (Node, Node))
 mustOfGfp graph = (𝝂) init (fMustNaive graph)
-  where init = Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- nodes graph, m2 <- nodes graph]) | n <- nodes graph ]
+  where init = Map.fromList [ (n, Set.fromList [ (m1,m2) | m1 <- reachable n graph, m2 <- nodes graph]) | n <- nodes graph ]
 
 
 fMustNaive :: DynGraph gr => MustFunctionalGen gr a b

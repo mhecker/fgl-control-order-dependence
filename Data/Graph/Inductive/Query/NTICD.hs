@@ -3658,8 +3658,7 @@ rotatePDomAround graph condNodes pdom nm
 myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
 myWodFastPDomForIterationStrategy strategy graph =
         convert $
-        [ (n,m1,m2)  |                                        cycle <- isinkdomCycles,
-                                                              length cycle > 1,
+        [ (n,m1,m2)  |                                        cycle <- isinkdomCycles, length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
                                                               let entries = entriesFor cycle,
                                                               let nodesTowardsCycle = dfs (head cycle : entries) graph,
@@ -3674,8 +3673,15 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               let pairs = zip (m20:others) others,
                                                               let pdom0 = fromIdomM m20 $ iDom (grev cycleGraph) m20,
                                                               let pdoms = zip (m20:others) (scanl (rotatePDomAround cycleGraph condsTowardCycle) pdom0 pairs),
-                                                              n <- [ n | (n,_) <- Map.assocs condsInCycle] ++ entries,
                                                               (m2, pdom) <- pdoms,
+#ifdef PDOMUSESDF
+                                                              let graph' = delSuccessorEdges cycleGraph m2,
+                                                              (m1, ns) <- Map.assocs $ idomToDFFastForRoots [[m2]] graph' pdom,
+                                                              m1 ∈ cycleS,
+                                                              n <- Set.toList ns,
+                                                              m1 /= n,
+#else
+                                                              n <- [ n | (n,_) <- Map.assocs condsInCycle] ++ entries,
                                                               let pdom' = fromIdomM m2  $ iDom (grev cycleGraph) m2,
                                                        assert (pdom == pdom') True,
                                                               n /= m2,
@@ -3685,6 +3691,10 @@ myWodFastPDomForIterationStrategy strategy graph =
                                                               m1 <- relevant, m1 /= z,
                                                               m1 /= n,
                                                               m1 ∈ cycleS,
+#endif
+                                                       assert (m1 /= n) True,
+                                                       assert (m2 /= n) True,
+                                                       assert (m2 /= m1) True,
                                                        assert (m1 ∊ (suc isinkdomTrc n)) True,
                                                        assert (m2 ∊ (suc isinkdomTrc n)) True
       ]

@@ -3533,7 +3533,7 @@ rotatePDomAroundNeighbours  graph condNodes pdom e@(n,m) =
               -- $ traceShow [ (n, sol, pd) | (n,sol) <- Map.assocs $ toSuccMap $ (immediateOf solution :: gr () ()),
               --                              let pd = pdom'0 ! n, pd /= sol]
               $ assert ((∀) (nodes graph) (\x ->
-                                   if isReachableFromTreeM ipdomM'' n x then
+                                   if isReachableFromTreeM ipdomM'' n x   ∧  (not $ x ∈ preM) then
                                              reachableFromTree  (fmap toSet pdom'0) x
                                           ⊇  reachableFromTree             solution x
                                    else 
@@ -3609,7 +3609,8 @@ rotatePDomAroundArbitrary  graph condNodes ipdom (n, m) =
                                            (fmap (const Nothing) relevantCondNodesM) `Map.union` ipdomM''
                               imdom0Rev  = invert''' imdom0
                               worklist0  = Dequeue.fromList $ Map.assocs relevantCondNodesM
-                  in (relevantCondNodesM, ipdomM''')
+                  in assert (processed0 == Set.fromList [ x | x <- nodes graph, isReachableFromTreeM ipdomM'' m x ]) $
+                     (relevantCondNodesM, ipdomM''')
                 else
                    let relevantCondNodesM = findRelevant (Map.keys condNodesM) Map.empty
                        ipdomM''' = assert (z /= Nothing) $ Map.insert n z ipdomM''

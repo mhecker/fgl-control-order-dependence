@@ -77,7 +77,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    mustOfLfp,
+    mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf,
     itimdomTwoFingercd, tscdOfLfp,
@@ -961,6 +961,27 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "wodTEIL ⊑ myWod ∪ nticd*"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    wodTEIL'    = NTICD.wodTEIL'PDom g
+                    myWod       = NTICD.myWodFastPDomSimpleHeuristic g
+                    nticdslicer = NTICD.nticdSlice g
+                in (∀) (Map.assocs wodTEIL') (\((m1,m2), ns) ->  (∀) ns (\n ->
+                       n ∈ myWod ! (m1,m2)                 ∨  n ∈ myWod ! (m2,m1)
+                    ∨  n ∈ nticdslicer (Set.fromList [m1]) ∨  n ∈ nticdslicer (Set.fromList [m2])
+                   )),
+      testProperty  "sinkdomOfLfp m2                 == mustOfLfp"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = NTICD.mustOfGfp g
+                    in  (∀) (nodes g) (\m2 ->
+                           let g2    = delSuccessorEdges g m2
+                               sinkdom2 = NTICD.sinkdomOfGfp g2
+                           in (∀) (nodes g) (\n -> (∀) (nodes g) (\m1 ->  if m1 == m2  then True else
+                                ((m1,m2) ∈ must ! n) ↔ (m1 ∈ sinkdom2 ! n)
+                           ))
+                       ),
     testProperty "unique node property for nticdMyWodPDomSimpleHeuristic"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
@@ -1177,7 +1198,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                   let ns = Set.fromList [ n | n <- condNodes, n /= m1, n /= m2, not $ (∀) (suc g n) (\x -> m1 ∈ pdom ! x), (∃) (suc g n) (\x ->  m1 ∈ pdom ! x) ]
                                         ]
                    ),
-    testProperty "wodTEIL == myWod in sinks"
+    testProperty "wodTEIL == myWod in sink subgraphs"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g0 = generatedGraph
                     sinks = controlSinks g0
@@ -1516,6 +1537,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                               (n1 ∊ suc isinkdomTrc n2) → (
                                    (n1 == n2) ∨ let [n1'] = Set.toList $ isinkdom ! n1 in n1 ∊ suc isinkdomTrc n1'
                               )
+                          ))
+                        ∧ (∀) ns (\n -> (∀) (isinkdom ! n) (\m ->
+                              (m == n) ∨ (m ∊ suc isinkdomTrc m1 ∧ m1 ∊ suc isinkdomTrc m   ∧   m ∊ suc isinkdomTrc m2 ∧ m2 ∊ suc isinkdomTrc m)
                           ))
                         ),
     testProperty  "snmF3Gfp reachable          == isinkdom reachable "

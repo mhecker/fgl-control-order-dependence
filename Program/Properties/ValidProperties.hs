@@ -59,7 +59,7 @@ import Data.Maybe(fromJust)
 import IRLSOD(CFGEdge(..))
 
 import Data.Graph.Inductive.Arbitrary.Reducible
-import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable)
+import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
@@ -77,6 +77,9 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    isinkDFTwoFinger,
+    nticdMyWodSliceViaNticd,
+    combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf,
@@ -961,6 +964,60 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty   "myWod size for looping ladders"
+    $ \(size :: Int) ->
+                let msum = Map.fold (\ns s -> Set.size ns + s) 0
+
+                    n0 = (abs size) `div` 2
+                    g0 = ladder n0  :: Gr () ()
+                    [entry]         = [ n | n <- nodes g0, pre g0 n == [] ]
+                    [exit1, exit2]  = [ n | n <- nodes g0, suc g0 n == [] ]
+                    g = insEdge (exit1, entry, ()) $  insEdge (exit2, entry, ()) $ g0
+                    n = length $ nodes g
+                    mywod = assert (n == 2*n0 + 3) $
+                            NTICD.myWodFastPDomSimpleHeuristic g
+                    even = [ n | n <- nodes g, n `mod` 2 == 0]
+                    odd  = [ n | n <- nodes g, n `mod` 2 /= 0]
+                in -- traceShow (n, msum mywod, sum [ (n `div` 2) * ((m1+1) `div` 2) | m1 <- odd], ((((n-1) `div` 2 + 1  ) * (n - 1)) `div` 4  ) * (n `div` 2))   $
+                     (∀) odd (\m1 ->
+                       let left  = Set.fromList [ (m1,m2,n) | m2 <- even, n <- Set.toList $ mywod ! (m1,m2)  ]
+                           right = Set.fromList [ (m1,m2,n) | m2 <- even, n <- even, n < m1, n /= m2 ]
+                           size = (n `div` 2) * ((m1+1) `div` 2)
+                       in   (left == right)
+                          ∧ (Set.size right == size)
+                     )
+                   ∧ (msum mywod >= ((((n-1) `div` 2 + 1  ) * (n - 1)) `div` 4  ) * (n `div` 2)),
+    testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    g'   = grev g
+                    slicer1  = NTICD.nticdMyWodPDomSimpleHeuristic g
+                    slicer2  = NTICD.nticdMyWodSliceViaNticd       g
+                    slicer1' = NTICD.nticdMyWodPDomSimpleHeuristic g'
+                    slicer2' = NTICD.nticdMyWodSliceViaNticd       g'
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let ms = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
+                       slicer1  ms == slicer2  ms
+                     ∧ slicer1' ms == slicer2' ms
+                   )), -- ),
+      testProperty  "nticdMyWodSlice == nticdMyWodSliceViaNticd even when using data dependencies"
+                $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) ->
+                   let g = generatedGraph
+                       ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
+                         where toG = Map.fromList $ zip (nodes ddep0) (cycle $ nodes g)
+                       ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
+                       nticd = NTICD.isinkDFTwoFinger g
+                       mywod =  NTICD.myWodFastPDomSimpleHeuristic g
+                       slicer = NTICD.combinedBackwardSlice g (ddep ⊔ nticd) mywod 
+                   in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 ->
+                        let ms  = [m1, m2, m3]
+                            msS = Set.fromList ms
+                            toMs   = rdfs ms g
+                            g' = foldr (flip delSuccessorEdges) g ms
+                            nticd' = NTICD.isinkDFTwoFinger g'
+                            empty = Map.empty
+                            slicer' = NTICD.combinedBackwardSlice g (ddep ⊔ nticd') empty
+                        in slicer msS == slicer' msS
+                      ))),
     testProperty "wodTEIL ⊑ myWod ∪ nticd*"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
@@ -1025,6 +1082,35 @@ wodProps = testGroup "(concerning weak order dependence)" [
                               in  (not $ property1 sn sn' gn' uniquen)
                            )
                      )),
+    testProperty "nticdMyWodSlice is termination sensitively sound for always-terminating graphs"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let     g   = removeDuplicateEdges $ efilter (\(n,m,_) -> n /= m) $ condensation generatedGraph
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        slicer     = NTICD.nticdMyWodPDomSimpleHeuristic g
+                        -- slicer     = NTICD.wodTEILPDomSlice g
+                        ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
+                        runInput   = InfiniteDelay.runInput         g
+                    in traceShow (n, Set.size ss) $
+                       (∀) ss (\s ->
+                         traceShow s $
+                         let observable   = InfiniteDelay.observable s
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   obs   = observable trace
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        obs'   = observable trace'
+                                        different = not $ obs == obs'
+                                     in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                         in not differentobservation
+                    ),
     testPropertySized 40 "noJoins mmay'"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

@@ -2809,7 +2809,6 @@ nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
 nticdMyWodSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodSliceViaNticd graph msS = combinedBackwardSlice graph nticd' empty msS
   where ms = Set.toList msS
-        toMs   = rdfs ms graph
         graph' = foldr (flip delSuccessorEdges) graph ms
         nticd' = isinkDFTwoFinger graph'
         empty = Map.empty

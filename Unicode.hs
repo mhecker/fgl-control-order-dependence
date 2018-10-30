@@ -75,6 +75,10 @@ infix 4 ↔
 (→) = implies
   where implies a b = (not a) || b
 
+(←) :: Bool -> Bool -> Bool
+(←) = implies
+  where implies a b = (not b) || a
+
 (⊑) :: (Eq a, JoinSemiLattice a) => a -> a -> Bool
 (⊑) = joinLeq
 

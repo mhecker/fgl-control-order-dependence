@@ -988,10 +988,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           ∧ (Set.size right == size)
                      )
                    ∧ (msum mywod >= ((((n-1) `div` 2 + 1  ) * (n - 1)) `div` 4  ) * (n `div` 2)),
-    testProperty "nticdSlice == ntindDef for CFG shaped graphs with unique end node"
-    $ \(SIMPLECFG(generatedGraph)) ->
+    testProperty "nticdSlice == ntindDef"
+    $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
-                    trcG = trc g
                     nticdslicer = NTICD.nticdSlice g
                     ntind = NTICD.ntindDef g
                 in (∀) (nodes g) (\m ->

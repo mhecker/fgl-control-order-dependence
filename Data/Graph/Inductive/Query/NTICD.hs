@@ -2691,6 +2691,14 @@ combinedBackwardSlice graph cd od = \ms ->
      in result
 
 
+
+ntindDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
+ntindDef g = Map.fromList [ (n, Set.unions [ onPathBetween n n' ∖ (Set.fromList [n,n']) | n' <- Set.toList $ sinkdoms ! n  ]) | n <- nodes g ]
+  where sinkdoms = sinkdomsOf g
+        onPathBetween s t = fwd  ∩  bwd
+          where fwd = Set.fromList $ reachable s $ delSuccessorEdges       g  t
+                bwd = Set.fromList $ reachable t $ grev g
+
 nticdSliceLazy :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Set Node -> Set Node
 nticdSliceLazy graph cycleOf idom' = \ms ->
      let result = slice Map.empty Set.empty ms 

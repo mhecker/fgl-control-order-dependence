@@ -77,6 +77,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    ntindDef,
     isinkDFTwoFinger,
     nticdMyWodSliceViaNticd,
     combinedBackwardSlice,
@@ -987,6 +988,18 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           ∧ (Set.size right == size)
                      )
                    ∧ (msum mywod >= ((((n-1) `div` 2 + 1  ) * (n - 1)) `div` 4  ) * (n `div` 2)),
+    testProperty "nticdSlice == ntindDef for CFG shaped graphs with unique end node"
+    $ \(SIMPLECFG(generatedGraph)) ->
+                let g    = generatedGraph
+                    trcG = trc g
+                    nticdslicer = NTICD.nticdSlice g
+                    ntind = NTICD.ntindDef g
+                in (∀) (nodes g) (\m ->
+                     let ms = Set.fromList [m]
+                         s  = (nticdslicer ms) ∖ ms
+                         s' = Set.fromList [ n | n <- nodes g, m ∈ ntind ! n ]
+                     in s == s'
+                   ),
       testProperty  "sinkdomOfLfp ms                 == (∀) mustOfLfp  property"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -1010,6 +1023,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywod =  NTICD.myWodFastPDomSimpleHeuristic g
                     must = NTICD.mustOfGfp g
                     slicer  = NTICD.nticdMyWodPDomSimpleHeuristic g
+                    nticdslicer = NTICD.nticdSlice g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let m0S = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in
                      let  m0s = Set.toList m0S
                           toM0s = rdfs m0s g
@@ -1018,16 +1032,24 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           sinkdom' = NTICD.sinkdomOfGfp g'
                           s = slicer m0S
                      in   (sinkdom' ⊑ sinkdom)
-                        ∧ (∀) s (\n -> (n ∈ m0S)   ∨   (∃) (nticd' ! n) (\n0 ->
-                             n0 ∈ s   ∧  ((n0 ∈ nticd ! n)  ∨  (    (∀) (suc g n) (\x -> n0 ∈ sinkdom ! x)
+                        ∧ (∀) s (\n -> (n ∈ m0S)   ∨   (∃) (nticd' ! n) (\n0 -> n0 ∈ s ∧  n0 /= n) ∧ (∀) (nticd' ! n  ∩ s) (\n0 -> if n0 == n then True else
+                             n0 ∈ s   ∧  ((n0 ∈ nticd ! n)  ∨  (   True 
+                                                                  ∧ (∀) (suc g n) (\x -> n0 ∈ sinkdom ! x)
                                                                   ∧ (n0 ∈ sinkdom ! n)
+                                                                  -- ∧ (∀) m0S (\m0 ->  m0 ∈ sinkdom ! n0)
                                                                   ∧ (∃) (suc g n) (\x -> (∃) m0S (\m0 ->
-                                                                        m0 /= x  ∧  m0 /= n0  ∧  n0 ∈ sinkdom ! m0  ∧  n0 ∈ sinkdom ! x
+                                                                        m0 /= n0   ∧  n0 ∈ sinkdom ! m0
                                                                       ∧ x `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG n0)
                                                                       ∧ (not $ (n0, m0) ∈ must ! n )
-                                                                      ∧ (   ((      m0 ∈ sinkdom ! n0)  ∧  (n  ∈ mywod ! (n0,m0)))
-                                                                          ∨ ((not $ m0 ∈ sinkdom ! n0)  ∧  (m0 ∈ nticd ! n      ))
-                                                                        )
+                                                                    ))
+                                                                  ∧ (∀) (suc g n) (\x -> (∀) m0S (\m0 -> (
+                                                                        m0 /= n0   ∧  n0 ∈ sinkdom ! m0
+                                                                      ∧ x `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG n0)
+                                                                      ∧ (not $ (n0, m0) ∈ must ! n )
+                                                                    ) → (
+                                                                        ((      m0 ∈ sinkdom ! n0)  ∧  (n ∈ mywod ! (n0,m0)                ) )
+                                                                      ∨ ((not $ m0 ∈ sinkdom ! n0)  ∧  (n ∈ nticdslicer (Set.fromList [m0])) )
+                                                                    )
                                                                     ))
                                                                )
                                          )

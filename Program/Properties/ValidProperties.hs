@@ -77,9 +77,9 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    ntindDef,
-    isinkDFTwoFinger,
-    nticdMyWodSliceViaNticd,
+    ntindDef, ntsndDef,
+    isinkDFTwoFinger, mDFTwoFinger,
+    nticdMyWodSliceViaNticd, ntscdMyDodSliceViaNtscd,
     combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
@@ -1099,7 +1099,6 @@ wodProps = testGroup "(concerning weak order dependence)" [
                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 ->
                         let ms  = [m1, m2, m3]
                             msS = Set.fromList ms
-                            toMs   = rdfs ms g
                             g' = foldr (flip delSuccessorEdges) g ms
                             nticd' = NTICD.isinkDFTwoFinger g'
                             empty = Map.empty
@@ -1860,6 +1859,47 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty "ntscdSlice == ntsndDef"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    nticdslicer = NTICD.ntscdSlice g
+                    ntind = NTICD.ntsndDef g
+                in (∀) (nodes g) (\m ->
+                     let ms = Set.fromList [m]
+                         s  = (nticdslicer ms) ∖ ms
+                         s' = Set.fromList [ n | n <- nodes g, m ∈ ntind ! n ]
+                     in s == s'
+                   ),
+    testProperty "ntscdMyDodSlice == nticdMyDodSliceViaNtscd"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    g'   = grev g
+                    slicer1  = NTICD.ntscdMyDodFastPDomSlice       g
+                    slicer2  = NTICD.ntscdMyDodSliceViaNtscd       g
+                    slicer1' = NTICD.ntscdMyDodFastPDomSlice       g'
+                    slicer2' = NTICD.ntscdMyDodSliceViaNtscd       g'
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let ms = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
+                       slicer1  ms == slicer2  ms
+                     ∧ slicer1' ms == slicer2' ms
+                   )), -- ),
+      testProperty  "ntscdMyDodSlice == ntscdMyDodSliceViaNtscd even when using data dependencies"
+                $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) ->
+                   let g = generatedGraph
+                       ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
+                         where toG = Map.fromList $ zip (nodes ddep0) (cycle $ nodes g)
+                       ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
+                       ntscd = NTICD.mDFTwoFinger g
+                       mydod =  NTICD.myDodFastPDom g
+                       slicer = NTICD.combinedBackwardSlice g (ddep ⊔ ntscd) mydod 
+                   in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 ->
+                        let ms  = [m1, m2, m3]
+                            msS = Set.fromList ms
+                            g' = foldr (flip delSuccessorEdges) g ms
+                            ntscd' = NTICD.mDFTwoFinger g'
+                            empty = Map.empty
+                            slicer' = NTICD.combinedBackwardSlice g (ddep ⊔ ntscd') empty
+                        in slicer msS == slicer' msS
+                      ))),
       testProperty  "mdomOfLfp m2                 == mustOfLfp"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

@@ -2699,6 +2699,14 @@ ntindDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ sinkdoms !
           where g' = foldr (flip delSuccessorEdges) g ts
                 fwd = Set.fromList $  dfs ss g'
 
+ntsndDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
+ntsndDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ mdoms ! n) ∖ (Set.insert n $ mdoms ! n)) | n <- nodes g ]
+  where mdoms = mdomsOf g
+        onPathBetween ss ts = fwd
+          where g' = foldr (flip delSuccessorEdges) g ts
+                fwd = Set.fromList $  dfs ss g'
+
+
 nticdSliceLazy :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node) -> Set Node -> Set Node
 nticdSliceLazy graph cycleOf idom' = \ms ->
      let result = slice Map.empty Set.empty ms 
@@ -2745,6 +2753,13 @@ ntscdMyDodFastPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdMyDodFastPDomSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdF3 graph
         d     = myDodFastPDom graph
+
+ntscdMyDodSliceViaNtscd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdMyDodSliceViaNtscd graph msS = combinedBackwardSlice graph ntscd' empty msS
+  where ms = Set.toList msS
+        graph' = foldr (flip delSuccessorEdges) graph ms
+        ntscd' = mDFTwoFinger graph'
+        empty = Map.empty
 
 
 ntscdDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node

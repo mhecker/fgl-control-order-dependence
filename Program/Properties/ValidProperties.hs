@@ -965,6 +965,17 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+      testProperty  "sinkdom path order"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = NTICD.mustOfGfp g
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        isinkdoms = NTICD.sinkdomsOf g
+                    in (∀) (nodes g) (\m0 -> (∀) (nodes g) (\n0 -> (∀) (nodes g) (\n' -> (∀) (nodes g) (\n -> (∀) (suc g n) (\x -> (∀) (suc g n) (\x' ->
+                         let ok =   ((not $ (n0, m0) ∈ must ! x)  ∧  ((n0, m0) ∈ must ! x')  ∧  (not $ m0 ∈ sinkdom ! n0) ∧  (n0 ∈ sinkdom ! m0) ∧  (n' ∈ isinkdoms ! n)  ∧  (n0 ∈ sinkdom ! n)  ∧   (n /= n0)  {- ∧  (n' /= x) -}  {- ∧  (n /= x) -} ∧  (m0 `elem` reachable x g)  ∧  (n0 `elem` reachable m0 g ))
+                                  →  ((not $ (n', m0) ∈ must ! x) ∧  (n' /= x) )
+                         in (if ok then id else traceShow (g, m0, n0, n', n, x, x')) ok
+                       )))))),
     testProperty   "myWod size for looping ladders"
     $ \(size :: Int) ->
                 let msum = Map.fold (\ns s -> Set.size ns + s) 0
@@ -1023,6 +1034,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     must = NTICD.mustOfGfp g
                     slicer  = NTICD.nticdMyWodPDomSimpleHeuristic g
                     nticdslicer = NTICD.nticdSlice g
+                    sinkdoms = NTICD.sinkdomsOf g
+                    onPathBetween ss ts = fwd
+                      where g' = foldr (flip delSuccessorEdges) g ts
+                            fwd = Set.fromList $  dfs ss g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let m0S = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in
                      let  m0s = Set.toList m0S
                           toM0s = rdfs m0s g
@@ -1039,16 +1054,21 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                                   ∧ (∃) (suc g n) (\x -> (∃) m0S (\m0 ->
                                                                         m0 /= n0   ∧  n0 ∈ sinkdom ! m0
                                                                       ∧ x `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG n0)
-                                                                      ∧ (not $ (n0, m0) ∈ must ! n )
+                                                                      ∧ (not $ (n0, m0) ∈ must ! x )
                                                                     ))
-                                                                  ∧ (∀) (suc g n) (\x -> (∀) m0S (\m0 -> (
+                                                                  ∧ (∀) (suc g n) (\x -> (∀) m0S (\m0 ->
+                                                           let ok = (
                                                                         m0 /= n0   ∧  n0 ∈ sinkdom ! m0
                                                                       ∧ x `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG n0)
-                                                                      ∧ (not $ (n0, m0) ∈ must ! n )
+                                                                      ∧ (not $ (n0, m0) ∈ must ! x )
                                                                     ) → (
-                                                                        ((      m0 ∈ sinkdom ! n0)  ∧  (n ∈ mywod ! (n0,m0)                ) )
-                                                                      ∨ ((not $ m0 ∈ sinkdom ! n0)  ∧  (n ∈ nticdslicer (Set.fromList [m0])) )
+                                                                        ((      m0 ∈ sinkdom ! n0)  ∧  (n ∈ mywod ! (n0,m0)                )                                           )
+                                                                      ∨ ((not $ m0 ∈ sinkdom ! n0)  ∧  (n ∈ nticdslicer (Set.fromList [m0]))
+                                                                                                    ∧  ((n == m0) ∨ 
+                                                                                                        (   (      m0 ∈ onPathBetween [x]       (Set.toList   $ sinkdoms ! n)) 
+                                                                                                          ∧ (not $ m0 ∈                         (Set.insert n $ sinkdoms ! n)) ))      )
                                                                     )
+                                                           in (if ok then id else traceShow (g,  n,  n0,  x,  m0)) ok
                                                                     ))
                                                                )
                                          )

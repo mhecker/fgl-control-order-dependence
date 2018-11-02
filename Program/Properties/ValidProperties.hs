@@ -972,9 +972,45 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         sinkdom = NTICD.sinkdomOfGfp g
                         isinkdoms = NTICD.sinkdomsOf g
                     in (∀) (nodes g) (\m0 -> (∀) (nodes g) (\n0 -> (∀) (nodes g) (\n' -> (∀) (nodes g) (\n -> (∀) (suc g n) (\x -> (∀) (suc g n) (\x' ->
-                         let ok =   ((not $ (n0, m0) ∈ must ! x)  ∧  ((n0, m0) ∈ must ! x')  ∧  (not $ m0 ∈ sinkdom ! n0) ∧  (n0 ∈ sinkdom ! m0) ∧  (n' ∈ isinkdoms ! n)  ∧  (n0 ∈ sinkdom ! n)  ∧   (n /= n0)  {- ∧  (n' /= x) -}  {- ∧  (n /= x) -} ∧  (m0 `elem` reachable x g)  ∧  (n0 `elem` reachable m0 g ))
-                                  →  ((not $ (n', m0) ∈ must ! x) ∧  (n' /= x) )
-                         in (if ok then id else traceShow (g, m0, n0, n', n, x, x')) ok
+                         let ok1 = (  True 
+                                   ∧  (not $ (n0, m0) ∈ must ! x )
+                                   ∧  (      (n0, m0) ∈ must ! x')
+                                   ∧  (not $ m0 ∈ sinkdom ! n0)
+                                   ∧  (n0 ∈ sinkdom ! n)
+                                   ∧  (n /= n0)
+                                   ∧  (n' ∈ isinkdoms ! n)
+                                   ) →  (n' /= x)
+                             ok2 = (  True 
+                                   ∧  (not $ (n0, m0) ∈ must ! x )
+                                   ∧  (not $ m0 ∈ sinkdom ! n0)
+                                   ∧  (n0 ∈ sinkdom ! n)
+                                   ∧  (n /= n0)
+                                   ∧  (n' ∈ isinkdoms ! n)
+                                   ) →  (n' /= n)
+                             ok3 = (  True 
+                                   ∧  (n /= n0)
+                                   ∧  (n0 ∈ sinkdom ! n)
+                                   ∧  (n' ∈ isinkdoms ! n)
+                                   ) →  (n0 ∈ sinkdom ! n')
+                             ok4 = (  True 
+                                   ∧  (not $ (n0, m0) ∈ must ! x )
+                                   ∧  (      (n0, m0) ∈ must ! x')
+                                   ∧  (not $ m0 ∈ sinkdom ! n0)
+                                   ∧  (n0 ∈ sinkdom ! n')
+                                   ∧  (n' ∈ sinkdom ! n)
+                                   ∧  (n' /= n)
+                                   ) →  (n' /= x)
+                             ok5 = (  True
+                                   ∧  (not $ (n0, m0) ∈ must ! x )
+                                   ∧  (      (n0, m0) ∈ must ! x')
+                                   ∧  (not $ m0 ∈ sinkdom ! n0)
+                                   ∧  (n0 ∈ sinkdom ! n')
+                                   ∧  (n /= n0)
+                                   ∧  (n' ∈ sinkdom ! n)
+                                   -- ∧  (n' /= x)
+                                   ∧  (n' /= n)
+                                   ) → ((not $ (n', m0) ∈ must ! x) ∧  (n' /= x))
+                         in (if ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 then id else traceShow (g, m0, n0, n', n, x, x')) (ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5)
                        )))))),
     testProperty   "myWod size for looping ladders"
     $ \(size :: Int) ->

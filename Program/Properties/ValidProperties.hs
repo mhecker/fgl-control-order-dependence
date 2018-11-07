@@ -965,7 +965,43 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+      testProperty  "isinkdoms path order"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = NTICD.mustOfGfp g
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        isinkdoms = NTICD.sinkdomsOf g
+                    in (∀) (Map.assocs sinkdom) (\(n,ms) -> (∀) (isinkdoms ! n) (\m1 ->  (∀) (ms) (\m2 ->
+                         let ok  =   ((m1,m2) ∈ must ! n)
+                                   ∨ (m1 ∈ sinkdom ! m2 ∧  m2 ∈ sinkdom ! m1  ∧  m2 ∈ isinkdoms ! n)
+                                   ∨ (n == m2)
+                         in (if ok  then id else traceShow (g, n, m1, m2)) ok
+                       ))),
       testProperty  "sinkdom path order"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = NTICD.mustOfGfp g
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        -- isinkdoms = NTICD.sinkdomsOf g
+                    in (∀) (Map.assocs sinkdom) (\(n,ms) -> (∀) ms (\m1 ->  (∀) (ms) (\m2 ->
+                         let ok  =   ((m1,m2) ∈ must ! n)
+                                   ∨ ((m2,m1) ∈ must ! n)
+                                   ∨ (m1 ∈ sinkdom ! m2 ∧  m2 ∈ sinkdom ! m1)
+                         in (if ok  then id else traceShow (g, n, m1, m2)) ok
+                       ))),
+      testProperty  "sinkdom path order for CFG with unique exit node"
+                $ \(SIMPLECFG(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = NTICD.mustOfGfp g
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        -- isinkdoms = NTICD.sinkdomsOf g
+                    in (∀) (Map.assocs sinkdom) (\(n,ms) -> (∀) ms (\m1 ->  (∀) (ms) (\m2 ->
+                         let ok  =   ((m1,m2) ∈ must ! n)
+                                   ∨ ((m2,m1) ∈ must ! n)
+                                   ∨ (m1 == m2)
+                         in (if ok  then id else traceShow (g, n, m1, m2)) ok
+                       ))),
+      testProperty  "nticd nticdMyWod Proof"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         must = NTICD.mustOfGfp g
@@ -1010,7 +1046,20 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                    -- ∧  (n' /= x)
                                    ∧  (n' /= n)
                                    ) → ((not $ (n', m0) ∈ must ! x) ∧  (n' /= x))
-                         in (if ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 then id else traceShow (g, m0, n0, n', n, x, x')) (ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5)
+                             ok6 = (  True
+                                   ∧  (not $ (n0, m0) ∈ must ! x )
+                                   ∧  (      (n0, m0) ∈ must ! x')
+                                   -- ∧  (not $ m0 ∈ sinkdom ! n0)
+                                   ∧  (      (n', m0) ∈ must ! x)
+                                   ∧  (      n' ∈ sinkdom ! x')
+                                   ∧  (      n0 ∈ sinkdom ! x )
+                                   ) → ( m0 ∈ sinkdom ! x' ∧  m0 ∈ sinkdom ! n' ∧ m0 ∈ sinkdom ! x)
+                                     -- ) → ((not $ (n', m0) ∈ must ! x))
+                             ok7 = (  True
+                                   ∧  (      (n0, m0) ∈ must ! x')
+                                   ∧  (         m0 ∈ sinkdom ! x')
+                                   ) → ( m0 ∈ sinkdom ! n0)
+                         in (if ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 ∧ ok6 ∧ ok7  then id else traceShow (g, m0, n0, n', n, x, x')) (ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 ∧ ok6 ∧ ok7 )
                        )))))),
     testProperty   "myWod size for looping ladders"
     $ \(size :: Int) ->

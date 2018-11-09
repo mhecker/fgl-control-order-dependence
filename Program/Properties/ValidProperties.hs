@@ -1007,8 +1007,31 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         must = NTICD.mustOfGfp g
                         sinkdom = NTICD.sinkdomOfGfp g
                         isinkdoms = NTICD.sinkdomsOf g
+                        ntind = NTICD.ntindDef g
                     in (∀) (nodes g) (\m0 -> (∀) (nodes g) (\n0 -> (∀) (nodes g) (\n' -> (∀) (nodes g) (\n -> (∀) (suc g n) (\x -> (∀) (suc g n) (\x' ->
-                         let ok1 = (  True 
+                         let okn0m0 = (  True 
+                                   ∧  (not $ (n0, m0) ∈ must    ! x)
+                                   ∧  (       n0      ∈ sinkdom ! x)
+                                   ) →  (n0 ∈ sinkdom ! m0)
+                             ok00 = (  True
+                                   ∧  (Set.size (isinkdoms ! n) > 1)
+                                   ∧  (not $ (n0, m0) ∈ must ! x )
+                                   ∧  (      (n0, m0) ∈ must ! x')
+                                   ∧  (not $ m0 ∈ sinkdom ! n0)
+                                   ∧  (n0 ∈ sinkdom ! n)
+                                   ∧  (n /= n0)
+                                   ∧  (n /= m0)
+                                   ) →  ((m0 ∈ ntind ! n)  ∧  (not $ m0 ∈ isinkdoms ! n))
+                             ok0 = (  True 
+                                   ∧  (not $ (n0, m0) ∈ must ! x )
+                                   ∧  (      (n0, m0) ∈ must ! x')
+                                   ∧  (not $ m0 ∈ sinkdom ! n0)
+                                   -- ∧  (      n0 ∈ sinkdom ! m0)
+                                   ∧  (n0 ∈ sinkdom ! n)
+                                   ∧  (n /= n0)
+                                   ∧  (n /= m0)
+                                   ) →  (m0 ∈ ntind ! n)
+                             ok1 = (  True 
                                    ∧  (not $ (n0, m0) ∈ must ! x )
                                    ∧  (      (n0, m0) ∈ must ! x')
                                    ∧  (not $ m0 ∈ sinkdom ! n0)
@@ -1059,7 +1082,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                    ∧  (      (n0, m0) ∈ must ! x')
                                    ∧  (         m0 ∈ sinkdom ! x')
                                    ) → ( m0 ∈ sinkdom ! n0)
-                         in (if ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 ∧ ok6 ∧ ok7  then id else traceShow (g, m0, n0, n', n, x, x')) (ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 ∧ ok6 ∧ ok7 )
+                         in (if okn0m0 ∧ ok00 ∧ ok0 ∧ ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 ∧ ok6 ∧ ok7  then id else traceShow (g, m0, n0, n', n, x, x')) (okn0m0 ∧ ok00 ∧ ok0 ∧ ok1 ∧ ok2 ∧ ok3 ∧ ok4 ∧ ok5 ∧ ok6 ∧ ok7 )
                        )))))),
     testProperty   "myWod size for looping ladders"
     $ \(size :: Int) ->

@@ -1150,7 +1150,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                      let  m0s = Set.toList m0S
                           toM0s = rdfs m0s g
                           g' = foldr (flip delSuccessorEdges) g m0s
+                          trcG' = trc g'
                           nticd' = NTICD.nticdF3 g'
+                          nticd'slicer = NTICD.nticdSlice g'
                           sinkdom' = NTICD.sinkdomOfGfp g'
                           s = slicer m0S
                      in   (sinkdom' ⊑ sinkdom)
@@ -1189,19 +1191,45 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           let ok =   ((m ∈ nticd ! n)  ∨  (∃) (suc g n) (\x ->  (m ∈ sinkdom ! x) ∧ (not $ m ∈ sinkdom' ! x)))
                                    ∧ ((m ∈ nticd ! n)  ∨  (m ∈ sinkdom ! n))
                                    ∧ ((m ∈ nticd ! n)  ∨  (∃) (suc g n) (\x ->  (m ∈ sinkdom ! x) ∧ (∃) m0S (\m0 ->  m0 /= m  ∧  m ∈ sinkdom ! m0  ∧  x `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG m) ∧  (not $ (m, m0) ∈ must ! n ) ) ))
-                                   -- ∧ ((m ∈ nticd ! n)  ∨  ((∃) (nodes g) (\m2 -> m2 /= m   ∧   (n ∈ mywod ! (m,m2)  ∨  n ∈ mywod ! (m2,m))))  ∨  (∃) m0s (\m0 -> m0 ∈ nticd ! n))
-                                --   (not $ n `elem` toMs) ∨ (not $ m `elem` toMs) 
-                                -- ∨                                      (m ∈ nticd ! n)
-                                -- ∨ ((∃) (nodes g) (\m2 -> m2 /= m   ∧   (n ∈ mywod ! (m,m2)  ∨  n ∈ mywod ! (m2,m))))
                           in (if ok then id else traceShow (g, m0S, n, m)) ok
                         ))
-                        --                                         (∀) (Map.assocs nticd') (\(n, ms) -> (∀) ms (\m ->
-                        --   let ok = 
-                        --           (not $ n `elem` toMs) ∨ (not $ m `elem` toMs) 
-                        --         ∨                                      (m ∈ nticd ! n)
-                        --         ∨ ((∃) (nodes g) (\m2 -> m2 /= m   ∧   (n ∈ mywod ! (m,m2)  ∨  n ∈ mywod ! (m2,m))))
-                        --   in (if ok then id else traceShow (g, msS, n, m)) ok
-                        -- ))
+                        ∧ (∀) (Map.assocs nticd) (\(n, ms) -> (∀) ms (\m ->
+                          let ok =   ((m ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨  (∃) (suc g n) (\x ->  (m ∈ sinkdom ! x) ∧ (not $ m ∈ sinkdom' ! x)))
+                                   ∧ ((m ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨  (∀) (suc g n) (\x -> not $ m ∈ sinkdom' ! x))
+                                   ∧ ((m ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨  (∃) (suc g n) (\x ->  (m ∈ sinkdom ! x) ∧ (∃) m0S (\m0 ->  m0 /= m  ∧  m ∈ sinkdom ! m0  ∧  x `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG m) ∧  (not $ (m, m0) ∈ must ! n ) ) ))
+                          in (if ok then id else traceShow (g, m0S, n, m)) ok
+                        ))
+                        ∧ (∀) s (\n -> (n ∈ m0S)
+                                     ∨ (∃) s (\m1 -> (∃) s (\m2 -> m1 /= m2  ∧  n /= m2  ∧  n ∈ mywod ! (m1,m2))) ∧  (∀) s (\m1 -> (∀) s (\m2 -> if m1 == m2  ∨  n == m2  ∨  (not $ n ∈ mywod ! (m1,m2)) then True else
+                                         m1 ∈ s   ∧  m2 ∈ s   ∧
+                                           let ok = ( (      m2 ∈ m0S) ∧ (n ∈ nticd'slicer (Set.fromList [m2])))
+                                                  ∨ ( (      m1 ∈ m0S) ∧ (n ∈ nticd'slicer (Set.fromList [m1])))
+                                                  ∨ ( ((not $ m1 ∈ m0S) ∧ (not $ m2 ∈ m0S)) ∧ (∀) m0S (\m0 -> n ∈ nticd'slicer (Set.fromList [m0])))
+                                           in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
+                                       ))
+                                     ∨ (∃) (nticd ! n) (\n0 -> n0 ∈ s ∧  n0 /= n) ∧ (∀) (nticd ! n  ∩ s) (\n0 -> if n0 == n then True else
+                                         n0 ∈ s   ∧  ((n0 ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨
+                                                                (   True 
+                                                                  ∧ (∀) (suc g n) (\x -> not $ n0 ∈ sinkdom' ! x)
+                                                                  ∧ (∃) (suc g n) (\x -> (n0 ∈ sinkdom ! x)  ∧  (∃) m0S (\m0 ->
+                                                                        m0 /= n0   ∧  n0 ∈ sinkdom ! m0
+                                                                      ∧ x `elem` (pre trcG'  m0)  ∧  m0 `elem` (pre trcG n0)
+                                                                      ∧ (not $ (n0, m0) ∈ must ! x )
+                                                                    ))
+                                                                  ∧ (∀) (suc g n) (\x -> if (not $ n0 ∈ sinkdom ! x) then True else (∀) m0S (\m0 ->
+                                                           let ok = (
+                                                                        m0 /= n0   ∧  n0 ∈ sinkdom ! m0
+                                                                      ∧ x `elem` (pre trcG'  m0)  ∧  m0 `elem` (pre trcG n0)
+                                                                      ∧ (not $ (n0, m0) ∈ must ! x )
+                                                                    ) → (
+                                                                      (n ∈ nticd'slicer (Set.fromList [m0]))
+                                                                    )
+                                                           in (if ok then id else traceShow (g, m0s, n,  n0,  x,  m0)) ok
+                                                                    ))
+                                                               )
+                                                     )
+                                     )
+                           )
                    )), -- ),
     testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd"
     $ \(ARBITRARY(generatedGraph)) ->

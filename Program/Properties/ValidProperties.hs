@@ -1203,8 +1203,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                      ∨ (∃) s (\m1 -> (∃) s (\m2 -> m1 /= m2  ∧  n /= m2  ∧  n ∈ mywod ! (m1,m2))) ∧  (∀) s (\m1 -> (∀) s (\m2 -> if m1 == m2  ∨  n == m2  ∨  (not $ n ∈ mywod ! (m1,m2)) then True else
                                          m1 ∈ s   ∧  m2 ∈ s   ∧
                                            let ok = ( (      m2 ∈ m0S) ∧ (n ∈ nticd'slicer (Set.fromList [m2])))
-                                                  ∨ ( (      m1 ∈ m0S) ∧ (n ∈ nticd'slicer (Set.fromList [m1])))
-                                                  ∨ ( ((not $ m1 ∈ m0S) ∧ (not $ m2 ∈ m0S)) ∧ (∀) m0S (\m0 -> n ∈ nticd'slicer (Set.fromList [m0])))
+                                                  ∨ ( (not $ m2 ∈ m0S) ∧ (∀) m0S (\m0 -> n ∈ nticd'slicer (Set.fromList [m0])))
                                            in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
                                        ))
                                      ∨ (∃) (nticd ! n) (\n0 -> n0 ∈ s ∧  n0 /= n) ∧ (∀) (nticd ! n  ∩ s) (\n0 -> if n0 == n then True else

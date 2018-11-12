@@ -1182,7 +1182,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                          )
                           ))
                         ∧ (∀) (Map.assocs sinkdom) (\(n, ms) -> (∀) ms (\m ->
-                            let ok = (m ∈ sinkdom' ! n) ∨ ((∃) m0S (\m0 ->  m0 /= m  ∧  m ∈ sinkdom ! m0  ∧  n `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG m)  ∧  (not $ (m, m0) ∈ must ! n )))
+                            let ok = (m ∈ sinkdom' ! n) ∨ ((∃) m0S (\m0 ->  m0 /= m  ∧  m ∈ sinkdom ! m0  ∧  n `elem` (pre trcG' m0)  ∧  m0 `elem` (pre trcG m)  ∧  (not $ (m, m0) ∈ must ! n )))
                             in (if ok then id else traceShow (g, m0S, n, m)) ok
                           ))
                         ∧ (∀) (Map.assocs nticd') (\(n, ms) -> (∀) ms (\m ->

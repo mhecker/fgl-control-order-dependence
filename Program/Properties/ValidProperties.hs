@@ -965,6 +965,17 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "sinkdoms g' => sinkdoms g"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    sinkdoms = NTICD.sinkdomsOf g
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let m0S = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let m0S = Set.fromList [m1, m2, m3] in
+                     let  m0s = Set.toList m0S
+                          toM0s = rdfs m0s g
+                          g' = foldr (flip delSuccessorEdges) g m0s
+                          sinkdoms' = NTICD.sinkdomsOf g'
+                     in   (sinkdoms' ⊑ sinkdoms)
+                   )),
       testProperty  "isinkdoms path order"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

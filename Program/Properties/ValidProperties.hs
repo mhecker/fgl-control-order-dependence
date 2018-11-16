@@ -1155,9 +1155,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     nticdslicer = NTICD.nticdSlice g
                     sinkdoms = NTICD.sinkdomsOf g
                     onPathBetween ss ts = fwd
-                      where g' = foldr (flip delSuccessorEdges) g ts
-                            fwd = Set.fromList $  dfs ss g'
-                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let m0S = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in
+                      where gTs = foldr (flip delSuccessorEdges) g ts
+                            fwd = Set.fromList $  dfs ss gTs
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let m0S = Set.fromList [m1, m2] in  -- -} (∀) (nodes g) (\m3 -> let m0S = Set.fromList [m1, m2, m3] in
                      let  m0s = Set.toList m0S
                           toM0s = rdfs m0s g
                           g' = foldr (flip delSuccessorEdges) g m0s
@@ -1165,6 +1165,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           nticd' = NTICD.nticdF3 g'
                           nticd'slicer = NTICD.nticdSlice g'
                           sinkdom' = NTICD.sinkdomOfGfp g'
+                          sinkdoms' = NTICD.sinkdomsOf g'
+                          onPathBetween' ss ts = fwd
+                            where g'Ts = foldr (flip delSuccessorEdges) g' ts
+                                  fwd = Set.fromList $  dfs ss g'Ts
                           s = slicer m0S
                      in   (sinkdom' ⊑ sinkdom)
                         ∧ (∀) s (\n -> (n ∈ m0S)   ∨   (∃) (nticd' ! n) (\n0 -> n0 ∈ s ∧  n0 /= n) ∧ (∀) (nticd' ! n  ∩ s) (\n0 -> if n0 == n then True else
@@ -1198,6 +1202,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                             let ok = (m ∈ sinkdom' ! n) ∨ ((∃) m0S (\m0 ->  m0 /= m  ∧  m ∈ sinkdom ! m0  ∧  n `elem` (pre trcG' m0)  ∧  m0 `elem` (pre trcG m)  ∧  (not $ (m, m0) ∈ must ! n )))
                             in (if ok then id else traceShow (g, m0S, n, m)) ok
                           ))
+                        ∧ (∀) (Map.assocs sinkdom) (\(n, ms) -> (∀) ms (\m -> let { g'' = delSuccessorEdges g' m ; reachN = reachable n g'' } in 
+                            let ok = (m ∈ sinkdom' ! n) ∨ ((∃) m0S (\m0 ->  m0 /= m  ∧  m0 `elem` reachN))
+                            in (if ok then id else traceShow (g, m0S, n, m)) ok
+                          ))
                         ∧ (∀) (Map.assocs nticd') (\(n, ms) -> (∀) ms (\m ->
                           let ok =   ((m ∈ nticd ! n)  ∨  (∃) (suc g n) (\x ->  (m ∈ sinkdom ! x) ∧ (not $ m ∈ sinkdom' ! x)))
                                    ∧ ((m ∈ nticd ! n)  ∨  (m ∈ sinkdom ! n))
@@ -1207,32 +1215,35 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         ∧ (∀) (Map.assocs nticd) (\(n, ms) -> (∀) ms (\m ->
                           let ok =   ((m ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨  (∃) (suc g n) (\x ->  (m ∈ sinkdom ! x) ∧ (not $ m ∈ sinkdom' ! x)))
                                    ∧ ((m ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨  (∀) (suc g n) (\x -> not $ m ∈ sinkdom' ! x))
+                                   ∧ ((m ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨  (sinkdom' ! n == Set.fromList [n]))
                                    ∧ ((m ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨  (∃) (suc g n) (\x ->  (m ∈ sinkdom ! x) ∧ (∃) m0S (\m0 ->  m0 /= m  ∧  m ∈ sinkdom ! m0  ∧  x `elem` (pre trcG m0)  ∧  m0 `elem` (pre trcG m) ∧  (not $ (m, m0) ∈ must ! n ) ) ))
                           in (if ok then id else traceShow (g, m0S, n, m)) ok
                         ))
                         ∧ (∀) s (\n -> (n ∈ m0S)
                                      ∨ (∃) s (\m1 -> (∃) s (\m2 -> m1 /= m2  ∧  n /= m2  ∧  n ∈ mywod ! (m1,m2))) ∧  (∀) s (\m1 -> (∀) s (\m2 -> if m1 == m2  ∨  n == m2  ∨  (not $ n ∈ mywod ! (m1,m2)) then True else
                                          m1 ∈ s   ∧  m2 ∈ s   ∧
-                                           let ok = ( (      m2 ∈ m0S) ∧ (n ∈ nticd'slicer (Set.fromList [m2])))
-                                                  ∨ ( (not $ m2 ∈ m0S) ∧ (∀) m0S (\m0 -> n ∈ nticd'slicer (Set.fromList [m0])))
+                                           let ok = False
+                                                  ∨ ( (      m2 ∈ m0S) ∧ True)
+                                                  ∨ ( (not $ m2 ∈ m0S) ∧ True)
                                            in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
                                        ))
                                      ∨ (∃) (nticd ! n) (\n0 -> n0 ∈ s ∧  n0 /= n) ∧ (∀) (nticd ! n  ∩ s) (\n0 -> if n0 == n then True else
                                          n0 ∈ s   ∧  ((n0 ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨
                                                                 (   True 
                                                                   ∧ (∀) (suc g n) (\x -> not $ n0 ∈ sinkdom' ! x)
+                                                                  ∧ (sinkdom' ! n == Set.fromList [n])
+                                                                  ∧ (Set.null $ sinkdoms' ! n)
                                                                   ∧ (∃) (suc g n) (\x -> (n0 ∈ sinkdom ! x)  ∧  (∃) m0S (\m0 ->
-                                                                        m0 /= n0   ∧  n0 ∈ sinkdom ! m0
-                                                                      ∧ x `elem` (pre trcG'  m0)  ∧  m0 `elem` (pre trcG n0)
-                                                                      ∧ (not $ (n0, m0) ∈ must ! x )
+                                                                        m0 /= n0   ∧  m0 `elem`  reachable x (delSuccessorEdges g' n0)
                                                                     ))
                                                                   ∧ (∀) (suc g n) (\x -> if (not $ n0 ∈ sinkdom ! x) then True else (∀) m0S (\m0 ->
                                                            let ok = (
-                                                                        m0 /= n0   ∧  n0 ∈ sinkdom ! m0
-                                                                      ∧ x `elem` (pre trcG'  m0)  ∧  m0 `elem` (pre trcG n0)
-                                                                      ∧ (not $ (n0, m0) ∈ must ! x )
-                                                                    ) → (
-                                                                      (n ∈ nticd'slicer (Set.fromList [m0]))
+                                                                        m0 /= n0   ∧  m0 `elem`  reachable x (delSuccessorEdges g' n0)
+                                                                    ) → ( True
+                                                                      ∧ (n ∈ nticd'slicer (Set.fromList [m0]))
+                                                                      ∧ ((n == m0) ∨ 
+                                                                          (   (      m0 ∈ onPathBetween' [x]      (Set.toList   $ sinkdoms' ! n)) 
+                                                                            ∧ (not $ m0 ∈                         (Set.insert n $ sinkdoms' ! n)) ))
                                                                     )
                                                            in (if ok then id else traceShow (g, m0s, n,  n0,  x,  m0)) ok
                                                                     ))
@@ -1240,7 +1251,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                      )
                                      )
                            )
-                   )), -- ),
+                   ))),
     testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph

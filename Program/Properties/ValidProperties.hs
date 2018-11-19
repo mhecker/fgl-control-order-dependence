@@ -965,6 +965,18 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    g'   = grev g
+                    n    = length $ nodes g
+                    ms   = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    slicer1  = NTICD.nticdMyWodPDomSimpleHeuristic g
+                    slicer2  = NTICD.nticdMyWodSliceViaNticd       g
+                    slicer1' = NTICD.nticdMyWodPDomSimpleHeuristic g'
+                    slicer2' = NTICD.nticdMyWodSliceViaNticd       g'
+                in   slicer1  ms == slicer2  ms
+                   ∧ slicer1' ms == slicer2' ms,
     testProperty "sinkdoms g' => sinkdoms g"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
@@ -1144,7 +1156,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                            )))
                        )),
     testProperty "nticdMyWod == nticdMyViaNticd properties"
-    $ \(ARBITRARY(generatedGraph)) ->
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                 let g    = generatedGraph
                     trcG = trc g
                     nticd = NTICD.nticdF3 g
@@ -1157,7 +1169,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     onPathBetween ss ts = fwd
                       where gTs = foldr (flip delSuccessorEdges) g ts
                             fwd = Set.fromList $  dfs ss gTs
-                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let m0S = Set.fromList [m1, m2] in  -- -} (∀) (nodes g) (\m3 -> let m0S = Set.fromList [m1, m2, m3] in
+                    m0S = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                      where n    = length $ nodes g
+                in
+                -- in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let m0S = Set.fromList [m1, m2] in  -- -} (∀) (nodes g) (\m3 -> (∀) (nodes g) (\m4 -> let m0S = Set.fromList [m1, m2, m3, m4] in
                      let  m0s = Set.toList m0S
                           toM0s = rdfs m0s g
                           g' = foldr (flip delSuccessorEdges) g m0s
@@ -1222,7 +1237,12 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         ∧ (∀) s (\n -> (n ∈ m0S)
                                      ∨ (∃) s (\m1 -> (∃) s (\m2 -> m1 /= m2  ∧  n /= m2  ∧  n ∈ mywod ! (m1,m2))) ∧  (∀) s (\m1 -> (∀) s (\m2 -> if m1 == m2  ∨  n == m2  ∨  (not $ n ∈ mywod ! (m1,m2)) then True else
                                          m1 ∈ s   ∧  m2 ∈ s   ∧
-                                           let ok = False
+                                           (∃) m0S (\m0 ->          n `elem` (pre trcG' m0))
+                                         ∧
+                                           (∀) m0S (\m0 -> if not $ n `elem` (pre trcG' m0) then True else
+                                            let ok = n ∈ nticd'slicer (Set.fromList [m0]) in (if ok then id else traceShow (g, m0s, n,  m1,  m2, m0)) ok
+                                           )
+                                         ∧ let ok = False
                                                   ∨ ( (      m2 ∈ m0S) ∧ True)
                                                   ∨ ( (not $ m2 ∈ m0S) ∧ True)
                                            in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
@@ -1251,7 +1271,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                      )
                                      )
                            )
-                   ))),
+                   -- )))),
+                   ,
     testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
@@ -1260,10 +1281,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     slicer2  = NTICD.nticdMyWodSliceViaNticd       g
                     slicer1' = NTICD.nticdMyWodPDomSimpleHeuristic g'
                     slicer2' = NTICD.nticdMyWodSliceViaNticd       g'
-                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let ms = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let ms = Set.fromList [m1, m2] in -- -} (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
-                   )), -- ),
+                   ))),
       testProperty  "nticdMyWodSlice == nticdMyWodSliceViaNticd even when using data dependencies"
                 $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) ->
                    let g = generatedGraph

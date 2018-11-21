@@ -965,6 +965,22 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+      testProperty  "sinkdoms' (slicer' m) = ∅"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                    let g = generatedGraph
+                        n    = length $ nodes g
+                        m0S  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    -- in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->   (∀) (nodes g) (\m3 -> let m0S = Set.fromList [m1, m2, m3] in
+                    in 
+                           let m0s = Set.toList m0S
+                               g' = foldr (flip delSuccessorEdges) g m0s
+                               slicer' = NTICD.nticdSlice g'
+                               sinkdoms' = NTICD.sinkdomsOf g'
+                               sinkdom'  = NTICD.sinkdomOfGfp g'
+                           in  (∀) (slicer' m0S) (\n -> Set.null $ sinkdoms' ! n)
+                             ∧ (∀) (slicer' m0S) (\n ->            sinkdom'  ! n == Set.fromList [n])
+                        -- )))
+                    ,
     testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph
@@ -1242,12 +1258,20 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                            (∀) m0S (\m0 -> if not $ n `elem` (pre trcG' m0) then True else
                                             let ok = n ∈ nticd'slicer (Set.fromList [m0]) in (if ok then id else traceShow (g, m0s, n,  m1,  m2, m0)) ok
                                            )
+                                         ∧ ( (m1 ∈ nticd' ! n) ∨ (∀) (suc g n) (\x -> not $ m1 ∈ sinkdom' ! x) ∧ (∃) (suc g n) (\x -> (m1,m2) ∈ must ! x) ∧ (∀) (suc g n) (\x -> if not $ (m1,m2) ∈ must ! x then True else
+                                             let ok = x /= m1 ∧ (∃) (reachable x (delSuccessorEdges g' m1)) (\m0 -> m0 ∈ m0S ∧ m0 /= m1)in (if ok then id else traceShow (g, m0s, n,  m1,  m2, x)) ok
+                                           ))
+                                         ∧ let ok =  not $ m1 ∈ sinkdom' ! m2  in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
+                                         -- ∧ let ok =  (n ∈ nticd'slicer (Set.fromList [m2]))  ∨  (∃) m0S (\m0 -> (m0 /= m1 ∧ n ∈ mywod ! (m1,m0)))  in (if ok then id else traceShow ("lol", g, m0s, n,  m1,  m2)) ok
+                                         ∧ let ok = Set.null $ sinkdoms' ! n in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
+                                         ∧ let ok = sinkdom' ! n == Set.fromList [n] in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
                                          ∧ let ok = False
                                                   ∨ ( (      m2 ∈ m0S) ∧ True)
                                                   ∨ ( (not $ m2 ∈ m0S) ∧ True)
                                            in (if ok then id else traceShow (g, m0s, n,  m1,  m2)) ok
                                        ))
                                      ∨ (∃) (nticd ! n) (\n0 -> n0 ∈ s ∧  n0 /= n) ∧ (∀) (nticd ! n  ∩ s) (\n0 -> if n0 == n then True else
+                                         (Set.null $ sinkdoms' ! n) ∧ (sinkdom' ! n == Set.fromList [n]) ∧
                                          n0 ∈ s   ∧  ((n0 ∈ nticd' ! n)  ∨  (n ∈ m0S)  ∨
                                                                 (   True 
                                                                   ∧ (∀) (suc g n) (\x -> not $ n0 ∈ sinkdom' ! x)

@@ -80,6 +80,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntindDef, ntsndDef,
     isinkDFTwoFinger, mDFTwoFinger,
     nticdMyWodSliceViaNticd, ntscdMyDodSliceViaNtscd,
+    nticdMyWodSliceViaISinkDom,
     combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
@@ -965,6 +966,38 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "nticdMyWodSlice == nticdMyWodSliceViaISinkDom  for random slice-criteria of random size, and CFG-shaped graphs"
+    $ \(SIMPLECFG(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    n    = length $ nodes g
+                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    slicer1  = NTICD.nticdMyWodSliceViaNticd       g
+                    slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
+                in   slicer1  ms == slicer2  ms,
+    testProperty "nticdMyWodSlice == nticdMyWodSliceViaISinkDom  for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    g'   = grev g
+                    n    = length $ nodes g
+                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    slicer1  = NTICD.nticdMyWodSliceViaNticd       g
+                    slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
+                    slicer1' = NTICD.nticdMyWodSliceViaNticd       g'
+                    slicer2' = NTICD.nticdMyWodSliceViaISinkDom    g'
+                in   slicer1  ms == slicer2  ms
+                   ∧ slicer1' ms == slicer2' ms,
+    testPropertySized 20 "nticdMyWodSlice == nticdMyWodSliceViaISinkDom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    g'   = grev g
+                    slicer1  = NTICD.nticdMyWodPDomSimpleHeuristic g
+                    slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
+                    slicer1' = NTICD.nticdMyWodPDomSimpleHeuristic g'
+                    slicer2' = NTICD.nticdMyWodSliceViaISinkDom    g'
+                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let ms = Set.fromList [m1, m2] in -- -} (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
+                       slicer1  ms == slicer2  ms
+                     ∧ slicer1' ms == slicer2' ms
+                   ))),
       testProperty  "sinkdoms' (slicer' m) = ∅"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph

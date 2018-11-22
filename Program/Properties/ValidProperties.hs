@@ -1342,7 +1342,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
                    ))),
-      testProperty  "nticdMyWodSlice == nticdMyWodSliceViaNticd even when using data dependencies"
+      testPropertySized 30  "nticdMyWodSlice == nticdMyWodSliceViaNticd even when using data dependencies"
                 $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) ->
                    let g = generatedGraph
                        ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
@@ -1360,6 +1360,25 @@ wodProps = testGroup "(concerning weak order dependence)" [
                             slicer' = NTICD.combinedBackwardSlice g (ddep ⊔ nticd') empty
                         in slicer msS == slicer' msS
                       ))),
+      testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd even when using data dependencies, for random slice-criteria of random size "
+                $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) seed1 seed2->
+                   let g = generatedGraph
+                       n  = length $ nodes g
+                       ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                       ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
+                         where toG = Map.fromList $ zip (nodes ddep0) (cycle $ nodes g)
+                       ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
+                       nticd = NTICD.isinkDFTwoFinger g
+                       mywod =  NTICD.myWodFastPDomSimpleHeuristic g
+                       slicer = NTICD.combinedBackwardSlice g (ddep ⊔ nticd) mywod
+                       
+                       msS = Set.fromList ms
+                       g' = foldr (flip delSuccessorEdges) g ms
+                       nticd' = NTICD.isinkDFTwoFinger g'
+                       empty = Map.empty
+                       slicer' = NTICD.combinedBackwardSlice g (ddep ⊔ nticd') empty
+                   in slicer msS == slicer' msS,
     testProperty "wodTEIL ⊑ myWod ∪ nticd*"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

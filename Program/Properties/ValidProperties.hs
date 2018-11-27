@@ -412,6 +412,14 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               nticdslicer ms == nticdslicerCEdges ms
                     )),
+    testProperty   "nticdSlice  == nticdslicerCEdges for random slice-criteria of random size"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                    let g = generatedGraph
+                        n    = length $ nodes g
+                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        nticdslicer        = NTICD.nticdSlice              g
+                        nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
+                    in  nticdslicer ms == nticdslicerCEdges ms,
     testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

@@ -429,6 +429,15 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                          let dfViaJ = NTICD.dfViaCEdges g (fmap fromSet isinkdom) in
                          NTICD.idomToDFFast g isinkdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
                     ),
+    testProperty   "nticd*  _ == dfViaCEdges _"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        nticd = NTICD.nticdF3 g
+                        isinkdom = NTICD.isinkdomOfTwoFinger8 g
+                        dfViaJ = NTICD.dfViaCEdges g (fmap fromSet isinkdom)
+                    in (∀) (nodes g) (\n -> (∀) (nodes g) (\m -> if m == n then True else
+                         (n ∈ dfViaJ m)  == (m ∈ nticd ! n)
+                    )),
     testProperty   "idomToDFFast _ isinkdom == sinkDF _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡))
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -393,6 +393,11 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let g = generatedGraph
                         sinkdom = NTICD.sinkdomOfLfp g
                         isinkdomsOf = NTICD.sinkdomsOf g
+                        idom = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 g
+                        idom'  = invert''' idom
+                        (cycleOfM, cycles) = findCyclesM idom
+                        roots = foldr (\(n,m) roots -> if m == Nothing then Set.fromList [n] : roots else roots) cycles (Map.assocs idom)
+                        levelOf = Map.fromList [ (n,l) | nl <- treeLevel idom' roots, (n,l) <- nl]
                         cEdges = Map.fromList [(z, [ y | y <- pre g z, not $ z ∈ isinkdomsOf ! y ]) | z <- nodes g]
                     in   (∀) (nodes g)                       (\x -> (∀) (cEdges ! x) (\y ->  sinkdom ! x   ⊃   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
                       ∧  (∀) (nodes g)                       (\x -> (∀) (cEdges ! x) (\y ->  not $  x   ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
@@ -403,6 +408,8 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                            (   ( (sinkdom ! x  ⊃  (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y])  ∧  (not $ x  ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
                              ∨ ( (sinkdom ! x  ⊆  (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y])  ∧  (      x  ∈   (∐) [ sinkdom ! y' | y' <- Set.toList $ isinkdomsOf ! y]))
                            )
+                         ∧ (let ok = ((x /= y)  ∧  (not $ Set.null $ sinkdom ! y ∩ sinkdom ! x)) → ((not $ x ∈ sinkdom ! y) ↔ (levelOf ! y <= levelOf ! x)) in (if ok then id else traceShow (g,x,y,z, levelOf)) ok
+                           )
                          ))),
     testProperty   "nticdSlice  == nticdslicerCEdges"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -412,6 +419,16 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               nticdslicer ms == nticdslicerCEdges ms
                     )),
+    testProperty   "nticdSlice  == nticdslicerCEdges for CFG like graphs for random slice-criteria of random size"
+                $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
+                    let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                        [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                        g = insEdge (exit, entry, ()) generatedGraph
+                        n    = length $ nodes g
+                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        nticdslicer        = NTICD.nticdSlice              g
+                        nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
+                    in  nticdslicer ms == nticdslicerCEdges ms,
     testProperty   "nticdSlice  == nticdslicerCEdges for random slice-criteria of random size"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph

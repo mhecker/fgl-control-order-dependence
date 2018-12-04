@@ -1574,7 +1574,15 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
                      ∧ wodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
                    )),
-    testProperty "wodTEILSliceViaNticd  == wdcSlice for CFG-shaped graphs and randomly selected nodes"
+    testProperty "wodTEILSlice = wodTEILSliceViaNticd for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+                    n    = length $ nodes g
+                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    wodteilslicer    = NTICD.wodTEILSlice g
+                    wodteilslicer'   = NTICD.wodTEILSliceViaNticd g
+                in wodteilslicer ms  == wodteilslicer' ms,
+    testProperty "wodTEILSliceViaNticd  == wdSlice for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
   --               let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
   --                   [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -1592,6 +1600,15 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in (∀) mss (\ms ->
                      wdslicer ms == wodslicer ms
                    ),
+    testProperty "wodTEILSliceViaNticd  ∩ fromM == wccSlice for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+                    n  = length $ nodes g
+                    ms = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    fromMs = Set.fromList $ dfs (Set.toList ms) g
+                    wccslicer  = FCACD.wccSlice g
+                    wodslicer = NTICD.wodTEILSliceViaNticd g
+                in wccslicer ms == wodslicer ms ∩ fromMs,
     testProperty "wodTEILSliceViaNticd  == wdSlice for randomly selected nodes"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
@@ -2204,6 +2221,18 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                          s' = Set.fromList [ n | n <- nodes g, m ∈ ntind ! n ]
                      in s == s'
                    ),
+    testPropertySized 30 "ntscdMyDodSlice == ntscdMyDodSliceViaNticd for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    g'   = grev g
+                    n    = length $ nodes g
+                    ms   = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    slicer1  = NTICD.ntscdMyDodSlice               g
+                    slicer2  = NTICD.ntscdMyDodSliceViaNtscd       g
+                    slicer1' = NTICD.ntscdMyDodSlice               g'
+                    slicer2' = NTICD.ntscdMyDodSliceViaNtscd       g'
+                in   slicer1  ms == slicer2  ms
+                   ∧ slicer1' ms == slicer2' ms,
     testProperty "ntscdMyDodSlice == nticdMyDodSliceViaNtscd"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph

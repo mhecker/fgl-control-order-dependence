@@ -48,10 +48,10 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map ( Map, (!) )
 
-import Util(restrict, sampleFrom)
+import Util(restrict, sampleFrom, moreSeeds,)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges, delSuccessorEdges)
 import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, reachable)
@@ -77,6 +77,7 @@ import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    sinkdomOfGfp,
     noJoins, mmayOf, mmayOf', stepsCL,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
@@ -121,6 +122,8 @@ nticdX     = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup 
 ntscd      = defaultMain                               $ expectFail $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 ntscdX     = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "ntscd"     [ mkTest [ntscdTests], mkProp [ntscdProps]]
 
+insensitiveDom    = defaultMain                               $ expectFail $ testGroup "insensitiveDom"   [                                mkProp [insensitiveDomProps]]
+insensitiveDomX   = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "insensitiveDom"   [                                mkProp [insensitiveDomProps]]
 
 misc       = defaultMain                               $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
 miscX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "misc"      [ mkProp [miscProps] ]
@@ -138,7 +141,7 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps, timingDepProps ]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps, timingDepProps, insensitiveDomProps ]
 
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
@@ -351,6 +354,49 @@ ntscdProps = testGroup "(concerning ntscd )" [
                        NTICD.ntscdF3         g
   ]
 
+
+insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testPropertySized 20 "sinkdom g_{M/->}^{->*M} ⊆ (sinkdom g)|{->*M}"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
+                         let toMs = rdfs ms g
+                             g' = foldr (flip delSuccessorEdges) (subgraph toMs g) ms
+                             sinkdom' = NTICD.sinkdomOfGfp g'
+                         in sinkdom' ⊑ restrict sinkdom (Set.fromList toMs)
+                       ))),
+    testProperty "sinkdom g^{M->*}^{->*M} ⊆ (sinkdom g)|{->*M} for random sets M of random Size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        n  = length $ nodes g
+                        ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        toMs = rdfs ms g
+                        g' = foldr (flip delSuccessorEdges) (subgraph toMs g) ms
+                        sinkdom' = NTICD.sinkdomOfGfp g'
+                    in sinkdom' ⊑ restrict sinkdom (Set.fromList toMs),
+    testPropertySized 20 "sinkdom g^{->*M} == (sinkdom g)|{->*M}"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
+                         let toMs = rdfs ms g
+                             g' = subgraph toMs g
+                             sinkdom' = NTICD.sinkdomOfGfp g'
+                         in sinkdom' == restrict sinkdom (Set.fromList toMs)
+                       ))),
+    testProperty "sinkdom g^{->*M} == (sinkdom g)|{->*M} for random sets M of random Size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        n  = length $ nodes g
+                        ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        toMs = rdfs ms g
+                        g' = subgraph toMs g
+                        sinkdom' = NTICD.sinkdomOfGfp g'
+                    in sinkdom' == restrict sinkdom (Set.fromList toMs)
+ ]
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
   [ testCase ("cdomIsCdom' idomChef for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomChef) == [] @? ""

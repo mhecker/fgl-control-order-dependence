@@ -77,6 +77,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     isinkDFTwoFinger, mDFTwoFinger,
     nticdMyWodSliceViaNticd, ntscdMyDodSliceViaNtscd,
@@ -319,6 +320,46 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testPropertySized 20 "sinkdom g_{M/->}^{M->*} ⊆ (sinkdom g)|{M->*}"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
+                         let fromMs = dfs ms g
+                             g' = foldr (flip delSuccessorEdges) (subgraph fromMs g) ms
+                             sinkdom' = NTICD.sinkdomOfGfp g'
+                         in sinkdom' ⊑ restrict sinkdom (Set.fromList fromMs)
+                       ))),
+    testProperty "sinkdom g^{M->*}^{M->*} ⊆ (sinkdom g)|{M->*} for random sets M of random Size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        n  = length $ nodes g
+                        ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        fromMs = dfs ms g
+                        g' = foldr (flip delSuccessorEdges) (subgraph fromMs g) ms
+                        sinkdom' = NTICD.sinkdomOfGfp g'
+                    in sinkdom' ⊑ restrict sinkdom (Set.fromList fromMs),
+    testPropertySized 20 "sinkdom g^{M->*} == (sinkdom g)|{M->*}"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
+                         let fromMs = dfs ms g
+                             g' = subgraph fromMs g
+                             sinkdom' = NTICD.sinkdomOfGfp g'
+                         in sinkdom' == restrict sinkdom (Set.fromList fromMs)
+                       ))),
+    testProperty "sinkdom g^{M->*} == (sinkdom g)|{M->*} for random sets M of random Size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = generatedGraph
+                        sinkdom = NTICD.sinkdomOfGfp g
+                        n  = length $ nodes g
+                        ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        fromMs = dfs ms g
+                        g' = subgraph fromMs g
+                        sinkdom' = NTICD.sinkdomOfGfp g'
+                    in sinkdom' == restrict sinkdom (Set.fromList fromMs),
     testPropertySized 40 "stepsCL sinkdom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

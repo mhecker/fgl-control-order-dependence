@@ -603,19 +603,20 @@ nticdSinkContraction graph              = Map.fromList [ (n, cdepClassic ! n) | 
           cdepClassic = controlDependence (sinkShrinkedGraph graph endNode) endNode
           sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
 
-sinkShrinkedGraph :: DynGraph gr => gr a b  -> Node -> gr () ()
-sinkShrinkedGraph graph endNode   = mkGraph (  [ (s,())   | sink <- sinks, let s = head sink]
+sinkShrinkedGraphNoNewExitForSinks :: DynGraph gr => gr a b  -> [[Node]] -> gr () ()
+sinkShrinkedGraphNoNewExitForSinks graph sinks = mkGraph (  [ (s,())   | sink <- sinks, let s = head sink]
                                             ++ [ (n,())   | n    <- nodes graph, not $ n ∈ sinkNodes ]
-                                            ++ [ (endNode, ()) ]
                                           )
                                           (
                                                [ (n,s,())       | sink <- sinks, let s = head sink, s' <- sink, n <- pre graph s', not $ n ∊ sink]
-                                            ++ [ (s,endNode,()) | sink <- sinks, let s = head sink ]
                                             ++ [ (n,m,()) | (n,m) <- edges graph, not $ n ∈ sinkNodes, not $ m ∈ sinkNodes ]
                                           )
     where sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
-          sinks = controlSinks graph
 
+sinkShrinkedGraph :: DynGraph gr => gr a b  -> Node -> gr () ()
+sinkShrinkedGraph graph endNode = foldl (flip insEdge) graph' [ (s,endNode,()) | sink <- sinks, let s = head sink ]
+    where sinks  = controlSinks graph
+          graph' = insNode (endNode, ()) $ sinkShrinkedGraphNoNewExitForSinks graph sinks 
 
 
 

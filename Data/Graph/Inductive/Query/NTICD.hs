@@ -2882,6 +2882,31 @@ wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 
 
+wccSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wccSliceViaNticd g msS = s
+  where ms = Set.toList msS
+
+        g'''   = foldr (flip delSuccessorEdges) g'' ms
+          where  toMs   = rdfs ms g
+                 g' = subgraph toMs g
+                 
+                 fromMs =  dfs ms g'
+                 g'' = subgraph fromMs g'
+
+        sinks            = fmap (\m -> [m]) ms
+
+        -- sinkS            = fmap Set.fromList sinks
+        -- sinkNodes        = msS
+        -- nonSinkCondNodes = Map.fromList [ (n, succs) | n <- nodes g''', not $ n ∈ sinkNodes, let succs = suc g''' n, length succs > 1 ]
+        -- idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes g'''
+
+        idom = Map.fromList $ iPDomForSinks sinks g'''
+
+        s = Map.keysSet $ Map.filter (== Nothing) idom 
+
+
+
+
 wodTEILSliceViaNticd :: (Show (gr a b),  DynGraph gr) => gr a b ->  Set Node -> Set Node
 wodTEILSliceViaNticd g =  \ms ->
     let toMs  = rdfs (Set.toList ms) g

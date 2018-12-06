@@ -99,7 +99,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast, nticdSlice,  nticdSliceNumberedViaCEdgesFast, ntscdSlice, nticdSliceFor, ntscdSliceViaCEdgesFast,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
-    wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
+    wccSliceViaNticd, wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
@@ -344,22 +344,28 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         sinkdom = NTICD.sinkdomOfGfp g
+                        nticd = NTICD.nticdF3 g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
                          let fromMs = dfs ms g
                              g' = subgraph fromMs g
                              sinkdom' = NTICD.sinkdomOfGfp g'
-                         in sinkdom' == restrict sinkdom (Set.fromList fromMs)
+                             nticd' = NTICD.nticdF3 g'
+                         in   sinkdom' == restrict sinkdom (Set.fromList fromMs)
+                            ∧ nticd'   == restrict nticd   (Set.fromList fromMs)
                        ))),
     testProperty "sinkdom g^{M->*} == (sinkdom g)|{M->*} for random sets M of random Size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                     let g = generatedGraph
                         sinkdom = NTICD.sinkdomOfGfp g
+                        nticd = NTICD.nticdF3 g
                         n  = length $ nodes g
                         ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         fromMs = dfs ms g
                         g' = subgraph fromMs g
                         sinkdom' = NTICD.sinkdomOfGfp g'
-                    in sinkdom' == restrict sinkdom (Set.fromList fromMs),
+                        nticd' = NTICD.nticdF3 g'
+                    in   sinkdom' == restrict sinkdom (Set.fromList fromMs)
+                       ∧ nticd'   == restrict nticd   (Set.fromList fromMs),
     testPropertySized 40 "stepsCL sinkdom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -1067,6 +1073,41 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    testProperty "wccSlice == wccSliceViaNticd for random slice-criteria of random size and CFG-shaped graphs"
+    $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+    -- testProperty "wccSlice == wccSliceViaNticd for random slice-criteria of random size and CFG-shaped graphs with exit->entry edge"
+    -- $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
+    --             let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+    --                 [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+    --                 g = insEdge (exit, entry, ()) generatedGraph
+                    n  = length $ nodes g
+                    ms = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    wccslicer   = FCACD.wccSlice g
+                    wccslicer'  = NTICD.wccSliceViaNticd g
+                in wccslicer ms == wccslicer'  ms,
+    testProperty "wccSlice == * for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+                    n  = length $ nodes g
+                    ms = List.nub [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    msS = Set.fromList ms
+
+                    wccslicer   = FCACD.wccSlice g
+                    wccslicer'  = NTICD.wccSliceViaNticd g
+
+                    fromMs =  dfs ms g
+                    g'    = subgraph fromMs g
+                    wodslicer = NTICD.wodTEILSliceViaNticd g'
+
+                    toMs   = rdfs ms g
+                    g''    = foldr (flip delSuccessorEdges) (subgraph fromMs $ subgraph toMs g) ms
+                    nticdslicer = NTICD.nticdSlice g''
+
+                in   wccslicer msS == wodslicer   msS
+                   ∧ wccslicer msS == nticdslicer msS
+                   ∧ wccslicer msS == wccslicer'  msS,
     testProperty "nticdMyWodSlice == nticdMyWodSliceViaISinkDom  for random slice-criteria of random size, and CFG-shaped graphs"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph

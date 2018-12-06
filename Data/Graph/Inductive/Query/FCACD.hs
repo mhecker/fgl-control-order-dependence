@@ -130,7 +130,8 @@ wdSlice g = fst . (main g)
 wccSlice :: Graph gr => gr a b -> Set Node -> Set Node
 wccSlice g v' = w ∩ fromV'
   where (w,_) = main g v'
-        fromV' = (Set.fromList $ [ n | m <- Set.toList v', n <- reachable m g ])
+        fromV' = Set.fromList $ dfs (Set.toList v') g
+        -- fromV' = (Set.fromList $ [ n | m <- Set.toList v', n <- reachable m g ])
 
 
 nticdMyWodViaWDSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node

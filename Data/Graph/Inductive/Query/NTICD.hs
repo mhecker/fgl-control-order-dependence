@@ -4693,6 +4693,23 @@ tscdOfLfp graph = Map.fromList [ (n, Set.fromList [ m | timdom <- timdoms,  (m, 
                   ]
   where timdom = timdomOfLfp graph
 
+fTimeDomNaive :: DynGraph gr => TimeDomFunctionalGen gr a b
+fTimeDomNaive graph _ _ _ _ = f 
+  where f timeDomOf = fmap (fmap (Set.singleton . Set.findMin)) $ 
+                      Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
+                    -- ⊔ Map.fromList [ (y, Map.fromList [(n, Set.fromList [steps]) | (n,steps) <- zip (reverse $ toNextCond y) [0..] ])
+                    --                                                                | y <- nodes graph
+                                                                                     
+                    --                ]
+                    ⊔ Map.fromList [ (y,
+                                         fmap (Set.map (\s -> s + 1)) $
+                                         Map.filter (not . Set.null) $
+                                         (∏) [ timeDomOf ! x | x <- suc graph y ]
+                                     )
+                                     | y <- nodes graph, suc graph y /= []
+                                   ]
+timdomOfNaiveLfp graph = tdomOfLfp graph fTimeDom
+
 
 type TimeDomFunctionalR = Map Node (Map Node Reachability) ->  Map Node (Map Node Reachability)
 type TimeDomFunctionalGenR gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> TimeDomFunctionalR
@@ -5111,7 +5128,8 @@ timingDependenceViaTwoFinger g =
                                                                                                   $ restrict itimdom toMS,
                                                                                             let g' = (flip delSuccessorEdges m) $ subgraph toM $ g,
                                                                                             let worklist0' = Map.filterWithKey (\x _ -> imdom0' ! x == Nothing) condNodes',
-                                                                                            let itimdom = timdomOfTwoFingerFor g'  condNodes' worklist0' imdom0' (invert''' $ fmap (liftM fst) $ imdom0')
+                                                                                            let itimdom = timdomOfTwoFingerFor g'  condNodes' worklist0' imdom0' (invert''' $ fmap (liftM fst) $ imdom0'),
+                                                                                        assert (itimdom == (fmap fromSet $ timdomOfTwoFinger g')) True
                    ]
                                                
   where gRev = grev g

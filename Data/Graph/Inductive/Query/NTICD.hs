@@ -4695,20 +4695,15 @@ tscdOfLfp graph = Map.fromList [ (n, Set.fromList [ m | timdom <- timdoms,  (m, 
 
 fTimeDomNaive :: DynGraph gr => TimeDomFunctionalGen gr a b
 fTimeDomNaive graph _ _ _ _ = f 
-  where f timeDomOf = fmap (fmap (Set.singleton . Set.findMin)) $ 
-                      Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
-                    -- ⊔ Map.fromList [ (y, Map.fromList [(n, Set.fromList [steps]) | (n,steps) <- zip (reverse $ toNextCond y) [0..] ])
-                    --                                                                | y <- nodes graph
-                                                                                     
-                    --                ]
+  where f timeDomOf = Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
                     ⊔ Map.fromList [ (y,
                                          fmap (Set.map (\s -> s + 1)) $
-                                         Map.filter (not . Set.null) $
+                                         Map.delete y $ 
                                          (∏) [ timeDomOf ! x | x <- suc graph y ]
                                      )
                                      | y <- nodes graph, suc graph y /= []
                                    ]
-timdomOfNaiveLfp graph = tdomOfLfp graph fTimeDom
+timdomOfNaiveLfp graph = tdomOfLfp graph fTimeDomNaive
 
 
 type TimeDomFunctionalR = Map Node (Map Node Reachability) ->  Map Node (Map Node Reachability)

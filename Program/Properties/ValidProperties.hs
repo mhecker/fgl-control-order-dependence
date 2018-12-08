@@ -2992,9 +2992,14 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "timdomOfLfp is unique"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom  = NTICD.timdomOfLfp      g
+                in (∀) (Map.assocs timdom) (\(n, ms) -> (∀) ms (\(m, steps) -> (∀) ms (\(m', steps') ->  (m == m')  →  (steps == steps')))),
     testProperty "timdomOfLfp == timdomOfNaiveLfp"
-    $ \(REDUCIBLE(generatedGraph)) ->
-                let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
                     timdom  = NTICD.timdomOfLfp      g
                     timdom' = NTICD.timdomOfNaiveLfp g
                 in timdom == timdom',
@@ -3008,7 +3013,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                          g'   = Set.fold (flip delSuccessorEdges) (subgraph (Set.toList toMs) g) ms
                      in NTICD.itimdomTwoFingercd g' == Map.mapWithKey Set.delete (NTICD.tscdOfLfp g')
                  ),
-    testProperty "timdomOfLfp is transitive up to cycles"
+    testProperty "timdomOfLfp is transitive up to cycles for reducible cfg"
     $ \(REDUCIBLE(generatedGraph)) ->
                 let g = generatedGraph
                     timdom = NTICD.timdomOfLfp g
@@ -3017,14 +3022,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
                 ))),
     testProperty "timdomOfLfp is transitive in graphs without non-trivial sinks"
-    $ \(REDUCIBLE(generatedGraph)) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                 let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
                     timdom = NTICD.timdomOfLfp g
                 in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
                        (z, steps+steps') ∈ timdom ! x
                 ))),
     testProperty "timdomOfLfp is transitive in graphs without imdom cycles"
-    $ \(REDUCIBLE(generatedGraph)) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     imdom = NTICD.imdomOfTwoFinger6 g
                     cycles = snd $ findCyclesM $ fmap fromSet $ imdom

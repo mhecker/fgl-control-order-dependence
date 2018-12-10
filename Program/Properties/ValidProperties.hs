@@ -3005,14 +3005,8 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in timdom == timdom',
     testProperty "itimdomTwoFingercd == tscdOfLfp in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
-                let g = generatedGraph
-                    gRev = grev g
-                in (∀) (nodes g) (\m ->
-                     let ms   = Set.fromList [m]
-                         toMs = Set.fromList [ n | m <- Set.toList ms, n <- reachable m gRev ]
-                         g'   = Set.fold (flip delSuccessorEdges) (subgraph (Set.toList toMs) g) ms
-                     in NTICD.itimdomTwoFingercd g' == Map.mapWithKey Set.delete (NTICD.tscdOfLfp g')
-                 ),
+                let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
+                in NTICD.itimdomTwoFingercd g == Map.mapWithKey Set.delete (NTICD.tscdOfLfp g),
     testProperty "timdomOfLfp is transitive up to cycles for reducible cfg"
     $ \(REDUCIBLE(generatedGraph)) ->
                 let g = generatedGraph

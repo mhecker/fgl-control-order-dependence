@@ -196,6 +196,19 @@ isReachableBeforeFromTreeM m a x y = isReach y
                           Just z  -> isReach z
 
 
+minimalPath :: Ord a => Map a (Set (a,Integer)) -> a -> a -> [[(a,Integer)]]
+minimalPath m x y = find (Set.fromList [x]) x
+  where find forbidden x
+            | x == y = [[]]
+            | Set.null zs = []
+            | otherwise = do
+                            (z,steps) <- Set.toList zs
+                            if z ∈ forbidden then mzero
+                            else do
+                              path <- find (Set.insert z forbidden) z
+                              return $ (z,steps) : path
+          where zs = m ! x
+
 reachableFromIn :: Ord a => Map a (Set (a, (Integer, Set a))) -> a -> a -> Set Integer
 reachableFromIn succs x y
     | x == y    = Set.fromList [0]

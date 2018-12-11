@@ -3060,35 +3060,6 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                             )
                                          | n <- nodes g
                                   ]
-
-                    -- timdomFrom =  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path,
-                    --                                          assert ((m == n) → (∀) (fmap fst path) (\n' -> not $ n' ∈ cycles)) True,
-                    --                                                             (∀) (fmap fst path) (\n' -> not $ n' ∈ cycles)
-                    --                             ]
-                    --                         )
-                    --                      | n <- nodes g
-                    --               ]
-
-                    --            ⊔  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path,
-                    --                                                       not $ (∀) (fmap fst path) (\n' -> not $ n' ∈ cycles),
-                    --                                                      assert (m /= n) True,
-                    --                                                             let n' = last $ (n:) $ takeWhile (not . (∈ cycles)) $ fmap fst path,
-                    --                                                             let [pathN'] = minimalPath itimdom n' m, let stepsN' = sum $ fmap snd pathN',
-                    --                                                             let xs = Set.fromList $ suc g n',
-                    --                                                             -- let itimdom'  =  fmap (Set.filter ((\(y,_) -> not $ y ∈ xs))) itimdom,
-                    --                                                             -- (∀)  xs (\x -> not $ List.null $ minimalPath itimdom' x m)
-                    --                                                             let itimdom'  =  Map.insert m (Set.empty) itimdom,
-                    --                                                             (∀) xs (\x ->
-                    --                                                                (not $ List.null $ minimalPath itimdom' x m)
-                    --                                                              ∧ (let [path'] = minimalPath itimdom' x m
-                    --                                                                     steps' =  sum $ fmap snd path'
-                    --                                                                 in 1 + steps' == stepsN'
-                    --                                                                )
-                    --                                                             )
-                    --                             ]
-                    --                         )
-                    --                      | n <- nodes g
-                    --               ]
                 in (if timdom == timdomFrom then id else traceShow (g, timdom, timdomFrom, valid)) $ timdom == timdomFrom,
     testProperty "timdomOfLfp is transitive in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->

@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel)
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -3015,6 +3015,81 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                                                       (z, (steps + steps'          )          ) ∈ timdom ! x
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
                 ))),
+    testProperty "timdomOfLfp is transitive up to cycles"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    mdom  = NTICD.mdomOfLfp g
+                    timdom = NTICD.timdomOfLfp g
+                in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
+                                                                      (z, (steps + steps'          )          ) ∈ timdom ! x
+                     ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
+                     ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y) ∧  (not $ ((∃) (timdom ! z) (\(x', _) -> x' == x)))
+                ))),
+    testProperty "timdomOfLfp via timdomOfTwoFinger g"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = NTICD.timdomOfLfp g
+                    itimdom = NTICD.timdomOfTwoFinger g
+                    cycles = (∐) (snd $ findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdom)
+                    entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycles, (∃) (itimdom ! n) (\(m,steps) -> m ∈ cycles) ]
+                    valid = fix (Map.fromSet (\n -> (n,0)) entries) f
+                      where fix x f = let x' = f x in if x == x' then x else fix x' f
+                            f valid = Map.fromList [ (n, (m',fuel + steps))
+                                                                    | (n,(m,fuel)) <- Map.assocs valid, let [(m', steps)] = Set.toList $ itimdom ! m,
+                                                                      let xs = Set.fromList $ suc g n,
+                                                                      let itimdom' =  Map.insert m' (Set.empty) itimdom,
+                                                                      (∀) xs (\x ->
+                                                                                   (not $ List.null $ minimalPath itimdom' x m')
+                                                                                 ∧ (let [path'] = minimalPath itimdom' x m'
+                                                                                        steps' =  sum $ fmap snd path'
+                                                                                        l' = length path'
+                                                                                    in   1 + steps' == steps + fuel
+                                                                                       ∧ (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (x,0)  path') (\(x',stepsX') -> (not $ x' ∈ entries) ∨ (
+                                                                                           steps' - stepsX' <= (snd $ valid ! x')
+                                                                                         ))
+                                                                                   )
+                                                                      )
+                                               ]
+                                      `Map.union` valid
+
+                    timdomFrom =  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path,
+                                                                                 (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (n,0)  path) (\(x',stepsX') -> (not $ x' ∈ entries) ∨ (
+                                                                                           steps - stepsX' <= (snd $ valid ! x')
+                                                                                 ))
+                                                ]
+                                            )
+                                         | n <- nodes g
+                                  ]
+
+                    -- timdomFrom =  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path,
+                    --                                          assert ((m == n) → (∀) (fmap fst path) (\n' -> not $ n' ∈ cycles)) True,
+                    --                                                             (∀) (fmap fst path) (\n' -> not $ n' ∈ cycles)
+                    --                             ]
+                    --                         )
+                    --                      | n <- nodes g
+                    --               ]
+
+                    --            ⊔  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path,
+                    --                                                       not $ (∀) (fmap fst path) (\n' -> not $ n' ∈ cycles),
+                    --                                                      assert (m /= n) True,
+                    --                                                             let n' = last $ (n:) $ takeWhile (not . (∈ cycles)) $ fmap fst path,
+                    --                                                             let [pathN'] = minimalPath itimdom n' m, let stepsN' = sum $ fmap snd pathN',
+                    --                                                             let xs = Set.fromList $ suc g n',
+                    --                                                             -- let itimdom'  =  fmap (Set.filter ((\(y,_) -> not $ y ∈ xs))) itimdom,
+                    --                                                             -- (∀)  xs (\x -> not $ List.null $ minimalPath itimdom' x m)
+                    --                                                             let itimdom'  =  Map.insert m (Set.empty) itimdom,
+                    --                                                             (∀) xs (\x ->
+                    --                                                                (not $ List.null $ minimalPath itimdom' x m)
+                    --                                                              ∧ (let [path'] = minimalPath itimdom' x m
+                    --                                                                     steps' =  sum $ fmap snd path'
+                    --                                                                 in 1 + steps' == stepsN'
+                    --                                                                )
+                    --                                                             )
+                    --                             ]
+                    --                         )
+                    --                      | n <- nodes g
+                    --               ]
+                in (if timdom == timdomFrom then id else traceShow (g, timdom, timdomFrom, valid)) $ timdom == timdomFrom,
     testProperty "timdomOfLfp is transitive in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)

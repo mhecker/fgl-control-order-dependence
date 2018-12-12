@@ -4713,13 +4713,6 @@ fTimeDomPrevNaive graph _ _ _ _ = f
                       timeDomOf'
           where timeDomOf' = 
                       Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
-                    ⊔ Map.fromList [ (y,
-                                         fmap (Set.map (\s -> s + 1)) $
-                                         Map.delete y $ 
-                                         (∏) [ timeDomOf ! x | x <- suc graph y ]
-                                     )
-                                     | y <- nodes graph, suc graph y /= []
-                                   ]
                    ⊔  Map.fromList [ (n, Map.fromList [ (m', Set.fromList [steps + steps' + 1]) |
                                                         (m, stepss) <- ms, steps <- Set.toList stepss,
                                                         (∀) ms (\(m', stepss') -> (∀) (stepss') (\steps' -> (m == m' ∧ steps == steps') ∨ (steps < steps'))),

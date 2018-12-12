@@ -93,7 +93,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, 
-    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger,
+    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfPrevNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -3025,6 +3025,29 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y) ∧  (not $ ((∃) (timdom ! z) (\(x', _) -> x' == x)))
                 ))),
+    -- testProperty "timdomOfNaiveLfpOr == timdomOfTwoFinger^* "
+    -- $ \(ARBITRARY(generatedGraph)) ->
+    --             let g = generatedGraph
+    --                 itimdom = NTICD.timdomOfTwoFinger g
+    --                 timdom = NTICD.timdomOfNaiveLfp g
+    --                 timdomOr = timdom
+    --                          ⊔  Map.fromList [ (n, Set.fromList [ (m', steps + steps' + 1) |
+    --                                                  (m, steps) <- ms,
+    --                                                  m /= n,
+    --                                                  (∀) ms (\(m', steps') -> (m == m' ∧ steps == steps') ∨ (steps < steps')),
+    --                                                  (m',steps') <- Set.toList $ timdom ! m,
+    --                                                  m' /= n
+    --                                                ])
+    --                                          | n <- nodes g, suc g n /= [], let ms = Set.toList $ (∏) [ timdom ! x | x <- suc g n ] ]
+    --                 timdomFinger  = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
+    --             in (if timdomFinger == timdomOr then id else traceShow (g, itimdom, timdomFinger, timdomOr)) $  timdomFinger == timdomOr,
+    testProperty "timdomOfPrevNaiveLfp == timdomOfTwoFinger^*"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    itimdom = NTICD.timdomOfTwoFinger g
+                    timdomPrevNaive = NTICD.timdomOfPrevNaiveLfp g
+                    timdomPrevFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
+                in (if timdomPrevNaive == timdomPrevFinger then id else traceShow (g, itimdom, timdomPrevNaive, timdomPrevFinger)) $  timdomPrevNaive == timdomPrevFinger,
     testProperty "timdomOfLfp via timdomOfTwoFinger g"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

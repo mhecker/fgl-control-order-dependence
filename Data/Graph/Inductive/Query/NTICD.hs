@@ -4706,6 +4706,65 @@ fTimeDomNaive graph _ _ _ _ = f
 timdomOfNaiveLfp graph = tdomOfLfp graph fTimeDomNaive
 
 
+fTimeDomPrevNaive :: DynGraph gr => TimeDomFunctionalGen gr a b
+fTimeDomPrevNaive graph _ _ _ _ = f 
+  where nr = toInteger $ noNodes graph
+        f timeDomOf = assert (timeDomOf' ⊒ timeDomOf) $
+                      timeDomOf'
+          where timeDomOf' = 
+                      -- traceShow timeDomOf $
+                      -- fmap (fmap (\s -> if Set.null s then s else Set.fromList [Set.findMin s])) $
+                      Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
+                    ⊔ Map.fromList [ (y,
+                                         fmap (Set.map (\s -> s + 1)) $
+                                         Map.delete y $ 
+                                         (∏) [ timeDomOf ! x | x <- suc graph y ]
+                                     )
+                                     | y <- nodes graph, suc graph y /= []
+                                   ]
+                   ⊔  Map.fromList [ (n, Map.fromList [ (m', Set.fromList [steps + steps' + 1]) |
+                                                        (m, stepss) <- ms, steps <- Set.toList stepss,
+                                                        -- m /= n,
+                                                        (∀) ms (\(m', stepss') -> (∀) (stepss') (\steps' -> (m == m' ∧ steps == steps') ∨ (steps < steps'))),
+                                                        (m',stepss') <- Map.assocs $ timeDomOf ! m, steps' <- Set.toList stepss',
+                                                        m' /= n
+                                                      ])
+                                  | n <- nodes graph, suc graph n /= [], let ms = Map.assocs $ (∏) [ timeDomOf ! x | x <- suc graph n ] ]
+                    -- ⊔ Map.fromList [ (y, (∐) [ Map.fromList [ (z, Set.fromList [stepsZ])] |
+                    --                                                  suc graph y /= [],
+                    --                                                  (x, stepss)  <- Map.assocs $ (∏) [ timeDomOf ! x | x <- suc graph y ],
+                    --                                                  x /= y,
+                    --                                                  --- not $ x `elem` (suc graph y),
+                    --                                                  steps  <- Set.toList stepss,
+                    --                                                  -- steps /= 0,
+                    --                                                  (z, stepss') <- Map.assocs $ timeDomOf ! x,
+                    --                                                  z /= y,
+                    --                                                  z /= x,
+                    --                                                  not $ z `elem` (suc graph y),
+                    --                                                  steps' <- Set.toList stepss',
+                    --                                                  -- steps' /= 0,
+                    --                                                  let stepsZ = steps + steps' + 1,
+                    --                                                  stepsZ < nr
+                    --                           ]
+                    --                  )
+                    --                 | y <- nodes graph ]
+                    -- ⊔ Map.fromList [ (y, (∐) [ Map.fromList [ (z, Set.fromList [steps + 1])] | 
+                    --                                                  z <- nodes graph, z /= y,
+                    --                                                  x <- suc graph y,
+                    --                                                  steps <- Set.toList $ Map.findWithDefault (Set.empty) z $ timeDomOf ! x,
+                    --                                                  (∀) (suc graph y) (\x' ->
+                    --                                                       (steps ∈ (Map.findWithDefault (Set.empty) z $ timeDomOf ! x'))
+                    --                                                     ∨ (suc graph z /= []) ∧ (∃) (Map.findWithDefault (Set.empty) z $ timeDomOf ! x') (\steps' ->
+                    --                                                         (∀) (suc graph z) (\z' -> (z' /= x') ∧ steps - steps' - 1 ∈ (Map.findWithDefault (Set.empty) z $ timeDomOf ! z'))
+                    --                                                       )
+                    --                                                  )
+                    --                           ]
+                    --                  )
+                    --                 | y <- nodes graph ]
+timdomOfPrevNaiveLfp graph =  tdomOfLfp graph fTimeDomPrevNaive
+
+
+
 type TimeDomFunctionalR = Map Node (Map Node Reachability) ->  Map Node (Map Node Reachability)
 type TimeDomFunctionalGenR gr a b = gr a b -> [Node] -> (Node -> [Node]) -> (Node -> Maybe Node) -> (Node -> [Node]) -> TimeDomFunctionalR
 

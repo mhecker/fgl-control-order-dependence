@@ -142,14 +142,14 @@ lcaTimdomOfTwoFinger imdom (n, sn, forbiddenNs) (m, sm, forbiddenMs) = lca' imdo
                                                                right = Map.keysSet ms
                                                            in
                                                            assert (left ∩ right == Set.fromList [m]) $
-                                                           Just (m, sm, left ∪ right)
+                                                           Just (m, sm, left ∪ right ∪ forbiddenNs ∪ forbiddenMs)
                     | n ∈ Map.keysSet ms ∧ ((ms ! n) == sn) = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                                            assert (ns ! n == sn) $
                                                            let left  = Set.fromList [ v | (v,s) <- Map.assocs ms, s <= sn ]
                                                                right = Map.keysSet ns
                                                            in
                                                            assert (left ∩ right == Set.fromList [n]) $
-                                                           Just (n, sn, left ∪ right)
+                                                           Just (n, sn, left ∪ right ∪ forbiddenNs ∪ forbiddenMs)
                     | otherwise = -- traceShow ((n,sn,ns,forbiddenNs), (m,sm,ms,forbiddenMs)) $
                                   case Set.toList $ (Set.map fst $ toSet $ (c ! n)) ∖ (Map.keysSet ns ∪ forbiddenNs) of
                                      []   -> case Set.toList $ (Set.map fst $ toSet (c ! m)) ∖ (Map.keysSet ms ∪ forbiddenMs) of

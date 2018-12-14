@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath)
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -93,7 +93,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, 
-    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfPrevNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger,
+    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfPrevNaiveLfp, timdomOfMultipleNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -3025,13 +3025,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y) ∧  (not $ ((∃) (timdom ! z) (\(x', _) -> x' == x)))
                 ))),
-    testProperty "timdomOfPrevNaiveLfp == timdomOfTwoFinger^*"
+    testProperty "timdomOfMultipleNaiveLfp == timdomOfTwoFinger^*"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
+                    nr = toInteger $ 2 * (length $ nodes g)
                     itimdom = NTICD.timdomOfTwoFinger g
-                    timdomPrevNaive = NTICD.timdomOfPrevNaiveLfp g
-                    timdomPrevFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
-                in (if timdomPrevNaive == timdomPrevFinger then id else traceShow (g, itimdom, timdomPrevNaive, timdomPrevFinger)) $  timdomPrevNaive == timdomPrevFinger,
+                    timdomMultipleNaive = NTICD.timdomOfMultipleNaiveLfp g
+                    timdomMultipleFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- pathsUpToLength itimdom nr n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
+                in (if timdomMultipleNaive == timdomMultipleFinger then id else traceShow (g, itimdom, timdomMultipleNaive, timdomMultipleFinger)) $  timdomMultipleNaive == timdomMultipleFinger,
     testProperty "timdomOfLfp via timdomOfTwoFinger g"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

@@ -4708,8 +4708,7 @@ timdomOfNaiveLfp graph = tdomOfLfp graph fTimeDomNaive
 
 fTimeDomPrevNaive :: DynGraph gr => TimeDomFunctionalGen gr a b
 fTimeDomPrevNaive graph _ _ _ _ = f 
-  where nr = toInteger $ noNodes graph
-        f timeDomOf = assert (timeDomOf' ⊒ timeDomOf) $
+  where f timeDomOf = assert (timeDomOf' ⊒ timeDomOf) $
                       timeDomOf'
           where timeDomOf' = 
                       Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
@@ -4721,6 +4720,26 @@ fTimeDomPrevNaive graph _ _ _ _ = f
                                                       ])
                                   | n <- nodes graph, suc graph n /= [], let ms = Map.assocs $ (∏) [ timeDomOf ! x | x <- suc graph n ] ]
 timdomOfPrevNaiveLfp graph =  tdomOfLfp graph fTimeDomPrevNaive
+
+
+fTimeDomMultipleNaive :: DynGraph gr => TimeDomFunctionalGen gr a b
+fTimeDomMultipleNaive graph _ _ _ _ = f 
+  where nr = toInteger $ 2 * noNodes graph
+        f timeDomOf = assert (timeDomOf' ⊒ timeDomOf) $
+                      timeDomOf'
+          where timeDomOf' = 
+                      Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
+                    ⊔ Map.fromList [ (y,
+                                         fmap (Set.filter (<= nr)) $
+                                         fmap (Set.map (\s -> s + 1)) $
+                                         -- Map.delete y $ 
+                                         (∏) [ timeDomOf ! x | x <- suc graph y ]
+                                     )
+                                     | y <- nodes graph, suc graph y /= []
+                                   ]
+timdomOfMultipleNaiveLfp graph =  tdomOfLfp graph fTimeDomMultipleNaive
+
+
 
 
 
@@ -5102,15 +5121,12 @@ timdomOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
             | otherwise         =   if (not $ new) then twoFinger (i+1)                         worklist'                                   imdom                                            imdomRev
                                     else                twoFinger (i+1) (influenced `Map.union` worklist')  (Map.insert x zs                imdom)  (Map.insertWith (∪) z (Set.fromList [x]) imdomRev)
           where ((x, succs), worklist')  = Map.deleteFindMin worklist
-                mz :: Maybe (Node, Integer, Set Node)
+                mz :: Maybe (Node, Integer, Map Node (Set Integer))
                 mz = require (succs == suc graph x) 
-                   $ foldM1 lca [ (y, 1, Set.empty) | y <- succs]
+                   $ foldM1 lca [ (y, 1, Map.fromList [(y, Set.fromList [1])]) | y <- succs]
                 Just (z,_) = zs
                 zs = case mz of
-                      Just (z,sz,_)  -> if z /= x then
-                                          Just (z, sz)
-                                        else
-                                          Nothing
+                      Just (z,sz,_)  -> Just (z, sz)
                       Nothing ->  Nothing
                 new     = assert (isNothing $ imdom ! x) $
                           (not $ isNothing zs)

@@ -48,7 +48,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map ( Map, (!) )
 
-import Util(restrict, sampleFrom, moreSeeds,)
+import Util(restrict, sampleFrom, moreSeeds,minimalPath)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges, delSuccessorEdges)
@@ -81,6 +81,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     noJoins, mmayOf, mmayOf', stepsCL,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
+    timdomOfPrevNaiveLfp, timdomOfTwoFinger,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
     imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
@@ -171,6 +172,13 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "timdomOfPrevNaiveLfp == timdomOfTwoFinger^*"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    itimdom = NTICD.timdomOfTwoFinger g
+                    timdomPrevNaive = NTICD.timdomOfPrevNaiveLfp g
+                    timdomPrevFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
+                in  timdomPrevNaive == timdomPrevFinger,
     testPropertySized 25 "timingSolvedF3dependence  is minimal wrt. timed traces in graphs without self-node"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g0 = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization

@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 #define require assert
 #define PDOMUSESDF
 module Data.Graph.Inductive.Query.NTICD where
@@ -47,7 +48,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath)
 import Unicode
 
 
@@ -2531,17 +2532,17 @@ isinkdomTwoFingercd = xDFcd isinkDFTwoFinger
 
 
 
-timDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-timDFTwoFinger graph = idomToDFFast graph $ fmap (Set.map fst) $ timdomOfTwoFinger graph
+timMultipleDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timMultipleDFTwoFinger graph = idomToDFFast graph $ fmap (Set.map fst) $ itimdomMultipleOfTwoFinger graph
 
-itimdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-itimdomTwoFingerGraphP = cdepGraphP itimdomTwoFingerGraph
+itimdomMultipleTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+itimdomMultipleTwoFingerGraphP = cdepGraphP itimdomMultipleTwoFingerGraph
 
-itimdomTwoFingerGraph :: DynGraph gr => gr a b ->  gr a Dependence
-itimdomTwoFingerGraph = cdepGraph itimdomTwoFingercd
+itimdomMultipleTwoFingerGraph :: DynGraph gr => gr a b ->  gr a Dependence
+itimdomMultipleTwoFingerGraph = cdepGraph itimdomMultipleTwoFingercd
 
-itimdomTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
-itimdomTwoFingercd = xDFcd timDFTwoFinger
+itimdomMultipleTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+itimdomMultipleTwoFingercd = xDFcd timMultipleDFTwoFinger
 
 
 
@@ -2816,14 +2817,14 @@ tscdSliceFast graph msS = combinedBackwardSlice graph tscd' w msS
   where ms = Set.toList msS
         toMs   = rdfs ms graph
         graph' = foldr (flip delSuccessorEdges) graph ms
-        tscd' =  timDFTwoFinger graph'
+        tscd' =  timMultipleDFTwoFinger graph'
         w     = Map.empty
 
 
 tscdSliceForTrivialSinks :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 tscdSliceForTrivialSinks graph =  combinedBackwardSlice graph tscd' w
   where tscd' = -- require ((∀) sinks (\sink -> length sink == 1)) $
-                timDFTwoFinger graph
+                timMultipleDFTwoFinger graph
         w     = Map.empty
         sinks = controlSinks graph
 
@@ -4686,6 +4687,42 @@ fTimeDom graph _ _ nextCond toNextCond = f
                                    ]
 timdomOfLfp graph = tdomOfLfp graph fTimeDom
 
+newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
+instance JoinSemiLattice MyInteger where
+  join = max
+
+timdomOfTwoFinger :: Graph gr => gr a b -> Map Node (Set (Node, Integer))
+timdomOfTwoFinger g = timdomFrom
+  where itimdommultiple = itimdomMultipleOfTwoFinger g
+        timdomFrom =  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdommultiple n m, let steps = sum $ fmap snd path,
+                                                                     (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (n,0)  path) (\(x',stepsX') ->
+                                                                       (not $ x' ∈ entries) ∨ (steps - stepsX' <= (valid ! x'))
+                                                                     )
+                                         ]) | n <- nodes g ]
+        cycles = (∐) (snd $ findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple)
+        entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycles, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycles) ]
+        valid = validFast
+        validFast :: Map Node Integer
+        validFast  = fmap (toInteger.snd) $ fix (Map.fromSet (\n -> (n,0)) entries) f
+          where fix x f = let x' = f x in if x == x' then x else fix x' f
+                f valid = Map.fromList [ (n, (m',fuel + steps)) | (n,(m,fuel)) <- Map.assocs valid, let [(m', steps)] = Set.toList $ itimdommultiple ! m,
+                                                                  let xs = Set.fromList $ suc g n,
+                                                                  let itimdommultiple' =  Map.insert m' (Set.empty) itimdommultiple,
+                                                                  (∀) xs (\x ->
+                                                                      (not $ List.null $ minimalPath itimdommultiple' x m')
+                                                                    ∧ (let [path'] = minimalPath itimdommultiple' x m'
+                                                                           steps' =  sum $ fmap snd path'
+                                                                           l' = length path'
+                                                                           in   1 + steps' == steps + fuel
+                                                                              ∧ (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (x,0)  path') (\(x',stepsX') ->
+                                                                                  (not $ x' ∈ entries) ∨ (steps' - stepsX' <= (snd $ valid ! x'))
+                                                                                )
+                                                                      )
+                                                                  )
+                                       ] `Map.union` valid
+
+
+
 tscdOfLfp :: DynGraph gr => gr a b -> Map Node (Set Node)
 tscdOfLfp graph = Map.fromList [ (n, Set.fromList [ m | timdom <- timdoms,  (m, steps) <- Set.toList timdom, (∃) timdoms (\timdom' -> not $ (m, steps) ∈ timdom') ]) |
                     n <- nodes graph,
@@ -4737,7 +4774,7 @@ fTimeDomMultipleNaive graph _ _ _ _ = f
                                      )
                                      | y <- nodes graph, suc graph y /= []
                                    ]
-timdomOfMultipleNaiveLfp graph =  tdomOfLfp graph fTimeDomMultipleNaive
+timdomMultipleOfNaiveLfp graph =  tdomOfLfp graph fTimeDomMultipleNaive
 
 
 
@@ -5102,8 +5139,8 @@ timmaydomOfLfp graph = tmaydomOfLfp graph fTimeMayDom
 
 
 
-timdomOfTwoFingerFor :: forall gr a b. DynGraph gr => gr a b -> Map Node [Node] -> Map Node [Node] -> Map Node (Maybe (Node, Integer)) -> Map Node (Set (Node)) -> Map Node (Maybe (Node, Integer))
-timdomOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
+itimdomMultipleOfTwoFingerFor :: forall gr a b. Graph gr => gr a b -> Map Node [Node] -> Map Node [Node] -> Map Node (Maybe (Node, Integer)) -> Map Node (Set (Node)) -> Map Node (Maybe (Node, Integer))
+itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
       require (condNodes  == Map.fromList [ (x, succs) | x <- nodes graph, let succs = suc graph x, length succs > 1 ])
     $ require (imdom0Rev  == (invert''' $ fmap noSteps $ imdom0))
     $ twoFinger 0 worklist0 imdom0 imdom0Rev
@@ -5135,8 +5172,8 @@ timdomOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
                              in  restrict condNodes (Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x, isNothing $ imdom ! n])
                 lca = lcaTimdomOfTwoFinger imdom
 
-timdomOfTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Integer))
-timdomOfTwoFinger graph = fmap toSet $ timdomOfTwoFingerFor graph condNodes worklist0 imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
+itimdomMultipleOfTwoFinger :: forall gr a b. Graph gr => gr a b -> Map Node (Set (Node, Integer))
+itimdomMultipleOfTwoFinger graph = fmap toSet $ itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
   where imdom0   =             Map.fromList [ (x, Just (z,1)) | x <- nodes graph, [z] <- [suc graph x]]
                    `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes graph]
         condNodes   = Map.fromList [ (x, succs) | x <- nodes graph, let succs = suc graph x, length succs > 1 ]
@@ -5157,15 +5194,15 @@ timingDependenceViaTwoFinger g =
                                                                                                   $ restrict itimdom toMS,
                                                                                             let g' = (flip delSuccessorEdges m) $ subgraph toM $ g,
                                                                                             let worklist0' = Map.filterWithKey (\x _ -> imdom0' ! x == Nothing) condNodes',
-                                                                                            let itimdom = timdomOfTwoFingerFor g'  condNodes' worklist0' imdom0' (invert''' $ fmap (liftM fst) $ imdom0'),
-                                                                                        assert (itimdom == (fmap fromSet $ timdomOfTwoFinger g')) True
+                                                                                            let itimdom = itimdomMultipleOfTwoFingerFor g'  condNodes' worklist0' imdom0' (invert''' $ fmap (liftM fst) $ imdom0'),
+                                                                                        assert (itimdom == (fmap fromSet $ itimdomMultipleOfTwoFinger g')) True
                    ]
                                                
   where gRev = grev g
         condNodes = Map.fromList [ (x, succs) | x <- nodes g, let succs = suc g x, length succs > 1 ]
         imdom0 =             Map.fromList [ (x, Just (z,1)) | x <- nodes g, [z] <- [suc g x]]
                  `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes g]
-        itimdom = timdomOfTwoFingerFor g condNodes condNodes imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
+        itimdom = itimdomMultipleOfTwoFingerFor g condNodes condNodes imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
 
         toSet Nothing = Set.empty
         toSet (Just (z, steps)) = Set.singleton z

@@ -83,7 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     noJoins, mmayOf, mmayOf', stepsCL,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
-    timdomOfPrevNaiveLfp, timdomOfTwoFinger, timdomOfLfp,
+    timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger, timdomOfLfp,
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
@@ -175,11 +175,11 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
-    testProperty  "timdomOfTwoFinger        relates to timingF3EquationSystem"
+    testProperty  "itimdomMultipleOfTwoFinger        relates to timingF3EquationSystem"
                 $ \(ARBITRARY(g)) ->
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
-                           timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
-                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
+                           itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
+                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
                              where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
                                    isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()
@@ -191,11 +191,11 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                      NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == mustReachFromIn p y
                                      NTICD.UndeterminedSteps       -> Set.fromList []    == mustReachFromIn p m
                            ),
-    testProperty  "timdomOfTwoFinger^*       == timdomOfLfp"
+    testProperty  "itimdomMultipleOfTwoFinger^*       == timdomOfLfp"
                 $ \(ARBITRARY(g)) ->
-                       let timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
+                       let itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
                            timdomOfLfp       = NTICD.timdomOfLfp g
-                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
+                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                        in  -- traceShow (length $ nodes g, g) $
                            (∀) (Map.assocs timdomOfLfp) (\(n, ms) ->
                               (∀) (ms) (\(m,steps) -> Set.fromList [steps] == mustReachFromIn n m)
@@ -206,7 +206,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty "timdomOfPrevNaiveLfp == timdomOfTwoFinger^*"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
-                    itimdom = NTICD.timdomOfTwoFinger g
+                    itimdom = NTICD.itimdomMultipleOfTwoFinger g
                     timdomPrevNaive = NTICD.timdomOfPrevNaiveLfp g
                     timdomPrevFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
                 in  timdomPrevNaive == timdomPrevFinger,
@@ -260,8 +260,8 @@ timingDepProps = testGroup "(concerning timingDependence)" [
 timingDepTests = testGroup "(concerning timingDependence)" $
   [ testCase ("timdomOfTwoFinger        relates to timingF3EquationSystem for" ++ exampleName) $
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
-                           timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
-                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ timdomOfTwoFinger
+                           itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
+                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
                              where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
                                    isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()

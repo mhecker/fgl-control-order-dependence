@@ -86,14 +86,14 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf,
-    itimdomTwoFingercd, tscdOfLfp,
+    itimdomMultipleTwoFingercd, tscdOfLfp,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, 
-    solveTimingEquationSystem, timdomOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfPrevNaiveLfp, timdomOfMultipleNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger,
+    solveTimingEquationSystem, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfTwoFinger, timdomMultipleOfNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -3003,10 +3003,10 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     timdom  = NTICD.timdomOfLfp      g
                     timdom' = NTICD.timdomOfNaiveLfp g
                 in timdom == timdom',
-    testProperty "itimdomTwoFingercd == tscdOfLfp in graphs without non-trivial sinks"
+    testProperty "itimdomMultipleTwoFingercd == tscdOfLfp in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
-                in NTICD.itimdomTwoFingercd g == Map.mapWithKey Set.delete (NTICD.tscdOfLfp g),
+                in NTICD.itimdomMultipleTwoFingercd g == Map.mapWithKey Set.delete (NTICD.tscdOfLfp g),
     testProperty "timdomOfLfp is transitive up to cycles for reducible cfg"
     $ \(REDUCIBLE(generatedGraph)) ->
                 let g = generatedGraph
@@ -3025,50 +3025,20 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
                      ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y) ∧  (not $ ((∃) (timdom ! z) (\(x', _) -> x' == x)))
                 ))),
-    testProperty "timdomOfMultipleNaiveLfp == timdomOfTwoFinger^*"
+    testProperty "timdomMultipleOfNaiveLfp == itimdomMultipleOfTwoFinger^*"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     nr = toInteger $ 2 * (length $ nodes g)
-                    itimdom = NTICD.timdomOfTwoFinger g
-                    timdomMultipleNaive = NTICD.timdomOfMultipleNaiveLfp g
-                    timdomMultipleFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- pathsUpToLength itimdom nr n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
-                in (if timdomMultipleNaive == timdomMultipleFinger then id else traceShow (g, itimdom, timdomMultipleNaive, timdomMultipleFinger)) $  timdomMultipleNaive == timdomMultipleFinger,
-    testProperty "timdomOfLfp via timdomOfTwoFinger g"
+                    itimdomMultiple = NTICD.itimdomMultipleOfTwoFinger g
+                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdomMultipleFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- pathsUpToLength itimdomMultiple nr n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
+                in timdomMultipleNaive == timdomMultipleFinger,
+    testProperty "timdomOfLfp == timdomOfTwoFinger"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
-                    timdom = NTICD.timdomOfLfp g
-                    itimdom = NTICD.timdomOfTwoFinger g
-                    cycles = (∐) (snd $ findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdom)
-                    entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycles, (∃) (itimdom ! n) (\(m,steps) -> m ∈ cycles) ]
-                    valid = fix (Map.fromSet (\n -> (n,0)) entries) f
-                      where fix x f = let x' = f x in if x == x' then x else fix x' f
-                            f valid = Map.fromList [ (n, (m',fuel + steps))
-                                                                    | (n,(m,fuel)) <- Map.assocs valid, let [(m', steps)] = Set.toList $ itimdom ! m,
-                                                                      let xs = Set.fromList $ suc g n,
-                                                                      let itimdom' =  Map.insert m' (Set.empty) itimdom,
-                                                                      (∀) xs (\x ->
-                                                                                   (not $ List.null $ minimalPath itimdom' x m')
-                                                                                 ∧ (let [path'] = minimalPath itimdom' x m'
-                                                                                        steps' =  sum $ fmap snd path'
-                                                                                        l' = length path'
-                                                                                    in   1 + steps' == steps + fuel
-                                                                                       ∧ (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (x,0)  path') (\(x',stepsX') -> (not $ x' ∈ entries) ∨ (
-                                                                                           steps' - stepsX' <= (snd $ valid ! x')
-                                                                                         ))
-                                                                                   )
-                                                                      )
-                                               ]
-                                      `Map.union` valid
-
-                    timdomFrom =  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path,
-                                                                                 (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (n,0)  path) (\(x',stepsX') -> (not $ x' ∈ entries) ∨ (
-                                                                                           steps - stepsX' <= (snd $ valid ! x')
-                                                                                 ))
-                                                ]
-                                            )
-                                         | n <- nodes g
-                                  ]
-                in (if timdom == timdomFrom then id else traceShow (g, timdom, timdomFrom, valid)) $ timdom == timdomFrom,
+                    timdom  = NTICD.timdomOfLfp g
+                    timdom' = NTICD.timdomOfTwoFinger g
+                in timdom == timdom',
     testProperty "timdomOfLfp is transitive in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
@@ -3231,22 +3201,22 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                      NTICD.Unreachable             -> smp == Map.empty ∧
                                                                       Set.fromList []    == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
                            ),
-    testProperty  "timdomOfTwoFinger^*       == timdomOfLfp for graphs without itimmdom cycles"
+    testProperty  "itimdomMultipleOfTwoFinger^* {no loop}  == timdomOfLfp for graphs without itimdomMultiple cycles"
                 $ \(ARBITRARY(g)) ->
-                       let timdomOfTwoFinger = NTICD.timdomOfTwoFinger g
+                       let itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
                            timdomOfLfp       = NTICD.timdomOfLfp g
-                           mustReachFromIn   = reachableFromIn $ fmap (Set.map (\(x,steps) -> (x,(steps, Set.empty)))) $ timdomOfTwoFinger
+                           mustReachFromIn   = reachableFromIn $ fmap (Set.map (\(x,steps) -> (x,(steps, Set.empty)))) $ itimdomMultiple
 
                            imdom = NTICD.imdomOfTwoFinger6 g
-                           cycles = snd $ findCyclesM $ fmap (fromSet . Set.map fst ) $ timdomOfTwoFinger
-                           -- cycles = snd $ findCyclesM $ fmap fromSet $ imdom
+                           cycles = snd $ findCyclesM $ fmap (fromSet . Set.map fst ) $ itimdomMultiple
                        in  List.null cycles ==>
                            (∀) (Map.assocs timdomOfLfp) (\(n, ms) ->
                               (∀) (ms) (\(m,steps) -> Set.fromList [steps] == mustReachFromIn n m)
                            )
                          ∧ (∀) (nodes g) (\n -> (∀) (nodes g) (\m ->
                               mustReachFromIn n m == Set.fromList [ steps | (m', steps) <- Set.toList $ timdomOfLfp ! n, m == m']
-                           )),
+                           ))
+                         ∧ (timdomOfLfp  ==  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdomMultiple n m, let steps = sum $ fmap snd path ]) | n <- nodes g]),
     testProperty  "timingF3EquationSystem'  == timingF3EquationSystem"
                 $ \(ARBITRARY(g)) ->
                        let timingEq        = NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem

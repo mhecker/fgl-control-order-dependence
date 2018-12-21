@@ -226,7 +226,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                          let s' = Set.delete n s
                              differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice
-                                   isLowEquivalent = InfiniteDelay.isLowTimingEquivalent g s input
+                                   isLowEquivalent = InfiniteDelay.isLowTimingEquivalent g s' input
                                in (∃) choices' (\choice' ->
                                     let input' = InfiniteDelay.Input startNode choice'
                                         different = not $ isLowEquivalent input'

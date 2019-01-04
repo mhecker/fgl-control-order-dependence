@@ -98,10 +98,10 @@ sampleWord language  k fa
         fa'@(FA { initial, transition, final}) = simplify fa
         sampleT :: MonadRandom m => Transition b -> m [b]
         sampleT (Only xs) = do
-          x <- uniform xs 
+          x <- uniform (Set.toList xs)
           return [x]
         sampleT (All) = do
-          x <- uniform language
+          x <- uniform (Set.toList language)
           return [x]
         sampleT (Epsilon) = return []
         

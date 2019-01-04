@@ -18,7 +18,7 @@ import Unicode
 import Algebra.Lattice
 
 import Control.Exception.Base (assert)
-import Control.Monad (foldM)
+import Control.Monad (foldM, mzero)
 import Control.Monad.Random hiding (join)
 the p = fromJust . find p 
 

@@ -4687,6 +4687,14 @@ fTimeDom graph _ _ nextCond toNextCond = f
                                    ]
 timdomOfLfp graph = tdomOfLfp graph fTimeDom
 
+timdomsOf graph = domsOf graph timdom
+  where timdom = fmap (Set.map fst) $ timdomOfLfp graph
+
+
+timDF graph = dfFor graph timdom
+  where timdom = fmap (Set.map fst) $ timdomOfLfp graph
+
+
 newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
 instance JoinSemiLattice MyInteger where
   join = max

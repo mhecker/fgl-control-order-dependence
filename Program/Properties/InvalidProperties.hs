@@ -83,7 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     noJoins, mmayOf, mmayOf', stepsCL,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
-    timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger, timdomOfLfp,
+    timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomsOf,
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
@@ -175,6 +175,15 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testPropertySized 40 "timdomsOf* ==  timdomOfLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        timdom  = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                        timdoms = NTICD.timdomsOf g
+                        gdom  = fromSuccMap timdom  :: Gr () ()
+                        gdoms = fromSuccMap timdoms :: Gr () ()
+
+                    in gdom == trc gdoms,
     testProperty  "itimdomMultipleOfTwoFinger        relates to timingF3EquationSystem"
                 $ \(ARBITRARY(g)) ->
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem

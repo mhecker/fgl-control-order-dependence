@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength)
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength, invert'')
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -85,15 +85,15 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
-    mdomsOf, sinkdomsOf,
-    itimdomMultipleTwoFingercd, tscdOfLfp,
+    mdomsOf, sinkdomsOf, timdomsOf,
+    itimdomMultipleTwoFingercd, tscdOfLfp, timDF,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
     alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, 
-    solveTimingEquationSystem, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfTwoFinger, timdomMultipleOfNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger,
+    solveTimingEquationSystem, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfTwoFinger, timdomMultipleOfNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, 
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -2992,6 +2992,20 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testPropertySized 40   "tscdOfLfp  == timDF"
+                $ \(ARBITRARY(g)) ->
+                       (Map.mapWithKey (\n s -> Set.delete n s) $ NTICD.tscdOfLfp g) ==
+                       (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ NTICD.timDF    g)),
+    testPropertySized 40 "stepsCL timdomOfLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                    in NTICD.stepsCL g timdom,
+    testPropertySized 40 "noJoins timdomOfLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                    in NTICD.noJoins g timdom,
     testProperty "timdomOfLfp is unique"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

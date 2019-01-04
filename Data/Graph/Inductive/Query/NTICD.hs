@@ -1376,6 +1376,7 @@ joinUpperBound graph = Map.delete dummyNode $ jub condNodes init
 
 onedomOf dom z = Set.fromList $ [ x | y <- Set.toList (dom ! z),
                                       x <- Set.toList (dom ! y),
+                                      x ∈ dom ! z,
                                       x /= y
                  ]
 
@@ -4693,6 +4694,59 @@ timdomsOf graph = domsOf graph timdom
 
 timDF graph = dfFor graph timdom
   where timdom = fmap (Set.map fst) $ timdomOfLfp graph
+
+timDFLocalDef graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            not $ x ∈ onedom y  ])
+                   | x <- nodes graph ]
+  where timdom = fmap (Set.map fst) $ timdomOfLfp graph
+        onedom = onedomOf timdom
+
+timDFLocalViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timDFLocalViaTimdoms graph =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            not $ x ∈ timdoms ! y
+                                      ]
+                     )
+                   | x <- nodes graph ]
+  where timdoms = timdomsOf graph
+
+timDFUpGivenXViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+timDFUpGivenXViaTimdoms graph =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ timdf ! z,
+                                                not $ x ∈ timdoms ! y
+                                      ]
+                     )
+                   | z <- nodes graph,  x <- Set.toList $ timdoms ! z]
+  where timdoms = timdomsOf graph
+        timdf   = timDF graph
+
+timDFUpGivenXViaTimdomsDef :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+timDFUpGivenXViaTimdomsDef graph =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ timdf ! z,
+                                                not $ x ∈ onedom y
+                                      ]
+                     )
+                   | z <- nodes graph,  x <- Set.toList $ timdoms ! z]
+  where timdom  = fmap (Set.map fst) $ timdomOfLfp graph
+        timdoms = timdomsOf graph
+        timdf   = timDF graph
+        onedom = onedomOf timdom
+
+
+
+timDFFromUpLocalDefViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timDFFromUpLocalDefViaTimdoms graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, Set.fromList [ y | z <- timdomsInv ! x, y <- Set.toList $ dfupGivenX ! (x,z), (∃) (suc graph y) (\y' -> x ∈ timdom ! y')  ] ) | x <- nodes graph]
+  where dflocal = timDFLocalDef graph
+        dfupGivenX = timDFUpGivenXViaTimdoms graph
+        timdoms  = timdomsOf graph
+        timdomsInv = invert' (fmap Set.toList timdoms) `Map.union` (Map.fromList [ (x, []) | x <- nodes graph ])
+        timdom = fmap (Set.map fst) $ timdomOfLfp graph
+
+
+
 
 
 newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)

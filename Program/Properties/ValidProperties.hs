@@ -86,7 +86,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf, timdomsOf,
-    itimdomMultipleTwoFingercd, tscdOfLfp, timDF,
+    itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -2990,8 +2990,19 @@ ntscdTests = testGroup "(concerning ntscd)" $
   []
 
 
-
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty   "timDFLocalViaTimdoms    == timDFLocalDef"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.timDFLocalViaTimdoms  g ==
+                       NTICD.timDFLocalDef         g,
+    testProperty   "timDFUpGivenXViaTimdoms == timDFUpGivenXViaTimdomsDef"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.timDFUpGivenXViaTimdoms    g ==
+                       NTICD.timDFUpGivenXViaTimdomsDef g,
+    testProperty   "timDFFromUpLocalDefViaTimdoms == timDF"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.timDFFromUpLocalDefViaTimdoms g ==
+                       NTICD.timDF                          g,
     testPropertySized 40   "tscdOfLfp  == timDF"
                 $ \(ARBITRARY(g)) ->
                        (Map.mapWithKey (\n s -> Set.delete n s) $ NTICD.tscdOfLfp g) ==

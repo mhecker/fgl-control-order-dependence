@@ -52,7 +52,7 @@ import Util(restrict, sampleFrom, moreSeeds,minimalPath,reachableFromIn)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges, delSuccessorEdges)
-import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge)
+import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge, labNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
@@ -80,7 +80,8 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
     sinkdomOfGfp,
-    noJoins, mmayOf, mmayOf', stepsCL,
+    noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
+    dfFor, anyDFFromUpLocalDefViaAnydoms,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
     timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomsOf,
@@ -175,6 +176,15 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty   "anyDFFromUpLocalDefViaAnydoms == anyDF"
+                $ \(ARBITRARY(g)) (UNCONNECTED(anydom0)) -> 
+                   let anydomG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges anydom0, let n' = toG ! n, let m' = toG ! m, (n' == m') ∨ (∀) (n' : suc g n') (\x' -> m' `elem` reachable x' g) ] :: Gr ()()
+                          where toG = Map.fromList $ zip (nodes anydom0) (cycle $ nodes g)
+                       anydom = NTICD.stepsCLLfp g $
+                                Map.fromList [ (n, Set.fromList [n]) | n <- nodes anydomG ]
+                              ⊔ Map.fromList [ (n, Set.fromList $ suc anydomG n) | n <- nodes anydomG ]
+                   in NTICD.anyDFFromUpLocalDefViaAnydoms anydom g ==
+                      NTICD.dfFor                         g anydom,
     testPropertySized 40 "timdomsOf* ==  timdomOfLfp"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

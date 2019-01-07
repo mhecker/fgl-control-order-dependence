@@ -48,7 +48,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath, reachableUpToLength)
 import Unicode
 
 
@@ -3035,9 +3035,27 @@ noJoins g m = (∀) (nodes g) (\x -> (∀) (nodes g) (\z -> (∀) (nodes g) (\v 
               ))))
   where doms = domsOf g m
 
+
+noJoinLfps :: Graph gr => gr a b -> Map Node (Set Node) -> [ Map Node (Set Node) ]
+noJoinLfps g dom
+    | violations == [] = assert (noJoins g dom) [dom]
+    | otherwise        = do
+                      (x, z, v, s) <- violations
+                      (n,n') <- assert (z /= v) [(z,v),(v,z)]
+                      let dom' = dom ⊔ Map.fromList [ (n, Set.fromList [n'])] ⊔ Map.fromList [ (m, Set.fromList [n']) | m <- Set.toList $ doms ! n ]
+                      noJoinLfps g dom'
+ where violations = [ (x, z, v, s) | s <- nodes g, v <- Set.toList $ dom ! s, z  <- Set.toList $ dom ! s, z /= v, x <- nodes g,  x ∈ doms ! v, x ∈ doms ! z,  not (v ∈ doms ! z), not (z ∈ doms ! v)]
+       doms = domsOf g dom
+
+
 stepsCL g dom = (∀) (nodes g) (\x -> (∀) (nodes g) (\y -> (∀) (nodes g) (\x' ->
              if (x' /= y) ∧ (y `elem` pre g x) ∧ (x' ∈ dom ! y) then (x'  ∈ dom ! x) else True
            )))
+
+
+stepsCLLfp g dom = (㎲⊒) dom f
+  where f dom = dom ⊔ Map.fromList [ (x, Set.fromList [ x' | y <- pre g x, x' <- Set.toList $ dom ! y, x' /= y ] ) | x <- nodes g ]
+--                  ⊔ Map.fromList [ (y, (∏) [ dom ! y' | y' <- suc g y])                                          | y <- nodes g, suc g y /= [] ]
 
 wodTEIL'PDom :: (DynGraph gr) => gr a b -> Map (Node, Node) (Set Node)
 wodTEIL'PDom graph  =
@@ -4695,12 +4713,16 @@ timdomsOf graph = domsOf graph timdom
 timDF graph = dfFor graph timdom
   where timdom = fmap (Set.map fst) $ timdomOfLfp graph
 
-timDFLocalDef graph =
+anyDFLocalDef anydom graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
                                             not $ x ∈ onedom y  ])
                    | x <- nodes graph ]
+  where onedom = onedomOf anydom
+
+timDFLocalDef graph = anyDFLocalDef timdom graph
   where timdom = fmap (Set.map fst) $ timdomOfLfp graph
         onedom = onedomOf timdom
+
 
 timDFLocalViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 timDFLocalViaTimdoms graph =
@@ -4721,32 +4743,52 @@ timDFUpGivenXViaTimdoms graph =
   where timdoms = timdomsOf graph
         timdf   = timDF graph
 
-timDFUpGivenXViaTimdomsDef :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
-timDFUpGivenXViaTimdomsDef graph =
-      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ timdf ! z,
+anyDFUpGivenXViaAnydomsDef :: forall gr a b. DynGraph gr => Map Node (Set Node) -> gr a b -> Map (Node, Node) (Set Node)
+anyDFUpGivenXViaAnydomsDef anydom graph =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ anydf ! z,
                                                 not $ x ∈ onedom y
                                       ]
                      )
-                   | z <- nodes graph,  x <- Set.toList $ timdoms ! z]
+                   | z <- nodes graph,  x <- Set.toList $ anydoms ! z]
+  where anydoms = domsOf graph anydom
+        anydf   = dfFor graph anydom
+        onedom  = onedomOf anydom
+
+timDFUpGivenXViaTimdomsDef :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
+timDFUpGivenXViaTimdomsDef graph = anyDFUpGivenXViaAnydomsDef timdom graph
   where timdom  = fmap (Set.map fst) $ timdomOfLfp graph
-        timdoms = timdomsOf graph
-        timdf   = timDF graph
-        onedom = onedomOf timdom
 
 
+anyDFFromUpLocalDefViaAnydoms :: forall gr a b. DynGraph gr => Map Node (Set Node) -> gr a b -> Map Node (Set Node)
+anyDFFromUpLocalDefViaAnydoms anydom graph =
+      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
+    ⊔ Map.fromList [ (x, Set.fromList [ y | z <- anydomsInv ! x, y <- Set.toList $ dfupGivenX ! (x,z), (∃) (suc graph y) (\y' -> x ∈ anydom ! y')  ] ) | x <- nodes graph]
+  where dflocal = anyDFLocalDef anydom graph
+        dfupGivenX = anyDFUpGivenXViaAnydomsDef anydom graph
+        anydoms    = domsOf graph anydom
+        anydomsInv = invert' (fmap Set.toList anydoms) `Map.union` (Map.fromList [ (x, []) | x <- nodes graph ])
 
 timDFFromUpLocalDefViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-timDFFromUpLocalDefViaTimdoms graph =
-      Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
-    ⊔ Map.fromList [ (x, Set.fromList [ y | z <- timdomsInv ! x, y <- Set.toList $ dfupGivenX ! (x,z), (∃) (suc graph y) (\y' -> x ∈ timdom ! y')  ] ) | x <- nodes graph]
-  where dflocal = timDFLocalDef graph
-        dfupGivenX = timDFUpGivenXViaTimdoms graph
-        timdoms  = timdomsOf graph
-        timdomsInv = invert' (fmap Set.toList timdoms) `Map.union` (Map.fromList [ (x, []) | x <- nodes graph ])
-        timdom = fmap (Set.map fst) $ timdomOfLfp graph
+timDFFromUpLocalDefViaTimdoms graph = anyDFFromUpLocalDefViaAnydoms timdom graph
+  where timdom = fmap (Set.map fst) $ timdomOfLfp graph
 
 
+timdomsFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timdomsFromItimdomMultipleOf g =
+     assert ( Set.null $ Map.keysSet forOthers  ∩ Map.keysSet forEntries) $
+     assert ( Set.null $ Map.keysSet forOthers  ∩ Map.keysSet forCycles) $
+     assert ( Set.null $ Map.keysSet forEntries ∩ Map.keysSet forCycles) $
+     forOthers
+   ⊔ forEntries
+   ⊔ forCycles
+  where itimdom    = itimdomMultipleOfTwoFinger g
+        itimdomFst = fmap (Set.map fst) itimdom 
+        (cycleNodes, cycleOf, valid)   = validTimdomFor g itimdom
+        entries = Map.keysSet valid
 
+        forOthers  = Map.mapWithKey Set.delete $ without itimdomFst (entries ∪ cycleNodes)
+        forEntries = Map.mapWithKey (\n fuel -> Set.delete n $ reachableUpToLength itimdom n fuel) valid
+        forCycles  = Map.mapWithKey (\n n's -> if n's == Set.fromList [n] then Set.empty  else cycleOf ! n) $ restrict itimdomFst cycleNodes
 
 
 newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
@@ -4761,10 +4803,16 @@ timdomOfTwoFinger g = timdomFrom
                                                                        (not $ x' ∈ entries) ∨ (steps - stepsX' <= (valid ! x'))
                                                                      )
                                          ]) | n <- nodes g ]
-        cycles = (∐) (snd $ findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple)
-        entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycles, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycles) ]
-        valid = validFast
-        validFast :: Map Node Integer
+        (_,_,valid) = validTimdomFor g itimdommultiple
+        entries = Map.keysSet valid
+
+validTimdomFor :: Graph gr => gr a b -> Map Node (Set.Set (Node, Integer)) -> (Set Node, Map Node (Set Node), Map Node Integer)
+validTimdomFor g itimdommultiple =
+     require (itimdommultiple == itimdomMultipleOfTwoFinger g) $
+     (cycleNodes, cycleOf, validFast)
+  where (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
+        cycleNodes = (∐) cycles
+        entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
         validFast  = fmap (toInteger.snd) $ fix (Map.fromSet (\n -> (n,0)) entries) f
           where fix x f = let x' = f x in if x == x' then x else fix x' f
                 f valid = Map.fromList [ (n, (m',fuel + steps)) | (n,(m,fuel)) <- Map.assocs valid, let [(m', steps)] = Set.toList $ itimdommultiple ! m,

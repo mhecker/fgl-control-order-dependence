@@ -224,6 +224,18 @@ pathsUpToLength m n x y = find 0 x
                               path <- find (stepsX+steps) z
                               return $ (z,steps) : path
 
+
+reachableUpToLength :: Ord a => Map a (Set (a,Integer)) -> a -> Integer -> Set a
+reachableUpToLength m x fuel = find 0 x
+  where find stepsX  x
+            | stepsX  > fuel = Set.empty
+            | otherwise   = Set.insert x $ (∐) moreFound
+          where zs = m ! x
+                moreFound = do
+                              (z,steps) <- Set.toList zs
+                              return $ find (stepsX+steps) z
+
+
 reachableFromIn :: Ord a => Map a (Set (a, (Integer, Set a))) -> a -> a -> Set Integer
 reachableFromIn succs x y
     | x == y    = Set.fromList [0]

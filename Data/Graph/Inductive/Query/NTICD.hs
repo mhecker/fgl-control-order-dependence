@@ -4791,6 +4791,45 @@ timdomsFromItimdomMultipleOf g =
         forCycles  = Map.mapWithKey (\n n's -> if n's == Set.fromList [n] then Set.empty  else cycleOf ! n) $ restrict itimdomFst cycleNodes
 
 
+timDFFromFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timDFFromFromItimdomMultipleOf graph =
+    assert (leafs == leafs') $
+    f2 leafs Map.empty
+  where leafs = Set.fromList [ n | n <- nodes graph, Map.findWithDefault Set.empty n timdoms' ⊆ timdoms ! n ]
+        leafs' = assert (ls == Set.fromList [ n | n <- nodes graph, not $ (∃) (nodes graph) (\m -> n ∈ timdoms ! m)        ] ∩ nonCycleNodes) $
+                 assert (ls == Set.fromList [ n | n <- nodes graph, Map.findWithDefault Set.empty n timdoms' ⊆ timdoms ! n ] ∩ nonCycleNodes) $ 
+                 assert (rs == Set.fromList [ n | n <- nodes graph, Map.findWithDefault Set.empty n timdoms' ⊆ timdoms ! n ] ∩    cycleNodes) $ 
+                 ls ∪ rs
+          where ls =  nonCycleNodes ∖ (Map.keysSet timdoms')
+                rs = (∐) [ cycle | cycle <- cycles, (∀) cycle (\n -> Map.findWithDefault Set.empty n timdoms' ⊆ cycle)  ]
+                (cycleOf, cycles) = findCyclesM $ fmap fromSet $  itimdommultiple 
+                  where itimdommultiple = fmap (Set.map fst) $ itimdomMultipleOfTwoFinger graph
+                cycleNodes = (∐) cycles
+                nonCycleNodes = (Set.fromList $ nodes graph) ∖ cycleNodes
+        f2 xs df
+           | Set.null xs   = df
+           | changed ∨ new = f2 (timdoms ! x ∪ xs')  df'
+           | otherwise     = f2                 xs'  df'
+          where (x, xs') = Set.deleteFindMin xs
+                df' = Map.insert x combined df
+                combined = (local ∪ up) ∖ invalid
+                local = Set.fromList [ y                | y <- pre graph x ]
+                up    = Set.fromList [ y                | z <- Set.toList invalid,
+                                                          z /= x,
+                                                          y <- Set.toList $ Map.findWithDefault Set.empty z df,
+                                                          (not $ z ∈ timdoms ! x) ∨ (∃) (suc graph y) (\y' -> x ∈ timdom ! y')
+                        ]
+                invalid = Map.findWithDefault Set.empty x timdoms'
+                (dfX, new) = case Map.lookup x df of
+                  Nothing  -> (Set.empty, True)
+                  Just dfX -> (dfX,       False)
+                changed = combined /= dfX
+        timdoms  = timdomsFromItimdomMultipleOf graph
+        timdoms' = invert'' timdoms
+
+        timdom = fmap (Set.map fst) $ timdomOfTwoFinger graph
+
+
 newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
 instance JoinSemiLattice MyInteger where
   join = max

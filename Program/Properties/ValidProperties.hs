@@ -85,8 +85,8 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
-    mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf,
-    itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
+    mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, 
+    itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, 
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -2991,6 +2991,10 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty   "timDFFromFromItimdomMultipleOf   == timDF"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.timDFFromFromItimdomMultipleOf  g ==
+                       NTICD.timDF                           g,
     testProperty   "timdomsFromItimdomMultipleOf     == timdomsOf"
                 $ \(ARBITRARY(g)) ->
                        NTICD.timdomsFromItimdomMultipleOf  g ==

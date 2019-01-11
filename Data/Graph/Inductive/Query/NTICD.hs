@@ -4783,8 +4783,12 @@ timdomsFromItimdomMultipleOf g =
    ⊔ forCycles
   where itimdom    = itimdomMultipleOfTwoFinger g
         itimdomFst = fmap (Set.map fst) itimdom 
-        (cycleNodes, cycleOf, valid)   = validTimdomFor g itimdom
-        entries = Map.keysSet valid
+        valid = validTimdomFor g itimdom entries
+
+        entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdom ! n) (\(m,_) -> m ∈ cycleNodes) ]
+
+        (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdom
+        cycleNodes = (∐) cycles
 
         forOthers  = Map.mapWithKey Set.delete $ without itimdomFst (entries ∪ cycleNodes)
         forEntries = Map.mapWithKey (\n fuel -> Set.delete n $ reachableUpToLength itimdom n fuel) valid
@@ -4842,19 +4846,21 @@ timdomOfTwoFinger g = timdomFrom
                                                                        (not $ x' ∈ entries) ∨ (steps - stepsX' <= (valid ! x'))
                                                                      )
                                          ]) | n <- nodes g ]
-        (_,_,valid) = validTimdomFor g itimdommultiple
-        entries = Map.keysSet valid
-
-validTimdomFor :: Graph gr => gr a b -> Map Node (Set.Set (Node, Integer)) -> (Set Node, Map Node (Set Node), Map Node Integer)
-validTimdomFor g itimdommultiple =
-     require (itimdommultiple == itimdomMultipleOfTwoFinger g) $
-     (cycleNodes, cycleOf, validFast)
-  where (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
-        cycleNodes = (∐) cycles
+        valid = validTimdomFor g itimdommultiple entries
         entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
-        validFast  = fmap (toInteger.snd) $ fix (Map.fromSet (\n -> (n,0)) entries) f
+          where (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
+                cycleNodes = (∐) cycles
+
+validTimdomFor :: Graph gr => gr a b -> Map Node (Set.Set (Node, Integer)) -> Set Node -> Map Node Integer
+validTimdomFor g itimdommultiple relevantNodes =
+     require (itimdommultiple == itimdomMultipleOfTwoFinger g) $
+     validFast
+  where validFast  = fmap (toInteger.snd) $ fix (Map.fromSet (\n -> (n,0)) relevantNodes ) f
           where fix x f = let x' = f x in if x == x' then x else fix x' f
-                f valid = Map.fromList [ (n, (m',fuel + steps)) | (n,(m,fuel)) <- Map.assocs valid, let [(m', steps)] = Set.toList $ itimdommultiple ! m,
+                f valid = Map.fromList [ (n, (m',fuel + steps)) | (n,(m,fuel)) <- Map.assocs valid,
+                                                           assert (Set.size (itimdommultiple ! m) <= 1) True,
+                                                                  (m', steps) <- Set.toList $ itimdommultiple ! m,
+                                                                  m' /= n,
                                                                   let xs = Set.fromList $ suc g n,
                                                                   let itimdommultiple' =  Map.insert m' (Set.empty) itimdommultiple,
                                                                   (∀) xs (\x ->
@@ -4864,7 +4870,7 @@ validTimdomFor g itimdommultiple =
                                                                            l' = length path'
                                                                            in   1 + steps' == steps + fuel
                                                                               ∧ (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (x,0)  path') (\(x',stepsX') ->
-                                                                                  (not $ x' ∈ entries) ∨ (steps' - stepsX' <= (snd $ valid ! x'))
+                                                                                  (not $ x' ∈ relevantNodes ) ∨ (steps' - stepsX' <= (snd $ valid ! x'))
                                                                                 )
                                                                       )
                                                                   )

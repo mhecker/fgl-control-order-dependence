@@ -85,7 +85,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
-    mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, 
+    mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, 
     rotatePDomAround,
     joiniSinkDomAround, rofldomOfTwoFinger7,
@@ -2991,6 +2991,43 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp via validTimdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    nr = toInteger $ 2 * (length $ nodes g)
+                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdom              = NTICD.timdomOfLfp              g
+
+                    itimdom    = NTICD.itimdomMultipleOfTwoFinger g
+                    valid = NTICD.validTimdomFor g itimdom (Set.fromList $ nodes g)
+                in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
+                     let fuel = valid ! x in
+                           (∀) ys (\(y, steps) -> (∀) (timdomMultipleNaive ! y) (\(z, steps') ->
+                             -- (if (fuel > 1) then traceShow (steps + steps', fuel, steps + steps'  <= fuel) else id) $
+                             ((z, (steps + steps'          )          ) ∈ timdom ! x)    ↔  (steps + steps'  <= fuel )
+                           ))
+                       ∧ (∀) [0..fuel-1] (\fuel' ->
+                           not $
+                           (∀) ys (\(y, steps) -> (∀) (timdomMultipleNaive ! y) (\(z, steps') ->
+                             ((z, (steps + steps'          )          ) ∈ timdom ! x)    ↔  (steps + steps'  <= fuel')
+                           ))
+                         )
+                   ),
+    testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    nr = toInteger $ 2 * (length $ nodes g)
+                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdom              = NTICD.timdomOfLfp              g
+                in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
+                         (∃) [0..n] (\fuel ->
+                           (∀) ys (\(y, steps) -> (∀) (timdomMultipleNaive ! y) (\(z, steps') ->
+                             ((z, (steps + steps'          )          ) ∈ timdom ! x)    ↔  (steps + steps'  <= fuel)
+                           ))
+                         )
+                   ),
     testProperty   "timDFFromFromItimdomMultipleOf   == timDF"
                 $ \(ARBITRARY(g)) ->
                        NTICD.timDFFromFromItimdomMultipleOf  g ==

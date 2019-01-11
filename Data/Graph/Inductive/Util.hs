@@ -247,6 +247,9 @@ removeDuplicateEdges :: (DynGraph gr, Eq b) => gr a b -> gr a b
 removeDuplicateEdges g = mkGraph (labNodes g)
                                  (nub $ labEdges g)
 
+withoutSelfEdges :: (DynGraph gr, Eq b) => gr a b -> gr a b
+withoutSelfEdges g = mkGraph (labNodes g) (filter (\(n,m,_) -> n /= m) $ labEdges g)
+
 insNodeIfNecessary (n, l) g
   | n `elem` nodes g = assert (lab g n == Just l) $ g
   | otherwise        = insNode (n,l) g

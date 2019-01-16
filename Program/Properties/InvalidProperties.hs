@@ -177,6 +177,11 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x))),
     testProperty   "mDF   ⊑ timDF"
                 $ \(ARBITRARY(g)) ->
                        NTICD.mDF    g ⊑

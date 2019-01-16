@@ -2991,6 +2991,11 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive in reducible CFG"
+    $ \(REDUCIBLE(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x ))),
     testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp via validTimdom"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
@@ -3106,7 +3111,6 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty "timdomOfLfp is transitive up to cycles"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
-                    mdom  = NTICD.mdomOfLfp g
                     timdom = NTICD.timdomOfLfp g
                 in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
                                                                       (z, (steps + steps'          )          ) ∈ timdom ! x

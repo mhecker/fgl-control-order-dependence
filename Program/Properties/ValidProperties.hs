@@ -3028,6 +3028,24 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                            ))
                          )
                    ),
+    testProperty   "ntscdMyDodSlice ⊆ tscdSlice for random slice-criteria of random size"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                    let g = generatedGraph
+                        n    = length $ nodes g
+                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd   g
+                        tscdslicer        = NTICD.tscdSliceFast g
+                        subseteq = ntscdmydodslicer ms ⊆ tscdslicer ms
+                    in  (if subseteq then id  else traceShow (ms, g)) subseteq,
+    testPropertySized 40 "tscdSlice  == tscdSliceFast for random slice-criteria of random size"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                    let g = generatedGraph
+                        n    = length $ nodes g
+                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        tscdslicer        = NTICD.tscdSlice     g
+                        tscdslicerfast    = NTICD.tscdSliceFast g
+                        same = tscdslicer ms == tscdslicerfast ms
+                    in  (if same then id  else traceShow (ms, g)) same,
     testProperty   "timDFFromFromItimdomMultipleOf   == timDF"
                 $ \(ARBITRARY(g)) ->
                        NTICD.timDFFromFromItimdomMultipleOf  g ==

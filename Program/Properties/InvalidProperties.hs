@@ -83,6 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
     dfFor, anyDFFromUpLocalDefViaAnydoms,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
+    mDF, timDF,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
     timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomsOf,
     withPossibleIntermediateNodesFromiXdom,
@@ -176,6 +177,10 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty   "mDF   ⊑ timDF"
+                $ \(ARBITRARY(g)) ->
+                       NTICD.mDF    g ⊑
+                       NTICD.timDF  g,
     testProperty   "anyDFFromUpLocalDefViaAnydoms == anyDF"
                 $ \(ARBITRARY(g)) (UNCONNECTED(anydom0)) -> 
                    let anydomG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges anydom0, let n' = toG ! n, let m' = toG ! m, (n' == m') ∨ (∀) (n' : suc g n') (\x' -> m' `elem` reachable x' g) ] :: Gr ()()

@@ -2835,6 +2835,14 @@ nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdF3 graph
         w     = myWod graph
 
+
+nticdMyWodSliceViaEscapeNodes :: (DynGraph gr) => gr () () ->  Set Node -> Set Node
+nticdMyWodSliceViaEscapeNodes g = \ms -> combinedBackwardSlice g' nticd' empty ms ∖ (Set.fromList (end:escape))
+  where (end, escape, g') = withUniqueEndNodeAndEscapeNodes () () () () g
+        nticd' = invert'' $ nticdF3 g'
+        empty = Map.empty
+
+
 nticdMyWodSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodSliceViaNticd graph msS = combinedBackwardSlice graph nticd' empty msS
   where ms = Set.toList msS

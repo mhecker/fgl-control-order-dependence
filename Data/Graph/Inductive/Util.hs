@@ -207,6 +207,44 @@ withUniqueEndNode endLabel endEdgeLabel gr =
 
 
 
+addUniqueEndNodeAndEscapeNodes :: DynGraph gr => a -> b -> a -> b -> gr a b -> (Node, [Node], gr a b)
+addUniqueEndNodeAndEscapeNodes endLabel endEdgeLabel escapeLabel escapeEdgeLabel gr = (end, escape,
+        -- mkGraph ([(end, endLabel)] ++ [ (n, escapeLabel) | n <- escape] ++ labNodes gr)
+        --         ([ e                          | e@(n,m,l) <- labEdges gr, not $ Map.member m escapeOf] ++
+        --          [ (n,  m',  l)               |   (n,m,l) <- labEdges gr, Just m' <- [Map.lookup m escapeOf] ] ++
+        --          [ (m', m,   escapeEdgeLabel) | (m,m') <- Map.assocs $ escapeOf  ] ++
+        --          [ (m', end, endEdgeLabel)    |    m'  <- Map.elems  $ escapeOf  ]
+        --         )
+        mkGraph ([(end, endLabel)] ++ [ (n, escapeLabel) | n <- escape] ++ labNodes gr)
+                ([ e                          | e@(n,m,l) <- labEdges gr, not $ m `elem` representants ] ++
+                 [ (n,  m',  l)               |   (n,m,l) <- labEdges gr, Just m' <- [Map.lookup m escapeOf] ] ++
+                 [ (m', m,   escapeEdgeLabel) | (m,m') <- Map.assocs $ escapeOf  ] ++
+                 [ (m', end, endEdgeLabel)    |    m'  <- Map.elems  $ escapeOf  ]
+                )
+      )
+    -- where endSccs = [ scc | scc <- scc gr, isEndScc scc ]
+    --         where isEndScc scc = (∀) scc (\n -> (∀) (suc gr n) (\n' -> n' ∊ scc))
+    --       endSccNodes = [ n | scc <- endSccs, n <- scc ]
+    --       (end:escape) = newNodes (1 + (length endSccNodes)) gr
+    --       escapeOf = Map.fromList $ zip endSccNodes escape
+    where endSccs = [ scc | scc <- scc gr, isEndScc scc ]
+            where isEndScc scc = (∀) scc (\n -> (∀) (suc gr n) (\n' -> n' ∊ scc))
+          (end:escape) = newNodes (1 + length endSccs) gr
+          representants = [ head scc | scc <- endSccs ]
+          escapeOf = Map.fromList $ zip representants escape
+
+
+withUniqueEndNodeAndEscapeNodes :: DynGraph gr => a -> b -> a -> b ->  gr a b -> (Node, [Node], gr a b)
+withUniqueEndNodeAndEscapeNodes  endLabel endEdgeLabel escapeLabel escapeEdgeLabel gr = addUniqueEndNodeAndEscapeNodes endLabel endEdgeLabel escapeLabel escapeEdgeLabel gr
+    -- case uniqueEndNodes gr of
+    --   []    -> addUniqueEndNodeAndEscapeNodes endLabel endEdgeLabel escapeLabel escapeEdgeLabel gr
+    --   [end] -> (end, [], gr)
+    --   _     -> error "cannot happen: there cannot be multiple unique nodes"
+
+
+
+
+
 postorder :: Graph gr => gr a b -> (Map Node Integer, Map Integer Node)
 postorder g = (Map.fromList $ zip po [0..],
                Map.fromList $ zip [0..] po)

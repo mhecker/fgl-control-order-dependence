@@ -22,7 +22,7 @@ COLOR=--color always
 ROFL = Program/Tests
 CABAL_PREFIX=cabal exec --
 PATTERN=
-GHC_FLAGS=-rtsopts -O $(GHC_ASSERT)
+GHC_FLAGS=-rtsopts -O0 $(GHC_ASSERT)
 
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE

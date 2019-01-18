@@ -77,6 +77,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    onedomOf,
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     isinkDFTwoFinger, mDFTwoFinger,
@@ -2991,6 +2992,45 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "some prop"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = NTICD.timdomOfLfp g
+                    timdomnok = fmap (Set.map fst) $ timdom
+                in (∀) (Map.assocs timdom) (\(n, m's) -> (∀) m's (\(m', steps) -> (∀) (timdom ! m') (\(m, steps') ->
+                       if (m ∈ timdomnok ! n)   ∨  (n == m  ∨  m == m'  ∨  m' == n)  then True else (
+                          True
+                        ∧ (let dombefore' = NTICD.mdomOfLfp (delSuccessorEdges g m') in  not $ m  ∈ dombefore' ! n)
+                        ∧ (let dombefore  = NTICD.mdomOfLfp (delSuccessorEdges g m ) in  not $ m' ∈ dombefore  ! n)
+                        ∧ (∀) (suc g n) (\nr -> if       m ∈ timdomnok ! nr then True else traceShow ("nr", nr) (
+                              (let dombefore' = NTICD.mdomOfLfp (delSuccessorEdges g m') in  not $ m  ∈ dombefore' ! nr)
+                            ∧ (let dombefore  = NTICD.mdomOfLfp (delSuccessorEdges g m ) in  not $ m' ∈ dombefore  ! nr)
+                          ))
+                        ∧ (∀) (suc g n) (\nl -> if not $ m ∈ timdomnok ! nl then True else traceShow ("nl", nl) (
+                              (let dombefore' = NTICD.mdomOfLfp (delSuccessorEdges g m') in        m  ∈ dombefore' ! nl)
+                            ∨ (let dombefore  = NTICD.mdomOfLfp (delSuccessorEdges g m ) in        m' ∈ dombefore  ! nl)
+                          ))
+                       )
+                ))),
+    testProperty "timdom implies mdom"
+    $ \(REDUCIBLE(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                    mdom   = NTICD.mdomOfLfp g
+                in timdom ⊑ mdom,
+    testProperty "tscd implies dom"
+    $ \(REDUCIBLE(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                    tscd = NTICD.tscdOfLfp g
+                in (∀) (Map.assocs $  tscd) (\(n, ms) -> (∀) ms (\m -> (m == n) ∨ (not $ m ∈ timdom ! n))),
+    testProperty "tscd implies onedome"
+    $ \(REDUCIBLE(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                    onedom = NTICD.onedomOf timdom
+                    tscd = NTICD.tscdOfLfp g
+                in (∀) (Map.assocs $  tscd) (\(n, ms) -> (∀) ms (\m -> not $ m ∈ onedom n)),
     testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive in reducible CFG"
     $ \(REDUCIBLE(generatedGraph)) ->
                 let g = generatedGraph

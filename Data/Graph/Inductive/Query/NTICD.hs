@@ -4770,7 +4770,10 @@ timDFUpGivenXViaTimdomsDef graph = anyDFUpGivenXViaAnydomsDef timdom graph
 anyDFFromUpLocalDefViaAnydoms :: forall gr a b. DynGraph gr => Map Node (Set Node) -> gr a b -> Map Node (Set Node)
 anyDFFromUpLocalDefViaAnydoms anydom graph =
       Map.fromList [ (x, dflocal ! x)  | x <- nodes graph]
-    ⊔ Map.fromList [ (x, Set.fromList [ y | z <- anydomsInv ! x, y <- Set.toList $ dfupGivenX ! (x,z), (∃) (suc graph y) (\y' -> x ∈ anydom ! y')  ] ) | x <- nodes graph]
+    ⊔ Map.fromList [ (x, Set.fromList [ y | z <- anydomsInv ! x,
+                                            y <- Set.toList $ dfupGivenX ! (x,z),
+                                    assert ((not $ z ∈ anydoms ! x)  → ((∃) (suc graph y) (\y' -> x ∈ anydom ! y'))) True,
+                                            (∃) (suc graph y) (\y' -> x ∈ anydom ! y')  ] ) | x <- nodes graph]
   where dflocal = anyDFLocalDef anydom graph
         dfupGivenX = anyDFUpGivenXViaAnydomsDef anydom graph
         anydoms    = domsOf graph anydom

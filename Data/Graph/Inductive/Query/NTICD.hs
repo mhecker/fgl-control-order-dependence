@@ -8,7 +8,7 @@ module Data.Graph.Inductive.Query.NTICD where
 
 import Data.Ord (comparing)
 import Data.Maybe(fromJust)
-import Control.Monad (liftM, foldM, forM, forM_)
+import Control.Monad (liftM, foldM, forM, forM_, liftM2)
 
 import Control.Monad.ST
 import Data.STRef
@@ -48,7 +48,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath, reachableUpToLength)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath, reachableUpToLength, distancesUpToLength)
 import Unicode
 
 
@@ -4784,16 +4784,16 @@ timDFFromUpLocalDefViaTimdoms graph = anyDFFromUpLocalDefViaAnydoms timdom graph
   where timdom = fmap (Set.map fst) $ timdomOfLfp graph
 
 
-timdomsFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-timdomsFromItimdomMultipleOf g =
+timdomsFromItimdomMultipleOfFor :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Integer)) -> Map Node (Set Node)
+timdomsFromItimdomMultipleOfFor g itimdom =
+     require (itimdom == itimdomMultipleOfTwoFinger g) $
      assert ( Set.null $ Map.keysSet forOthers  ∩ Map.keysSet forEntries) $
      assert ( Set.null $ Map.keysSet forOthers  ∩ Map.keysSet forCycles) $
      assert ( Set.null $ Map.keysSet forEntries ∩ Map.keysSet forCycles) $
      forOthers
    ⊔ forEntries
    ⊔ forCycles
-  where itimdom    = itimdomMultipleOfTwoFinger g
-        itimdomFst = fmap (Set.map fst) itimdom 
+  where itimdomFst = fmap (Set.map fst) itimdom 
         valid = validTimdomFor g itimdom entries
 
         entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdom ! n) (\(m,_) -> m ∈ cycleNodes) ]
@@ -4805,6 +4805,9 @@ timdomsFromItimdomMultipleOf g =
         forEntries = Map.mapWithKey (\n fuel -> Set.delete n $ reachableUpToLength itimdom n fuel) valid
         forCycles  = Map.mapWithKey (\n n's -> if n's == Set.fromList [n] then Set.empty  else cycleOf ! n) $ restrict itimdomFst cycleNodes
 
+timdomsFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timdomsFromItimdomMultipleOf g = timdomsFromItimdomMultipleOfFor g itimdom
+  where itimdom    = itimdomMultipleOfTwoFinger g
 
 timDFFromFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 timDFFromFromItimdomMultipleOf graph =
@@ -4843,6 +4846,87 @@ timDFFromFromItimdomMultipleOf graph =
         timdoms' = invert'' timdoms
 
         timdom = fmap (Set.map fst) $ timdomOfTwoFinger graph
+
+
+timDFFromFromItimdomMultipleOfFastComplicated :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timDFFromFromItimdomMultipleOfFastComplicated graph =
+    fmap (Map.keysSet) $ f2 zs0 df0
+  where df0 = Map.fromList [ (x, Map.fromList [ (y, Nothing) | y <- pre graph x, not $ x ∈ timdoms ! y]) | x <- nodes graph]
+        zs0 = Map.keysSet $ Map.filter (not . Map.null) df0
+        f2 :: Set Node -> Map Node (Map Node (Maybe Integer)) ->  Map Node (Map Node (Maybe Integer))
+        f2 zs df
+           | Set.null zs   = df
+           | otherwise     = -- traceShow (z, zs, df) $
+                             f2 zs' df'
+          where (z, zs0) = Set.deleteFindMin zs
+                dfZ = df ! z
+                xsWithSteps = case Map.lookup z valid  of
+                                Just fuel -> distancesUpToLength itimdomMultiple fuel z
+                                Nothing   -> Set.toList $ itimdomMultiple ! z
+                xs = [ (x,
+                        dfx,
+                        dfx'
+                       )
+                     | (x, steps) <- xsWithSteps,
+                       let dfx  = df ! x,
+                       let dfx' = foldr (\(y, fuel) dfx -> Map.insertWith mmax y fuel dfx)
+                                        dfx
+                                        [ (y, fuel') | (y, fuel0) <- Map.assocs dfZ, not $ x ∈ timdoms ! y,
+                                                       let fuel  = case Map.lookup z valid  of
+                                                                     Just fuel -> Just fuel
+                                                                     Nothing   -> fuel0,
+                                                       let fuel' =  liftM (subtract steps) fuel,
+                                                       -- (if z == (-2)  ∧  x == (-4) then traceShow (z,steps,x, fuel0, fuel, fuel') else id) True,
+                                                       case fuel' of { Nothing -> True ; Just fuel' -> fuel' >= 0 } ]
+                     ]
+                  where mmax :: Maybe Integer -> Maybe Integer -> Maybe Integer
+                        mmax = liftM2 max
+                df'     = Map.fromList [ (x, dfx') | (x,   _, dfx') <- xs              ] `Map.union` df
+                zs'     = Set.fromList [  x        | (x, dfx, dfx') <- xs, dfx /= dfx' ] ∪ zs0
+
+        timdoms  = timdomsFromItimdomMultipleOf graph
+        itimdomMultiple = itimdomMultipleOfTwoFinger graph
+        
+        -- itimdomFst = fmap (Set.map fst) itimdom 
+        valid = validTimdomFor graph itimdomMultiple entries
+
+        entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
+
+        (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
+        cycleNodes = (∐) cycles
+
+
+
+
+timDFFromFromItimdomMultipleOfFast :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
+timDFFromFromItimdomMultipleOfFast graph =
+    fmap (Map.keysSet) $ f2 zs0 df0
+  where df0 = Map.fromList [ (x, Map.fromList [ (y, True) | y <- pre graph x, not $ x ∈ timdoms ! y]) | x <- nodes graph]
+        zs0 = Map.keysSet $ Map.filter (not . Map.null) df0
+        f2 :: Set Node -> Map Node (Map Node Bool) ->  Map Node (Map Node Bool)
+        f2 zs df
+           | Set.null zs   = df
+           | otherwise     = f2 zs' df'
+          where (z, zs0) = Set.deleteFindMin zs
+                dfZ = df ! z
+                transitive = not $ z ∈ entries
+                xs = [ (x, dfx, dfx') | x <- Set.toList $ timdoms ! z,
+                                        let dfx  = df ! x,
+                                        let dfx' = foldr (\y dfx -> Map.insertWith (∨) y transitive dfx)
+                                                   dfx
+                                                   [ y | (y, True) <- Map.assocs dfZ, not $ x ∈ timdoms ! y ]
+                     ]
+                df'     = Map.fromList [ (x, dfx') | (x,   _, dfx') <- xs              ] `Map.union` df
+                zs'     = Set.fromList [  x        | (x, dfx, dfx') <- xs, dfx /= dfx' ] ∪ zs0
+
+
+        itimdomMultiple = itimdomMultipleOfTwoFinger graph
+        timdoms  = timdomsFromItimdomMultipleOfFor graph itimdomMultiple
+        
+        entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
+
+        (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
+        cycleNodes = (∐) cycles
 
 
 newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)

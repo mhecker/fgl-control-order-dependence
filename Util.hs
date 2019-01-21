@@ -210,6 +210,28 @@ minimalPath m x y = find (Set.fromList [x]) x
           where zs = m ! x
 
 
+
+minimalDistancesForReachable:: Ord a => Map a (Set (a,Integer)) -> a -> [(a,Integer)]
+minimalDistancesForReachable m x  = find (Set.fromList []) 0 x
+  where find forbidden stepsX x = (x, stepsX) : morePaths
+          where forbidden' = Set.insert x forbidden
+                zs = m ! x 
+                morePaths = do
+                              (z,steps) <- [ (z, steps) | (z, steps) <- Set.toList zs, not $ z ∈ forbidden']
+                              find forbidden' (stepsX+steps) z
+
+
+distancesUpToLength :: Ord a => Map a (Set (a,Integer)) -> Integer -> a -> [(a,Integer)]
+distancesUpToLength m n x = find 0 x
+  where find stepsX  x
+            |          stepsX  > n = []
+            | otherwise            = (x, stepsX) : morePaths
+          where zs = m ! x
+                morePaths = do
+                              (z,steps) <- Set.toList zs
+                              find (stepsX+steps) z
+
+
 pathsUpToLength :: Ord a => Map a (Set (a,Integer)) -> Integer -> a -> a -> [[(a,Integer)]]
 pathsUpToLength m n x y = find 0 x
   where find stepsX  x
@@ -230,6 +252,17 @@ reachableUpToLength m x fuel = find 0 x
   where find stepsX  x
             | stepsX  > fuel = Set.empty
             | otherwise   = Set.insert x $ (∐) moreFound
+          where zs = m ! x
+                moreFound = do
+                              (z,steps) <- Set.toList zs
+                              return $ find (stepsX+steps) z
+
+
+reachableUpToLengthWithSteps :: Ord a => Map a (Set (a,Integer)) -> a -> Integer -> Set (a, Integer)
+reachableUpToLengthWithSteps m x fuel = find 0 x
+  where find stepsX  x
+            | stepsX  > fuel = Set.empty
+            | otherwise   = Set.insert (x, stepsX) $ (∐) moreFound
           where zs = m ! x
                 moreFound = do
                               (z,steps) <- Set.toList zs

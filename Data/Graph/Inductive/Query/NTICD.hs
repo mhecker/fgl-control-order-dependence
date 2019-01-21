@@ -4902,12 +4902,13 @@ timDFFromFromItimdomMultipleOfFast :: forall gr a b. DynGraph gr => gr a b -> Ma
 timDFFromFromItimdomMultipleOfFast graph =
     fmap (Map.keysSet) $ f2 zs0 df0
   where df0 = Map.fromList [ (x, Map.fromList [ (y, True) | y <- pre graph x, not $ x ∈ timdoms ! y]) | x <- nodes graph]
-        zs0 = Map.keysSet $ Map.filter (not . Map.null) df0
-        f2 :: Set Node -> Map Node (Map Node Bool) ->  Map Node (Map Node Bool)
+        zs0 = Map.fromList [ (prio ! x, x) | x <- Map.keys $ Map.filter (not . Map.null) df0 ]
+
+        f2 :: Map Integer Node -> Map Node (Map Node Bool) ->  Map Node (Map Node Bool)
         f2 zs df
-           | Set.null zs   = df
+           | Map.null zs   = df
            | otherwise     = f2 zs' df'
-          where (z, zs0) = Set.deleteFindMin zs
+          where ((_,z), zs0) = Map.deleteFindMin zs
                 dfZ = df ! z
                 transitive = not $ z ∈ entries
                 xs = [ (x, dfx, dfx') | x <- Set.toList $ timdoms ! z,
@@ -4916,17 +4917,20 @@ timDFFromFromItimdomMultipleOfFast graph =
                                                    dfx
                                                    [ y | (y, True) <- Map.assocs dfZ, not $ x ∈ timdoms ! y ]
                      ]
-                df'     = Map.fromList [ (x, dfx') | (x,   _, dfx') <- xs              ] `Map.union` df
-                zs'     = Set.fromList [  x        | (x, dfx, dfx') <- xs, dfx /= dfx' ] ∪ zs0
+                df'     = Map.fromList [ (x, dfx')     | (x,   _, dfx') <- xs              ] `Map.union` df
+                zs'     = Map.fromList [ (prio ! x, x) | (x, dfx, dfx') <- xs, dfx /= dfx' ] `Map.union` zs0
 
 
         itimdomMultiple = itimdomMultipleOfTwoFinger graph
         timdoms  = timdomsFromItimdomMultipleOfFor graph itimdomMultiple
         
         entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
+          where (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
+                cycleNodes = (∐) cycles
 
-        (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
-        cycleNodes = (∐) cycles
+        prio = Map.fromList $ zip sorting [0..]
+          where sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
+
 
 
 newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)

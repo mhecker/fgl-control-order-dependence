@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength, invert'')
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength, invert'', minimalPathForReachable)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -3072,6 +3072,71 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                            (∀) ys (\(y, steps) -> (∀) (timdomMultipleNaive ! y) (\(z, steps') ->
                              ((z, (steps + steps'          )          ) ∈ timdom ! x)    ↔  (steps + steps'  <= fuel)
                            ))
+                         )
+                   ),
+    testProperty "timdomMultipleOfNaiveLfp step vs fuel"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    nr = toInteger $ 2 * (length $ nodes g)
+                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdom              = NTICD.timdomOfLfp              g
+
+                    itimdom    = NTICD.itimdomMultipleOfTwoFinger g
+                    valid = NTICD.validTimdomFor g itimdom (Set.fromList $ nodes g)
+
+                    entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdom ! n) (\(m,_) -> m ∈ cycleNodes) ]
+                    (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdom
+                    cycleNodes = (∐) cycles
+                in (∀) (Map.assocs itimdom) (\(m, m's) -> (∀) (m's) (\(m', steps) ->
+                          False
+                        ∨ (m == m')
+                        ∨ (   (m' ∈ (Set.map fst $ timdom ! m ))
+                            ∧ (m  ∈ (Set.map fst $ timdom ! m'))
+                            ∧ (∀) (Set.filter ((==m') . fst) $ timdom ! m ) (\(_,k)  ->
+                              (∀) (Set.filter ((==m ) . fst) $ timdom ! m') (\(_,k') ->
+                                  True
+                                ∧ (k == steps)
+                                ∧ (k + k' == (valid ! m') + k)
+                              ))
+                          )
+                        ∨ (m ∈ entries)
+                        ∨ (valid ! m == valid ! m' + steps)
+                   )),
+    testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp via validTimdom one step"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    nr = toInteger $ 2 * (length $ nodes g)
+                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdom              = NTICD.timdomOfLfp              g
+
+                    itimdom    = NTICD.itimdomMultipleOfTwoFinger g
+                    valid = NTICD.validTimdomFor g itimdom (Set.fromList $ nodes g)
+                in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
+                     let fuel = valid ! x in
+                           (∀) ys (\(y, steps) ->
+                             ((y, steps) ∈ timdom ! x)    ↔  (steps <= fuel )
+                           )
+                       ∧ (∀) [0..fuel-1] (\fuel' ->
+                           not $
+                           (∀) ys (\(y, steps) -> 
+                             ((y, steps) ∈ timdom ! x)    ↔  (steps <= fuel')
+                           )
+                         )
+                   ),
+    testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp one step"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    nr = toInteger $ 2 * (length $ nodes g)
+                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdom              = NTICD.timdomOfLfp              g
+                in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
+                         (∃) [0..n] (\fuel ->
+                           (∀) ys (\(y, steps) -> 
+                             ((y, steps)  ∈ timdom ! x)    ↔  (steps <= fuel)
+                           )
                          )
                    ),
     testProperty   "ntscdMyDodSlice ⊆ tscdSlice for random slice-criteria of random size"

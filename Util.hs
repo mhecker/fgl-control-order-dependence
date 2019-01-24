@@ -1,4 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP #-}
+#define require assert
 module Util where
 
 import Debug.Trace
@@ -219,6 +221,16 @@ minimalDistancesForReachable m x  = find (Set.fromList []) 0 x
                 morePaths = do
                               (z,steps) <- [ (z, steps) | (z, steps) <- Set.toList zs, not $ z ∈ forbidden']
                               find forbidden' (stepsX+steps) z
+
+
+minimalPathForReachable:: Ord a => Map a (Set (a,Integer)) -> a -> [(a,Integer)]
+minimalPathForReachable m x  = find (Set.fromList []) 0 x
+  where find forbidden stepsX x = (x, stepsX) : morePaths
+          where forbidden' = Set.insert x forbidden
+                zs = m ! x 
+                morePaths = require (Set.size zs <= 1) $ do
+                              (z,steps) <- [ (z, steps) | (z, steps) <- Set.toList zs, not $ z ∈ forbidden']
+                              find forbidden' steps z
 
 
 distancesUpToLength :: Ord a => Map a (Set (a,Integer)) -> Integer -> a -> [(a,Integer)]

@@ -4803,7 +4803,8 @@ timdomsFromItimdomMultipleOfFor g itimdom =
 
         forOthers  = Map.mapWithKey Set.delete $ without itimdomFst (entries ∪ cycleNodes)
         forEntries = Map.mapWithKey (\n fuel -> Set.delete n $ reachableUpToLength itimdom n fuel) valid
-        forCycles  = Map.mapWithKey (\n n's -> if n's == Set.fromList [n] then Set.empty  else cycleOf ! n) $ restrict itimdomFst cycleNodes
+        -- forCycles  = Map.mapWithKey (\n n's -> if n's == Set.fromList [n] then Set.empty  else cycleOf ! n) $ restrict itimdomFst cycleNodes
+        forCycles  = Map.fromSet (\n -> let cycle = cycleOf ! n in if cycle == Set.fromList [n] then Set.empty  else cycle) $ cycleNodes
 
 timdomsFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 timdomsFromItimdomMultipleOf g = timdomsFromItimdomMultipleOfFor g itimdom

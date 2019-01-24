@@ -3074,6 +3074,30 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                            ))
                          )
                    ),
+    testProperty "itimdom cycles vs timdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom              = NTICD.timdomOfLfp              g
+
+                    itimdom    = NTICD.itimdomMultipleOfTwoFinger g
+
+                    entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdom ! n) (\(m,_) -> m ∈ cycleNodes) ]
+                    (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdom
+                    cycleNodes = (∐) cycles
+                in (∀) cycles (\cycle ->
+                     let circumference = sum [ steps | m <- Set.toList cycle, (_,steps) <- Set.toList $  itimdom ! m]
+                     in (∀) cycle (\m -> (∀) cycle (\m' -> 
+                            False
+                          ∨ (m == m')
+                          ∨ (   (m' ∈ (Set.map fst $ timdom ! m ))
+                              ∧ (m  ∈ (Set.map fst $ timdom ! m'))
+                              ∧ (∀) (Set.filter ((==m') . fst) $ timdom ! m ) (\(_,k)  ->
+                                (∀) (Set.filter ((==m ) . fst) $ timdom ! m') (\(_,k') ->
+                                  (k + k' == circumference)
+                                ))
+                            )
+                       ))
+                    ),
     testProperty "timdomMultipleOfNaiveLfp step vs fuel"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
@@ -3116,6 +3140,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
                      let fuel = valid ! x in
                            (∀) ys (\(y, steps) ->
+                             -- (if (fuel > 1) then traceShow (steps + steps', fuel, steps + steps'  <= fuel) else id) $
                              ((y, steps) ∈ timdom ! x)    ↔  (steps <= fuel )
                            )
                        ∧ (∀) [0..fuel-1] (\fuel' ->

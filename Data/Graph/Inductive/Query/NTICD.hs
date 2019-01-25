@@ -5410,21 +5410,24 @@ itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
         twoFinger :: Integer -> Map Node [Node] ->  Map Node (Maybe (Node, Integer)) -> Map Node (Set Node) -> Map Node (Maybe (Node, Integer))
         twoFinger i worklist imdom imdomRev
             | Map.null worklist = imdom
-            | otherwise         =   if (not $ new) then twoFinger (i+1)                         worklist'                                   imdom                                            imdomRev
-                                    else                twoFinger (i+1) (influenced `Map.union` worklist')  (Map.insert x zs                imdom)  (Map.insertWith (∪) z (Set.fromList [x]) imdomRev)
+            | otherwise         =   assert (changed → (       zs /= Nothing)) $
+                                    assert (changed → (imdom ! x == Nothing)) $
+                                    -- assert (changed → ( case imdom ! x of { Nothing -> True ; Just (z0,k') -> ((z0,k') `elem` distancesUpToLength (fmap toSet $ imdom) k'  z)
+                                    --                                                                          ∧ ((z,sz)  `elem` distancesUpToLength (fmap toSet $ imdom) sz  z0) ∧ False } )) $
+                                    if (not $ changed) then twoFinger (i+1)                         worklist'                                   imdom                                           imdomRev
+                                    else                    twoFinger (i+1) (influenced `Map.union` worklist')  (Map.insert x zs                imdom)  (Map.insertWith (∪) z (Set.singleton x) imdomRev)
           where ((x, succs), worklist')  = Map.deleteFindMin worklist
                 mz :: Maybe (Node, Integer, Map Node (Set Integer))
                 mz = require (succs == suc graph x) 
                    $ foldM1 lca [ (y, 1, Map.fromList [(y, Set.fromList [1])]) | y <- succs]
-                Just (z,_) = zs
+                Just (z,sz) = zs
                 zs = case mz of
                       Just (z,sz,_)  -> Just (z, sz)
                       Nothing ->  Nothing
-                new     = assert (isNothing $ imdom ! x) $
-                          (not $ isNothing zs)
+                changed = zs /= (imdom ! x)
                 influenced = assert (imdomRev  == (invert''' $ fmap (liftM fst) imdom)) $
                              let preds = reachableFrom imdomRev (Set.fromList [x])
-                             in  restrict condNodes (Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x, isNothing $ imdom ! n])
+                             in  restrict condNodes (Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x {-, isNothing $ imdom ! n -}])
                 lca = lcaTimdomOfTwoFinger imdom
 
 itimdomMultipleOfTwoFinger :: forall gr a b. Graph gr => gr a b -> Map Node (Set (Node, Integer))

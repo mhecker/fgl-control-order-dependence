@@ -5428,7 +5428,7 @@ itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
                 influenced = assert (imdomRev  == (invert''' $ fmap (liftM fst) imdom)) $
                              let preds = reachableFrom imdomRev (Set.fromList [x])
                              in  restrict condNodes (Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x {-, isNothing $ imdom ! n -}])
-                lca = lcaTimdomOfTwoFinger imdom
+                lca = lcaTimdomOfTwoFingerFast imdom
 
 itimdomMultipleOfTwoFinger :: forall gr a b. Graph gr => gr a b -> Map Node (Set (Node, Integer))
 itimdomMultipleOfTwoFinger graph = fmap toSet $ itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0 (invert''' $ fmap (liftM fst) $ imdom0)

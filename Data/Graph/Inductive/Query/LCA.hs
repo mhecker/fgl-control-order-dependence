@@ -182,22 +182,22 @@ lcaTimdomOfTwoFingerFast idom (n, sn, ns) (m, sm, ms) =
             $ result
           where result = lca' (n, sn, ns) (m, sm, ms)
                 lca' :: (Node, Integer, Map Node (Set Integer)) -> (Node, Integer, Map Node (Set Integer)) -> Maybe (Node, Integer, Map Node (Set Integer))
-                lca' (n, sn, ns) (m, sm, ms)
+                lca' pin@(n, sn, ns) pim@(m, sm, ms)
                     | sn > sm = lca' (m, sm, ms) (n, sn, ns)
                     | n ∈ Map.keysSet ms ∧ (      sn ∈ (ms ! n)) = -- traceShow ("A", (n,sn,ns), (m,sm,ms)) $
                                                            Just (n, sn, Map.fromList [(n, Set.fromList [sn])])
                     | n ∈ Map.keysSet ms ∧ (not $ sn ∈ (ms ! n)) = -- traceShow ("B", (n,sn,ns), (m,sm,ms)) $
-                                  if   (∃) (ns ! n) (\sn' -> (∃) (ms ! n) (\sm' -> sm' < sn'))
-                                     ∧ (∃) (ns ! n) (\sn' -> (∃) (ms ! n) (\sm' -> sm' > sn')) then Nothing else
+                                  if   Set.findMax (ns ! n) > Set.findMin (ms ! n)
+                                     ∧ Set.findMin (ns ! n) < Set.findMax (ms ! n) then Nothing else
                                   case idom ! n of
                                      Nothing       -> Nothing
-                                     Just (n',sn') -> lca' (m, sm, ms) (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns)
+                                     Just (n',sn') -> lca' (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns) (m, sm, ms)
                     | otherwise = -- traceShow ("C", (n,sn,ns), (m,sm,ms)) $
                                   case idom ! n of
                                      Nothing       -> Nothing
                                      Just (n',sn') ->
                                                if n' ∈ Map.keysSet ns ∧ (Set.size (ms ! m) > 1) ∧ (not $ n' ∈ Map.keysSet ms) then Nothing else
-                                               lca' (m, sm, ms) (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns)
+                                                      lca' (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns) (m, sm, ms)
 
 lcaRKnownM :: Map Node (Maybe Node) -> Node -> [Node] -> (Node, [Node])
 lcaRKnownM dom c successors = case dom ! c of

@@ -4962,7 +4962,7 @@ validTimdomLfp g = fmap (\(MyInteger n) -> n) $ valid
         valid = (㎲⊒) (Map.fromList [ (n, MyInteger 0) | n <- nodes g ]) f 
           where f valid = assert (valid ⊑ valid') valid'
                   where valid' =
-                           Map.fromList [ (n, (∐) [fuel + steps | m <- [ m | (m, steps) <- Set.toList $ timdommultiple ! n, steps == fuel ],
+                           Map.fromList [ (n, (∐) [fuel + steps | m <- [ m | (m,_) <- Set.toList $ Set.filter ((==fuel) . snd) $ timdommultiple ! n],
                                                                   (m', steps) <- Set.toList $ timdommultiple ! m,
                                                                   (∀) (Set.filter ((==m') . fst) $ timdommultiple ! m) (\(_,stepss) -> steps <= stepss),
                                                                   m' /= n,

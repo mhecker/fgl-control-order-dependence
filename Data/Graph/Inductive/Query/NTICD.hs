@@ -4989,12 +4989,10 @@ validTimdomFor g itimdommultiple relevantNodes =
                                                                   (m', steps) <- Set.toList $ itimdommultiple ! m,
                                                                   m' /= n,
                                                                   let xs = Set.fromList $ suc g n,
-                                                                  let itimdommultiple' =  Map.insert m' (Set.empty) itimdommultiple,
                                                                   (∀) xs (\x ->
-                                                                      (not $ List.null $ minimalPath itimdommultiple' x m')
-                                                                    ∧ (let [path'] = minimalPath itimdommultiple' x m'
+                                                                      (not $ List.null $ minimalPath itimdommultiple x m')
+                                                                    ∧ (let [path'] = minimalPath itimdommultiple x m'
                                                                            steps' =  sum $ fmap snd path'
-                                                                           l' = length path'
                                                                            in   1 + steps' == steps + fuel
                                                                               ∧ (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (x,0)  path') (\(x',stepsX') ->
                                                                                   (not $ x' ∈ relevantNodes ) ∨ (steps' - stepsX' <= (snd $ valid ! x'))

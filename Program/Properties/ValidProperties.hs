@@ -3127,6 +3127,18 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         ∨ (m ∈ entries)
                         ∨ (valid ! m == valid ! m' + steps)
                    )),
+    testProperty "validTimdomFor entries == validTimdomFor (nodes g) | entries "
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    itimmultiple = NTICD.itimdomMultipleOfTwoFinger g
+                    valid        = NTICD.validTimdomFor g itimmultiple (Set.fromList $ nodes g)
+                    validEntries = NTICD.validTimdomFor g itimmultiple entries
+
+                    itimdommultiple = NTICD.itimdomMultipleOfTwoFinger g
+                    entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
+                    (_, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
+                    cycleNodes = (∐) cycles
+                in restrict valid entries == validEntries,
     testProperty "validTimdomFor == validTimdomLfp "
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

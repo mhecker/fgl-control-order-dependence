@@ -86,7 +86,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
-    mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor,
+    mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
@@ -3127,6 +3127,13 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         ∨ (m ∈ entries)
                         ∨ (valid ! m == valid ! m' + steps)
                    )),
+    testProperty "validTimdomFor == validTimdomLfp "
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    itimmultiple = NTICD.itimdomMultipleOfTwoFinger g
+                    valid    = NTICD.validTimdomFor g itimmultiple (Set.fromList $ nodes g)
+                    validlfp = NTICD.validTimdomLfp g 
+                in valid == validlfp,
     testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp via validTimdom one step"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

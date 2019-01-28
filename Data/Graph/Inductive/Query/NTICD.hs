@@ -4938,6 +4938,10 @@ newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, 
 instance JoinSemiLattice MyInteger where
   join = max
 
+instance BoundedJoinSemiLattice MyInteger where
+  bottom = 0
+
+
 timdomOfTwoFinger :: Graph gr => gr a b -> Map Node (Set (Node, Integer))
 timdomOfTwoFinger g = timdomFrom
   where itimdommultiple = itimdomMultipleOfTwoFinger g
@@ -4950,6 +4954,29 @@ timdomOfTwoFinger g = timdomFrom
         entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
           where (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
                 cycleNodes = (∐) cycles
+
+
+validTimdomLfp :: DynGraph gr => gr a b -> Map Node Integer
+validTimdomLfp g = fmap (\(MyInteger n) -> n) $ valid
+  where timdommultiple = fmap (Set.map (\(m, steps) -> (m, MyInteger steps))) $ timdomMultipleOfNaiveLfp g
+        valid = (㎲⊒) (Map.fromList [ (n, MyInteger 0) | n <- nodes g ]) f 
+          where f valid = assert (valid ⊑ valid') valid'
+                  where valid' =
+                           Map.fromList [ (n, (∐) [fuel + steps | m <- [ m | (m, steps) <- Set.toList $ timdommultiple ! n, steps == fuel ],
+                                                                  (m', steps) <- Set.toList $ timdommultiple ! m,
+                                                                  (∀) (Set.filter ((==m') . fst) $ timdommultiple ! m) (\(_,stepss) -> steps <= stepss),
+                                                                  m' /= n,
+                                                                  let xs = Set.fromList $ suc g n,
+                                                                  (∀) xs (\x ->
+                                                                      (∃) (Set.filter ((==m') . fst) $ timdommultiple ! x) (\(_, steps') ->
+                                                                          (1 + steps' == steps + fuel)
+                                                                        ∧ (steps' <= valid ! x)
+                                                                      )
+                                                                  )
+                                             ]
+                                         )
+                                       | (n,fuel) <- Map.assocs valid]
+
 
 validTimdomFor :: Graph gr => gr a b -> Map Node (Set.Set (Node, Integer)) -> Set Node -> Map Node Integer
 validTimdomFor g itimdommultiple relevantNodes =

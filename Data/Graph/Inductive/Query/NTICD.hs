@@ -4962,17 +4962,21 @@ validTimdomLfp g = fmap (\(MyInteger n) -> n) $ valid
         valid = (㎲⊒) (Map.fromList [ (n, MyInteger 0) | n <- nodes g ]) f 
           where f valid = assert (valid ⊑ valid') valid'
                   where valid' =
-                           Map.fromList [ (n, (∐) [fuel + steps | m <- [ m | (m,_) <- Set.toList $ Set.filter ((==fuel) . snd) $ timdommultiple ! n],
+                           Map.fromList [ (n, (∐) [fuel' + steps | (m, fuel') <- [ (m, fuel') | (m,fuel') <- Set.toList $ Set.filter (( <= fuel) . snd) $ timdommultiple ! n],
                                                                   (m', steps) <- Set.toList $ timdommultiple ! m,
                                                                   (∀) (Set.filter ((==m') . fst) $ timdommultiple ! m) (\(_,stepss) -> steps <= stepss),
                                                                   m' /= n,
                                                                   let xs = Set.fromList $ suc g n,
                                                                   (∀) xs (\x ->
-                                                                      (∃) (Set.filter ((==m') . fst) $ timdommultiple ! x) (\(_, steps') ->
-                                                                          (1 + steps' == steps + fuel)
-                                                                        ∧ (steps' <= valid ! x)
-                                                                      )
+                                                                     ((m', steps + fuel' - 1) ∈ timdommultiple ! x)
+                                                                   ∧ (     steps + fuel' - 1 <= valid ! x)
                                                                   )
+                                                                  -- (∀) xs (\x ->
+                                                                  --     (∃) (Set.filter ((==m') . fst) $ timdommultiple ! x) (\(_, steps') ->
+                                                                  --         (1 + steps' == steps + fuel')
+                                                                  --       ∧ (steps' <= valid ! x)
+                                                                  --     )
+                                                                  -- )
                                              ]
                                          )
                                        | (n,fuel) <- Map.assocs valid]

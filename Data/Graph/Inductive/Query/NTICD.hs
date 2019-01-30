@@ -4926,11 +4926,13 @@ timDFFromFromItimdomMultipleOfFast graph =
         timdoms  = timdomsFromItimdomMultipleOfFor graph itimdomMultiple
         
         entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
-          where (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
-                cycleNodes = (∐) cycles
+        (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
+        cycleNodes = (∐) cycles
 
         prio = Map.fromList $ zip sorting [0..]
-          where sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
+          where sorting = reverse $ rdfs (Set.toList cycleNodes ++ [ n | (n, ms) <- Map.assocs itimdomMultiple, Set.null ms]) (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
+             -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
+             -- sorting = nodes graph
 
 
 

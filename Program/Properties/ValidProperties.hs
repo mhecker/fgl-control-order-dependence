@@ -1,8 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 
--- #define UNCONNECTED
-#ifdef UNCONNECTED
+-- #define USEUNCONNECTED
+#ifdef USEUNCONNECTED
 #define ARBITRARY(g) (g) :: (Gr () ())
 #else
 #define ARBITRARY(g) (CG _ g) :: (Connected Gr () ())
@@ -337,7 +337,9 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let g = generatedGraph
                         sinkdom = NTICD.sinkdomOfGfp g
                         n  = length $ nodes g
-                        ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ms
+                         | n == 0 = []
+                         | n /= 0 = [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         fromMs = dfs ms g
                         g' = foldr (flip delSuccessorEdges) (subgraph fromMs g) ms
                         sinkdom' = NTICD.sinkdomOfGfp g'
@@ -361,7 +363,9 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         sinkdom = NTICD.sinkdomOfGfp g
                         nticd = NTICD.nticdF3 g
                         n  = length $ nodes g
-                        ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ms
+                         | n == 0 = []
+                         | n /= 0 = [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         fromMs = dfs ms g
                         g' = subgraph fromMs g
                         sinkdom' = NTICD.sinkdomOfGfp g'
@@ -482,7 +486,9 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph
                         n    = length $ nodes g
-                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ms
+                         | n == 0 = Set.empty
+                         | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         nticdslicer        = NTICD.nticdSlice              g
                         nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
                     in  nticdslicer ms == nticdslicerCEdges ms,
@@ -840,7 +846,9 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph
                         n    = length $ nodes g
-                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ms
+                         | n == 0 = Set.empty
+                         | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         ntscdslicer        = NTICD.ntscdSlice              g
                         ntscdslicerCEdges  = NTICD.ntscdSliceViaCEdgesFast g
                     in  ntscdslicer ms == ntscdslicerCEdges ms,
@@ -1099,7 +1107,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                 let g = generatedGraph
                     n  = length $ nodes g
-                    ms = List.nub [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    ms
+                      | n == 0 = []
+                      | n /= 0 = List.nub [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     msS = Set.fromList ms
 
                     wccslicer   = FCACD.wccSlice g
@@ -1129,7 +1139,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g    = generatedGraph
                     g'   = grev g
                     n    = length $ nodes g
-                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     slicer1  = NTICD.nticdMyWodSliceViaNticd       g
                     slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
                     slicer1' = NTICD.nticdMyWodSliceViaNticd       g'
@@ -1152,7 +1164,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph
                         n    = length $ nodes g
-                        m0S  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        m0S
+                         | n == 0 = Set.empty
+                         | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     -- in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->   (∀) (nodes g) (\m3 -> let m0S = Set.fromList [m1, m2, m3] in
                     in 
                            let m0s = Set.toList m0S
@@ -1169,7 +1183,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g    = generatedGraph
                     g'   = grev g
                     n    = length $ nodes g
-                    ms   = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     slicer1  = NTICD.nticdMyWodPDomSimpleHeuristic g
                     slicer2  = NTICD.nticdMyWodSliceViaNticd       g
                     slicer1' = NTICD.nticdMyWodPDomSimpleHeuristic g'
@@ -1368,8 +1384,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     onPathBetween ss ts = fwd
                       where gTs = foldr (flip delSuccessorEdges) g ts
                             fwd = Set.fromList $  dfs ss gTs
-                    m0S = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                      where n    = length $ nodes g
+                    m0S
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                     where n    = length $ nodes g
                 in
                 -- in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let m0S = Set.fromList [m1, m2] in  -- -} (∀) (nodes g) (\m3 -> (∀) (nodes g) (\m4 -> let m0S = Set.fromList [m1, m2, m3, m4] in
                      let  m0s = Set.toList m0S
@@ -1514,7 +1532,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) seed1 seed2->
                    let g = generatedGraph
                        n  = length $ nodes g
-                       ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                       ms
+                         | n == 0 = []
+                         | n /= 0 = [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
 
                        ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
                          where toG = Map.fromList $ zip (nodes ddep0) (cycle $ nodes g)
@@ -1668,7 +1688,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                 let g = generatedGraph
                     n    = length $ nodes g
-                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     wodteilslicer    = NTICD.wodTEILSlice g
                     wodteilslicer'   = NTICD.wodTEILSliceViaNticd g
                 in wodteilslicer ms  == wodteilslicer' ms,
@@ -1694,7 +1716,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                 let g = generatedGraph
                     n  = length $ nodes g
-                    ms = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     fromMs = Set.fromList $ dfs (Set.toList ms) g
                     wccslicer  = FCACD.wccSlice g
                     wodslicer = NTICD.wodTEILSliceViaNticd g
@@ -1704,7 +1728,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g = generatedGraph
                     nrSlices = 10
                     n = length $ nodes g
-                    mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
+                    mss
+                      | n == 0 = []
+                      | n /= 0 = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
                                                         let m1 = nodes g !! (s1 `mod` n),
                                                         let m2 = nodes g !! (s2 `mod` n),
                                                         let m3 = nodes g !! (s3 `mod` n)
@@ -1776,7 +1802,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g = generatedGraph
                     nrSlices = 10
                     n = length $ nodes g
-                    mss = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
+                    mss
+                      | n == 0 = []
+                      | n /= 0 = [ Set.fromList [m1, m2, m3] | (s1,s2,s3) <- zip3 (moreSeeds seed1 nrSlices) (moreSeeds seed2 nrSlices) (moreSeeds seed3 nrSlices),
                                                         let m1 = nodes g !! (s1 `mod` n),
                                                         let m2 = nodes g !! (s2 `mod` n),
                                                         let m3 = nodes g !! (s3 `mod` n)
@@ -2316,7 +2344,9 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                 let g    = generatedGraph
                     g'   = grev g
                     n    = length $ nodes g
-                    ms   = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     slicer1  = NTICD.ntscdMyDodSlice               g
                     slicer2  = NTICD.ntscdMyDodSliceViaNtscd       g
                     slicer1' = NTICD.ntscdMyDodSlice               g'
@@ -3193,7 +3223,9 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph
                         n    = length $ nodes g
-                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ms
+                          | n == 0 = Set.empty
+                          | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd   g
                         tscdslicer        = NTICD.tscdSliceFast g
                         subseteq = ntscdmydodslicer ms ⊆ tscdslicer ms
@@ -3202,7 +3234,9 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph
                         n    = length $ nodes g
-                        ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ms
+                          | n == 0 = Set.empty
+                          | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         tscdslicer        = NTICD.tscdSlice     g
                         tscdslicerfast    = NTICD.tscdSliceFast g
                         same = tscdslicer ms == tscdslicerfast ms

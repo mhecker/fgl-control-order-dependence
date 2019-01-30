@@ -779,11 +779,17 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     let g = generatedGraph
                         mdom = NTICD.mdomOfLfp g
                     in NTICD.noJoins g mdom,
-    testProperty   "idomToDFFast _ imdom6  == idomToDFFast _ imdom7"
+    testProperty   "idomToDFFast _ imdom6  == idomToDFFast _ imdom7  for CFG-shaped graphs with exit->entry edge"
                 $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                     g = insEdge (exit, entry, ()) generatedGraph
+                    imdom6 = NTICD.imdomOfTwoFinger6 g
+                    imdom7 = NTICD.imdomOfTwoFinger7 g
+                in NTICD.idomToDFFast g imdom6 == NTICD.idomToDFFast g imdom7,
+    testProperty   "idomToDFFast _ imdom6  == idomToDFFast _ imdom7"
+                $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
                     imdom6 = NTICD.imdomOfTwoFinger6 g
                     imdom7 = NTICD.imdomOfTwoFinger7 g
                 in NTICD.idomToDFFast g imdom6 == NTICD.idomToDFFast g imdom7,

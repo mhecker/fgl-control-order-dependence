@@ -616,19 +616,19 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     in NTICD.sinkdomOf              g ==
                        NTICD.sinkdomOfGfp           g,
     testProperty   "sinkDFFromUpLocalDefViaSinkdoms == sinkDF"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==
                        NTICD.sinkDF                          g,
     testProperty   "sinkDFUpGivenXViaSinkdoms == sinkDFUpGivenX"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.sinkDFUpGivenXViaSinkdoms  g ==
                        NTICD.sinkDFUpGivenX             g,
     testProperty   "sinkDFUpDefViaSinkdoms == sinkDFUpDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.sinkDFUpDefViaSinkdoms  g ==
                        NTICD.sinkDFUpDef             g,
     testProperty   "sinkDFUpGivenX ! (x,z) is independent of choice of x for given z"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                     let sinkDFUp = NTICD.sinkDFUpGivenX g
                     in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
                          (∀) (Map.assocs sinkDFUp) (\((x',z'), dfUp') ->
@@ -636,7 +636,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                          )
                        ),
     testProperty   "sinkDFUpGivenX ! (x,z) == sinkDFUpDef ! z"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                     let sinkDFUp    = NTICD.sinkDFUpGivenX g
                         sinkDFUpDef = NTICD.sinkDFUpDef    g
                     in (∀) (Map.assocs sinkDFUp) (\((x,z), dfUp) ->
@@ -648,15 +648,15 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                          )
                        ),
     testProperty   "sinkDFUp              == sinkDFUpDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.sinkDFUp                g ==
                        NTICD.sinkDFUpDef             g,
     testProperty   "sinkDFLocalViaSinkdoms == sinkDFLocalDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.sinkDFLocalViaSinkdoms  g ==
                        NTICD.sinkDFLocalDef          g,
     testProperty   "sinkDFLocal            == sinkDFLocalDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.sinkDFLocal             g ==
                        NTICD.sinkDFLocalDef          g,
     testProperty   "sinkDFcd              == nticdF3"
@@ -854,7 +854,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                          NTICD.idomToDFFast g imdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
                     ),
     testPropertySized 80   "mDFFromUpLocalDefViaSMdoms == mDF"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.mDFFromUpLocalDefViaMdoms g ==
                        NTICD.mDF                       g,
     testProperty   "idomToDFFast _ imdom == idomToDF _ imdom"
@@ -920,11 +920,11 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     in NTICD.mdomOfLfp            g ==
                        NTICD.mdomOfimdomProperty  g,
     testPropertySized 50   "mDFUpGivenXViaMdoms == mDFUpGivenX"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.mDFUpGivenXViaMdoms     g ==
                        NTICD.mDFUpGivenX             g,
     testPropertySized 50   "mDFUpDefViaMdoms == mDFUpDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.mDFUpDefViaMdoms     g ==
                        NTICD.mDFUpDef             g,
     testProperty   "mDFUpGivenX ! (x,z) is independent of choice of x for given z"
@@ -936,7 +936,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                          )
                        ),
     testProperty   "mDFUpGivenX ! (x,z) == mDFUpDef ! z"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                     let mDFUp    = NTICD.mDFUpGivenX g
                         mDFUpDef = NTICD.mDFUpDef    g
                     in (∀) (Map.assocs mDFUp) (\((x,z), dfUp) ->
@@ -952,7 +952,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                        NTICD.mDFUp                g ==
                        NTICD.mDFUpDef             g,
     testPropertySized 50   "mDFLocalViaMdoms   == mDFLocalDef"
-                $ \((CG _ g) :: (Connected Gr () ())) ->
+                $ \(ARBITRARY(g)) ->
                        NTICD.mDFLocalViaMdoms     g ==
                        NTICD.mDFLocalDef          g,
     testProperty   "mDFLocal           == mDFLocalDef"

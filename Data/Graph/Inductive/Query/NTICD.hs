@@ -2367,7 +2367,8 @@ idomToDFFastForRoots roots graph idom = foldr f2 Map.empty sorting
                                                           y <- pre graph x
                                    ]
                 up    = Set.unions [ us                 | z <- Set.toList invalid,
-                                                          Just us <- [Map.lookup z df]
+                                                          Just us <- [Map.lookup z df],
+                                                  assert ((not $ Set.null $ us) → (not $ z ∈ cycle)) True
                                    ]
                 invalid =  Set.unions [ is | x <- Set.toList cycle, Just is <- [Map.lookup x idom'] ]
 

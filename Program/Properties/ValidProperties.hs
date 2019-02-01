@@ -108,7 +108,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF4WithReachCheckGfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,
     nticdSinkContraction, nticdSinkContractionGraphP,
-    sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty, isinkdomTwoFingercd, sinkdomNaiveGfp,
+    sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, sinkdomOfisinkdomProperty, isinkdomTwoFingercd, sinkdomNaiveGfp, sinkdomNaiveGfpFullTop,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
@@ -621,6 +621,11 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let g = generatedGraph
                     in NTICD.sinkdomOf              g ==
                        NTICD.sinkdomOfGfp           g,
+    testProperty   "sinkdomOf             == sinkdomNaiveGfpFullTop for graphs with unique end node property"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let (exit, g) = withUniqueEndNode () () generatedGraph
+                    in NTICD.sinkdomOf              g ==
+                       NTICD.sinkdomNaiveGfpFullTop g,
     testProperty   "sinkDFFromUpLocalDefViaSinkdoms == sinkDF"
                 $ \(ARBITRARY(g)) ->
                        NTICD.sinkDFFromUpLocalDefViaSinkdoms g ==

@@ -79,7 +79,7 @@ import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
-    sinkdomOfGfp,
+    sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf,
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
     dfFor, anyDFFromUpLocalDefViaAnydoms,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
@@ -443,6 +443,11 @@ ntscdProps = testGroup "(concerning ntscd )" [
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "sinkdomOf             == sinkdomNaiveGfpFullTop"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.sinkdomOf              g ==
+                       NTICD.sinkdomNaiveGfpFullTop g,
     testPropertySized 20 "sinkdom g_{M/->}^{->*M} ⊆ (sinkdom g)|{->*M}"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

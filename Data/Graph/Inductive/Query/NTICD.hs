@@ -1001,6 +1001,17 @@ domOfGfp graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
         toNextCond = toNextCondNode graph
         trncl = trc graph
 
+domOfGfpFullTop :: DynGraph gr => gr a b -> DomFunctionalGen gr a b -> Map Node (Set Node)
+domOfGfpFullTop graph f = (𝝂) init (f graph condNodes reachable nextCond toNextCond)
+  where init = Map.fromList [ (y, all) | y <- nodes graph]
+          where all = Set.fromList $ nodes graph
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+
 
 joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromList [m] else s) $
         Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
@@ -1054,6 +1065,7 @@ fSinkDomNaive graph _ _ nextCond toNextCond = f
 sinkdomNaiveGfp graph = domOfGfp graph fSinkDomNaive
 mdomNaiveLfp graph = domOfLfp graph fSinkDomNaive
 
+sinkdomNaiveGfpFullTop graph = domOfGfpFullTop graph fSinkDomNaive
 
 traceIfFalse x b =
   if b then b else traceShow x $ b

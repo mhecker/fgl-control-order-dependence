@@ -48,7 +48,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map ( Map, (!) )
 
-import Util(restrict, sampleFrom, moreSeeds,minimalPath,reachableFromIn)
+import Util(restrict, sampleFrom, moreSeeds,minimalPath,reachableFromIn, findCyclesM, fromSet)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges, delSuccessorEdges)
@@ -78,6 +78,7 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
+    validTimdomFor,
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
     sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf,
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
@@ -178,6 +179,16 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "validTimdomFor entries > 0"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    validEntries = NTICD.validTimdomFor g itimdommultiple entries
+
+                    itimdommultiple = NTICD.itimdomMultipleOfTwoFinger g
+                    entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
+                    (_, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
+                    cycleNodes = (∐) cycles
+                in (∀) (Map.assocs validEntries) (\(n, f) -> f > 0),
     testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

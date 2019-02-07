@@ -1876,8 +1876,7 @@ imdomOfTwoFinger6 graph = Map.mapWithKey (\n ms -> Set.delete n ms) $
                   where f wl = worklist
                              ⊔ Set.fromList [ n | n <- Set.toList condNodes,
                                                   w <- Set.toList wl,
-                                                  (∃) (suc graph n) (\y -> reachableFromSeen imdom y w Set.empty),
-                                                  (∃) (nodes graph) (\m -> m ∈ doms ! w)
+                                                  (∃) (suc graph n) (\y -> reachableFromSeen imdom y w Set.empty)
                                             ]
                 imdomWorklist = fmap toSet imdom
                               ⊔ Map.fromList [ (w, doms ! w) | w <- Set.toList $ worklistLfp ]

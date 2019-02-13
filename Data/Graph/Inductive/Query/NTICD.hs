@@ -4948,9 +4948,11 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = nodes graph
 
 timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingCorrection g = f missing itimdomMultiple0 cost0
+timingCorrection g = f notsame itimdomMultiple0 cost0
 
-  where missing = Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms, Set.null $ itimdomMultiple0 ! n ]
+  where notsame = Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms, ms /= Set.map fst (itimdomMultiple0 ! n)]
+        notmissing  = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ]
+          where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
         itimdomMultiple0 = itimdomMultipleOfTwoFinger g
         cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
 
@@ -4971,20 +4973,21 @@ timingCorrection g = f missing itimdomMultiple0 cost0
                 succReach = (∀) (suc g n) (\x -> isReachableFromM itimdomM m x)
                   where itimdomM = (fmap (fromSet . (Set.map fst)) itimdomMultiple)
 
+                Just (mMultOld, maxCostOld) = fromSet $ itimdomMultiple ! n
+
                 succosts = Map.fromList [ (x, costX) | x <- suc g n, let [path] = minimalPath itimdomMultiple x m, let costX = (sum $ fmap snd $ path) + cost ! (n,x) ]
                 (maxX, maxCost) = maximumBy (comparing snd) $ Map.assocs succosts
 
                 influenced = let imdomRev  = (invert'' $ fmap (Set.map fst) itimdomMultiple) in
                              let preds = reachableFrom imdomRev (Set.fromList [n])
-                             in  missing ∩ (Set.fromList $ [ n0 | n0 <- foldMap prevCondsImmediate preds, n0 /= n {-, isNothing $ imdom ! n -}])
+                             in  notmissing ∩ (Set.fromList $ [ n0 | n0 <- foldMap prevCondsImmediate preds, n0 /= n {-, isNothing $ imdom ! n -}])
 
                 itimdomMultiple' = Map.insert n (Set.fromList [(m, maxCost)]) itimdomMultiple
                 cost'            = Map.fromList [ ((n,x), (maxCost - costX) + cost ! (n,x)) | (x, costX) <- Map.assocs succosts ] `Map.union` cost
                 ns'
-                 | not $ Set.null $ itimdomMultiple ! n                = ns0
-                 | otherwise                                           = ns0 ∪ influenced
-                 -- | cost' == cost ∧ itimdomMultiple' == itimdomMultiple = ns0
-                 -- | otherwise                                           = ns0 ∪ influenced
+                 | Set.null $ itimdomMultiple ! n                = ns0 ∪ influenced
+                 | maxCost < maxCostOld                          = ns0 ∪ influenced
+                 | otherwise                                     = ns0
 
 
 

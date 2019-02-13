@@ -87,6 +87,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
+    timingCorrection, itimdomMultipleOfTwoFingerCost,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
@@ -3054,8 +3055,15 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                           ))
                        )
                 ))),
+    testProperty "timingCorrection"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    (cost, itimdomMultiple') = NTICD.timingCorrection g
+                    itimdomMultiple'' = NTICD.itimdomMultipleOfTwoFingerCost g (\n m -> cost ! (n,m))
+                    noselfloops = Map.mapWithKey (\n ms -> Set.filter (\(m, k) -> m /= n) ms)
+                in noselfloops itimdomMultiple'' == noselfloops itimdomMultiple',
     testProperty "timdom implies mdom"
-    $ \(REDUCIBLE(generatedGraph)) ->
+    $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
                     mdom   = NTICD.mdomOfLfp g

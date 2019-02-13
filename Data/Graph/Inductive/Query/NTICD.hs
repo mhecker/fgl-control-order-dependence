@@ -43,8 +43,9 @@ import qualified Data.Dequeue as Dequeue
 import Data.Dequeue (pushBack, popFront)
 import Data.Dequeue.SimpleDequeue (SimpleDequeue)
 
-
+import Data.Foldable (maximumBy)
 import qualified Data.Foldable as Foldable
+
 import IRLSOD
 import Program
 
@@ -4946,6 +4947,53 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
              -- sorting = nodes graph
 
+timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+timingCorrection g = f missing itimdomMultiple0 cost0
+
+  where missing = Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms, Set.null $ itimdomMultiple0 ! n ]
+        itimdomMultiple0 = itimdomMultipleOfTwoFinger g
+        cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
+
+        f :: Set Node -> Map Node (Set (Node, Integer)) -> Map (Node, Node) Integer -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+        f ns itimdomMultiple cost
+           | Set.null ns   = (cost, itimdomMultiple)
+           | not succReach = -- traceShow (False, n, m, ns, cost, itimdomMultiple) $
+                             f ns0 itimdomMultiple  cost
+           | otherwise     = -- traceShow (True,  n, m, ns, cost, itimdomMultiple) $
+                             f ns' itimdomMultiple' cost'
+
+          where (n, ns0) = Set.deleteFindMin ns
+                Just m =
+                    id
+                  -- $ assert (      Set.null $ itimdomMultiple ! n)
+                  $ assert (not $ Set.null $ imdom ! n)
+                  $                fromSet $ imdom ! n
+                succReach = (∀) (suc g n) (\x -> isReachableFromM itimdomM m x)
+                  where itimdomM = (fmap (fromSet . (Set.map fst)) itimdomMultiple)
+
+                succosts = Map.fromList [ (x, costX) | x <- suc g n, let [path] = minimalPath itimdomMultiple x m, let costX = (sum $ fmap snd $ path) + cost ! (n,x) ]
+                (maxX, maxCost) = maximumBy (comparing snd) $ Map.assocs succosts
+
+                influenced = let imdomRev  = (invert'' $ fmap (Set.map fst) itimdomMultiple) in
+                             let preds = reachableFrom imdomRev (Set.fromList [n])
+                             in  missing ∩ (Set.fromList $ [ n0 | n0 <- foldMap prevCondsImmediate preds, n0 /= n {-, isNothing $ imdom ! n -}])
+
+                itimdomMultiple' = Map.insert n (Set.fromList [(m, maxCost)]) itimdomMultiple
+                cost'            = Map.fromList [ ((n,x), (maxCost - costX) + cost ! (n,x)) | (x, costX) <- Map.assocs succosts ] `Map.union` cost
+                ns'
+                 | not $ Set.null $ itimdomMultiple ! n                = ns0
+                 | otherwise                                           = ns0 ∪ influenced
+                 -- | cost' == cost ∧ itimdomMultiple' == itimdomMultiple = ns0
+                 -- | otherwise                                           = ns0 ∪ influenced
+
+
+
+        prevCondsImmediate = prevCondImmediateNodes g
+        imdom = imdomOfTwoFinger6 g
+        prio = Map.fromList $ zip sorting [0..]
+          where sorting = rdfs (Set.toList cycleNodes ++ [ n | (n, ms) <- Map.assocs imdom, Set.null ms]) (fromSuccMap imdom :: gr () ())
+                (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
+                cycleNodes = (∐) cycles
 
 
 newtype MyInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
@@ -5437,8 +5485,8 @@ timmaydomOfLfp graph = tmaydomOfLfp graph fTimeMayDom
 
 
 
-itimdomMultipleOfTwoFingerFor :: forall gr a b. Graph gr => gr a b -> Map Node [Node] -> Map Node [Node] -> Map Node (Maybe (Node, Integer)) -> Map Node (Set (Node)) -> Map Node (Maybe (Node, Integer))
-itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
+itimdomMultipleOfTwoFingerFor :: forall gr a b. Graph gr => gr a b -> (Node -> Node -> Integer) -> Map Node [Node] -> Map Node [Node] -> Map Node (Maybe (Node, Integer)) -> Map Node (Set (Node)) -> Map Node (Maybe (Node, Integer))
+itimdomMultipleOfTwoFingerFor graph cost condNodes worklist0 imdom0  imdom0Rev =
       require (condNodes  == Map.fromList [ (x, succs) | x <- nodes graph, let succs = suc graph x, length succs > 1 ])
     $ require (imdom0Rev  == (invert''' $ fmap noSteps $ imdom0))
     $ twoFinger 0 worklist0 imdom0 imdom0Rev
@@ -5462,7 +5510,7 @@ itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
           where ((x, succs), worklist')  = Map.deleteFindMin worklist
                 mz :: Maybe (Node, Integer, Map Node (Set Integer))
                 mz = require (succs == suc graph x) 
-                   $ foldM1 lca [ (y, 1, Map.fromList [(y, Set.fromList [1])]) | y <- succs]
+                   $ foldM1 lca [ (y, cost x y, Map.fromList [(y, Set.fromList [cost x y])]) | y <- succs]
                 Just (z,sz) = zs
                 zs = case mz of
                       Just (z,sz,_)  -> Just (z, sz)
@@ -5473,12 +5521,15 @@ itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0  imdom0Rev =
                              in  restrict condNodes (Set.fromList $ [ n | n <- foldMap prevCondsImmediate preds, n /= x {-, isNothing $ imdom ! n -}])
                 lca = lcaTimdomOfTwoFingerFast imdom
 
-itimdomMultipleOfTwoFinger :: forall gr a b. Graph gr => gr a b -> Map Node (Set (Node, Integer))
-itimdomMultipleOfTwoFinger graph = fmap toSet $ itimdomMultipleOfTwoFingerFor graph condNodes worklist0 imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
-  where imdom0   =             Map.fromList [ (x, Just (z,1)) | x <- nodes graph, [z] <- [suc graph x]]
+itimdomMultipleOfTwoFingerCost :: forall gr a b. Graph gr => gr a b -> (Node -> Node -> Integer) -> Map Node (Set (Node, Integer))
+itimdomMultipleOfTwoFingerCost graph cost = fmap toSet $ itimdomMultipleOfTwoFingerFor graph cost condNodes worklist0 imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
+  where imdom0   =             Map.fromList [ (x, Just (z, cost x z)) | x <- nodes graph, [z] <- [suc graph x]]
                    `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes graph]
         condNodes   = Map.fromList [ (x, succs) | x <- nodes graph, let succs = suc graph x, length succs > 1 ]
         worklist0   = condNodes
+
+itimdomMultipleOfTwoFinger :: forall gr a b. Graph gr => gr a b -> Map Node (Set (Node, Integer))
+itimdomMultipleOfTwoFinger graph = itimdomMultipleOfTwoFingerCost graph (\_ _ -> 1)
 
 
 timingDependenceViaTwoFinger g =
@@ -5495,15 +5546,16 @@ timingDependenceViaTwoFinger g =
                                                                                                   $ restrict itimdom toMS,
                                                                                             let g' = (flip delSuccessorEdges m) $ subgraph toM $ g,
                                                                                             let worklist0' = Map.filterWithKey (\x _ -> imdom0' ! x == Nothing) condNodes',
-                                                                                            let itimdom = itimdomMultipleOfTwoFingerFor g'  condNodes' worklist0' imdom0' (invert''' $ fmap (liftM fst) $ imdom0'),
+                                                                                            let itimdom = itimdomMultipleOfTwoFingerFor g' defaultCost condNodes' worklist0' imdom0' (invert''' $ fmap (liftM fst) $ imdom0'),
                                                                                         assert (itimdom == (fmap fromSet $ itimdomMultipleOfTwoFinger g')) True
                    ]
                                                
-  where gRev = grev g
+  where defaultCost = \_ _ -> 1
+        gRev = grev g
         condNodes = Map.fromList [ (x, succs) | x <- nodes g, let succs = suc g x, length succs > 1 ]
         imdom0 =             Map.fromList [ (x, Just (z,1)) | x <- nodes g, [z] <- [suc g x]]
                  `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes g]
-        itimdom = itimdomMultipleOfTwoFingerFor g condNodes condNodes imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
+        itimdom = itimdomMultipleOfTwoFingerFor g defaultCost condNodes condNodes imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
 
         toSet Nothing = Set.empty
         toSet (Just (z, steps)) = Set.singleton z

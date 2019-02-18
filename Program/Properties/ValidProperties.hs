@@ -3068,8 +3068,8 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     (cost, itimdomMultiple') = NTICD.timingCorrection g
                     itimdomMutliple'NoK = fmap (Set.map fst) itimdomMultiple'
                     imdom = NTICD.imdomOfTwoFinger6 g
-                    noselfloops = Map.mapWithKey (\n ms -> Set.filter (/= n) ms)
-                in noselfloops itimdomMutliple'NoK == noselfloops imdom,
+                    -- noselfloops = Map.mapWithKey (\n ms -> Set.filter (/= n) ms)
+                in (trc $ fromSuccMap $ itimdomMutliple'NoK :: Gr () ()) == (trc $ fromSuccMap $ imdom :: Gr () ()),
     testProperty "timdom implies mdom"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
@@ -3576,6 +3576,20 @@ timingDepProps = testGroup "(concerning timingDependence)" [
   ]
 
 timingDepTests = testGroup "(concerning timingDependence)" $
+  [  testCase    ("timingCorrection itimdomMultiple for" ++ exampleName)
+            $   let (cost, itimdomMultiple') = NTICD.timingCorrection g
+                    itimdomMultiple'' = NTICD.itimdomMultipleOfTwoFingerCost g (\n m -> cost ! (n,m))
+                    noselfloops = Map.mapWithKey (\n ms -> Set.filter (\(m, k) -> m /= n) ms)
+                in noselfloops itimdomMultiple'' == noselfloops itimdomMultiple' @? ""
+  | (exampleName, g) <- interestingTimingDep ++ interestingIsinkdomTwoFinger
+  ] ++
+  [  testCase    ("timingCorrection itimdomMultiple for " ++ exampleName)
+            $   let (cost, itimdomMultiple') = NTICD.timingCorrection g
+                    itimdomMutliple'NoK = fmap (Set.map fst) itimdomMultiple'
+                    imdom = NTICD.imdomOfTwoFinger6 g
+                in (trc $ fromSuccMap $ itimdomMutliple'NoK :: Gr () ()) == (trc $ fromSuccMap $ imdom :: Gr () ()) @? ""
+  | (exampleName, g) <- interestingTimingDep ++ interestingIsinkdomTwoFinger
+  ] ++
   []
 
 

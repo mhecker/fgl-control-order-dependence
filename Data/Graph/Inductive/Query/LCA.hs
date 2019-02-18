@@ -199,6 +199,121 @@ lcaTimdomOfTwoFingerFast idom (n, sn, ns) (m, sm, ms) =
                                                if n' ∈ Map.keysSet ns ∧ (Set.size (ms ! m) > 1) ∧ (not $ n' ∈ Map.keysSet ms) then Nothing else
                                                       lca' (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns) (m, sm, ms)
 
+
+
+lcaTimdomOfTwoFingerFastCost idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) = 
+              id
+            $ traceShow cost
+            $ assert (ns == Map.fromList [(n, Set.fromList [sn])])
+            $ assert (ms == Map.fromList [(m, Set.fromList [sm])])
+            $ result
+          where traceShow _ x = x
+                result = lcaDown' (n, sn, ns, ns0) (m, sm, ms, ms0)
+                lcaDown' :: (Node, Integer, Map Node (Set Integer), Set Node) -> (Node, Integer, Map Node (Set Integer), Set Node) -> Maybe (Node, Integer, Map Node (Set Integer), Set Node, Map Node Integer)
+                lcaDown' pin@(n, sn, ns, ns0) pim@(m, sm, ms, ms0)
+                    | m ∈ Map.keysSet ns ∧ (      sm ∈ (ns ! m)) = traceShow ("A", (n,sn,ns), (m,sm,ms)) $
+                                                           Just (m, sm, Map.fromList [(m, Set.fromList [sm])], ns0 ∪ ms0, cost)
+                    | m ∈ Map.keysSet ns ∧ (not $ sm ∈ (ns ! m)) = traceShow ("B", (n,sn,ns), (m,sm,ms)) $
+                                  assert (sm == Set.findMin (ms ! m)) $
+                                  let sm' = Set.findMin (ns ! m) in
+                                  if (sm < sm') then
+                                    Just (m, sm', Map.fromList [(m, Set.fromList [sm'])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm' - sm ) ms0) cost)
+                                  else
+                                    Just (m, sm , Map.fromList [(m, Set.fromList [sm ])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm  - sm') ns0) cost)
+                    | otherwise = traceShow ((n,ns), (m,ms)) $
+                                  assert (not $ n ∈ Map.keysSet ms) $ 
+                                  caseN
+                  where caseN = case idom ! n of
+                                 Nothing ->                                    lcaDownLin ms ns ms0 ns0 sm m
+                                 Just (n', sn') -> if n' ∈ Map.keysSet ns then lcaDownLin ms ns ms0 ns0 sm m else lcaDown' (m, sm, ms, ms0) (n', sn + sn',Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns, ns0)
+                lcaDownLin ms ns ms0 ns0 sm m = assert (not $ m ∈ Map.keysSet ns) $ lcaDown'' m sm ms
+                  where lcaDown'' m s ms = case idom ! m of
+                                        Nothing -> Nothing
+                                        Just (m', s') ->
+                                          let m = m'
+                                              sm = s + s'
+                                          in if m ∈ Map.keysSet ns  ∧ (      sm ∈ (ns ! m)) then Just (m, sm, Map.fromList [(m, Set.fromList [sm])], ns0 ∪ ms0, cost) else
+                                             if m ∈ Map.keysSet ns  ∧ (not $ sm ∈ (ns ! m)) then 
+                                                 let sm' = Set.findMin (ns ! m) in
+                                                 if (sm < sm') then
+                                                   Just (m, sm', Map.fromList [(m, Set.fromList [sm'])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm' - sm ) ms0) cost)
+                                                 else
+                                                   Just (m, sm , Map.fromList [(m, Set.fromList [sm ])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm  - sm') ns0) cost) else
+                                             if m ∈ Map.keysSet ms then Nothing else lcaDown'' m sm (Map.insertWith (∪) m (Set.fromList [sm]) ms)
+
+-- lcaTimdomOfTwoFingerFastCost idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) =
+--               id
+--             $ traceShow cost
+--             $ assert (ns == Map.fromList [(n, Set.fromList [sn])])
+--             $ assert (ms == Map.fromList [(m, Set.fromList [sm])])
+--             $ result
+--           where result = lca' (n, sn, ns, ns0) (m, sm, ms, ms0)
+--                 lca' :: (Node, Integer, Map Node (Set Integer), Set Node) -> (Node, Integer, Map Node (Set Integer), Set Node) -> Maybe (Node, Integer, Map Node (Set Integer), Set Node, Map Node Integer)
+--                 lca' pin@(n, sn, ns, ns0) pim@(m, sm, ms, ms0)
+--                     | n ∈ Map.keysSet ms ∧ (      sn ∈ (ms ! n)) = traceShow ("A ", (n,sn,ns), (m,sm,ms)) $
+--                                                            Just (n, sn, Map.fromList [(n, Set.fromList [sn])], ns0 ∪ ms0, cost)
+--                     | n ∈ Map.keysSet ms ∧ (not $ sn ∈ (ms ! n)) = traceShow ("B ", (n,sn,ns), (m,sm,ms)) $
+--                                   assert (sn == Set.findMin (ns ! n)) $
+--                                   let sn' = Set.findMin (ms ! n) in
+--                                   if (sn < sn') then
+--                                     Just (n, sn', Map.fromList [(n, Set.fromList [sn'])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sn' - sn ) ns0) cost)
+--                                   else
+--                                     Just (n, sn , Map.fromList [(n, Set.fromList [sn ])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sn  - sn') ms0) cost)
+--                     | m ∈ Map.keysSet ns ∧ (      sm ∈ (ns ! m)) = traceShow ("AA", (n,sn,ns), (m,sm,ms)) $
+--                                                            Just (m, sm, Map.fromList [(m, Set.fromList [sm])], ns0 ∪ ms0, cost)
+--                     | n ∈ Map.keysSet ms ∧ (not $ sm ∈ (ns ! m)) = traceShow ("BB", (n,sn,ns), (m,sm,ms)) $
+--                                   assert (sm == Set.findMin (ms ! m)) $
+--                                   let sm' = Set.findMin (ns ! m) in
+--                                   if (sm < sm') then
+--                                     Just (m, sm', Map.fromList [(m, Set.fromList [sm'])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm' - sm ) ms0) cost)
+--                                   else
+--                                     Just (m, sm , Map.fromList [(m, Set.fromList [sm ])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm  - sm') ns0) cost)
+--                     | otherwise = traceShow ("C", (n,sn,ns), (m,sm,ms)) $
+--                                   case idom ! n of
+--                                      Nothing       -> case idom ! m of
+--                                        Nothing -> Nothing
+--                                        Just (m', sm') ->
+--                                                if m' ∈ Map.keysSet ms ∧ (Set.size (ns ! n) > 1) ∧ (not $ m' ∈ Map.keysSet ns) then Nothing else
+--                                                       lca' (n, sn, ns, ns0) (m', sm + sm', Map.insertWith (∪) m' (Set.fromList [sm+sm']) ms, ms0)
+--                                      Just (n',sn') ->
+--                                                if n' ∈ Map.keysSet ns ∧ (Set.size (ms ! m) > 1) ∧ (not $ n' ∈ Map.keysSet ms) then Nothing else
+--                                                       lca' (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns, ns0) (m, sm, ms, ms0)
+
+-- lcaTimdomOfTwoFingerFastCost idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) =
+--               id
+--             $ traceShow cost
+--             $ assert (ns == Map.fromList [(n, Set.fromList [sn])])
+--             $ assert (ms == Map.fromList [(m, Set.fromList [sm])])
+--             $ result
+--           where result = lca' (n, sn, ns, ns0) (m, sm, ms, ms0)
+--                 lca' :: (Node, Integer, Map Node (Set Integer), Set Node) -> (Node, Integer, Map Node (Set Integer), Set Node) -> Maybe (Node, Integer, Map Node (Set Integer), Set Node, Map Node Integer)
+--                 lca' pin@(n, sn, ns, ns0) pim@(m, sm, ms, ms0)
+--                     | sn > sm = lca' (m, sm, ms, ms0) (n, sn, ns, ns0)
+--                     | n ∈ Map.keysSet ms ∧ (      sn ∈ (ms ! n)) = traceShow ("A", (n,sn,ns), (m,sm,ms)) $
+--                                                            Just (n, sn, Map.fromList [(n, Set.fromList [sn])], ns0 ∪ ms0, cost)
+--                     | n ∈ Map.keysSet ms ∧ (not $ sn ∈ (ms ! n)) = traceShow ("B", (n,sn,ns), (m,sm,ms)) $
+--                                   -- if   Set.findMax (ns ! n) > Set.findMin (ms ! n)
+--                                   --    ∧ Set.findMin (ns ! n) < Set.findMax (ms ! n) then Nothing else
+--                                   -- case idom ! n of
+--                                   --    Nothing       -> Nothing
+--                                   --    Just (n',sn') -> lca' (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns) (m, sm, ms)
+--                                   assert (sn == Set.findMin (ns ! n)) $
+--                                   let sn' = Set.findMin (ms ! n) in
+--                                   if (sn < sn') then
+--                                     Just (n, sn', Map.fromList [(n, Set.fromList [sn'])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sn' - sn ) ns0) cost)
+--                                   else
+--                                     Just (n, sn , Map.fromList [(n, Set.fromList [sn ])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sn  - sn') ms0) cost)
+--                     | otherwise = traceShow ("C", (n,sn,ns), (m,sm,ms)) $
+--                                   case idom ! n of
+--                                      Nothing       -> case idom ! m of
+--                                        Nothing -> Nothing
+--                                        Just (m', sm') ->
+--                                                if m' ∈ Map.keysSet ms ∧ (Set.size (ns ! n) > 1) ∧ (not $ m' ∈ Map.keysSet ns) then Nothing else
+--                                                       lca' (n, sn, ns, ns0) (m', sm + sm', Map.insertWith (∪) m' (Set.fromList [sm+sm']) ms, ms0)
+--                                      Just (n',sn') ->
+--                                                if n' ∈ Map.keysSet ns ∧ (Set.size (ms ! m) > 1) ∧ (not $ n' ∈ Map.keysSet ms) then Nothing else
+--                                                       lca' (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns, ns0) (m, sm, ms, ms0)
+
 lcaRKnownM :: Map Node (Maybe Node) -> Node -> [Node] -> (Node, [Node])
 lcaRKnownM dom c successors = case dom ! c of
                      Nothing -> assert (successors == []) $

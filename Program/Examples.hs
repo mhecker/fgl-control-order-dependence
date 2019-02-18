@@ -3110,6 +3110,21 @@ exampleTimingDepCorrectionInterestingSimon2 :: DynGraph gr => gr () ()
 exampleTimingDepCorrectionInterestingSimon2 = mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,()),(9,()),(10,()),(11,()),(12,()),(13,()),(14,()),(15,()),(16,()),(17,()),(18,())] [(1,2,()),(2,3,()),(3,4,()),(4,10,()),(4,11,()),(1,5,()),(1,7,()),(5,6,()),(7,12,()),(7,14,()),(8,9,()),(9,10,()),(10,18,()),(11,12,()),(12,18,()),(13,15,()),(14,15,()),(15,16,()),(16,17,()),(17,18,()),(6,8,()), (6,13,())]
 
 
+exampleTimingDepCorrectionInteresting3 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting3 = mkGraph [(-29,()),(-21,()),(6,()),(7,()),(10,()),(11,()),(18,()),(19,()),(23,()),(24,())] [(-29,7,()),(-29,7,()),(-21,11,()),(6,18,()),(7,11,()),(7,11,()),(10,-29,()),(10,6,()),(10,23,()),(11,-21,()),(18,-29,()),(18,11,()),(18,19,()),(19,-21,()),(23,7,()),(24,-29,()),(24,-21,()),(24,6,()),(24,7,()),(24,10,()),(24,11,()),(24,18,()),(24,19,()),(24,23,())]
+
+exampleTimingDepCorrectionInteresting4 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting4 = mkGraph [(-21,()),(10,()),(15,()),(16,()),(28,()),(30,())] [(-21,28,()),(10,-21,()),(10,15,()),(10,15,()),(15,28,()),(16,-21,()),(16,10,()),(28,15,()),(30,-21,()),(30,10,()),(30,15,()),(30,16,()),(30,28,())]
+
+exampleTimingDepCorrectionInteresting5 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting5 = mkGraph [(-13,()),(-10,()),(11,()),(20,()),(21,())] [(-13,11,()),(-13,20,()),(-10,-13,()),(-10,11,()),(-10,11,()),(11,-10,()),(11,20,()),(20,-10,()),(21,-13,()),(21,-10,()),(21,11,()),(21,20,())]
+
+exampleTimingDepCorrectionInteresting6 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting6 = mkGraph [(-14,()),(-11,()),(6,()),(11,()),(26,())] [(-14,-11,()),(-14,11,()),(-11,6,()),(6,11,()),(11,-14,()),(26,-14,()),(26,-11,()),(26,6,()),(26,11,())]
+
+exampleTimingDepCorrectionInteresting7 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting7 = mkGraph [(-13,()),(-12,()),(-4,()),(1,()),(4,()),(12,()),(13,())] [(-13,-4,()),(-12,-4,()),(-12,12,()),(-4,4,()),(1,-13,()),(1,-4,()),(4,4,()),(12,1,()),(13,-13,()),(13,-12,()),(13,-4,()),(13,1,()),(13,4,()),(13,12,())]
+
 exampleTimingWorklist :: DynGraph gr => gr () ()
 exampleTimingWorklist = mkGraph [(-168,()),(-135,()),(-130,()),(-122,()),(-36,()),(-22,()),(26,()),(35,()),(65,()),(66,()),(67,()),(68,()),(72,()),(137,()),(180,()),(189,()),(236,()),(253,()),(257,()),(258,()),(260,()),(265,())] [(-168,258,()),(-135,-130,()),(-130,260,()),(-122,35,()),(-36,253,()),(-22,-36,()),(-22,180,()),(26,-22,()),(26,189,()),(35,72,()),(65,66,()),(66,68,()),(67,-122,()),(68,137,()),(72,26,()),(137,67,()),(180,-168,()),(180,236,()),(189,-135,()),(189,257,()),(236,258,()),(253,258,()),(258,189,()),(260,65,()),(265,-168,()),(265,-135,()),(265,-130,()),(265,-122,()),(265,-36,()),(265,-22,()),(265,26,()),(265,35,()),(265,65,()),(265,66,()),(265,67,()),(265,68,()),(265,72,()),(265,137,()),(265,180,()),(265,189,()),(265,236,()),(265,253,()),(265,257,()),(265,258,()),(265,260,())]
 
@@ -3395,6 +3410,11 @@ interestingTimingDep :: [(String, Gr () ())]
 interestingTimingDep = [
               $(withName 'exampleTimingDepCorrectionInterestingSimon1),
               $(withName 'exampleTimingDepCorrectionInterestingSimon2),
+              $(withName 'exampleTimingDepCorrectionInteresting3),
+              $(withName 'exampleTimingDepCorrectionInteresting4),
+              $(withName 'exampleTimingDepCorrectionInteresting5),
+              $(withName 'exampleTimingDepCorrectionInteresting6),
+              $(withName 'exampleTimingDepCorrectionInteresting7),
               $(withName 'exampleTimingDepInterestingTwoFinger),
               $(withName 'exampleTimingDepInterestingTwoFinger2),
               $(withName 'exampleTimingDepInterestingTwoFinger3),

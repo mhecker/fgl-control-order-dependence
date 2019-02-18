@@ -4955,13 +4955,14 @@ timingCorrection g = f notsame itimdomMultiple0 cost0
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
         itimdomMultiple0 = itimdomMultipleOfTwoFinger g
         cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
+        traceShow _ x = x
 
         f :: Set Node -> Map Node (Set (Node, Integer)) -> Map (Node, Node) Integer -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
         f ns itimdomMultiple cost
            | Set.null ns   = (cost, itimdomMultiple)
-           | not succReach = -- traceShow (False, n, mz, ns, cost, itimdomMultiple) $
+           | not succReach = traceShow (False, n, mz, ns, cost, itimdomMultiple) $
                              f ns0 itimdomMultiple  cost
-           | otherwise     = -- traceShow (True,  n, mz, ns, cost, itimdomMultiple) $
+           | otherwise     = traceShow (True,  n, mz, ns, cost, itimdomMultiple) $
                              -- assert ((m == mImdom)    ∨ (m ∈ cycleOf ! mImdom)) $
                              f ns' itimdomMultiple' cost'
 
@@ -4988,9 +4989,11 @@ timingCorrection g = f notsame itimdomMultiple0 cost0
                 itimdomMultiple' = Map.insert n (Set.fromList [(m, sm)]) itimdomMultiple
                 cost'            = Map.fromList [ ((n,x), cost ! (n,x) + nodeCostX) | (x, nodeCostX) <- Map.assocs nodeCost ] `Map.union` cost
                 ns'
-                 | Set.null $ itimdomMultiple ! n                = ns0 ∪ influenced
-                 | sm      < maxCostOld                          = ns0 ∪ influenced
-                 | otherwise                                     = ns0
+                 | Just (m, sm) /= (fromSet $ itimdomMultiple ! n) = ns0 ∪ influenced
+                 | otherwise                                       = ns0
+                 -- | Set.null $ itimdomMultiple ! n                = ns0 ∪ influenced
+                 -- | sm      < maxCostOld                          = ns0 ∪ influenced
+                 -- | otherwise                                     = ns0
 
 
 

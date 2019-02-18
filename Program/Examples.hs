@@ -3125,6 +3125,9 @@ exampleTimingDepCorrectionInteresting6 = mkGraph [(-14,()),(-11,()),(6,()),(11,(
 exampleTimingDepCorrectionInteresting7 :: DynGraph gr => gr () ()
 exampleTimingDepCorrectionInteresting7 = mkGraph [(-13,()),(-12,()),(-4,()),(1,()),(4,()),(12,()),(13,())] [(-13,-4,()),(-12,-4,()),(-12,12,()),(-4,4,()),(1,-13,()),(1,-4,()),(4,4,()),(12,1,()),(13,-13,()),(13,-12,()),(13,-4,()),(13,1,()),(13,4,()),(13,12,())]
 
+exampleTimingDepCorrectionInteresting8 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting8 = mkGraph [(-18,()),(-15,()),(-8,()),(5,()),(16,()),(18,()),(20,()),(21,())] [(-18,18,()),(-18,20,()),(-15,20,()),(-8,18,()),(5,16,()),(5,20,()),(16,-18,()),(16,-15,()),(16,-8,()),(18,-15,()),(18,20,()),(20,-8,()),(21,-18,()),(21,-15,()),(21,-8,()),(21,5,()),(21,16,()),(21,18,()),(21,20,())]
+
 exampleTimingWorklist :: DynGraph gr => gr () ()
 exampleTimingWorklist = mkGraph [(-168,()),(-135,()),(-130,()),(-122,()),(-36,()),(-22,()),(26,()),(35,()),(65,()),(66,()),(67,()),(68,()),(72,()),(137,()),(180,()),(189,()),(236,()),(253,()),(257,()),(258,()),(260,()),(265,())] [(-168,258,()),(-135,-130,()),(-130,260,()),(-122,35,()),(-36,253,()),(-22,-36,()),(-22,180,()),(26,-22,()),(26,189,()),(35,72,()),(65,66,()),(66,68,()),(67,-122,()),(68,137,()),(72,26,()),(137,67,()),(180,-168,()),(180,236,()),(189,-135,()),(189,257,()),(236,258,()),(253,258,()),(258,189,()),(260,65,()),(265,-168,()),(265,-135,()),(265,-130,()),(265,-122,()),(265,-36,()),(265,-22,()),(265,26,()),(265,35,()),(265,65,()),(265,66,()),(265,67,()),(265,68,()),(265,72,()),(265,137,()),(265,180,()),(265,189,()),(265,236,()),(265,253,()),(265,257,()),(265,258,()),(265,260,())]
 
@@ -3415,6 +3418,7 @@ interestingTimingDep = [
               $(withName 'exampleTimingDepCorrectionInteresting5),
               $(withName 'exampleTimingDepCorrectionInteresting6),
               $(withName 'exampleTimingDepCorrectionInteresting7),
+              $(withName 'exampleTimingDepCorrectionInteresting8),
               $(withName 'exampleTimingDepInterestingTwoFinger),
               $(withName 'exampleTimingDepInterestingTwoFinger2),
               $(withName 'exampleTimingDepInterestingTwoFinger3),

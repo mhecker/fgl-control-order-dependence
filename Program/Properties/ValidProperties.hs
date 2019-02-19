@@ -87,7 +87,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
-    timingCorrection, itimdomMultipleOfTwoFingerCost,
+    timingCorrection, itimdomMultipleOfTwoFingerCost, tscdCostSlice,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
@@ -3055,6 +3055,25 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                           ))
                        )
                 ))),
+    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size"
+    $ \(REDUCIBLE(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+                    (cost, _) = NTICD.timingCorrection g
+                    costF n m = cost ! (n,m)
+                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
+                      where imdom = NTICD.imdomOfTwoFinger6 g
+
+                    s  = tscdcostslicer   ms
+                    s' = ntscdmydodslicer ms
+                in let ok = s == s
+                   in if ok then ok else traceShow (g,ms,s',s) ok,
     testProperty "timingCorrection itimdomMultiple"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

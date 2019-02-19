@@ -3072,7 +3072,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
 
                     s  = tscdcostslicer   ms
                     s' = ntscdmydodslicer ms
-                in let ok = s == s
+                in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
     testProperty "timingCorrection itimdomMultiple"
     $ \(ARBITRARY(generatedGraph)) ->

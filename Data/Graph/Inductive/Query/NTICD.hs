@@ -4953,9 +4953,9 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = nodes graph
 
 timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingCorrection g = f notsame itimdomMultiple0 cost0
+timingCorrection g = f notmissing itimdomMultiple0 cost0
 
-  where notsame = Set.fromList [ n | (n,Just m) <- Map.assocs $ fmap fromSet imdom, let mMult = fromSet $ Set.map fst (itimdomMultiple0 ! n), mMult == Nothing ∨  (not $ mMult ∈ Map.findWithDefault (Set.fromList [Just m]) m (fmap (Set.map Just) cycleOf))]
+  where
         notmissing  = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ]
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
         itimdomMultiple0 = itimdomMultipleOfTwoFinger g

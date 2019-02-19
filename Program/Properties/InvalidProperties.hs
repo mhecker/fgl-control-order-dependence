@@ -198,6 +198,26 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where imdom = NTICD.imdomOfTwoFinger6 g
 
                 in (∀) cycles (\cycle -> Set.size (cycle ∩ ms) /= 1) ==> tscdcostslicer ms == ntscdmydodslicer ms,
+    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+                    (cost, _) = NTICD.timingCorrection g
+                    costF n m = cost ! (n,m)
+                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+                    
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
+                      where imdom = NTICD.imdomOfTwoFinger6 g
+                    s  = tscdcostslicer   ms
+                    s' = ntscdmydodslicer ms
+                in   (   (s == s'))
+                   ∨ (   (s  ⊇ s')
+                      ∧ (∃) cycles (\cycle -> Set.size (cycle ∩ s') == 1)),
     testProperty "validTimdomFor entries > 0"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

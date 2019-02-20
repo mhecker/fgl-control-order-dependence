@@ -87,7 +87,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
-    timingCorrection, itimdomMultipleOfTwoFingerCost, tscdCostSlice,
+    timingCorrection, timingCorrectionFor, itimdomMultipleOfTwoFingerCost, tscdCostSlice,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
@@ -3074,6 +3074,31 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdmydodslicer ms
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
+    testProperty "timingCorrectionFor tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size"
+    $ \(REDUCIBLE(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+                    
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+                    s' = ntscdmydodslicer ms
+                    
+                    tscdslicer        = NTICD.tscdSlice               g
+                    ns = tscdslicer ms ∖ s'
+                    
+                    (cost, _) = NTICD.timingCorrectionFor g ns
+                    costF n m = cost ! (n,m)
+                    
+                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    s  = tscdcostslicer   ms
+
+
+                in -- let (costAll,_) = NTICD.timingCorrection g in traceShow ([ (n,m, cAll - c) | (n,m) <- edges g, let c = cost ! (n,m), let cAll = costAll ! (n,m), c /= cAll ]) $
+                   let ok = s == s'
+                   in if ok then ok else traceShow (g,ms,ns,s',s) ok,
     testProperty "timingCorrection itimdomMultiple"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

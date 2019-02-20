@@ -4952,11 +4952,11 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
              -- sorting = nodes graph
 
-timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingCorrection g = f notmissing itimdomMultiple0 cost0
+timingCorrectionFor :: forall gr a b. DynGraph gr => gr a b -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+timingCorrectionFor g ns = f notmissing itimdomMultiple0 cost0
 
   where
-        notmissing  = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ]
+        notmissing  = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
         itimdomMultiple0 = itimdomMultipleOfTwoFinger g
         cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
@@ -5005,6 +5005,11 @@ timingCorrection g = f notmissing itimdomMultiple0 cost0
         prevCondsImmediate = prevCondImmediateNodes g
         imdom = imdomOfTwoFinger6 g
         (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
+
+
+timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+timingCorrection g = timingCorrectionFor g (Set.fromList $ nodes g)
+
 
 -- timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
 -- timingCorrection g = f notsame itimdomMultiple0 cost0

@@ -4953,7 +4953,7 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = nodes graph
 
 timingCorrectionFor :: forall gr a b. DynGraph gr => gr a b -> Set Node -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingCorrectionFor g ns ms = f notmissing itimdomMultiple0 cost0
+timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
 
   where
         notmissing  = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
@@ -4981,7 +4981,7 @@ timingCorrectionFor g ns ms = f notmissing itimdomMultiple0 cost0
 
                 (m, sm, nodeCost) = case Map.lookup mm cycleOf of
                         Nothing -> (mm, smm, nnodeCost)
-                        Just cycle -> case Set.toList $ cycle ∩ ms of
+                        Just cycle -> case Set.toList $ cycle ∩ s' of
                           []    -> (mm, smm, nnodeCost)
                           [m]   -> -- traceShow (m, itimdomMultiple, [ (x, (Map.fromList $ minimalDistancesForReachable itimdomMultiple x)) | x <- suc g n ]) $
                                    let distances1 = [ (x, (Map.fromList $ minimalDistancesForReachable itimdomMultiple x) ! m) | x <- suc g n ] in

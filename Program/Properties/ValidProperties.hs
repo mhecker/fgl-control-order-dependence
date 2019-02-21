@@ -3094,7 +3094,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     ns = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
                     
                     
-                    (cost, _) = NTICD.timingCorrectionFor g ns ms
+                    (cost, _) = NTICD.timingCorrectionFor g ns s'
                     costF n m = cost ! (n,m)
                     
                     tscdcostslicer    = NTICD.tscdCostSlice           g costF

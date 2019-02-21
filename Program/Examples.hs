@@ -3147,10 +3147,30 @@ exampleTimingDepCorrectionInteresting11Simple2 :: DynGraph gr => gr () ()
 exampleTimingDepCorrectionInteresting11Simple2 = mkGraph [(-30,()),(6,()),(22,()),(24,())] [(-30,6,()),(24, -30, ()),(6,24,()),(22,-30,()),(22,24,())]
 
 
+exampleTimingDepCorrectionInteresting11Simple3 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting11Simple3 = mkGraph (fmap (\(n,()) -> (f n, ())) [(-30,()),(6,()),(-18,()),(22,()),(24,())]) (fmap (\(n,m,()) -> (f n, f m, ()))  [(-30,6,()),(24,-18,()),(-18,-30,()),(6,24,()),(22,-30,()),(22,24,())])
+  where f   22  = 0
+        f (-30) = 1
+        f    6  = 2
+        f   24  = -1
+        f (-18) = -2
+
 
 -- exampleTimingDepCorrectionInteresting11Simple :: DynGraph gr => gr () ()
 -- exampleTimingDepCorrectionInteresting11Simple = mkGraph [(-30,()),(-28,()),(-18,()),(6,()),(22,()),(24,())] [(-30,6,()),(-28,-30,()),(-18,-28,()),(6,24,()),(22,-30,()),(22,-18,()),(22,-18,()),(22,24,()),(24,-18,())] -- ,fromList [-30,6]
 
+exampleTimingDepCorrectionInteresting12 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting12 = mkGraph [(-10,()),(-1,()),(2,()),(4,()),(11,()),(12,())] [(-10,2,()),(-1,4,()),(2,11,()),(4,-10,()),(11,-1,()),(11,4,()),(12,-10,()),(12,-1,()),(12,2,()),(12,4,()),(12,11,())]
+
+
+exampleTimingDepCorrectionInteresting13 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting13 = mkGraph [(-29,()),(-18,()),(-17,()),(-14,()),(-5,()),(0,()),(23,()),(30,()),(31,())] [(-18,-5,()),(-17,-18,()),(-17,-5,()),(-14,30,()),(-5,-14,()),(-5,23,()),(0,-18,()),(0,0,()),(0,0,()),(23,-18,()),(30,23,()),(31,-29,()),(31,-18,()),(31,-17,()),(31,-14,()),(31,-5,()),(31,0,()),(31,23,()),(31,30,())]
+
+exampleTimingDepCorrectionInteresting14 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting14 = mkGraph [(-22,()),(-19,()),(-17,()),(-2,()),(1,()),(3,()),(4,()),(6,()),(7,()),(10,()),(11,()),(16,()),(18,()),(23,()),(24,())] [(-22,16,()),(-19,7,()),(-17,-2,()),(-2,4,()),(4,7,()),(7,-17,()),(10,3,()),(11,-19,()),(11,7,()),(16,-2,()),(18,3,()),(23,23,()),(24,-22,()),(24,-19,()),(24,-17,()),(24,-2,()),(24,1,()),(24,3,()),(24,4,()),(24,6,()),(24,7,()),(24,10,()),(24,11,()),(24,16,()),(24,18,()),(24,23,())]
+
+exampleTimingDepCorrectionInteresting15 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting15 = mkGraph [(-4,()),(-3,()),(-2,()),(0,()),(4,()),(6,()),(9,()),(10,())] [(-4,-2,()),(-2,9,()),(-2,9,()),(0,-4,()),(0,9,()),(4,-2,()),(4,-2,()),(6,0,()),(9,-4,()),(9,4,()),(10,-4,()),(10,-3,()),(10,-2,()),(10,0,()),(10,4,()),(10,6,()),(10,9,())]
 
 exampleTimingWorklist :: DynGraph gr => gr () ()
 exampleTimingWorklist = mkGraph [(-168,()),(-135,()),(-130,()),(-122,()),(-36,()),(-22,()),(26,()),(35,()),(65,()),(66,()),(67,()),(68,()),(72,()),(137,()),(180,()),(189,()),(236,()),(253,()),(257,()),(258,()),(260,()),(265,())] [(-168,258,()),(-135,-130,()),(-130,260,()),(-122,35,()),(-36,253,()),(-22,-36,()),(-22,180,()),(26,-22,()),(26,189,()),(35,72,()),(65,66,()),(66,68,()),(67,-122,()),(68,137,()),(72,26,()),(137,67,()),(180,-168,()),(180,236,()),(189,-135,()),(189,257,()),(236,258,()),(253,258,()),(258,189,()),(260,65,()),(265,-168,()),(265,-135,()),(265,-130,()),(265,-122,()),(265,-36,()),(265,-22,()),(265,26,()),(265,35,()),(265,65,()),(265,66,()),(265,67,()),(265,68,()),(265,72,()),(265,137,()),(265,180,()),(265,189,()),(265,236,()),(265,253,()),(265,257,()),(265,258,()),(265,260,())]
@@ -3448,6 +3468,11 @@ interestingTimingDep = [
               $(withName 'exampleTimingDepCorrectionInteresting11),
               $(withName 'exampleTimingDepCorrectionInteresting11Simple),
               $(withName 'exampleTimingDepCorrectionInteresting11Simple2),
+              $(withName 'exampleTimingDepCorrectionInteresting11Simple3),
+              $(withName 'exampleTimingDepCorrectionInteresting12),
+              $(withName 'exampleTimingDepCorrectionInteresting13),
+              $(withName 'exampleTimingDepCorrectionInteresting14),
+              $(withName 'exampleTimingDepCorrectionInteresting15),
               $(withName 'exampleTimingDepInterestingTwoFinger),
               $(withName 'exampleTimingDepInterestingTwoFinger2),
               $(withName 'exampleTimingDepInterestingTwoFinger3),

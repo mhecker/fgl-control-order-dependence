@@ -273,7 +273,9 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                    ∨ (   (s  ⊇ s')
                       ∧ (∃) cycles (\cycle -> Set.size (cycle ∩ s') == 1))
     @? ""
-  | (exampleName, g :: Gr () (), ms) <- [(" exampleTimingDepCorrectionInteresting11",  exampleTimingDepCorrectionInteresting11, Set.fromList [-30,-16,6])]
+  | (exampleName, g :: Gr () (), ms) <- [(" exampleTimingDepCorrectionInteresting11",       exampleTimingDepCorrectionInteresting11      , Set.fromList [-30,6]),
+                                         (" exampleTimingDepCorrectionInteresting11Simple", exampleTimingDepCorrectionInteresting11Simple, Set.fromList [-30,6])
+                                        ]
   ] ++
   [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
                 let (cost, _) = NTICD.timingCorrection g

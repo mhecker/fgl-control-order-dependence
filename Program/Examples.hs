@@ -3139,6 +3139,19 @@ exampleTimingDepCorrectionInteresting10 = mkGraph [(-15,()),(-11,()),(-10,()),(-
 exampleTimingDepCorrectionInteresting11 :: DynGraph gr => gr () ()
 exampleTimingDepCorrectionInteresting11 = mkGraph [(-33,()),(-30,()),(-28,()),(-24,()),(-22,()),(-21,()),(-18,()),(-16,()),(-13,()),(-9,()),(-8,()),(-6,()),(6,()),(10,()),(12,()),(17,()),(22,()),(24,()),(25,()),(33,()),(34,())] [(-30,6,()),(-28,-30,()),(-22,-33,()),(-21,17,()),(-18,-28,()),(-13,12,()),(-9,22,()),(-6,25,()),(6,24,()),(22,-30,()),(22,-18,()),(22,-18,()),(22,24,()),(24,-18,()),(25,-24,()),(25,33,()),(33,-33,()),(33,22,()),(34,-33,()),(34,-30,()),(34,-28,()),(34,-24,()),(34,-22,()),(34,-21,()),(34,-18,()),(34,-16,()),(34,-13,()),(34,-9,()),(34,-8,()),(34,-6,()),(34,6,()),(34,10,()),(34,12,()),(34,17,()),(34,22,()),(34,24,()),(34,25,()),(34,33,())] -- ,fromList [-30,-16,6],fromList [-30,-16,6,25,33,34],fromList [-30,-16,6,22,25,33,34])
 
+
+exampleTimingDepCorrectionInteresting11Simple :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting11Simple = mkGraph [(-30,()),(6,()),(-18,()),(22,()),(24,())] [(-30,6,()),(24,-18,()),(-18,-30,()),(6,24,()),(22,-30,()),(22,-18,()),(22,24,())] -- ,fromList [-30,6]
+
+exampleTimingDepCorrectionInteresting11Simple2 :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting11Simple2 = mkGraph [(-30,()),(6,()),(22,()),(24,())] [(-30,6,()),(24, -30, ()),(6,24,()),(22,-30,()),(22,24,())]
+
+
+
+-- exampleTimingDepCorrectionInteresting11Simple :: DynGraph gr => gr () ()
+-- exampleTimingDepCorrectionInteresting11Simple = mkGraph [(-30,()),(-28,()),(-18,()),(6,()),(22,()),(24,())] [(-30,6,()),(-28,-30,()),(-18,-28,()),(6,24,()),(22,-30,()),(22,-18,()),(22,-18,()),(22,24,()),(24,-18,())] -- ,fromList [-30,6]
+
+
 exampleTimingWorklist :: DynGraph gr => gr () ()
 exampleTimingWorklist = mkGraph [(-168,()),(-135,()),(-130,()),(-122,()),(-36,()),(-22,()),(26,()),(35,()),(65,()),(66,()),(67,()),(68,()),(72,()),(137,()),(180,()),(189,()),(236,()),(253,()),(257,()),(258,()),(260,()),(265,())] [(-168,258,()),(-135,-130,()),(-130,260,()),(-122,35,()),(-36,253,()),(-22,-36,()),(-22,180,()),(26,-22,()),(26,189,()),(35,72,()),(65,66,()),(66,68,()),(67,-122,()),(68,137,()),(72,26,()),(137,67,()),(180,-168,()),(180,236,()),(189,-135,()),(189,257,()),(236,258,()),(253,258,()),(258,189,()),(260,65,()),(265,-168,()),(265,-135,()),(265,-130,()),(265,-122,()),(265,-36,()),(265,-22,()),(265,26,()),(265,35,()),(265,65,()),(265,66,()),(265,67,()),(265,68,()),(265,72,()),(265,137,()),(265,180,()),(265,189,()),(265,236,()),(265,253,()),(265,257,()),(265,258,()),(265,260,())]
 
@@ -3433,6 +3446,8 @@ interestingTimingDep = [
               $(withName 'exampleTimingDepCorrectionInteresting9),
               $(withName 'exampleTimingDepCorrectionInteresting10),
               $(withName 'exampleTimingDepCorrectionInteresting11),
+              $(withName 'exampleTimingDepCorrectionInteresting11Simple),
+              $(withName 'exampleTimingDepCorrectionInteresting11Simple2),
               $(withName 'exampleTimingDepInterestingTwoFinger),
               $(withName 'exampleTimingDepInterestingTwoFinger2),
               $(withName 'exampleTimingDepInterestingTwoFinger3),

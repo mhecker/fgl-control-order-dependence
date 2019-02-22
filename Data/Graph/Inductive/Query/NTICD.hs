@@ -4983,10 +4983,6 @@ timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
                         Nothing -> (mm, smm, nnodeCost)
                         Just cycle -> case Set.toList $ cycle ∩ s' of
                           []    -> (mm, smm, nnodeCost)
-                          [m]   -> -- traceShow (m, itimdomMultiple, [ (x, (Map.fromList $ minimalDistancesForReachable itimdomMultiple x)) | x <- suc g n ]) $
-                                   let distances1 = [ (x, (Map.fromList $ minimalDistancesForReachable itimdomMultiple x) ! m) | x <- suc g n ] in
-                                   let sm = maximum [ cost ! (n,x) + distance | (x, distance) <- distances1 ] in
-                                   (m, sm, Map.fromList [ (x, sm - (cost ! (n,x) + distance)) | (x, distance) <- distances1 ])
                           ms    -> let succs = nub $ suc g n
                                        nodeCost0 = Map.fromList [ (x, 0) | x <- succs ]
                                        itimdomM = fmap fromSet $  Map.fromSet (\m -> Set.empty) (Set.fromList ms) `Map.union` itimdomMultiple

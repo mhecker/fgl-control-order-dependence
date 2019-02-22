@@ -3108,6 +3108,41 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                    -- traceShow (ms, ns, s', g) $
                    let ok = (s == s') ∧ ((s0 ∖ s') == ns)
                    in if ok then ok else traceShow (g,ms,ns,s',s,s0,s0 ∖ s', ns) ok,
+    testProperty "timingCorrectionFor tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size, but fixed examples"
+    $ \seed1 seed2 -> (∀) interestingTimingDep (\(exampleName, example) ->
+                let g = example :: Gr () ()
+                    
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+                    s' = ntscdmydodslicer ms
+                    
+                    tscdslicer        = NTICD.tscdSlice               g
+                    tscd              = NTICD.tscdOfLfp               g
+                    -- ns = tscdslicer ms ∖ s'
+                    
+                    s0 = tscdslicer ms
+                    ns = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
+                    
+                    
+                    (cost, _) = NTICD.timingCorrectionFor g ns s'
+                    costF n m = cost ! (n,m)
+                    
+                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    s  = tscdcostslicer   ms
+
+
+                in -- let (costAll,_) = NTICD.timingCorrection g in traceShow ([ (n,m, cAll - c) | (n,m) <- edges g, let c = cost ! (n,m), let cAll = costAll ! (n,m), c /= cAll ]) $
+                   -- assert ((s0 ∖ s') ⊇ ns) $
+                   -- traceShow ((Set.size  (s0 ∖ s')) - (Set.size ns)) $
+                   -- traceShow (ns, ms) $
+                   traceShow (exampleName, ms, ns, s', g) $
+                   let ok = (s == s') ∧ ((s0 ∖ s') == ns)
+                   in if ok then ok else traceShow (g,ms,ns,s',s,s0,s0 ∖ s', ns) ok
+                ),
     testProperty "timingCorrection itimdomMultiple"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

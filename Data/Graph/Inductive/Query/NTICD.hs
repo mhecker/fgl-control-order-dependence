@@ -4967,7 +4967,7 @@ timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
            | Set.null ns   = (cost, itimdomMultiple)
            | not succReach = traceShow (False, n, mz, ns, cost, itimdomMultiple) $
                              f ns0 itimdomMultiple  cost
-           | otherwise     = traceShow (True,  n, mz, ns, cost, itimdomMultiple) $
+           | otherwise     = traceShow (True,  n, (m, sm), mz, ns, cost, itimdomMultiple) $
                              -- assert ((m == mImdom)    ∨ (m ∈ cycleOf ! mImdom)) $
                              f ns' itimdomMultiple' cost'
 
@@ -4987,13 +4987,13 @@ timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
                                    let distances1 = [ (x, (Map.fromList $ minimalDistancesForReachable itimdomMultiple x) ! m) | x <- suc g n ] in
                                    let sm = maximum [ cost ! (n,x) + distance | (x, distance) <- distances1 ] in
                                    (m, sm, Map.fromList [ (x, sm - (cost ! (n,x) + distance)) | (x, distance) <- distances1 ])
-                          ms    ->
-                                   traceShow (n, ms, mm,
-                                             [ m | m <- ms, (∃) (suc g n) (\x ->  isReachableFromM (fmap fromSet $ fmap (Set.map fst) $ Map.fromSet (\m -> Set.empty) (Set.fromList ms) `Map.union` itimdomMultiple) m x) ], itimdomMultiple, Map.fromSet (\m -> Set.empty) (Set.fromList ms) `Map.union` itimdomMultiple ) $
-                                   let [m] = [ m | m <- ms, (∃) (suc g n) (\x ->  isReachableFromM (fmap fromSet $ fmap (Set.map fst) $ Map.fromSet (\m -> Set.empty) (Set.fromList ms) `Map.union` itimdomMultiple) m x) ] in
-                                   let distances2 = [ (x, (Map.fromList $ minimalDistancesForReachable itimdomMultiple x) ! m) | x <- suc g n ] in
-                                   let sm = maximum [ cost ! (n,x) + distance | (x, distance) <- distances2 ] in
-                                   (m, sm, Map.fromList [ (x, sm - (cost ! (n,x) + distance)) | (x, distance) <- distances2 ])
+                          ms    -> let succs = nub $ suc g n
+                                       nodeCost0 = Map.fromList [ (x, 0) | x <- succs ]
+                                       itimdomM = fmap fromSet $  Map.fromSet (\m -> Set.empty) (Set.fromList ms) `Map.union` itimdomMultiple
+                                       lca = lcaTimdomOfTwoFingerFastCost itimdomM
+                                       mz' =  foldM1 lca [ (x, cost ! (n,x), Map.fromList [(x, Set.fromList [cost ! (n,x)])], Set.fromList [x], nodeCost0) | x <- succs]
+                                       Just (m, sm, _, _, nodeCost) = mz'
+                                   in (m, sm, nodeCost)
                   where Just (mm, smm, _, _, nnodeCost) = mz
                         (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
 
@@ -5002,7 +5002,6 @@ timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
                 succReach = mz /= Nothing
 
                 Just (mMultOld, maxCostOld) = fromSet $ itimdomMultiple ! n
-
 
                 influenced = let imdomRev  = (invert'' $ fmap (Set.map fst) itimdomMultiple) in
                              let preds = reachableFrom imdomRev (Set.fromList [n])

@@ -49,7 +49,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath, reachableUpToLength, distancesUpToLength, minimalDistancesForReachable)
+import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath, reachableUpToLength, distancesUpToLength, minimalDistancesForReachable, inCycle)
 import Unicode
 
 
@@ -4954,21 +4954,19 @@ timDFFromFromItimdomMultipleOfFast graph =
 
 timingCorrectionFor :: forall gr a b. DynGraph gr => gr a b -> Set Node -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
 timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
-
-  where
-        notmissing  = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
+  where notmissing = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
+                imdom = imdomOfTwoFinger6 g
+
         itimdomMultiple0 = itimdomMultipleOfTwoFinger g
         cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
-        traceShow _ x = x
 
         f :: Set Node -> Map Node (Set (Node, Integer)) -> Map (Node, Node) Integer -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
         f ns itimdomMultiple cost
            | Set.null ns   = (cost, itimdomMultiple)
-           | not succReach = traceShow (False, n, mz, ns, cost, itimdomMultiple) $
+           | not succReach = -- traceShow (False, n, mz, ns, cost, itimdomMultiple) $
                              f ns0 itimdomMultiple  cost
-           | otherwise     = traceShow (True,  n, (m, sm), mz, ns, cost, itimdomMultiple) $
-                             -- assert ((m == mImdom)    ∨ (m ∈ cycleOf ! mImdom)) $
+           | otherwise     = -- traceShow (True,  n, (m, sm), mz, ns, cost, itimdomMultiple) $
                              f ns' itimdomMultiple' cost'
 
           where (n, ns0) = Set.deleteFindMin ns
@@ -4979,7 +4977,8 @@ timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
                 lca = lcaTimdomOfTwoFingerFastCost itimdomM
                   where itimdomM = fmap (fromSet) itimdomMultiple
 
-                (m, sm, nodeCost) = case Map.lookup mm cycleOf of
+                (m, sm, nodeCost) = let (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple in assert (cycle == Map.lookup mm cycleOf) $
+                                    case cycle of
                         Nothing -> (mm, smm, nnodeCost)
                         Just cycle -> case Set.toList $ cycle ∩ s' of
                           []    -> (mm, smm, nnodeCost)
@@ -4991,31 +4990,21 @@ timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
                                        Just (m, sm, _, _, nodeCost) = mz'
                                    in (m, sm, nodeCost)
                   where Just (mm, smm, _, _, nnodeCost) = mz
-                        (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
+                        cycle = inCycle itimdomM mm
+                          where itimdomM = fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple 
 
-                Just mImdom = fromSet $ imdom ! n
-                
                 succReach = mz /= Nothing
-
-                Just (mMultOld, maxCostOld) = fromSet $ itimdomMultiple ! n
-
                 influenced = let imdomRev  = (invert'' $ fmap (Set.map fst) itimdomMultiple) in
                              let preds = reachableFrom imdomRev (Set.fromList [n])
-                             in  notmissing ∩ (Set.fromList $ [ n0 | n0 <- foldMap prevCondsImmediate preds, n0 /= n {-, isNothing $ imdom ! n -}])
+                             in  notmissing ∩ (Set.fromList $ [ n0 | n0 <- foldMap prevCondsImmediate preds, n0 /= n])
 
                 itimdomMultiple' = Map.insert n (Set.fromList [(m, sm)]) itimdomMultiple
                 cost'            = Map.fromList [ ((n,x), cost ! (n,x) + nodeCostX) | (x, nodeCostX) <- Map.assocs nodeCost ] `Map.union` cost
                 ns'
                  | Just (m, sm) /= (fromSet $ itimdomMultiple ! n) = ns0 ∪ influenced
                  | otherwise                                       = ns0
-                 -- | Set.null $ itimdomMultiple ! n                = ns0 ∪ influenced
-                 -- | sm      < maxCostOld                          = ns0 ∪ influenced
-                 -- | otherwise                                     = ns0
-
-
 
         prevCondsImmediate = prevCondImmediateNodes g
-        imdom = imdomOfTwoFinger6 g
 
 
 timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))

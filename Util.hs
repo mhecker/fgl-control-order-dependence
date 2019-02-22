@@ -149,7 +149,14 @@ reachableFromTree m x = reachFrom (Set.fromList [x]) Set.empty
           | otherwise = xs ∪ reachFrom new (seen ∪ xs)
               where new = Set.fromList [ x' | x <- Set.toList xs, Just x's <- [ Map.lookup x m ], x' <- Set.toList $ m ! x]
 
-
+inCycle :: Ord α => Map α (Maybe α) -> α -> Maybe (Set α)
+inCycle m x = incyc x Set.empty
+  where incyc y seen = case m ! y of
+          Nothing -> Nothing
+          Just z -> if z == x   then Just $ Set.insert x $ seen' else
+                    if z ∈ seen then Nothing else
+                    incyc z seen'
+            where seen' = Set.insert y seen
 
 
 isReachableFromTree :: Ord α => Map α (Set α) -> α -> α -> Bool

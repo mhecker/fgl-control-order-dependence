@@ -3139,7 +3139,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                    -- assert ((s0 ∖ s') ⊇ ns) $
                    -- traceShow ((Set.size  (s0 ∖ s')) - (Set.size ns)) $
                    -- traceShow (ns, ms) $
-                   traceShow (exampleName, ms, ns, s', g) $
+                   -- traceShow (exampleName, ms, ns, s', g) $
                    let ok = (s == s') ∧ ((s0 ∖ s') == ns)
                    in if ok then ok else traceShow (g,ms,ns,s',s,s0,s0 ∖ s', ns) ok
                 ),

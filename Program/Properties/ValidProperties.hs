@@ -3091,12 +3091,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdmydodslicer ms
 
 
-                in -- let (costAll,_) = NTICD.timingCorrection g in traceShow ([ (n,m, cAll - c) | (n,m) <- edges g, let c = cost ! (n,m), let cAll = costAll ! (n,m), c /= cAll ]) $
-                   -- assert ((s0 ∖ s') ⊇ ns) $
-                   -- traceShow ((Set.size  (s0 ∖ s')) - (Set.size ns)) $
-                   -- traceShow (ns, ms) $ 
-                   -- traceShow (ms, ns, s', g) $
-                   let ok = (s == s')
+                in let ok = (s == s')
                    in if ok then ok else traceShow (g,ms,s',s) ok,
     testProperty "timingLeaksTransformation tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size, but fixed examples"
     $ \seed1 seed2 -> (∀) interestingTimingDep (\(exampleName, example) ->
@@ -3115,12 +3110,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdmydodslicer ms
 
 
-                in -- let (costAll,_) = NTICD.timingCorrection g in traceShow ([ (n,m, cAll - c) | (n,m) <- edges g, let c = cost ! (n,m), let cAll = costAll ! (n,m), c /= cAll ]) $
-                   -- assert ((s0 ∖ s') ⊇ ns) $
-                   -- traceShow ((Set.size  (s0 ∖ s')) - (Set.size ns)) $
-                   -- traceShow (ns, ms) $
-                   -- traceShow (exampleName, ms, ns, s', g) $
-                   let ok = (s == s')
+                in let ok = (s == s')
                    in if ok then ok else traceShow (g,ms,s',s) ok
                 ),
     testProperty "timingCorrection tscdCostSlice g[ms -/> ] ms == ntscdMyDodSlice ms for random slice criteria of random size"
@@ -3129,30 +3119,22 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     n = length $ nodes g
                     ms
                       | n == 0 = Set.empty
-                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (1 + (seed1 `mod` n))]
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
 
-
-   
-                    g' = foldr (flip delSuccessorEdges) g ms
-                    (cost, _) = NTICD.timingCorrection g'
+                    (cost, _) = NTICD.timingLeaksTransformation g ms
                     costF n m = cost ! (n,m)
-                    tscdcostslicer    = NTICD.tscdCostSlice g' costF
-
-
-                    (cost'', _) = NTICD.timingLeaksTransformation g ms
-                    costF'' n m = cost'' ! (n,m)
-                    tscdcostslicer''  = NTICD.tscdCostSlice g costF''
-
+                    tscdcostslicer    = NTICD.tscdCostSlice           g   costF  
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
 
-
-
+                    g'' = foldr (flip delSuccessorEdges) g ms
+                    (cost'', _) = NTICD.timingCorrection g''
+                    costF'' n m = cost'' ! (n,m)
+                    tscdcostslicer''  = NTICD.tscdCostSlice           g'' costF''
     
                     s    = tscdcostslicer    ms
                     s'   = ntscdmydodslicer  ms
                     s''  = tscdcostslicer''  ms
-                in 
-                   let ok = (s == s') ∧ (s == s'') -- NOT in general: ((Map.keysSet cost'' ⊇ Map.keysSet cost) ∧ (∀) (Map.assocs cost) (\((n,m),k) -> cost'' ! (n,m) <= k))
+                in let ok = (s == s') ∧ (s == s'') -- NOT in general: ((Map.keysSet cost ⊇ Map.keysSet cost'') ∧ (∀) (Map.assocs cost'') (\((n,m),k) -> cost ! (n,m) <= k))
                    in if ok then ok else traceShow (g,ms,s,s', s'') $ traceShow ("cost:",cost, cost'') $ ok,
     testProperty "timingCorrection itimdomMultiple"
     $ \(ARBITRARY(generatedGraph)) ->

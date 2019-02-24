@@ -4952,11 +4952,19 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
              -- sorting = nodes graph
 
-timingLeaksTransformation :: forall gr a b. DynGraph gr => gr a b -> Set Node -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingLeaksTransformation g ns s' = f notmissing itimdomMultiple0 cost0
+timingLeaksTransformation :: forall gr a b. DynGraph gr => gr a b -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+timingLeaksTransformation g ms  = f notmissing itimdomMultiple0 cost0
   where notmissing = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
                 imdom = imdomOfTwoFinger6 g
+
+                ns = assert (nsSimple == nsLimitedToTscdFrontiers) $ nsSimple
+                  where nsSimple = s0 ∖ s'
+                        nsLimitedToTscdFrontiers = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
+                          where tscd = tscdOfLfp g
+
+        s' = ntscdMyDodSliceViaNtscd g ms
+        s0 = tscdSlice               g ms
 
         itimdomMultiple0 = itimdomMultipleOfTwoFinger g
         cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]

@@ -3074,25 +3074,6 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdmydodslicer ms
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
-    testProperty "timingLeaksTransformation tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size"
-    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
-                let g = generatedGraph
-                    n    = length $ nodes g
-                    ms
-                      | n == 0 = Set.empty
-                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-
-                    (cost, _) = NTICD.timingLeaksTransformation g ms
-                    costF n m = cost ! (n,m)
-                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
-                    
-                    s  = tscdcostslicer   ms
-                    s' = ntscdmydodslicer ms
-
-
-                in let ok = (s == s')
-                   in if ok then ok else traceShow (g,ms,s',s) ok,
     testProperty "timingLeaksTransformation tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size, but fixed examples"
     $ \seed1 seed2 -> (∀) interestingTimingDep (\(exampleName, example) ->
                 let g = example :: Gr () ()

@@ -87,7 +87,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
-    timingCorrection, timingCorrectionFor, itimdomMultipleOfTwoFingerCost, tscdCostSlice,
+    timingCorrection, timingLeaksTransformation, itimdomMultipleOfTwoFingerCost, tscdCostSlice,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
@@ -3074,7 +3074,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdmydodslicer ms
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
-    testProperty "timingCorrectionFor tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size"
+    testProperty "timingLeaksTransformation tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                 let g = generatedGraph
                     
@@ -3094,7 +3094,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     ns = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
                     
                     
-                    (cost, _) = NTICD.timingCorrectionFor g ns s'
+                    (cost, _) = NTICD.timingLeaksTransformation g ns s'
                     costF n m = cost ! (n,m)
                     
                     tscdcostslicer    = NTICD.tscdCostSlice           g costF
@@ -3108,7 +3108,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                    -- traceShow (ms, ns, s', g) $
                    let ok = (s == s') ∧ ((s0 ∖ s') == ns)
                    in if ok then ok else traceShow (g,ms,ns,s',s,s0,s0 ∖ s', ns) ok,
-    testProperty "timingCorrectionFor tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size, but fixed examples"
+    testProperty "timingLeaksTransformation tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size, but fixed examples"
     $ \seed1 seed2 -> (∀) interestingTimingDep (\(exampleName, example) ->
                 let g = example :: Gr () ()
                     
@@ -3128,7 +3128,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     ns = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
                     
                     
-                    (cost, _) = NTICD.timingCorrectionFor g ns s'
+                    (cost, _) = NTICD.timingLeaksTransformation g ns s'
                     costF n m = cost ! (n,m)
                     
                     tscdcostslicer    = NTICD.tscdCostSlice           g costF
@@ -3165,7 +3165,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     ns = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
                       where  tscd = NTICD.tscdOfLfp g
                              s0   = NTICD.tscdSlice g ms
-                    (cost'', _) = NTICD.timingCorrectionFor g ns s'
+                    (cost'', _) = NTICD.timingLeaksTransformation g ns s'
                     costF'' n m = cost'' ! (n,m)
                     tscdcostslicer''  = NTICD.tscdCostSlice g costF''
 

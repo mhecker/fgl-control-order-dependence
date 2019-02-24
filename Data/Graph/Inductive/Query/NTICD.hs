@@ -4952,8 +4952,8 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
              -- sorting = nodes graph
 
-timingCorrectionFor :: forall gr a b. DynGraph gr => gr a b -> Set Node -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingCorrectionFor g ns s' = f notmissing itimdomMultiple0 cost0
+timingLeaksTransformation :: forall gr a b. DynGraph gr => gr a b -> Set Node -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+timingLeaksTransformation g ns s' = f notmissing itimdomMultiple0 cost0
   where notmissing = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
                 imdom = imdomOfTwoFinger6 g

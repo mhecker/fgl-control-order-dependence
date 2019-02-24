@@ -3055,7 +3055,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                           ))
                        )
                 ))),
-    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size"
+    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in reducible CFG"
     $ \(REDUCIBLE(generatedGraph)) seed1 seed2 ->
                 let g = generatedGraph
                     (cost, _) = NTICD.timingCorrection g
@@ -3143,6 +3143,41 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                    let ok = (s == s') ∧ ((s0 ∖ s') == ns)
                    in if ok then ok else traceShow (g,ms,ns,s',s,s0,s0 ∖ s', ns) ok
                 ),
+    testProperty "timingCorrection tscdCostSlice g[ms -/> ] ms == ntscdMyDodSlice ms for random slice criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                let g = generatedGraph
+                    n = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (1 + (seed1 `mod` n))]
+
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+
+   
+                    g' = foldr (flip delSuccessorEdges) g ms
+
+                    (cost, _) = NTICD.timingCorrection g'
+                    costF n m = cost ! (n,m)
+                    tscdcostslicer    = NTICD.tscdCostSlice           g' costF
+
+
+
+                    ns = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
+                      where  tscd = NTICD.tscdOfLfp g
+                             s0   = NTICD.tscdSlice g ms
+                    (cost'', _) = NTICD.timingCorrectionFor g ns s'
+                    costF'' n m = cost'' ! (n,m)
+                    tscdcostslicer''  = NTICD.tscdCostSlice g costF''
+
+
+
+    
+                    s    = tscdcostslicer    ms
+                    s'   = ntscdmydodslicer  ms
+                    s''  = tscdcostslicer''  ms
+                in 
+                   let ok = (s == s') ∧ (s == s'') -- NOT in general: ((Map.keysSet cost'' ⊇ Map.keysSet cost) ∧ (∀) (Map.assocs cost) (\((n,m),k) -> cost'' ! (n,m) <= k))
+                   in if ok then ok else traceShow (g,ms,s,s', s'') $ traceShow ("cost:",cost, cost'') $ ok,
     testProperty "timingCorrection itimdomMultiple"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

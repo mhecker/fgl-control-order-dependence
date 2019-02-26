@@ -315,6 +315,9 @@ moreSeeds seed n =  evalRand (s n) (mkStdGen seed)
           rs <- getRandoms
           return $ take n rs
 
+more seed =  evalRand getRandoms (mkStdGen seed) 
+
+
 sampleFrom :: Int -> Integer -> [a] -> [a]
 sampleFrom seed n xs = evalRand (s n) (mkStdGen seed)
   where s 0 = return $ []

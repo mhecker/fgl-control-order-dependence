@@ -79,7 +79,7 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
-    timingCorrection, tscdCostSlice,
+    timingCorrection, tscdCostSlice, cost1,
     ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
     validTimdomFor,
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
@@ -260,7 +260,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger", exampleTimingDepInterestingTwoFinger)]
   ] ++
   [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
-                let (cost, _) = NTICD.timingCorrection g
+                let (cost, _) = NTICD.timingCorrection g (NTICD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = NTICD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
@@ -278,7 +278,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                                         ]
   ] ++
   [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
-                let (cost, _) = NTICD.timingCorrection g
+                let (cost, _) = NTICD.timingCorrection g (NTICD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = NTICD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g

@@ -4952,8 +4952,11 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
              -- sorting = nodes graph
 
-timingLeaksTransformation :: forall gr a b. DynGraph gr => gr a b -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingLeaksTransformation g ms  = f notmissing itimdomMultiple0 cost0
+
+cost1 g =  Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
+
+timingLeaksTransformation :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) Integer -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+timingLeaksTransformation g cost0 ms  = f notmissing itimdomMultiple0 cost0
   where notmissing = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
                 imdom = imdomOfTwoFinger6 g
@@ -4961,13 +4964,14 @@ timingLeaksTransformation g ms  = f notmissing itimdomMultiple0 cost0
                 ns = assert (nsSimple == nsLimitedToTscdFrontiers) $ nsSimple
                   where nsSimple = s0 ∖ s'
                         nsLimitedToTscdFrontiers = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
-                          where tscd = tscdOfLfp g
+                          where tscd = tscdOfNaiveCostfLfp g cost0F
 
-        s' = ntscdMyDodSliceViaNtscd g ms
-        s0 = tscdSlice               g ms
+        s' = ntscdMyDodSliceViaNtscd g        ms
+        s0 = tscdCostSlice           g cost0F ms
 
-        itimdomMultiple0 = itimdomMultipleOfTwoFinger g
-        cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
+        itimdomMultiple0 = itimdomMultipleOfTwoFingerCost g cost0F
+
+        cost0F n m = cost0 ! (n, m)
 
         f :: Set Node -> Map Node (Set (Node, Integer)) -> Map (Node, Node) Integer -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
         f ns itimdomMultiple cost
@@ -5015,14 +5019,14 @@ timingLeaksTransformation g ms  = f notmissing itimdomMultiple0 cost0
         prevCondsImmediate = prevCondImmediateNodes g
 
 
-timingCorrection :: forall gr a b. DynGraph gr => gr a b -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingCorrection g = f notmissing itimdomMultiple0 cost0
+timingCorrection :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) Integer -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
+timingCorrection g cost0 = f notmissing itimdomMultiple0 cost0
   where notmissing = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ]
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
                 imdom = imdomOfTwoFinger6 g
 
-        itimdomMultiple0 = itimdomMultipleOfTwoFinger g
-        cost0 = Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
+        itimdomMultiple0 = itimdomMultipleOfTwoFingerCost g cost0F
+          where cost0F n m = cost0 ! (n, m)
 
         f :: Set Node -> Map Node (Set (Node, Integer)) -> Map (Node, Node) Integer -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
         f ns itimdomMultiple cost

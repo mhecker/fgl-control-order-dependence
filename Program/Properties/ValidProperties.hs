@@ -26,7 +26,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength, invert'', minimalPathForReachable)
+import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength, invert'', minimalPathForReachable, more)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -63,7 +63,7 @@ import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensa
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, withoutSelfEdges)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, withoutSelfEdges, costFor)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
@@ -87,7 +87,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
-    timingCorrection, timingLeaksTransformation, itimdomMultipleOfTwoFingerCost, tscdCostSlice,
+    timingCorrection, timingLeaksTransformation, itimdomMultipleOfTwoFingerCost, tscdCostSlice, cost1,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
@@ -3056,9 +3056,10 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        )
                 ))),
     testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in reducible CFG"
-    $ \(REDUCIBLE(generatedGraph)) seed1 seed2 ->
+    $ \(REDUCIBLE(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
-                    (cost, _) = NTICD.timingCorrection g
+                    (cost, _) = NTICD.timingCorrection g cost0
+                      where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = NTICD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
@@ -3067,22 +3068,59 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
-                      where imdom = NTICD.imdomOfTwoFinger6 g
 
                     s  = tscdcostslicer   ms
                     s' = ntscdmydodslicer ms
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
+    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in CFG with unique exit node"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
+                let (_, g) = withUniqueEndNode () () generatedGraph
+                    
+                    (cost, _) = NTICD.timingCorrection g cost0
+                      where cost0 = costFor g seed3
+                    costF n m = cost ! (n,m)
+                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    s  = tscdcostslicer   ms
+                    s' = ntscdmydodslicer ms
+                in let ok = s == s'
+                   in if ok then ok else traceShow (g,ms,s',s) ok,
+    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in CFG with unique exit node, but fixed examples"
+    $ \seed1 seed2 seed3 -> (∀) interestingTimingDep (\(exampleName, example) ->
+                let (_, g) = withUniqueEndNode () () example
+                    (cost, _) = NTICD.timingCorrection g cost0
+                      where cost0 = costFor g seed3
+                    costF n m = cost ! (n,m)
+                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    s  = tscdcostslicer   ms
+                    s' = ntscdmydodslicer ms
+                in let ok = s == s'
+                   in if ok then ok else traceShow (g,ms,s',s) ok
+                ),
     testProperty "timingLeaksTransformation tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size, but fixed examples"
-    $ \seed1 seed2 -> (∀) interestingTimingDep (\(exampleName, example) ->
+    $ \seed1 seed2 seed3 -> (∀) interestingTimingDep (\(exampleName, example) ->
                 let g = example :: Gr () ()
                     n    = length $ nodes g
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     
-                    (cost, _) = NTICD.timingLeaksTransformation g ms
+                    (cost, _) = NTICD.timingLeaksTransformation g cost0 ms
+                      where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = NTICD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
@@ -3095,20 +3133,22 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                    in if ok then ok else traceShow (g,ms,s',s) ok
                 ),
     testProperty "timingCorrection tscdCostSlice g[ms -/> ] ms == ntscdMyDodSlice ms for random slice criteria of random size"
-    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
                     n = length $ nodes g
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
 
-                    (cost, _) = NTICD.timingLeaksTransformation g ms
+                    cost0 = costFor g seed3
+                    
+                    (cost,   _) = NTICD.timingLeaksTransformation g   cost0 ms
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = NTICD.tscdCostSlice           g   costF  
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
 
                     g'' = foldr (flip delSuccessorEdges) g ms
-                    (cost'', _) = NTICD.timingCorrection g''
+                    (cost'', _) = NTICD.timingCorrection          g'' cost0
                     costF'' n m = cost'' ! (n,m)
                     tscdcostslicer''  = NTICD.tscdCostSlice           g'' costF''
     
@@ -3118,16 +3158,18 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in let ok = (s == s') ∧ (s == s'') -- NOT in general: ((Map.keysSet cost ⊇ Map.keysSet cost'') ∧ (∀) (Map.assocs cost'') (\((n,m),k) -> cost ! (n,m) <= k))
                    in if ok then ok else traceShow (g,ms,s,s', s'') $ traceShow ("cost:",cost, cost'') $ ok,
     testProperty "timingCorrection itimdomMultiple"
-    $ \(ARBITRARY(generatedGraph)) ->
+    $ \(ARBITRARY(generatedGraph)) seed3 ->
                 let g = generatedGraph
-                    (cost, itimdomMultiple') = NTICD.timingCorrection g
+                    (cost, itimdomMultiple') = NTICD.timingCorrection g cost0
+                      where cost0 = costFor g seed3
                     itimdomMultiple'' = NTICD.itimdomMultipleOfTwoFingerCost g (\n m -> cost ! (n,m))
                     noselfloops = Map.mapWithKey (\n ms -> Set.filter (\(m, k) -> m /= n) ms)
                 in noselfloops itimdomMultiple'' == noselfloops itimdomMultiple',
     testProperty "timingCorrection imdom"
-    $ \(ARBITRARY(generatedGraph)) ->
+    $ \(ARBITRARY(generatedGraph)) seed3 ->
                 let g = generatedGraph
-                    (cost, itimdomMultiple') = NTICD.timingCorrection g
+                    (cost, itimdomMultiple') = NTICD.timingCorrection g cost0
+                      where cost0 = costFor g seed3
                     itimdomMutliple'NoK = fmap (Set.map fst) itimdomMultiple'
                     imdom = NTICD.imdomOfTwoFinger6 g
                     -- noselfloops = Map.mapWithKey (\n ms -> Set.filter (/= n) ms)
@@ -3639,14 +3681,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
 
 timingDepTests = testGroup "(concerning timingDependence)" $
   [  testCase    ("timingCorrection itimdomMultiple for " ++ exampleName)
-            $   let (cost, itimdomMultiple') = NTICD.timingCorrection g
+            $   let (cost, itimdomMultiple') = NTICD.timingCorrection g (NTICD.cost1 g)
                     itimdomMultiple'' = NTICD.itimdomMultipleOfTwoFingerCost g (\n m -> cost ! (n,m))
                     noselfloops = Map.mapWithKey (\n ms -> Set.filter (\(m, k) -> m /= n) ms)
                 in noselfloops itimdomMultiple'' == noselfloops itimdomMultiple' @? ""
   | (exampleName, g) <- interestingTimingDep ++ interestingIsinkdomTwoFinger
   ] ++
   [  testCase    ("timingCorrection imdom for " ++ exampleName)
-            $   let (cost, itimdomMultiple') = NTICD.timingCorrection g
+            $   let (cost, itimdomMultiple') = NTICD.timingCorrection g (NTICD.cost1 g)
                     itimdomMutliple'NoK = fmap (Set.map fst) itimdomMultiple'
                     imdom = NTICD.imdomOfTwoFinger6 g
                 in (trc $ fromSuccMap $ itimdomMutliple'NoK :: Gr () ()) == (trc $ fromSuccMap $ imdom :: Gr () ()) @? ""

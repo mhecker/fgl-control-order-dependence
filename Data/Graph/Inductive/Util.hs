@@ -333,3 +333,6 @@ ladder :: Graph gr => Int -> gr () ()
 ladder n = mkGraph [(i,()) | i <- [0..2*n+2]] (eds n)
   where eds 0 = [(0,1,()), (0,2,())]
         eds n = [(2*n, 2*n+1, ()), (2*n, 2*n+2, ()), (2*n-1, 2*n+1, ())] ++ eds (n-1)
+
+
+costFor g seed = Map.fromList $ zip (edges g) (fmap ((1+) . (`mod` 32) .  abs) $ more seed)

@@ -87,7 +87,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
     mdomsOf, sinkdomsOf, timdomsOf, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
-    timingCorrection, timingLeaksTransformation, itimdomMultipleOfTwoFingerCost, tscdCostSlice, cost1,
+    timingCorrection, timingLeaksTransformation, itimdomMultipleOfTwoFingerCost, tscdCostSlice, cost1, cost1F, timDFCostFromUpLocalDefViaTimdoms, timDFCost,
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
@@ -95,12 +95,13 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
-    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, 
+    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence,
+    tscdOfNaiveCostfLfp, timDFFromFromItimdomMultipleOfFastCost,
     solveTimingEquationSystem, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomOfNaiveLfp, timdomOfTwoFinger, timdomMultipleOfNaiveLfp, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, 
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast, nticdSlice,  nticdSliceNumberedViaCEdgesFast, ntscdSlice, nticdSliceFor, ntscdSliceViaCEdgesFast,
+    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast, tscdSliceViaTimDF, nticdSlice,  nticdSliceNumberedViaCEdgesFast, ntscdSlice, nticdSliceFor, ntscdSliceViaCEdgesFast,
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticd, wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
@@ -3207,7 +3208,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     timdom              = NTICD.timdomOfLfp              g
 
                     itimdom    = NTICD.itimdomMultipleOfTwoFinger g
-                    valid = NTICD.validTimdomFor g itimdom (Set.fromList $ nodes g)
+                    valid = NTICD.validTimdomFor g (NTICD.cost1F g) itimdom (Set.fromList $ nodes g)
                 in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
                      let fuel = valid ! x in
                            (∀) ys (\(y, steps) -> (∀) (timdomMultipleNaive ! y) (\(z, steps') ->
@@ -3268,7 +3269,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     timdom              = NTICD.timdomOfLfp              g
 
                     itimdom    = NTICD.itimdomMultipleOfTwoFinger g
-                    valid = NTICD.validTimdomFor g itimdom (Set.fromList $ nodes g)
+                    valid = NTICD.validTimdomFor g (NTICD.cost1F g) itimdom (Set.fromList $ nodes g)
 
                     entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdom ! n) (\(m,_) -> m ∈ cycleNodes) ]
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdom
@@ -3292,8 +3293,8 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     itimdommultiple = NTICD.itimdomMultipleOfTwoFinger g
-                    valid        = NTICD.validTimdomFor g itimdommultiple (Set.fromList $ nodes g)
-                    validEntries = NTICD.validTimdomFor g itimdommultiple entries
+                    valid        = NTICD.validTimdomFor g (NTICD.cost1F g) itimdommultiple (Set.fromList $ nodes g)
+                    validEntries = NTICD.validTimdomFor g (NTICD.cost1F g) itimdommultiple entries
 
                     entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
                     (_, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
@@ -3303,7 +3304,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     itimmultiple = NTICD.itimdomMultipleOfTwoFinger g
-                    valid    = NTICD.validTimdomFor g itimmultiple (Set.fromList $ nodes g)
+                    valid    = NTICD.validTimdomFor g (NTICD.cost1F g) itimmultiple (Set.fromList $ nodes g)
                     validlfp = NTICD.validTimdomLfp g 
                 in valid == validlfp,
     testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp via validTimdom one step"
@@ -3315,7 +3316,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     timdom              = NTICD.timdomOfLfp              g
 
                     itimdom    = NTICD.itimdomMultipleOfTwoFinger g
-                    valid = NTICD.validTimdomFor g itimdom (Set.fromList $ nodes g)
+                    valid = NTICD.validTimdomFor g (NTICD.cost1F g) itimdom (Set.fromList $ nodes g)
                 in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
                      let fuel = valid ! x in
                            (∀) ys (\(y, steps) ->
@@ -3365,6 +3366,20 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         tscdslicerfast    = NTICD.tscdSliceFast g
                         same = tscdslicer ms == tscdslicerfast ms
                     in  (if same then id  else traceShow (ms, g)) same,
+    testPropertySized 40 "tscdSlice  == tscdSliceViaTimDF for random slice-criteria of random size"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = generatedGraph
+                        n    = length $ nodes g
+                        tscdslicer        = NTICD.tscdSlice         g
+                        tscdslicertimdf   = NTICD.tscdSliceViaTimDF g
+                        seeds = zip (moreSeeds seed1 30) (moreSeeds seed2 30)
+                    in (∀) seeds (\(seed1, seed2) ->
+                         let ms
+                               | n == 0 = Set.empty
+                               | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                             same = tscdslicer ms == tscdslicertimdf ms
+                         in  (if same then id  else traceShow (ms, g)) same
+                       ),
     testProperty   "timDFFromFromItimdomMultipleOfFast == timDF"
                 $ \(ARBITRARY(g)) ->
                        NTICD.timDFFromFromItimdomMultipleOfFast  g ==
@@ -3389,10 +3404,28 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 $ \(ARBITRARY(g)) ->
                        NTICD.timDFFromUpLocalDefViaTimdoms g ==
                        NTICD.timDF                          g,
+    testProperty   "timDFCostFromUpLocalDefViaTimdoms == timDFCost"
+                $ \(ARBITRARY(g)) seed -> 
+                       let cost = costFor g seed
+                           costF n m = cost ! (n,m)
+                       in NTICD.timDFCostFromUpLocalDefViaTimdoms g costF ==
+                          NTICD.timDFCost                         g costF,
     testPropertySized 40   "tscdOfLfp  == timDF"
                 $ \(ARBITRARY(g)) ->
                        (Map.mapWithKey (\n s -> Set.delete n s) $ NTICD.tscdOfLfp g) ==
                        (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ NTICD.timDF    g)),
+    testPropertySized 40   "tscdOfNaiveCostLfp  == timDFFromFromItimdomMultipleOfFastCost"
+                $ \(ARBITRARY(g)) seed ->
+                       let cost = costFor g seed
+                           costF n m = cost ! (n,m)
+                       in (Map.mapWithKey (\n s -> Set.delete n s) $ NTICD.tscdOfNaiveCostfLfp g costF) ==
+                          (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ NTICD.timDFFromFromItimdomMultipleOfFastCost g costF)),
+    testPropertySized 40   "tscdOfNaiveCostLfp  == timDFCost"
+                $ \(ARBITRARY(g)) seed ->
+                       let cost = costFor g seed
+                           costF n m = cost ! (n,m)
+                       in (Map.mapWithKey (\n s -> Set.delete n s) $ NTICD.tscdOfNaiveCostfLfp g costF) ==
+                          (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ NTICD.timDFCost g costF)),
     testPropertySized 40 "stepsCL timdomOfLfp"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

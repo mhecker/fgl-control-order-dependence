@@ -79,7 +79,7 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
-    timingCorrection, tscdCostSlice, cost1,
+    timingCorrection, tscdCostSlice, cost1, cost1F,
     ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
     validTimdomFor,
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
@@ -332,7 +332,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger5", exampleTimingDepInterestingTwoFinger5)]
   ] ++
   [ testCase ("validTimdomFor entries > 0 for " ++ exampleName) $ 
-                let validEntries = NTICD.validTimdomFor g itimdommultiple entries
+                let validEntries = NTICD.validTimdomFor g (NTICD.cost1F g) itimdommultiple entries
 
                     itimdommultiple = NTICD.itimdomMultipleOfTwoFinger g
                     entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]

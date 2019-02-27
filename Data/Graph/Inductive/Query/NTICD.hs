@@ -2831,6 +2831,14 @@ tscdCostSlice graph cost =  combinedBackwardSlice graph tscd' w
         w     = Map.empty
 
 
+
+tscdSliceViaTimDF :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+tscdSliceViaTimDF graph msS = combinedBackwardSlice graph tscd' w msS
+  where ms = Set.toList msS
+        tscd' = timDFFromFromItimdomMultipleOfFast graph
+        w     = Map.empty
+
+
 tscdSliceFast :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 tscdSliceFast graph msS = combinedBackwardSlice graph tscd' w msS
   where ms = Set.toList msS
@@ -4735,9 +4743,16 @@ timdomOfLfp graph = tdomOfLfp graph fTimeDom
 timdomsOf graph = domsOf graph timdom
   where timdom = fmap (Set.map fst) $ timdomOfLfp graph
 
+timdomsCostOf graph costF = domsOf graph timdom
+  where timdom = fmap (Set.map fst) $ timdomOfNaiveCostLfp graph costF
+
 
 timDF graph = dfFor graph timdom
   where timdom = fmap (Set.map fst) $ timdomOfLfp graph
+
+timDFCost graph costF = dfFor graph timdom
+  where timdom = fmap (Set.map fst) $ timdomOfNaiveCostLfp graph costF
+
 
 anyDFLocalDef anydom graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
@@ -4750,6 +4765,11 @@ timDFLocalDef graph = anyDFLocalDef timdom graph
         onedom = onedomOf timdom
 
 
+timDFCostLocalDef graph costF = anyDFLocalDef timdom graph
+  where timdom = fmap (Set.map fst) $ timdomOfNaiveCostLfp graph costF
+        onedom = onedomOf timdom
+
+
 timDFLocalViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 timDFLocalViaTimdoms graph =
       Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
@@ -4758,6 +4778,17 @@ timDFLocalViaTimdoms graph =
                      )
                    | x <- nodes graph ]
   where timdoms = timdomsOf graph
+
+timDFCostLocalViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> (Node -> Node -> Integer) -> Map Node (Set Node)
+timDFCostLocalViaTimdoms graph costF =
+      Map.fromList [ (x, Set.fromList [ y | y <- pre graph x,
+                                            not $ x ∈ timdoms ! y
+                                      ]
+                     )
+                   | x <- nodes graph ]
+  where timdoms = timdomsCostOf graph costF
+
+
 
 timDFUpGivenXViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 timDFUpGivenXViaTimdoms graph =
@@ -4768,6 +4799,18 @@ timDFUpGivenXViaTimdoms graph =
                    | z <- nodes graph,  x <- Set.toList $ timdoms ! z]
   where timdoms = timdomsOf graph
         timdf   = timDF graph
+
+
+timDFCostUpGivenXViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> (Node -> Node -> Integer) -> Map (Node, Node) (Set Node)
+timDFCostUpGivenXViaTimdoms graph costF =
+      Map.fromList [ ((x,z), Set.fromList [ y | y <- Set.toList $ timdf ! z,
+                                                not $ x ∈ timdoms ! y
+                                      ]
+                     )
+                   | z <- nodes graph,  x <- Set.toList $ timdoms ! z]
+  where timdoms = timdomsCostOf graph costF
+        timdf   = timDFCost graph costF
+
 
 anyDFUpGivenXViaAnydomsDef :: forall gr a b. DynGraph gr => Map Node (Set Node) -> gr a b -> Map (Node, Node) (Set Node)
 anyDFUpGivenXViaAnydomsDef anydom graph =
@@ -4783,6 +4826,11 @@ anyDFUpGivenXViaAnydomsDef anydom graph =
 timDFUpGivenXViaTimdomsDef :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) (Set Node)
 timDFUpGivenXViaTimdomsDef graph = anyDFUpGivenXViaAnydomsDef timdom graph
   where timdom  = fmap (Set.map fst) $ timdomOfLfp graph
+
+timDFCostUpGivenXViaTimdomsDef :: forall gr a b. DynGraph gr => gr a b -> (Node -> Node -> Integer) -> Map (Node, Node) (Set Node)
+timDFCostUpGivenXViaTimdomsDef graph costF = anyDFUpGivenXViaAnydomsDef timdom graph
+  where timdom  = fmap (Set.map fst) $ timdomOfNaiveCostLfp graph costF
+
 
 
 anyDFFromUpLocalDefViaAnydoms :: forall gr a b. DynGraph gr => Map Node (Set Node) -> gr a b -> Map Node (Set Node)
@@ -4802,9 +4850,14 @@ timDFFromUpLocalDefViaTimdoms graph = anyDFFromUpLocalDefViaAnydoms timdom graph
   where timdom = fmap (Set.map fst) $ timdomOfLfp graph
 
 
-timdomsFromItimdomMultipleOfFor :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set (Node, Integer)) -> Map Node (Set Node)
-timdomsFromItimdomMultipleOfFor g itimdom =
-     require (itimdom == itimdomMultipleOfTwoFinger g) $
+timDFCostFromUpLocalDefViaTimdoms :: forall gr a b. DynGraph gr => gr a b -> (Node -> Node -> Integer) -> Map Node (Set Node)
+timDFCostFromUpLocalDefViaTimdoms graph costF = anyDFFromUpLocalDefViaAnydoms timdom graph
+  where timdom = fmap (Set.map fst) $ timdomOfNaiveCostLfp graph costF
+
+
+timdomsFromItimdomMultipleOfFor :: forall gr a b. DynGraph gr => gr a b -> (Node -> Node -> Integer) -> Map Node (Set (Node, Integer)) -> Map Node (Set Node)
+timdomsFromItimdomMultipleOfFor g cost itimdom =
+     require (itimdom == itimdomMultipleOfTwoFingerCost g cost) $
      assert ( Set.null $ Map.keysSet forOthers  ∩ Map.keysSet forEntries) $
      assert ( Set.null $ Map.keysSet forOthers  ∩ Map.keysSet forCycles) $
      assert ( Set.null $ Map.keysSet forEntries ∩ Map.keysSet forCycles) $
@@ -4812,7 +4865,7 @@ timdomsFromItimdomMultipleOfFor g itimdom =
    ⊔ forEntries
    ⊔ forCycles
   where itimdomFst = fmap (Set.map fst) itimdom 
-        valid = validTimdomFor g itimdom entries
+        valid = validTimdomFor g cost itimdom entries
 
         entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdom ! n) (\(m,_) -> m ∈ cycleNodes) ]
 
@@ -4825,8 +4878,9 @@ timdomsFromItimdomMultipleOfFor g itimdom =
         forCycles  = Map.fromSet (\n -> let cycle = cycleOf ! n in if cycle == Set.fromList [n] then Set.empty  else cycle) $ cycleNodes
 
 timdomsFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-timdomsFromItimdomMultipleOf g = timdomsFromItimdomMultipleOfFor g itimdom
+timdomsFromItimdomMultipleOf g = timdomsFromItimdomMultipleOfFor g costF itimdom
   where itimdom    = itimdomMultipleOfTwoFinger g
+        costF      = cost1F g
 
 timDFFromFromItimdomMultipleOf :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 timDFFromFromItimdomMultipleOf graph =
@@ -4907,7 +4961,7 @@ timDFFromFromItimdomMultipleOfFastComplicated graph =
         itimdomMultiple = itimdomMultipleOfTwoFinger graph
         
         -- itimdomFst = fmap (Set.map fst) itimdom 
-        valid = validTimdomFor graph itimdomMultiple entries
+        valid = validTimdomFor graph (cost1F graph) itimdomMultiple entries
 
         entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
 
@@ -4916,6 +4970,46 @@ timDFFromFromItimdomMultipleOfFastComplicated graph =
 
 
 
+
+timDFFromFromItimdomMultipleOfFastCost :: forall gr a b. DynGraph gr => gr a b -> (Node -> Node -> Integer) -> Map Node (Set Node)
+timDFFromFromItimdomMultipleOfFastCost graph cost =
+    fmap (Map.keysSet) $ f2 zs0 df0
+  where df0 = Map.fromList [ (x, Map.fromList [ (y, True) | y <- pre graph x,                not $ x ∈ timdoms ! y]) | x <- nodes graph]
+            ⊔ Map.fromList [ (x, Map.fromList [ (y, True) | y <- Set.toList $ entriesOf ! x, not $ x ∈ timdoms ! y]) | (x, cycle) <- Map.assocs cycleOf, Set.size cycle > 1 ]
+        zs0 = Map.fromList [ (prio ! x, x) | x <- Map.keys $ Map.filter (not . Map.null) df0 ]
+
+        f2 :: Map Integer Node -> Map Node (Map Node Bool) ->  Map Node (Map Node Bool)
+        f2 zs df
+           | Map.null zs   = df
+           | otherwise     = f2 zs' df'
+          where ((_,z), zs0) = Map.deleteFindMin zs
+                dfZ = df ! z
+                transitive = not $ z ∈ entries
+                xs = [ (x, dfx, dfx') | x <- Set.toList $ timdoms ! z,
+                                        let dfx  = df ! x,
+                                        let dfx' = foldr (\y dfx -> Map.insertWith (∨) y transitive dfx)
+                                                   dfx
+                                                   [ y | (y, True) <- Map.assocs dfZ, not $ x ∈ timdoms ! y ]
+                     ]
+                df'     = Map.fromList [ (x, dfx')     | (x,   _, dfx') <- xs              ] `Map.union` df
+                zs'     = Map.fromList [ (prio ! x, x) | (x, dfx, dfx') <- xs, dfx /= dfx' ] `Map.union` zs0
+
+
+        itimdomMultiple = itimdomMultipleOfTwoFingerCost graph cost
+        timdoms  = timdomsFromItimdomMultipleOfFor graph cost itimdomMultiple
+        
+        entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
+        entriesOf = Map.fromList [ (m, entries) | cycle <- cycles,
+                                                  let entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycle )],
+                                                  m <- Set.toList cycle
+                    ]
+        (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
+        cycleNodes = (∐) cycles
+
+        prio = Map.fromList $ zip sorting [0..]
+          where sorting = reverse $ rdfs (Set.toList cycleNodes ++ [ n | (n, ms) <- Map.assocs itimdomMultiple, Set.null ms]) (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
+             -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
+             -- sorting = nodes graph
 
 timDFFromFromItimdomMultipleOfFast :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 timDFFromFromItimdomMultipleOfFast graph =
@@ -4941,7 +5035,9 @@ timDFFromFromItimdomMultipleOfFast graph =
 
 
         itimdomMultiple = itimdomMultipleOfTwoFinger graph
-        timdoms  = timdomsFromItimdomMultipleOfFor graph itimdomMultiple
+        timdoms  = timdomsFromItimdomMultipleOfFor graph costF itimdomMultiple
+          where cost  = cost1 graph
+                costF n m = cost ! (n,m)
         
         entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
         (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple
@@ -4952,8 +5048,10 @@ timDFFromFromItimdomMultipleOfFast graph =
              -- sorting = topsort (fromSuccMapWithEdgeAnnotation itimdomMultiple :: gr () Integer)
              -- sorting = nodes graph
 
-
 cost1 g =  Map.fromList [ ((n,m), 1) | (n,m) <- edges g ]
+cost1F g = costF
+  where cost = cost1 g
+        costF n m = cost ! (n,m)
 
 timingLeaksTransformation :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) Integer -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
 timingLeaksTransformation g cost0 ms  = f notmissing itimdomMultiple0 cost0
@@ -5123,7 +5221,7 @@ timdomOfTwoFinger g = timdomFrom
                                                                        (not $ x' ∈ entries) ∨ (steps - stepsX' <= (valid ! x'))
                                                                      )
                                          ]) | n <- nodes g ]
-        valid = validTimdomFor g itimdommultiple entries
+        valid = validTimdomFor g (cost1F g) itimdommultiple entries
         entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
           where (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
                 cycleNodes = (∐) cycles
@@ -5155,9 +5253,9 @@ validTimdomLfp g = fmap (\(MyInteger n) -> n) $ valid
                                        | (n,fuel) <- Map.assocs valid]
 
 
-validTimdomFor :: Graph gr => gr a b -> Map Node (Set.Set (Node, Integer)) -> Set Node -> Map Node Integer
-validTimdomFor g itimdommultiple relevantNodes =
-     require (itimdommultiple == itimdomMultipleOfTwoFinger g) $
+validTimdomFor :: Graph gr => gr a b -> (Node -> Node -> Integer) -> Map Node (Set.Set (Node, Integer)) -> Set Node -> Map Node Integer
+validTimdomFor g cost itimdommultiple relevantNodes =
+     require (itimdommultiple == itimdomMultipleOfTwoFingerCost g cost) $
      validFast
   where validFast  = fmap (toInteger.snd) $ fix (Map.fromSet (\n -> (n,0)) relevantNodes ) f
           where fix x f = let x' = f x in if x == x' then x else fix x' f
@@ -5170,7 +5268,7 @@ validTimdomFor g itimdommultiple relevantNodes =
                                                                       (not $ List.null $ minimalPath itimdommultiple x m')
                                                                     ∧ (let [path'] = minimalPath itimdommultiple x m'
                                                                            steps' =  sum $ fmap snd path'
-                                                                           in   1 + steps' == steps + fuel
+                                                                           in   (cost n x) + steps' == steps + fuel
                                                                               ∧ (∀) (scanl (\(x, steps0) (x',steps) -> (x', steps0 + steps)) (x,0)  path') (\(x',stepsX') ->
                                                                                   (not $ x' ∈ relevantNodes ) ∨ (steps' - stepsX' <= (snd $ valid ! x'))
                                                                                 )

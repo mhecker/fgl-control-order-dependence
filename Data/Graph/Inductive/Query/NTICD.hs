@@ -4975,7 +4975,7 @@ timDFFromFromItimdomMultipleOfFastCost :: forall gr a b. DynGraph gr => gr a b -
 timDFFromFromItimdomMultipleOfFastCost graph cost =
     fmap (Map.keysSet) $ f2 zs0 df0
   where df0 = Map.fromList [ (x, Map.fromList [ (y, True) | y <- pre graph x,                not $ x ∈ timdoms ! y]) | x <- nodes graph]
-            ⊔ Map.fromList [ (x, Map.fromList [ (y, True) | y <- Set.toList $ entriesOf ! x, not $ x ∈ timdoms ! y]) | (x, cycle) <- Map.assocs cycleOf, Set.size cycle > 1 ]
+            ⊔ Map.fromList [ (x, Map.fromList [ (y, False) | y <- Set.toList $ entriesOf ! x, not $ x ∈ timdoms ! y, (∃) (suc graph y) (\y' -> y' ∈ cycle  ∨  x ∈ timdomFromOutside y')]) | (x, cycle) <- Map.assocs cycleOf, Set.size cycle > 1 ]
         zs0 = Map.fromList [ (prio ! x, x) | x <- Map.keys $ Map.filter (not . Map.null) df0 ]
 
         f2 :: Map Integer Node -> Map Node (Map Node Bool) ->  Map Node (Map Node Bool)
@@ -4997,7 +4997,10 @@ timDFFromFromItimdomMultipleOfFastCost graph cost =
 
         itimdomMultiple = itimdomMultipleOfTwoFingerCost graph cost
         timdoms  = timdomsFromItimdomMultipleOfFor graph cost itimdomMultiple
-        
+        timdomFromOutside n = (∐) [ timdoms ! n' | n' <- Set.toList outside  ]
+          where outside = reachableFrom itimdomMultipleNoCrossings (Set.singleton n)
+        itimdomMultipleNoCrossings = fmap (∖ cycleNodes) $ fmap (Set.map fst) $ itimdomMultiple
+
         entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
         entriesOf = Map.fromList [ (m, entries) | cycle <- cycles,
                                                   let entries = Set.fromList [ n | n <- nodes graph, not $ n ∈ cycleNodes, (∃) (itimdomMultiple ! n) (\(m,_) -> m ∈ cycle )],

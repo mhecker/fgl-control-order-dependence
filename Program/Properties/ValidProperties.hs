@@ -3420,6 +3420,13 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                            costF n m = cost ! (n,m)
                        in (Map.mapWithKey (\n s -> Set.delete n s) $ NTICD.tscdOfNaiveCostfLfp g costF) ==
                           (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ NTICD.timDFFromFromItimdomMultipleOfFastCost g costF)),
+    testProperty   "tscdOfNaiveCostLfp  == timDFFromFromItimdomMultipleOfFastCost for fixed examples"
+                $ \seed -> (∀) interestingTimingDep (\(exampleName, example) ->
+                       let g = example :: Gr () ()
+                           cost = costFor g seed
+                           costF n m = cost ! (n,m)
+                       in (Map.mapWithKey (\n s -> Set.delete n s) $ NTICD.tscdOfNaiveCostfLfp g costF) ==
+                          (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ NTICD.timDFFromFromItimdomMultipleOfFastCost g costF))),
     testPropertySized 40   "tscdOfNaiveCostLfp  == timDFCost"
                 $ \(ARBITRARY(g)) seed ->
                        let cost = costFor g seed

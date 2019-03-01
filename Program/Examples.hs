@@ -3189,8 +3189,20 @@ exampleTimingDepCorrectionInteresting18' :: DynGraph gr => gr () ()
 exampleTimingDepCorrectionInteresting18' = mkGraph [(-9,()),(-2,()),(-1,()),(0,()),(1,())] [(-9,-1,()),(-9,0,()),(-2,-9,()),(-2,0,()),(-1,0,()),(0,-1,()),(1,-9,()),(1,-2,()),(1,-1,()),(1,0,())]
   where cost = Map.fromList [((-9,-1),1),((-9,0),2),((-2,-9),1),((-2,0),3),((-1,0),1),((0,-1),1),((1,-9),1),((1,-2),1),((1,-1),1),((1,0),1)]
 
+
+exampleTimingDepCorrectionInteresting18''' :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting18''' = mkGraph [(-9,()),(-2,()),(-1,()),(0,())] [(-9,-1,()),(-9,0,()),(-2,-9,()),(-2,0,()),(-1,0,()),(0,-1,())]
+  where cost = Map.fromList [((-9,-1),1),((-9,0),2),((-2,-9),1),((-2,0),3),((-1,0),1),((0,-1),1)]
+
+
 exampleTimingDepCorrectionInteresting18'' :: DynGraph gr => gr () ()
 exampleTimingDepCorrectionInteresting18'' = mkGraph [(-9,()),(-99,()),(-2,()),(-22,()),(-222,()),(-1,()),(0,()),(1,())] [(-9,-99,()),(-99,0,()),(-9,-1,()),(-2,-22,()),(-22,-222,()), (-222,0,()),(-2,-9,()),(-1,0,()),(0,-1,()),(1,-9,()),(1,-2,()),(1,-1,()),(1,0,())]
+
+exampleTimingDepCorrectionInteresting18'''' :: DynGraph gr => gr () ()
+exampleTimingDepCorrectionInteresting18'''' = mkGraph [(-9,()),(-99,()),(-2,()),(-22,()),(-222,()),(-1,()),(0,())] [(-9,-99,()),(-99,0,()),(-9,-1,()),(-2,-22,()),(-22,-222,()), (-222,0,()),(-2,-9,()),(-1,0,()),(0,-1,())]
+
+
+
 
 exampleTimingDepCorrectionInteresting19 :: DynGraph gr => gr () ()
 exampleTimingDepCorrectionInteresting19 = mkGraph [(-22,()),(-21,()),(-18,()),(-16,()),(-5,()),(1,()),(16,()),(21,())] [(-22,-16,()),(-21,-22,()),(-21,16,()),(-18,1,()),(-18,16,()),(-16,-16,()),(-5,-16,()),(1,16,()),(16,-16,()),(16,-5,()),(21,-22,()),(21,-21,()),(21,-18,()),(21,-16,()),(21,-5,()),(21,1,()),(21,16,())]
@@ -3506,6 +3518,10 @@ interestingTimingDep = [
               $(withName 'exampleTimingDepCorrectionInteresting16),
               $(withName 'exampleTimingDepCorrectionInteresting17),
               $(withName 'exampleTimingDepCorrectionInteresting18),
+              $(withName 'exampleTimingDepCorrectionInteresting18'),
+              $(withName 'exampleTimingDepCorrectionInteresting18''),
+              $(withName 'exampleTimingDepCorrectionInteresting18'''),
+              $(withName 'exampleTimingDepCorrectionInteresting18''''),
               $(withName 'exampleTimingDepCorrectionInteresting19),
               $(withName 'exampleTimingDepCorrectionInteresting20),
               $(withName 'exampleTimingDepInterestingTwoFinger),

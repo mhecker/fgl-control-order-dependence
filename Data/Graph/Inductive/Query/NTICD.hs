@@ -4974,9 +4974,16 @@ timDFFromFromItimdomMultipleOfFastComplicated graph =
 timDFFromFromItimdomMultipleOfFastCost :: forall gr a b. DynGraph gr => gr a b -> (Node -> Node -> Integer) -> Map Node (Set Node)
 timDFFromFromItimdomMultipleOfFastCost graph cost =
     fmap (Map.keysSet) $ f2 zs0 df0
-  where df0 = Map.fromList [ (x, Map.fromList [ (y, True) | y <- pre graph x,                not $ x ∈ timdoms ! y]) | x <- nodes graph]
-            ⊔ Map.fromList [ (x, Map.fromList [ (y, False) | y <- Set.toList $ entriesOf ! x, not $ x ∈ timdoms ! y, (∃) (suc graph y) (\y' -> y' ∈ cycle  ∨  x ∈ timdomFromOutside y')]) | (x, cycle) <- Map.assocs cycleOf, Set.size cycle > 1 ]
-        zs0 = Map.fromList [ (prio ! x, x) | x <- Map.keys $ Map.filter (not . Map.null) df0 ]
+  where df0 = df01 ⊔ df02
+        df01 = Map.fromList [ (x, Map.fromList [ (y, True) | y <- pre graph x,                not $ x ∈ timdoms ! y]) | x <- nodes graph]
+        df02 = (∐) [ Map.fromList [ (x, Map.fromList [(y, False) ]) ]
+                   | cycle <- cycles, Set.size cycle > 1,
+                     let entries = Set.toList $ entriesOf ! (Set.findMin cycle),
+                     y <- entries,
+                     x <- Set.toList $ cycle ∖ (timdoms ! y),
+                     (∃) (suc graph y) (\y' -> y' ∈ cycle  ∨  x ∈ timdomFromOutside y')]
+            -- ⊔ Map.fromList [ (x, Map.fromList [ (y, False) | y <- Set.toList $ entriesOf ! x, not $ x ∈ timdoms ! y, (∃) (suc graph y) (\y' -> y' ∈ cycle  ∨  x ∈ timdomFromOutside y')]) | (x, cycle) <- Map.assocs cycleOf, Set.size cycle > 1 ]
+        zs0 = Map.fromList [ (prio ! x, x) | x <- Map.keys $ Map.filter (not . Map.null) df01 ]
 
         f2 :: Map Integer Node -> Map Node (Map Node Bool) ->  Map Node (Map Node Bool)
         f2 zs df

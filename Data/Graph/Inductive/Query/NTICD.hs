@@ -49,7 +49,7 @@ import qualified Data.Foldable as Foldable
 import IRLSOD
 import Program
 
-import Util(the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath, reachableUpToLength, distancesUpToLength, minimalDistancesForReachable, inCycle)
+import Util(minimalPathsUpToLength, the, invert', invert'', invert''', foldM1, reachableFrom, reachableFromM, isReachableFromM, treeDfs, toSet, fromSet, reachableFromTree, fromIdom, fromIdomM, roots, dfsTree, restrict, isReachableFromTreeM, without, findCyclesM, treeLevel, isReachableBeforeFromTreeM, minimalPath, reachableUpToLength, distancesUpToLength, minimalDistancesForReachable, inCycle, pathsUpToLength)
 import Unicode
 
 
@@ -4721,6 +4721,27 @@ tdomOfLfp graph f = fmap (\m -> Set.fromList [ (n, steps) | (n, ss) <- Map.assoc
         toNextCond = toNextCondNode graph
         trncl = trc graph
 
+tdomOfGfp :: DynGraph gr => gr a b -> TimeDomFunctionalGen gr a b -> Map Node (Set (Node, Integer))
+tdomOfGfp graph f = fmap (\m -> Set.fromList [ (n, steps) | (n, ss) <- Map.assocs m, steps <- Set.toList ss ]) $
+        (𝝂) init (f graph condNodes reachable nextCond toNextCond)
+  where init = Map.fromList [ (y, Map.empty) | y <- nodes graph]
+             ⊔ Map.fromList [ (y, Map.fromList [ (z, allStepsNr) | z <- reachable y ]) | y <- nodes graph]
+             -- ⊔ Map.fromList [ (y, (∐) [ Map.fromList [ (z, Set.fromList [ steps ]) ]  | (z, steps) <- minimalDistancesForReachable graphMap y]) | y <- nodes graph]
+             -- ⊔ Map.fromList [ (y, (∐) [ Map.fromList [ (z, Set.fromList [ steps ]) ]  | (z, steps) <- distancesUpToLength graphMap nr y]) | y <- nodes graph]
+             -- ⊔ Map.fromList [ (y, Map.fromList [ (z, Set.fromList [ steps | path <- pathsUpToLength graphMap nr y z, let steps = toInteger $ length path]) | z <- reachable y ]) | y <- nodes graph]
+             -- ⊔ Map.fromList [ (y, Map.fromList [ (z, Set.fromList [ steps | path <- minimalPathsUpToLength graphMap nr y z, let steps = toInteger $ length path]) | z <- reachable y ]) | y <- nodes graph]
+        condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
+        reachable x = suc trncl x
+        nextCond = nextCondNode graph
+        toNextCond = toNextCondNode graph
+        trncl = trc graph
+
+        graphMap = Map.fromList [ (n, Set.fromList [(m,1) | m <- suc graph n  ]) | n <- nodes graph ]
+
+        nr = toInteger $ 2 * noNodes graph
+        allStepsNr = Set.fromList [0..nr]
+
+
 fTimeDom :: DynGraph gr => TimeDomFunctionalGen gr a b
 fTimeDom graph _ _ nextCond toNextCond = f 
   where f timeDomOf = fmap (fmap (Set.singleton . Set.findMin)) $ 
@@ -5314,6 +5335,7 @@ fTimeDomNaive graph _ _ _ _ = f
                                      | y <- nodes graph, suc graph y /= []
                                    ]
 timdomOfNaiveLfp graph = tdomOfLfp graph fTimeDomNaive
+timdomOfNaiveGfp graph = tdomOfGfp graph fTimeDomNaive
 
 fTimeDomNaiveCost :: DynGraph gr => gr a b -> (Node -> Node -> Integer) -> TimeDomFunctional
 fTimeDomNaiveCost graph cost = f
@@ -5351,7 +5373,7 @@ timdomOfPrevNaiveLfp graph =  tdomOfLfp graph fTimeDomPrevNaive
 fTimeDomMultipleNaive :: DynGraph gr => TimeDomFunctionalGen gr a b
 fTimeDomMultipleNaive graph _ _ _ _ = f 
   where nr = toInteger $ 2 * noNodes graph
-        f timeDomOf = assert (timeDomOf' ⊒ timeDomOf) $
+        f timeDomOf =
                       timeDomOf'
           where timeDomOf' = 
                       Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
@@ -5364,6 +5386,7 @@ fTimeDomMultipleNaive graph _ _ _ _ = f
                                      | y <- nodes graph, suc graph y /= []
                                    ]
 timdomMultipleOfNaiveLfp graph =  tdomOfLfp graph fTimeDomMultipleNaive
+timdomMultipleOfNaiveGfp graph =  tdomOfGfp graph fTimeDomMultipleNaive
 
 fTimeDomMultipleNaiveCost :: DynGraph gr => gr a b -> (Node -> Node -> Integer) -> TimeDomFunctional
 fTimeDomMultipleNaiveCost graph cost = f

@@ -265,6 +265,22 @@ pathsUpToLength m n x y = find 0 x
                               path <- find (stepsX+steps) z
                               return $ (z,steps) : path
 
+minimalPathsUpToLength :: Ord a => Map a (Set (a,Integer)) -> Integer -> a -> a -> [[(a,Integer)]]
+minimalPathsUpToLength m n x y = find 0 x
+  where find stepsX  x
+            | x == y ∧ stepsX == n = [[]]
+            | x == y ∧ stepsX  < n = [[]]
+            | x /= y ∧ stepsX == n = []
+            |          stepsX  > n = []
+            | otherwise            = found ++  morePaths
+          where zs = m ! x
+                found = if x == y then [[]] else []
+                morePaths = do
+                              (z,steps) <- Set.toList zs
+                              path <- find (stepsX+steps) z
+                              return $ (z,steps) : path
+
+
 
 reachableUpToLength :: Ord a => Map a (Set (a,Integer)) -> a -> Integer -> Set a
 reachableUpToLength m x fuel = find 0 x

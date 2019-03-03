@@ -3565,7 +3565,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     in -- traceShow (length $ nodes g, Set.size s, Set.size ms, Set.size condNodes, Set.size $ (condNodes ∩ (Set.fromList $ rdfs (Set.toList ms) g)) ∖ s) $
                        (if not $ differentobservation then id else traceShow (ms, differentobservation)) $
                        not differentobservation,
-    testPropertySized 25 "timingSolvedF3dependence  is sound wrt. timed traces"
+    testPropertySized 20 "timingSolvedF3dependence  is sound wrt. timed traces"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g

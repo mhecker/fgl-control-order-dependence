@@ -201,7 +201,7 @@ lcaTimdomOfTwoFingerFast idom (n, sn, ns) (m, sm, ms) =
 
 
 
-lcaTimdomOfTwoFingerFastCost idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) = 
+lcaTimdomOfTwoFingerFastCost' idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) = 
               id
             $ traceShow cost
             $ assert (ns == Map.fromList [(n, Set.fromList [sn])])
@@ -240,6 +240,60 @@ lcaTimdomOfTwoFingerFastCost idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) =
                                                  else
                                                    Just (m, sm , Map.fromList [(m, Set.fromList [sm ])], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm  - sm') ns0) cost) else
                                              if m ∈ Map.keysSet ms then Nothing else lcaDown'' m sm (Map.insertWith (∪) m (Set.fromList [sm]) ms)
+
+lcaTimdomOfTwoFingerFastCost idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) = 
+              id
+            -- $ traceShow cost
+            $ assert (ns == Map.fromList [(n, Set.fromList [sn])])
+            $ assert (ms == Map.fromList [(m, Set.fromList [sm])])
+            $ assert (result'  == lcaTimdomOfTwoFingerFastCost' idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, undefined))
+            $ (if result'' == result''' then id else traceShow ((n, sn), (m, sm), result, result'', result''', idom))
+            $ assert (result'' == result''') 
+            $ result'
+          where -- traceShow _ x = x
+                result = lcaDown' (n, sn, Map.fromList [(n, sn)], ns0) (m, sm, Map.fromList [(m, sm)], ms0)
+                result' = case result of
+                    Nothing -> Nothing
+                    Just (a, sa, as, nodes, cost) -> Just (a, sa, fmap Set.singleton as, nodes, cost)
+                (result'', result''') = case result of
+                    Nothing -> (Nothing, Nothing)
+                    Just (a, sa, as, nodes, cost') ->
+                      let sn' = sn + cost' ! n0 - cost ! n0
+                            where n0 = Set.findMin ns0
+                          sm' = sm + cost' ! m0 - cost ! m0
+                            where m0 = Set.findMin ms0
+                      in (Just (a, sa, fmap Set.singleton as), lcaTimdomOfTwoFingerFast idom (n, sn', Map.fromList [(n, Set.fromList [sn'])]) (m, sm', Map.fromList [(m, Set.fromList [sm'])]))
+                lcaDown' :: (Node, Integer, Map Node Integer, Set Node) -> (Node, Integer, Map Node Integer, Set Node) -> Maybe (Node, Integer, Map Node Integer, Set Node, Map Node Integer)
+                lcaDown' pin@(n, sn, ns, ns0) pim@(m, sm, ms, ms0)
+                    | m ∈ Map.keysSet ns ∧ (      sm == ns ! m) = --traceShow ("A", (n,sn,ns), (m,sm,ms)) $
+                                                           Just (m, sm, Map.fromList [(m, sm)], ns0 ∪ ms0, cost)
+                    | m ∈ Map.keysSet ns ∧ (not $ sm == ns ! m) = -- traceShow ("B", (n,sn,ns), (m,sm,ms)) $
+                                  assert (sm == ms ! m) $
+                                  let sm' = ns ! m in
+                                  if (sm < sm') then
+                                    Just (m, sm', Map.fromList [(m, sm')], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm' - sm ) ms0) cost)
+                                  else
+                                    Just (m, sm , Map.fromList [(m, sm )], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm  - sm') ns0) cost)
+                    | otherwise = -- traceShow ((n,ns), (m,ms)) $
+                                  assert (not $ n ∈ Map.keysSet ms) $ 
+                                  caseN
+                  where caseN = case idom ! n of
+                                 Nothing ->                                    lcaDownLin ms ns ms0 ns0 sm m
+                                 Just (n', sn') -> if n' ∈ Map.keysSet ns then lcaDownLin ms ns ms0 ns0 sm m else lcaDown' (m, sm, ms, ms0) (n', sn + sn',Map.insert n' (sn+sn') ns, ns0)
+                lcaDownLin ms ns ms0 ns0 sm m = assert (not $ m ∈ Map.keysSet ns) $ lcaDown'' m sm ms
+                  where lcaDown'' m s ms = case idom ! m of
+                                        Nothing -> Nothing
+                                        Just (m', s') ->
+                                          let m = m'
+                                              sm = s + s'
+                                          in if m ∈ Map.keysSet ns  ∧ (      sm == ns ! m) then Just (m, sm, Map.fromList [(m, sm)], ns0 ∪ ms0, cost) else
+                                             if m ∈ Map.keysSet ns  ∧ (not $ sm == ns ! m) then 
+                                                 let sm' = ns ! m in
+                                                 if (sm < sm') then
+                                                   Just (m, sm', Map.fromList [(m, sm')], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm' - sm ) ms0) cost)
+                                                 else
+                                                   Just (m, sm , Map.fromList [(m, sm )], ns0 ∪ ms0, Map.unionWith (+) (Map.fromSet (const $ sm  - sm') ns0) cost) else
+                                             if m ∈ Map.keysSet ms then Nothing else lcaDown'' m sm (Map.insert m sm ms)
 
 -- lcaTimdomOfTwoFingerFastCost idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) =
 --               id

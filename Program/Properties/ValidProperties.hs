@@ -3093,6 +3093,27 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdmydodslicer ms
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
+    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in CFG with empty myDod"
+    $ \(REDUCIBLE(generatedGraph)) seed1 seed2 seed3 ->
+                let g = generatedGraph
+                    mydod = NTICD.myDodFastPDom   g
+                    
+                    (cost, _) = NTICD.timingCorrection g cost0
+                      where cost0 = costFor g seed3
+                    costF n m = cost ! (n,m)
+                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
+
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    s  = tscdcostslicer   ms
+                    s' = ntscdmydodslicer ms
+                in ((∀) (Map.assocs mydod) (\(_,ns) -> Set.null ns)) ==>
+                   let ok = s == s'
+                   in if ok then ok else traceShow (g,ms,s',s, mydod) ok,
     testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in CFG with unique exit node, but fixed examples"
     $ \seed1 seed2 seed3 -> (∀) interestingTimingDep (\(exampleName, example) ->
                 let (_, g) = withUniqueEndNode () () example

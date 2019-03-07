@@ -3173,12 +3173,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     (cost'', _) = NTICD.timingCorrection          g'' cost0
                     costF'' n m = cost'' ! (n,m)
                     tscdcostslicer''  = NTICD.tscdCostSlice           g'' costF''
+                    ntscdslicer = NTICD.ntscdSlice                g''
     
                     s    = tscdcostslicer    ms
                     s'   = ntscdmydodslicer  ms
                     s''  = tscdcostslicer''  ms
-                in let ok = (s == s') ∧ (s == s'') -- NOT in general: ((Map.keysSet cost ⊇ Map.keysSet cost'') ∧ (∀) (Map.assocs cost'') (\((n,m),k) -> cost ! (n,m) <= k))
-                   in if ok then ok else traceShow (g,ms,s,s', s'') $ traceShow ("cost:",cost, cost'') $ ok,
+                    s''' = ntscdslicer       ms
+                in let ok = (s == s') ∧ (s == s'') ∧ (s == s''') ∧ ((Map.keysSet cost ⊇ Map.keysSet cost'') ∧ (∀) (Map.assocs cost'') (\((n,m),k) -> cost ! (n,m) <= k))
+                   in if ok then ok else traceShow (g,ms,cost0, s,s', s'') $ traceShow ("cost:",cost, cost'') $ ok,
     testProperty "timingCorrection itimdomMultiple"
     $ \(ARBITRARY(generatedGraph)) seed3 ->
                 let g = generatedGraph

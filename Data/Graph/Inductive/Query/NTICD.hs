@@ -5085,12 +5085,16 @@ cost1F g = costF
         costF n m = cost ! (n,m)
 
 timingLeaksTransformation :: forall gr a b. DynGraph gr => gr a b -> Map (Node, Node) Integer -> Set Node -> (Map (Node, Node) Integer, Map Node (Set (Node, Integer)))
-timingLeaksTransformation g cost0 ms  = f notmissing itimdomMultiple0 cost0
-  where notmissing = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
+timingLeaksTransformation g0 cost0 ms  = f notmissing itimdomMultiple0 cost0
+  where g = foldr (flip delSuccessorEdges) g0 ms
+        notmissing = condNodes ∩ Set.fromList [ n | (n,ms) <- Map.assocs imdom, not $ Set.null ms ] ∩ ns
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
                 imdom = imdomOfTwoFinger6 g
 
-                ns = assert (nsSimple == nsLimitedToTscdFrontiers) $ nsSimple
+                ns = assert (s' == ntscdMyDodSliceViaNtscd g0        ms) $
+                     assert (s0 == tscdCostSlice           g0 cost0F ms) $
+                     assert (nsSimple == nsLimitedToTscdFrontiers) $
+                     nsSimple
                   where nsSimple = s0 ∖ s'
                         nsLimitedToTscdFrontiers = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
                           where tscd = tscdOfNaiveCostfLfp g cost0F
@@ -5118,21 +5122,7 @@ timingLeaksTransformation g cost0 ms  = f notmissing itimdomMultiple0 cost0
                 lca = lcaTimdomOfTwoFingerFastCost itimdomM
                   where itimdomM = fmap (fromSet) itimdomMultiple
 
-                (m, sm, nodeCost) = let (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple in assert (cycle == Map.lookup mm cycleOf) $
-                                    case cycle of
-                        Nothing -> (mm, smm, nnodeCost)
-                        Just cycle -> case Set.toList $ cycle ∩ s' of
-                          []    -> (mm, smm, nnodeCost)
-                          ms    -> let succs = nub $ suc g n
-                                       nodeCost0 = Map.fromList [ (x, 0) | x <- succs ]
-                                       itimdomM = fmap fromSet $  Map.fromSet (\m -> Set.empty) (Set.fromList ms) `Map.union` itimdomMultiple
-                                       lca = lcaTimdomOfTwoFingerFastCost itimdomM
-                                       mz' =  foldM1 lca [ (x, cost ! (n,x), Map.fromList [(x, Set.fromList [cost ! (n,x)])], Set.fromList [x], nodeCost0) | x <- succs]
-                                       Just (m, sm, _, _, nodeCost) = mz'
-                                   in (m, sm, nodeCost)
-                  where Just (mm, smm, _, _, nnodeCost) = mz
-                        cycle = inCycle itimdomM mm
-                          where itimdomM = fmap fromSet $ fmap (Set.map fst) $ itimdomMultiple 
+                Just (m, sm, _, _, nodeCost) = mz
 
                 succReach = mz /= Nothing
                 influenced = let imdomRev  = (invert'' $ fmap (Set.map fst) itimdomMultiple) in

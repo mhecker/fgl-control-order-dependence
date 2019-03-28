@@ -10,6 +10,8 @@ import Data.Ord (comparing)
 import Data.Maybe(fromJust)
 import Control.Monad (liftM, foldM, forM, forM_, liftM2)
 
+import System.Random (mkStdGen, randoms)
+
 import Control.Monad.ST
 import Data.STRef
 
@@ -2029,6 +2031,43 @@ isinkdomOfTwoFinger8Down graph sinkNodes sinks nonSinkCondNodes = twoFingerDown
                 influencedSlow = Map.fromList [ (n, succ) | (n, succ) <- Map.assocs nonSinkCondNodes, (∃) succ (\y -> reachableFromSeen imdom y x Set.empty) ]
 
 
+isinkdomOfTwoFinger8DownRandomTraversalOrder :: forall gr a b. (DynGraph gr) =>
+     gr a b
+  -> Set Node
+  -> [[Node]]
+  -> Map Node [Node]
+  -> Map Node [Node]
+  -> Map Node (Maybe Node)
+  -> Map Node (Maybe Node)
+isinkdomOfTwoFinger8DownRandomTraversalOrder graph sinkNodes sinks nonSinkCondNodes = twoFingerDown rs
+  where sinkNodesToCanonical = Map.fromList [ (s, s1) | sink <- sinks, let (s1:_) = sink, s <- sink ]
+        prevCondsImmediate = prevCondImmediateNodes graph
+        rand = mkStdGen 42
+        rs = randoms rand
+        twoFingerDown rs worklist imdom
+            | Map.null worklist   = imdom
+            | otherwise           = assert (influenced == influencedSlow) $ 
+                                    assert ((imdom ! x == Nothing) → (zs == Nothing)) $
+                                    if (not $ changed) then twoFingerDown rs'                         worklist'                                   imdom
+                                    else                    twoFingerDown rs' (influenced `Map.union` worklist')  (Map.insert x zs                imdom)
+          where (x, succs) = (Map.assocs $ worklist) !! ((abs r) `mod` n)
+                  where n = Map.size worklist
+                worklist' = Map.delete x worklist
+                (r:rs') = rs
+                mz = require (succs == suc graph x) $
+                     foldM1 (lca imdom) succs
+                zs = case mz of
+                       Nothing -> Nothing
+                       Just z  -> assert (z /= x) $
+                                  case Map.lookup z sinkNodesToCanonical of
+                                    Just s1 -> Just s1
+                                    Nothing -> Just z
+                changed = imdom ! x /= zs
+                influenced = let imdomRev = invert''' $ imdom
+                                 preds = reachableFrom imdomRev (Set.fromList [x])
+                             in Map.fromList $ [ (n, succ) | n <- foldMap prevCondsImmediate preds, Just succ <- [Map.lookup n nonSinkCondNodes]]
+                influencedSlow = Map.fromList [ (n, succ) | (n, succ) <- Map.assocs nonSinkCondNodes, (∃) succ (\y -> reachableFromSeen imdom y x Set.empty) ]
+
 isinkdomOfTwoFinger8DownFixedTraversalForOrder :: forall gr a b. (DynGraph gr) =>
      (gr a b -> Set Node -> [[Node]] -> Map Node [Node] -> Map Node (Maybe Node) -> [(Node, [Node])])
   -> gr a b
@@ -2143,6 +2182,8 @@ isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes graph =
         imdom'  = isinkdomOftwoFinger8Up                 graph                   nonSinkCondNodes  worklist0 processed0 (invert''' imdom0) imdom0 
         imdom'' = isinkdomOfTwoFinger8DownFixedTraversal graph sinkNodes sinks                    (Map.filterWithKey (\x _ -> imdom' ! x /= Nothing) nonSinkCondNodes) imdom'
 --      imdom'' = isinkdomOfTwoFinger8Down               graph sinkNodes sinks   nonSinkCondNodes (Map.filterWithKey (\x _ -> imdom' ! x /= Nothing) nonSinkCondNodes) imdom'
+--      imdom'' = isinkdomOfTwoFinger8DownRandomTraversalOrder
+--                                                       graph sinkNodes sinks   nonSinkCondNodes (Map.filterWithKey (\x _ -> imdom' ! x /= Nothing) nonSinkCondNodes) imdom'
 
 
 processed'From  :: Graph gr => gr a b -> Map Node c -> Set Node -> Set Node -> Set Node
@@ -5099,8 +5140,8 @@ timingLeaksTransformation g0 cost0 ms  = f notmissing itimdomMultiple0 cost0
                         nsLimitedToTscdFrontiers = Set.fromList [ n | n <- Set.toList $ s0  , not $ n ∈ s', not $ Set.null $ tscd ! n  ∩  s0]
                           where tscd = tscdOfNaiveCostfLfp g cost0F
 
-        s' = ntscdMyDodSliceViaNtscd g        ms
-        s0 = tscdCostSlice           g cost0F ms
+        s' = ntscdSlice     g        ms
+        s0 = tscdCostSlice  g cost0F ms
 
         itimdomMultiple0 = itimdomMultipleOfTwoFingerCost g cost0F
 

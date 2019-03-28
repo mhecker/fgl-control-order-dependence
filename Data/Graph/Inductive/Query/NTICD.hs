@@ -2919,7 +2919,7 @@ nticdMyWodSliceViaNticd graph msS = combinedBackwardSlice graph nticd' empty msS
 
 
 nticdMyWodSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaISinkDom graph msS =  msS ∪ Set.fromList [ n | x <- rdfs ms graph', n <- pre graph' x, isinkdom' ! n == Nothing]
+nticdMyWodSliceViaISinkDom graph msS =  Set.fromList [ n | n <- rdfs ms graph', {- n <- pre graph' x, -} isinkdom' ! n == Nothing]
   where ms = Set.toList msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         isinkdom' = isinkdomOfTwoFinger8ForSinks sinks' sinkNodes' nonSinkCondNodes' graph'

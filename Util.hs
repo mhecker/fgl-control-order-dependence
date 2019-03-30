@@ -25,6 +25,8 @@ import Control.Monad.Random hiding (join)
 the p = fromJust . find p 
 
 
+sublists [] = [[]]
+sublists (x:xs) = [x:sublist | sublist <- sublists xs] ++ sublists xs
 
 chooseOneEach :: [(a,[b])] -> [[(a,b)]]
 chooseOneEach choices = fmap (zip as) $ sequence bss

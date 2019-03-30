@@ -49,10 +49,10 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map ( Map, (!) )
 
-import Util(restrict, sampleFrom, moreSeeds,minimalPath,reachableFromIn, findCyclesM, fromSet)
+import Util(restrict, sampleFrom, moreSeeds,minimalPath,reachableFromIn, findCyclesM, fromSet, sublists)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges, delSuccessorEdges)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges, delSuccessorEdges, toSuccMap)
 import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge, labNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, reachable)
@@ -79,6 +79,7 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
+    combinedBackwardSlice,
     timingCorrection, tscdCostSlice, cost1, cost1F,
     ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
     validTimdomFor,
@@ -695,7 +696,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     slicer0  = NTICD.nticdMyWodSlice                        g
                     slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
                     slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
-                in ok = slicer0  ms == slicer1  ms,
+                in slicer0  ms == slicer1  ms,
     testProperty "NTICD.nticdMyWodSliceViaCutAtRepresentatives  == nticdMyWodSliceViaEscapeNodes  for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph
@@ -825,7 +826,15 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         )
   ] 
 
+
+
 wodTests = testGroup "(concerning weak order dependence)" $
+  [  testCase    ( "wodSlices can be computed by binary control dependence") $
+                   let g = mkGraph [(1,()),(4,()),(5,())] [(1,4,()),(4,1,()),(5,1,()),(5,4,())] :: Gr () ()
+                       edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
+                       cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> NTICD.nticdMyWodSlice g ms == NTICD.combinedBackwardSlice g cd Map.empty ms)) @? ""
+  ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
                    let  myCDFromMyDom    = NTICD.myCDFromMyDom g
                         myCD             = NTICD.myCD          g

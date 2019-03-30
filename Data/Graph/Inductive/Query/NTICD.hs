@@ -2913,15 +2913,13 @@ splitRepresentativesGraphOf :: forall gr a b . (DynGraph gr) => gr a b ->  gr a 
 splitRepresentativesGraphOf g = g''
   where g'' :: gr a b
         g'' = mkGraph ([ (n', fromJust $ lab g n) | (n,n') <- Map.assocs splitPredOf ] ++ labNodes g)
-                ([ e                          | e@(n,m,l) <- labEdges g, (not $ m `Map.member` representants) {- ∨ (not $ n ∈ representants ! m) -} ] ++
-                 [ (n,  m',  l)               |   (n,m,l) <- labEdges g, Just m' <- [Map.lookup m splitPredOf], {- n ∈ representants ! m, -} n /= m]
-                 -- [ (m', m,   escapeEdgeLabel) | (m,m') <- Map.assocs $ escapeOf  ] ++
-                 -- [ (m', end, endEdgeLabel)    |    m'  <- Map.elems  $ escapeOf  ]
+                ([ e                          | e@(n,m,l) <- labEdges g, not $ m ∊ representants] ++
+                 [ (n,  m',  l)               |   (n,m,l) <- labEdges g, Just m' <- [Map.lookup m splitPredOf], n /= m]
                 )
  
-        representants = Map.fromList [ (head sink, Set.fromList sink) | sink <- controlSinks g ]
-        splitPred   = newNodes (Map.size representants) g
-        splitPredOf = Map.fromList $ zip (Map.keys representants) splitPred
+        representants = [ head sink | sink <- controlSinks g]
+        splitPred   = newNodes (length representants) g
+        splitPredOf = Map.fromList $ zip representants splitPred
 
 
 nticdMyWodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node

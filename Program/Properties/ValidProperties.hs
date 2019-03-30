@@ -81,6 +81,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     isinkDFTwoFinger, mDFTwoFinger,
+    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes,
     nticdMyWodSliceViaNticd, ntscdMyDodSliceViaNtscd,
     nticdMyWodSliceViaISinkDom,
     combinedBackwardSlice,
@@ -1096,6 +1097,26 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
+    -- testProperty "nticdMyWodSlice == nticdMyWodSliceViaEscapeNodes  for random slice-criteria of random size and CFG-shaped graphs with exit->entry edge"
+    -- $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
+                -- let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                --     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                --     g = insEdge (exit, entry, ()) generatedGraph
+    testProperty "nticdMyWodSlice == nticdMyWodSliceViaEscapeNodes  for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    g'   = grev g
+                    n    = length $ nodes g
+                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (max 2 $ seed1 `mod` n)]
+                    slicer0  = NTICD.nticdMyWodSlice                        g
+                    slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
+                    slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
+                    -- slicer1' = NTICD.nticdMyWodSliceViaNticd       g'
+                    -- slicer2' = NTICD.nticdMyWodSliceViaEscapeNodes g'
+                    ok = slicer0  ms ⊆ slicer1  ms
+                       ∧ slicer1  ms ⊆ slicer2  ms
+                       -- ∧ slicer1' ms == slicer2' ms
+                in (if ok then id else traceShow (g, ms)) ok,
     testProperty "wccSlice == wccSliceViaNticd for random slice-criteria of random size and CFG-shaped graphs"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
                 let g = generatedGraph

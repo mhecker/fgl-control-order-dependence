@@ -81,7 +81,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
     combinedBackwardSlice,
     timingCorrection, tscdCostSlice, cost1, cost1F,
-    ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
+    ntscdMyDodSlice, ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
     validTimdomFor,
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
     sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf,
@@ -669,6 +669,12 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        )
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
+  [  testCase    ( "dodSlices can be computed by binary control dependence") $
+                   let g = mkGraph [(1,()),(4,()),(5,())] [(1,4,()),(4,1,()),(5,1,()),(5,4,())] :: Gr () ()
+                       edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
+                       cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> NTICD.ntscdMyDodSlice g ms == NTICD.combinedBackwardSlice g cd Map.empty ms)) @? ""
+  ] ++
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property strong for " ++ exampleName)
             $       let myDod = NTICD.myDod g
                         ntscd = NTICD.ntscdF3 g
@@ -831,9 +837,12 @@ wodProps = testGroup "(concerning weak order dependence)" [
 wodTests = testGroup "(concerning weak order dependence)" $
   [  testCase    ( "wodSlices can be computed by binary control dependence") $
                    let g = mkGraph [(1,()),(4,()),(5,())] [(1,4,()),(4,1,()),(5,1,()),(5,4,())] :: Gr () ()
+                   -- let g = subgraph [6,7,8,11,13] $ mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,()),(9,()),(10,()),(11,()),(12,()),(13,()),(14,())] [(1,2,()),(1,10,()),(2,3,()),(2,6,()),(3,4,()),(3,9,()),(4,12,()),(4,14,()),(5,3,()),(6,7,()),(7,8,()),(7,11,()),(8,6,()),(9,10,()),(11,8,()),(11,13,()),(12,5,()),(13,8,()),(14,5,())] :: Gr () ()
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> NTICD.nticdMyWodSlice g ms == NTICD.combinedBackwardSlice g cd Map.empty ms)) @? ""
+                       nticddmywodslicer = NTICD.nticdMyWodSlice g
+                       wodslicer         = NTICD.wodTEILSlice g
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = NTICD.combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddmywodslicer ms)) @? ""
   ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
                    let  myCDFromMyDom    = NTICD.myCDFromMyDom g

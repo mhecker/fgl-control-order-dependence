@@ -2931,6 +2931,14 @@ nticdMyWodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nti
         nticd'' = invert'' $ nticdF3 g''
         empty = Map.empty
 
+ntscdMyDodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdMyDodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (ntscd ⊔ ntscd'') empty ms
+  where g'' = splitRepresentativesGraphOf g
+        ntscd   = invert'' $ ntscdF3 g
+        ntscd'' = invert'' $ ntscdF3 g''
+        empty = Map.empty
+
+
 
 nticdMyWodSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodSliceViaNticd graph msS = combinedBackwardSlice graph nticd' empty msS

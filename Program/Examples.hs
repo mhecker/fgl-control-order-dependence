@@ -2741,9 +2741,29 @@ notReallyUnsound19 = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+notReallyUnsound20 :: Program Gr
+notReallyUnsound20 = p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram (Map.fromList [ (1, "main"), (3,"thread3")]) code
+        code = Map.fromList $ [
+          ("main",  (Seq (SpawnThread 3) (CallProcedure "procH"))
+          ),
+          ("procH", (PrintToChannel (Val 17) "stdOut")
+          ),
+          ("thread3",
+           (Seq (Ass (Global "b") (Val 42)) (ReadFromChannel (Global "y") "lowIn1"))
+          )
+         ]
 
-
-
+notReallyUnsound21 :: Program Gr
+notReallyUnsound21 = p { observability = defaultObservabilityMap (tcfg p) } 
+  where p = compileAllToProgram (Map.fromList [ (1, "main"),(2, "thread2"),(3,"thread3")]) code
+        code = Map.fromList $ [
+          ("main", (Seq (SpawnThread 2) (CallProcedure "baz"))),
+          ("thread2",(If CFalse (ReadFromChannel (Global "y") "stdIn") (CallProcedure "procG"))),
+          ("thread3", (ReadFromChannel (Global "y") "lowIn1")),
+          ("baz", (SpawnThread 3)),
+          ("procG", (PrintToChannel (Val 42) "stdOut"))
+         ]
 
 
 controlDepExample :: Program Gr
@@ -3388,6 +3408,8 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound17),
               $(withName 'notReallyUnsound18),
               $(withName 'notReallyUnsound19),
+              $(withName 'notReallyUnsound20),
+              $(withName 'notReallyUnsound21),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

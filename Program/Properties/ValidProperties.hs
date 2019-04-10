@@ -214,25 +214,25 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
-    testPropertySized 3
-     ("isSound  isSecureResumptionBasedSecurity")
-     (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
+    -- testPropertySized 3
+    --  ("isSound  isSecureResumptionBasedSecurity")
+    --  (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 3
      ("allSound [ timingClassification, timingClassification, timingClassification, timingClassificationSimple,  timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] ")
-     ( allSound [ isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
+     ( allSound [ {-isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths,-} isSecureTimingClassification{-, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification-} ] )
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
-  [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
-                  ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
-  | (exampleName, example) <- testsuite
-  ] ++
-  [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
-                  ( (isSecureResumptionBasedSecurityFor ZeroOneBisimilarity forExample)
-                    →
-                    (isSecureEmpirically $ code2Program example)  @? "")
-  | (exampleName, example) <- syntacticCodeExamples, Just forExample <- [code2ResumptionForProgram example]
-  ] ++
+  -- [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
+  --                 ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
+  -- | (exampleName, example) <- testsuite
+  -- ] ++
+  -- [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
+  --                 ( (isSecureResumptionBasedSecurityFor ZeroOneBisimilarity forExample)
+  --                   →
+  --                   (isSecureEmpirically $ code2Program example)  @? "")
+  -- | (exampleName, example) <- syntacticCodeExamples, Just forExample <- [code2ResumptionForProgram example]
+  -- ] ++
   []
 
 

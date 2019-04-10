@@ -91,7 +91,7 @@ idomMohrEtAl p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromLis
 
         leastValidFrom :: Node -> Node
         leastValidFrom c
-          | (inMulti ! c) ∨ (inCycle c) = leastValidFrom (dom ! c)
+          | (inMulti ! c) {- ∨ (inCycle c) -} = leastValidFrom (dom ! c)
           | otherwise                   = c
 
 

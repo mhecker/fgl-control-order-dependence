@@ -295,6 +295,10 @@ isSecureTimingClassificationIdomChef :: SecurityAnalysis gr
 isSecureTimingClassificationIdomChef p = isSecureTimingClassificationFor cl clt p
   where (cl,clt) = timingClassificationLevels (precomputedUsing idomChef p) p
 
+isSecureTimingClassificationIdomBischof :: SecurityAnalysis gr
+isSecureTimingClassificationIdomBischof p = isSecureTimingClassificationFor cl clt p
+  where (cl,clt) = timingClassificationLevels (precomputedUsing idomBischof p) p
+
 
 
 isSecureTimingClassificationDomPaths :: SecurityAnalysis gr

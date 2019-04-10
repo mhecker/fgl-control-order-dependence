@@ -557,6 +557,9 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
   []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
+    testPropertySized 20  "idomIsTreeProgram idomMohrBischof"  $ idomIsTreeProgram idomBischof,
+    testPropertySized 10  "chopsCdomArePrefixes idomBischof"   $ chopsCdomArePrefixes idomBischof,
+    testPropertySized 10  "chopsCdomAreExclChops idomBischof " $ chopsCdomAreExclChops idomBischof
   ]
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
@@ -590,6 +593,12 @@ balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops
   []
 
 cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
+  [ testCase ("chopsCdomArePrefixes idomBischof for " ++ exampleName)  $ chopsCdomArePrefixes idomBischof p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomBischof for " ++ exampleName)  $ chopsCdomAreExclChops idomBischof p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   []
 
 

@@ -10,6 +10,7 @@ import Data.Bool.Unicode
 
 import Program
 import Program.MultiThread
+import Program.MHP (mhpSetFor)
 import IRLSOD
 
 -- import Data.Graph.Inductive.Util
@@ -91,6 +92,30 @@ idomMohrEtAl p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromLis
         leastValidFrom :: Node -> Node
         leastValidFrom c
           | (inMulti ! c) ∨ (inCycle c) = leastValidFrom (dom ! c)
+          | otherwise                   = c
+
+
+        lca :: Node -> Node -> Node
+        lca n n' = c
+          where (c,_) = last $ takeWhile (\(a,b) -> a==b) $ zip (pathToRoot n)
+                                                                (pathToRoot n')
+                pathToRoot node
+                  | node `Map.member` dom = pathToRoot (dom ! node) ++ [node]
+                  | otherwise             = [node]
+
+
+idomBischof :: DynGraph gr => Program gr ->  Map (Node,Node) Node
+idomBischof p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
+    [ ((n,n'), leastValidFrom n n' $ lca n n')   | n <- nodes tcfg, n' <- nodes tcfg ]
+  where dom :: Map Node Node
+        dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
+
+        mhp = mhpSetFor p
+        mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes tcfg ]
+
+        leastValidFrom :: Node -> Node -> Node -> Node
+        leastValidFrom n n' c
+          | (n ∈ mhps ! c) ∨ (n' ∈ mhps ! c) = leastValidFrom n n' (dom ! c)
           | otherwise                   = c
 
 

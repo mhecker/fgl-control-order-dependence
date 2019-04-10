@@ -218,13 +218,13 @@ soundnessProps =  testGroup "(concerning soundness)" [
      ("isSound  isSecureResumptionBasedSecurity")
      (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 3
-     ("allSound [ timingClassification, timingClassification, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD, simonClassification ] ")
-     ( allSound [ isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
+     ("allSound [ timingClassification, timingClassification, timingClassification, timingClassificationSimple,  timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] ")
+     ( allSound [ isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
-  [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
-                  ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
+  [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
+                  ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
   | (exampleName, example) <- testsuite
   ] ++
   [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
@@ -3794,6 +3794,11 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations p execs idomMohrEtAl == []
   ] ++
+  [ testPropertySized 10 ("cdomIsCdom idomBischof")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+                                in cdomIsCdomViolations p execs idomBischof == []
+  ] ++
   []
 
 
@@ -3805,6 +3810,9 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++
   [ testCase ("cdomIsCdom idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomMohrEtAl) == [] @? ""
+  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+  ] ++
+  [ testCase ("cdomIsCdom idomBischof for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomBischof) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++
   []

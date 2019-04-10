@@ -18,6 +18,7 @@ import Program.Generator
 import Execution
 import ExecutionTree
 
+import Debug.Trace (traceShow)
 
 import IRLSOD
 
@@ -41,7 +42,7 @@ import Data.Util
 
 -- import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Graph
--- import Data.Graph.Inductive.Util
+import Data.Graph.Inductive.Util (trr, isTransitive)
 import Data.Graph.Inductive.Query.Dominators
 import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Query.TimingDependence
@@ -225,12 +226,14 @@ chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, pro
 idomIsTree ::  forall gr. DynGraph gr => Program gr -> Map (Node,Node) Node -> Bool
 idomIsTree p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) idom =
     (∀) (scc tree)               (\scc -> length scc == 1)
- ∧  (∀) (nodes tree  \\ [entry]) (\n   -> hasEdge tree' (entry,n))
+ ∧  (isTransitive tree)
+ ∧  (∀) (nodes tree  \\ [entry]) (\n   -> (hasEdge tree' (entry,n)) ∧ (length (pre tree0 n) == 1))
    where tree :: gr CFGNode ()
          tree =  mkGraph (labNodes tcfg)
                          (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, (c,m)  <- [ (c,n) , (c,n') ]])
          tree' = trc tree
          entry = entryOf $ procedureOf $ mainThread
+         tree0 = trr tree
 
 
 idomIsTreeProgram :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
@@ -250,9 +253,17 @@ toMap tree = Map.fromList [ (n,Set.fromList sucs) | n <- nodes tree, let sucs = 
 
 chopsCdomArePrefixes :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
 chopsCdomArePrefixes cdomComputation p =
+    -- (∀) (Map.assocs cdom) (\((n,n'),c) -> let [ndom]  = pre idom n
+    --                                           [ndom'] = pre idom n'
+    --                                       in  (not $ null $ pre idom n )
+    --                                         ∧ (not $ null $ pre idom n')
+    --                                         ∧ (∃) (pre idom n ) (\ndom  -> (c == n  ∨ chop c n  == (chop c ndom ) ∪ (chop ndom  n )))
+    --                                         ∧ (∃) (pre idom n') (\ndom' -> (c == n' ∨ chop c n' == (chop c ndom') ∪ (chop ndom' n')))
+    --                       )
     (∀) (Map.assocs cdom) (\((n,n'),c) -> let [ndom]  = pre idom n
                                               [ndom'] = pre idom n'
-                                          in  (c == n  ∨ chop c n  == (chop c ndom ) ∪ (chop ndom  n ))
+                                          in  (length (pre idom n) == 1) ∧ (length (pre idom n') == 1)
+                                            ∧ (c == n  ∨ chop c n  == (chop c ndom ) ∪ (chop ndom  n ))
                                             ∧ (c == n' ∨ chop c n' == (chop c ndom') ∪ (chop ndom' n'))
                           )
   where cdom = cdomComputation p
@@ -272,13 +283,14 @@ chopsCdomArePrefixesGenerated cdomComputation gen = chopsCdomArePrefixes cdomCom
   where p :: Program Gr
         p = toProgram gen
 
-
+        
 
 chopsCdomAreExclChops :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
 chopsCdomAreExclChops cdomComputation p =
     (∀) (Map.assocs cdom) (\((n,n'),c) -> let [ndom]  = pre idom n
                                               [ndom'] = pre idom n'
-                                          in  (c == n  ∨ chop c n  ==   (exclChp c ndom ) ∪ (exclChp ndom  n )
+                                          in  (length (pre idom n) == 1) ∧ (length (pre idom n') == 1)
+                                            ∧ (c == n  ∨ chop c n  ==   (exclChp c ndom ) ∪ (exclChp ndom  n )
                                                                       ∪ (exclChp c c) ∪ (exclChp ndom  ndom ) ∪ (exclChp n  n )
                                               )
                                             ∧ (c == n' ∨ chop c n' ==   (exclChp c ndom') ∪ (exclChp ndom' n')

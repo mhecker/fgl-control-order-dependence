@@ -2909,6 +2909,30 @@ nticdMyWodSliceViaEscapeNodes g = \ms -> combinedBackwardSlice g' nticd' empty m
         nticd' = invert'' $ nticdF3 g'
         empty = Map.empty
 
+
+choiceAtRepresentativesGraphOf :: forall gr a b . (DynGraph gr) => gr a b ->  gr a b
+choiceAtRepresentativesGraphOf g = g''
+  where g'' :: gr a b
+        g'' = mkGraph ((nx, undefined) : (labNodes g))
+                ([ e                          | e@(n,m,l) <- labEdges g] ++
+                 [ (n,  nx, undefined)        | n <- representants]
+                )
+ 
+        representants  = [ head sink | sink <- controlSinks g]
+        [nx] = newNodes 1 g
+
+
+nticdMyWodSliceViaChoiceAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdMyWodSliceViaChoiceAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nticd'') empty ms
+  where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
+        g'' = choiceAtRepresentativesGraphOf g
+        -- nticd   = invert'' $ nticdF3 g
+        -- nticd'  = invert'' $ nticdF3 g'
+        nticd'' = invert'' $ nticdF3 g''
+        empty = Map.empty
+
+
+
 splitRepresentativesGraphOf :: forall gr a b . (DynGraph gr) => gr a b ->  gr a b
 splitRepresentativesGraphOf g = g''
   where g'' :: gr a b

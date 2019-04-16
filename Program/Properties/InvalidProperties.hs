@@ -104,7 +104,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
     nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     nticdMyWodSlice,
-    nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaNticd, nticdMyWodSliceViaCutAtRepresentatives,
+    nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaNticd, nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaChoiceAtRepresentatives,
     snmF4WithReachCheckGfp,
     snmF3, snmF5
   ) 
@@ -722,6 +722,17 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
                     slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
                 in slicer1  ms == slicer2  ms,
+    testProperty "NTICD.nticdMyWodSliceViaEscapeNodes == nticdMyWodSliceViaChoiceAtRepresentatives  for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    g'   = grev g
+                    n    = length $ nodes g
+                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (max 2 $ seed1 `mod` n)]
+                    slicer0  = NTICD.nticdMyWodSlice                        g
+                    slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
+                    slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
+                    slicerNX = NTICD.nticdMyWodSliceViaChoiceAtRepresentatives g
+                in slicer2  ms == slicerNX ms,
     testProperty "nticdMyWodSlice == nticdMyWodSliceViaEscapeNodes  for random slice-criteria of random size andCFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]

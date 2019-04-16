@@ -40,7 +40,7 @@ import Test.QuickCheck.Property (Property(..))
 
 import Data.Ord
 
-import Debug.Trace (traceShow)
+import Debug.Trace (traceShow, trace)
 
 import qualified Data.Dequeue as Dequeue
 import Data.Dequeue (pushBack, popFront)
@@ -81,7 +81,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     isinkDFTwoFinger, mDFTwoFinger,
-    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial,
+    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives,
     nticdMyWodSliceViaNticd, ntscdMyDodSliceViaNtscd,
     nticdMyWodSliceViaISinkDom,
     combinedBackwardSlice,
@@ -1097,7 +1097,7 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testProperty "nticdMyWodSlice ⊆ nticdMyWodSliceViaCutAtRepresentatives = nticdMyWodSliceViaCutAtRepresentativesNoTrivial ⊆ nticdMyWodSliceViaEscapeNodes  for random slice-criteria of random size"
+    testProperty "nticdMyWodSlice ⊆ nticdMyWodSliceViaCutAtRepresentatives = nticdMyWodSliceViaCutAtRepresentativesNoTrivial ⊆ nticdMyWodSliceViaEscapeNodes ⊆ nticdMyWodSliceViaChoiceAtRepresentatives for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph
                     n    = length $ nodes g
@@ -1106,14 +1106,42 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
                     slicer1' = NTICD.nticdMyWodSliceViaCutAtRepresentativesNoTrivial g
                     slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
+                    slicerNX = NTICD.nticdMyWodSliceViaChoiceAtRepresentatives g
                     s0 = slicer0  ms
                     s1 = slicer1  ms
                     s1'= slicer1' ms
                     s2 = slicer2  ms
+                    sNX= slicerNX ms
                     ok = s0 ⊆ s1
                        ∧ s1 == s1'
-                       ∧ s1 ⊆ s2 
+                       ∧ s1 ⊆ s2
+                       ∧ s2 ⊆ sNX
                 in -- (if Set.size s0 /= Set.size s1 ∨ Set.size s1 /= Set.size s2 then traceShow (Set.size ms, Set.size s0, Set.size s1, Set.size s2, ms, g) else id) $
+                   -- (if Set.size s0 < Set.size sNX then trace ((show $ length $ nodes $ g) ++ ",\t" ++ (show $ Set.size ms) ++ ",\t" ++ (show $ Set.size s0) ++ ",\tGO,\t" ++ (show $ Set.size s1) ++ ",\t" ++ (show $ Set.size s1') ++ ",\t" ++ (show $ Set.size s2) ++ ",\t" ++ (show $ Set.size sNX)) else id) $
+                  (if ok then id else traceShow (g, ms)) ok,
+    testProperty "nticdMyWodSlice ⊆ nticdMyWodSliceViaCutAtRepresentatives = nticdMyWodSliceViaCutAtRepresentativesNoTrivial ⊆ nticdMyWodSliceViaEscapeNodes ⊆ nticdMyWodSliceViaChoiceAtRepresentatives for random slice-criteria of random size and CFG-shaped graphs with exit->entry edge"
+    $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
+                let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
+                    [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
+                    g = insEdge (exit, entry, ()) generatedGraph
+                    n    = length $ nodes g
+                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (max 2 $ seed1 `mod` n)]
+                    slicer0  = NTICD.nticdMyWodSliceViaNticd                g
+                    slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
+                    slicer1' = NTICD.nticdMyWodSliceViaCutAtRepresentativesNoTrivial g
+                    slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
+                    slicerNX = NTICD.nticdMyWodSliceViaChoiceAtRepresentatives g
+                    s0 = slicer0  ms
+                    s1 = slicer1  ms
+                    s1'= slicer1' ms
+                    s2 = slicer2  ms
+                    sNX= slicerNX ms
+                    ok = s0 ⊆ s1
+                       ∧ s1 == s1'
+                       ∧ s1 ⊆ s2
+                       ∧ s2 ⊆ sNX
+                in -- (if Set.size s0 /= Set.size s1 ∨ Set.size s1 /= Set.size s2 then traceShow (Set.size ms, Set.size s0, Set.size s1, Set.size s2, ms, g) else id) $
+                   -- (if Set.size s0 < Set.size sNX then trace ((show $ length $ nodes $ g) ++ ",\t" ++ (show $ Set.size ms) ++ ",\t" ++ (show $ Set.size s0) ++ ",\tGO,\t" ++ (show $ Set.size s1) ++ ",\t" ++ (show $ Set.size s1') ++ ",\t" ++ (show $ Set.size s2) ++ ",\t" ++ (show $ Set.size sNX)) else id) $ 
                    (if ok then id else traceShow (g, ms)) ok,
     testProperty "wccSlice == wccSliceViaNticd for random slice-criteria of random size and CFG-shaped graphs"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->

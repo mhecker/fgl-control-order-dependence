@@ -2921,6 +2921,18 @@ splitRepresentativesGraphOf g = g''
         splitPred   = newNodes (length representants) g
         splitPredOf = Map.fromList $ zip representants splitPred
 
+splitRepresentativesGraphNoTrivialOf :: forall gr a b . (DynGraph gr) => gr a b ->  gr a b
+splitRepresentativesGraphNoTrivialOf g = g''
+  where g'' :: gr a b
+        g'' = mkGraph ([ (n', fromJust $ lab g n) | (n,n') <- Map.assocs splitPredOf ] ++ labNodes g)
+                ([ e                          | e@(n,m,l) <- labEdges g, not $ m ∊ representants] ++
+                 [ (n,  m',  l)               |   (n,m,l) <- labEdges g, Just m' <- [Map.lookup m splitPredOf], n /= m]
+                )
+ 
+        representants = [ head sink | sink <- controlSinks g, length sink > 1]
+        splitPred   = newNodes (length representants) g
+        splitPredOf = Map.fromList $ zip representants splitPred
+
 
 nticdMyWodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nticd ⊔ nticd'') empty ms
@@ -2930,6 +2942,16 @@ nticdMyWodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nti
         -- nticd'  = invert'' $ nticdF3 g'
         nticd'' = invert'' $ nticdF3 g''
         empty = Map.empty
+
+nticdMyWodSliceViaCutAtRepresentativesNoTrivial :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdMyWodSliceViaCutAtRepresentativesNoTrivial g = \ms -> combinedBackwardSlice g'' (nticd ⊔ nticd'') empty ms
+  where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
+        g'' = splitRepresentativesGraphNoTrivialOf g
+        nticd   = invert'' $ nticdF3 g
+        -- nticd'  = invert'' $ nticdF3 g'
+        nticd'' = invert'' $ nticdF3 g''
+        empty = Map.empty
+
 
 ntscdMyDodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdMyDodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (ntscd ⊔ ntscd'') empty ms

@@ -81,7 +81,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     isinkDFTwoFinger, mDFTwoFinger,
-    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes,
+    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial,
     nticdMyWodSliceViaNticd, ntscdMyDodSliceViaNtscd,
     nticdMyWodSliceViaISinkDom,
     combinedBackwardSlice,
@@ -1097,18 +1097,21 @@ newcdTests = testGroup "(concerning new control dependence definitions)" $
 
 
 wodProps = testGroup "(concerning weak order dependence)" [
-    testProperty "nticdMyWodSlice ⊆ nticdMyWodSliceViaCutAtRepresentatives ⊆ nticdMyWodSliceViaEscapeNodes  for random slice-criteria of random size"
+    testProperty "nticdMyWodSlice ⊆ nticdMyWodSliceViaCutAtRepresentatives = nticdMyWodSliceViaCutAtRepresentativesNoTrivial ⊆ nticdMyWodSliceViaEscapeNodes  for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph
                     n    = length $ nodes g
                     ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (max 2 $ seed1 `mod` n)]
-                    slicer0  = NTICD.nticdMyWodSlice                        g
+                    slicer0  = NTICD.nticdMyWodSliceViaNticd                g
                     slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
+                    slicer1' = NTICD.nticdMyWodSliceViaCutAtRepresentativesNoTrivial g
                     slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
                     s0 = slicer0  ms
                     s1 = slicer1  ms
+                    s1'= slicer1' ms
                     s2 = slicer2  ms
-                    ok = s0 ⊆ s1 
+                    ok = s0 ⊆ s1
+                       ∧ s1 == s1'
                        ∧ s1 ⊆ s2 
                 in -- (if Set.size s0 /= Set.size s1 ∨ Set.size s1 /= Set.size s2 then traceShow (Set.size ms, Set.size s0, Set.size s1, Set.size s2, ms, g) else id) $
                    (if ok then id else traceShow (g, ms)) ok,

@@ -108,7 +108,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF4WithReachCheckGfp,
     snmF3, snmF5
   ) 
-
+import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
 
@@ -856,13 +856,13 @@ wodProps = testGroup "(concerning weak order dependence)" [
 
 wodTests = testGroup "(concerning weak order dependence)" $
   [  testCase    ( "wodSlices can be computed by binary control dependence") $
-                   let g = mkGraph [(1,()),(4,()),(5,())] [(1,4,()),(4,1,()),(5,1,()),(5,4,())] :: Gr () ()
-                   -- let g = subgraph [6,7,8,11,13] $ mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,()),(9,()),(10,()),(11,()),(12,()),(13,()),(14,())] [(1,2,()),(1,10,()),(2,3,()),(2,6,()),(3,4,()),(3,9,()),(4,12,()),(4,14,()),(5,3,()),(6,7,()),(7,8,()),(7,11,()),(8,6,()),(9,10,()),(11,8,()),(11,13,()),(12,5,()),(13,8,()),(14,5,())] :: Gr () ()
+                   let g = subgraph [6,7,8,11,13] $ mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,()),(9,()),(10,()),(11,()),(12,()),(13,()),(14,())] [(1,2,()),(1,10,()),(2,3,()),(2,6,()),(3,4,()),(3,9,()),(4,12,()),(4,14,()),(5,3,()),(6,7,()),(7,8,()),(7,11,()),(8,6,()),(9,10,()),(11,8,()),(11,13,()),(12,5,()),(13,8,()),(14,5,())] :: Gr () ()
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
                        nticddmywodslicer = NTICD.nticdMyWodSlice g
                        wodslicer         = NTICD.wodTEILSlice g
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = NTICD.combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddmywodslicer ms)) @? ""
+                       wccslicer         = FCACD.wccSlice g
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = NTICD.combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddmywodslicer ms ∨ s == wccslicer ms)) @? ""
   ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
                    let  myCDFromMyDom    = NTICD.myCDFromMyDom g

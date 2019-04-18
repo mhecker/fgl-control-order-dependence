@@ -92,7 +92,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     itimdomMultipleTwoFingercd, tscdOfLfp, timDF, timDFFromFromItimdomMultipleOf, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms,
     timDFFromFromItimdomMultipleOfFast,
     rotatePDomAround,
-    joiniSinkDomAround, rofldomOfTwoFinger7,
+    joiniSinkDomAround,
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
@@ -103,9 +103,9 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdTimingSlice, ntscdTimingSlice, tscdSlice, tscdSliceFast, tscdSliceViaTimDF, nticdSlice,  nticdSliceNumberedViaCEdgesFast, ntscdSlice, nticdSliceFor, ntscdSliceViaCEdgesFast,
-    myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
+    myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, mayNaiveGfp,
     wccSliceViaNticd, wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
-    smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
+    smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,
@@ -123,7 +123,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP)
+import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay)
 
 import qualified Data.Graph.Inductive.FA as FA
 
@@ -2161,7 +2161,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
   testProperty  "allDom ! n == pdom ! n"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        allDom = NTICD.allDomNaiveGfp g
+                        allDom = NTICDUnused.allDomNaiveGfp g
                     in  (∀) (nodes g) (\n ->
                          let pdom = NTICD.sinkdomOfGfp (delSuccessorEdges g n)
                          in (∀) (nodes g) (\m -> (m ∈ pdom ! n)   ==   (Map.member m (allDom ! n)   ∧   n ∈ allDom ! n ! m))
@@ -2169,18 +2169,18 @@ wodProps = testGroup "(concerning weak order dependence)" [
   testProperty  "isTransitive myDom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in  isTransitive $ (fromSuccMap $ NTICD.myDom g :: Gr () ()),
+                    in  isTransitive $ (fromSuccMap $ NTICDUnused.myDom g :: Gr () ()),
   testProperty  "isTransitive myDom  for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                         g = insEdge (exit, entry, ()) generatedGraph
-                    in  isTransitive $ (fromSuccMap $ NTICD.myDom g :: Gr () ()),
+                    in  isTransitive $ (fromSuccMap $ NTICDUnused.myDom g :: Gr () ()),
   testProperty  "myCDFromMyDom == myCD"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        myCDFromMyDom    = NTICD.myCDFromMyDom g
-                        myCD             = NTICD.myCD          g
+                        myCDFromMyDom    = NTICDUnused.myCDFromMyDom g
+                        myCD             = NTICDUnused.myCD          g
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                     in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc),
@@ -2189,15 +2189,15 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                         g = insEdge (exit, entry, ()) generatedGraph
-                        myCDFromMyDom    = NTICD.myCDFromMyDom g
-                        myCD             = NTICD.myCD          g
+                        myCDFromMyDom    = NTICDUnused.myCDFromMyDom g
+                        myCD             = NTICDUnused.myCD          g
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                     in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc),
   testPropertySized 50  "wodTEILSlice is contained in wodMyEntryWodMyCDSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
+                        nticdWodSlice   = NTICDUnused.wodMyEntryWodMyCDSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice           g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           wodTEILSlice (Set.fromList [m1, m2]) ⊆ nticdWodSlice (Set.fromList [m1, m2])
@@ -2207,7 +2207,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                         g = insEdge (exit, entry, ()) generatedGraph
-                        nticdWodSlice   = NTICD.wodMyEntryWodMyCDSlice g
+                        nticdWodSlice   = NTICDUnused.wodMyEntryWodMyCDSlice g
                         wodTEILSlice    = NTICD.wodTEILSlice           g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           let s  = wodTEILSlice (Set.fromList [m1, m2])
@@ -2272,7 +2272,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                         g = insEdge (exit, entry, ()) generatedGraph
-                        myWodFromMay = NTICD.myWodFromMay g
+                        myWodFromMay = NTICDUnused.myWodFromMay g
                         myWodFast    = NTICD.myWodFast    g
                     in myWodFromMay == myWodFast,
     testProperty  "myWodFastPDom*            == myWodFast"
@@ -2356,15 +2356,15 @@ wodTests = testGroup "(concerning weak order dependence)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
-                   let  myCDFromMyDom    = NTICD.myCDFromMyDom g
-                        myCD             = NTICD.myCD          g
+                   let  myCDFromMyDom    = NTICDUnused.myCDFromMyDom g
+                        myCD             = NTICDUnused.myCD          g
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                    in  (Set.fromList $ edges myCDFromMyDomTrc)  == (Set.fromList $ edges myCDTrc) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "isTransitive myDom for " ++ exampleName) $
-                   isTransitive (fromSuccMap $ NTICD.myDom g :: Gr () ()) @? ""
+                   isTransitive (fromSuccMap $ NTICDUnused.myDom g :: Gr () ()) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "myWodFastPDom               == myWodFast for " ++ exampleName)

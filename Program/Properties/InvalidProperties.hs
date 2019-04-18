@@ -94,10 +94,10 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
-    imdomOfTwoFinger7, rofldomOfTwoFinger7, joiniSinkDomAround,
-    myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFromMay, myWodFastSlice,
+    imdomOfTwoFinger7, joiniSinkDomAround,
+    myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFastSlice,
     smmnLfp, smmnGfp, fMustBefore, fMust,
-    dodDef, dodSuperFast, wodDef,  myCD, myCDFromMyDom,
+    dodDef, dodSuperFast, wodDef,
     dodColoredDagFixed, dodColoredDag,
     wodTEIL', wodTEILSlice,
     wodTEILPDomSlice,
@@ -108,6 +108,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF4WithReachCheckGfp,
     snmF3, snmF5
   ) 
+import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
@@ -665,7 +666,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         sinks = controlSinks g
                         imdom    = NTICD.imdomOfTwoFinger7    $        g
                         imdomrev = NTICD.imdomOfTwoFinger7    $ grev $ g
-                        rofldom  = NTICD.rofldomOfTwoFinger7  $        g     
+                        rofldom  = NTICDUnused.rofldomOfTwoFinger7  $        g     
                     in (∀) (nodes g) (\n ->
                          let reachableForward  =  dfs [n] g
                              reachableBackward = rdfs [n] g
@@ -835,7 +836,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                let sinks = controlSinks generatedGraph
                in (∀) sinks (\sink ->
                     let g = subgraph sink generatedGraph
-                        myWodFromMay = NTICD.myWodFromMay g
+                        myWodFromMay = NTICDUnused.myWodFromMay g
                         myWodFast    = NTICD.myWodFast    g
                     in myWodFromMay == myWodFast
                ),
@@ -865,16 +866,16 @@ wodTests = testGroup "(concerning weak order dependence)" $
                    in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = NTICD.combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddmywodslicer ms ∨ s == wccslicer ms)) @? ""
   ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
-                   let  myCDFromMyDom    = NTICD.myCDFromMyDom g
-                        myCD             = NTICD.myCD          g
+                   let  myCDFromMyDom    = NTICDUnused.myCDFromMyDom g
+                        myCD             = NTICDUnused.myCD          g
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                    in  (Set.fromList $ edges myCDFromMyDomTrc) ==  (Set.fromList $ edges myCDTrc) @? ""
   | (exampleName, g) <- myCDvsMyDom
   ] ++
   [  testCase    ( "myCDFromMyDom ⊆ myCD for " ++ exampleName) $
-                   let  myCDFromMyDom    = NTICD.myCDFromMyDom g
-                        myCD             = NTICD.myCD          g
+                   let  myCDFromMyDom    = NTICDUnused.myCDFromMyDom g
+                        myCD             = NTICDUnused.myCD          g
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                    in (Set.fromList $ edges myCDFromMyDomTrc) ⊆ (Set.fromList $ edges myCDTrc) @? ""

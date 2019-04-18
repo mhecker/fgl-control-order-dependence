@@ -80,7 +80,7 @@ import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
     combinedBackwardSlice,
-    timingCorrection, tscdCostSlice, cost1, cost1F,
+    cost1, cost1F,
     ntscdMyDodSlice, ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
     validTimdomFor,
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
@@ -88,9 +88,9 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
     dfFor, anyDFFromUpLocalDefViaAnydoms,
     ntscdTimingSlice, tscdSliceForTrivialSinks,
-    mDF, timDF,
+    mDF,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
-    timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger, timdomOfLfp, timdomsOf,
+    timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger,
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
@@ -109,6 +109,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF3, snmF5
   ) 
 import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay)
+import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
@@ -188,7 +189,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty   "mDF   ⊑ timDF"
                 $ \(ARBITRARY(g)) ->
                        NTICD.mDF    g ⊑
-                       NTICD.timDF  g,
+                       TSCD.timDF  g,
     testProperty   "anyDFFromUpLocalDefViaAnydoms == anyDF"
                 $ \(ARBITRARY(g)) (UNCONNECTED(anydom0)) -> 
                    let anydomG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges anydom0, let n' = toG ! n, let m' = toG ! m, (n' == m') ∨ (∀) (n' : suc g n') (\x' -> m' `elem` reachable x' g) ] :: Gr ()()
@@ -247,14 +248,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
   
 timingDepTests = testGroup "(concerning timingDependence)" $
   [ testCase ("fmap (Set.map fst) $ timdomOfLfp is transitive for " ++ exampleName) $ 
-                let timdom = fmap (Set.map fst) $ NTICD.timdomOfLfp g
+                let timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
                 in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x)))
     @? ""
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger", exampleTimingDepInterestingTwoFinger)]
   ] ++
   [ testCase ("timdomsOf* ==  timdomOfLfp for " ++ exampleName) $ 
-                    let timdom  = fmap (Set.map fst) $ NTICD.timdomOfLfp g
-                        timdoms = NTICD.timdomsOf g
+                    let timdom  = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                        timdoms = TSCD.timdomsOf g
                         gdom  = fromSuccMap timdom  :: Gr () ()
                         gdoms = fromSuccMap timdoms :: Gr () ()
 
@@ -263,9 +264,9 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger", exampleTimingDepInterestingTwoFinger)]
   ] ++
   [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
-                let (cost, _) = NTICD.timingCorrection g (NTICD.cost1 g)
+                let (cost, _) = TSCD.timingCorrection g (NTICD.cost1 g)
                     costF n m = cost ! (n,m)
-                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    tscdcostslicer    = TSCD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
@@ -281,9 +282,9 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                                         ]
   ] ++
   [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
-                let (cost, _) = NTICD.timingCorrection g (NTICD.cost1 g)
+                let (cost, _) = TSCD.timingCorrection g (NTICD.cost1 g)
                     costF n m = cost ! (n,m)
-                    tscdcostslicer    = NTICD.tscdCostSlice           g costF
+                    tscdcostslicer    = TSCD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
@@ -314,7 +315,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   ] ++
   [ testCase ("itimdomMultipleOfTwoFinger^*       == timdomOfLfp for " ++ exampleName) $ 
                        let itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
-                           timdomOfLfp       = NTICD.timdomOfLfp g
+                           timdomOfLfp       = TSCD.timdomOfLfp g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                        in  
                            (∀) (Map.assocs timdomOfLfp) (\(n, ms) ->

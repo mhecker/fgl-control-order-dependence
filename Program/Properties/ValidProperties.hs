@@ -106,7 +106,6 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, mayNaiveGfp,
     wccSliceViaNticd, wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, myWodFromMay, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
-    ntacdDef, ntacdDefGraphP,     ntbcdDef, ntbcdDefGraphP,
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
     isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, isinkdomOfSinkContraction, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,
@@ -123,7 +122,9 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     mDFFromUpLocalDefViaMdoms, mDF,
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
-  ) 
+  )
+import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP)
+
 import qualified Data.Graph.Inductive.FA as FA
 
 
@@ -1083,12 +1084,12 @@ newcdProps = testGroup "(concerning new control dependence definitions)" [
     testProperty  "ntacdDef               == nticdF3                for graphs with unique end node property"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.ntacdDef         g ==
+                    in NTICDUnused.ntacdDef         g ==
                        NTICD.nticdF3          g
   ]
 newcdTests = testGroup "(concerning new control dependence definitions)" $
   [  testCase    ( "ntnacdDefGraphP       ==  nticdF3GraphP for " ++ exampleName)
-                  $ NTICD.ntacdDefGraphP      p ==
+                  $ NTICDUnused.ntacdDefGraphP      p ==
                     NTICD.nticdF3GraphP       p        @? ""
   | (exampleName, p) <- testsuite
   ] ++

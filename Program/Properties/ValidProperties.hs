@@ -93,8 +93,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
-    alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence,
-    solveTimingEquationSystem, timdomOfNaiveLfp, timdomMultipleOfNaiveLfp, Reachability(..), timmaydomOfLfp,
+    timdomOfNaiveLfp, timdomMultipleOfNaiveLfp,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -124,7 +123,7 @@ import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, tim
     itimdomMultipleOfTwoFingerCost, cost1, cost1F,
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
     timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice, tscdSliceFast, tscdSliceViaTimDF)
-
+import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp,)
 
 import qualified Data.Graph.Inductive.FA as FA
 
@@ -3645,7 +3644,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
                         ms = Set.fromList [m1,m2]
-                        s = ms ⊔ Set.fromList [n | (n, ms') <- Map.assocs $ NTICD.timingSolvedF3dependence g, (∃) ms (\m -> m ∈ ms')]
+                        s = ms ⊔ Set.fromList [n | (n, ms') <- Map.assocs $ PTDEP.timingSolvedF3dependence g, (∃) ms (\m -> m ∈ ms')]
                         differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice
                                    isLowEquivalent = InfiniteDelay.isLowTimingEquivalent g s input
@@ -3661,7 +3660,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                        not differentobservation,
     testPropertySized 30  "the  solved timingF3EquationSystem is correct"
                 $ \(ARBITRARY(g)) ->
-                       let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
+                       let timingEqSolved    = PTDEP.solveTimingEquationSystem $ PTDEP.snmTimingEquationSystem g PTDEP.timingF3EquationSystem
                            trcG = trc g
                            pathsBetween     = NTICD.pathsBetween        g trcG
                            pathsBetweenUpTo = NTICD.pathsBetweenUpTo    g trcG
@@ -3672,15 +3671,15 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                   let paths = pathsBetween p m in
                                   -- traceShow (m,p, rmq) $
                                   case rmq of
-                                     NTICD.FixedStepsPlusOther s y ->
+                                     PTDEP.FixedStepsPlusOther s y ->
                                                                       let paths = pathsBetweenUpTo p m y in
                                                                       (∀) paths (\(hasLoop,  path ) -> y `elem` path ∧ (toInteger (length $ takeWhile (/= y) path)) == s + 1)
-                                     NTICD.FixedSteps s            -> (∀) paths (\(hasLoop,  path ) -> (not hasLoop) ∧ (toInteger (length                    path)) == s + 2)
-                                     NTICD.UndeterminedSteps       -> (∃) paths (\(hasLoop,  path ) -> hasLoop)
+                                     PTDEP.FixedSteps s            -> (∀) paths (\(hasLoop,  path ) -> (not hasLoop) ∧ (toInteger (length                    path)) == s + 2)
+                                     PTDEP.UndeterminedSteps       -> (∃) paths (\(hasLoop,  path ) -> hasLoop)
                                                                     ∨ (∃) paths (\(hasLoop1, path1) -> (not hasLoop1) ∧
                                                                           (∃) paths (\(hasLoop2, path2) -> (not hasLoop2) ∧ length (path1) /= (length path2))
                                                                       )
-                                     NTICD.Unreachable             -> paths == []
+                                     PTDEP.Unreachable             -> paths == []
                            ),
     testProperty  "prevCondsWithSuccNode  ==  prevCondsWithSuccNode'"
                 $ \(ARBITRARY(g)) -> (∀) (nodes g) (\n -> 
@@ -3689,36 +3688,36 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                   ),
     testProperty  "timingSnSolvedDependence         == enumerateTimingDependence"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.timingSnSolvedDependence  g ==
-                       NTICD.enumerateTimingDependence g,
+                       PTDEP.timingSnSolvedDependence  g ==
+                       PTDEP.enumerateTimingDependence g,
     testProperty  "timingSnSolvedDependence         == timingSnSolvedDependenceWorklist"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.timingSnSolvedDependence          g ==
-                       NTICD.timingSnSolvedDependenceWorklist  g,
+                       PTDEP.timingSnSolvedDependence          g ==
+                       PTDEP.timingSnSolvedDependenceWorklist  g,
     testProperty  "timingSnSolvedDependence         == timingSnSolvedDependenceWorklist2"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.timingSnSolvedDependence          g ==
-                       NTICD.timingSnSolvedDependenceWorklist2 g,
+                       PTDEP.timingSnSolvedDependence          g ==
+                       PTDEP.timingSnSolvedDependenceWorklist2 g,
     testProperty  "timingSolvedF3dependence == timingSnSolvedDependenceWorklist"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.timingSolvedF3dependence g ==
-                       NTICD.timingSnSolvedDependenceWorklist g,
+                       PTDEP.timingSolvedF3dependence g ==
+                       PTDEP.timingSnSolvedDependenceWorklist g,
     testProperty  "timingSolvedF3dependence == timingSnSolvedDependence"
                 $ \(ARBITRARY(g)) -> 
-                       NTICD.timingSolvedF3dependence g ==
-                       NTICD.timingSnSolvedDependence g,
+                       PTDEP.timingSolvedF3dependence g ==
+                       PTDEP.timingSnSolvedDependence g,
     testProperty  "timmaydomOfLfp            relates to solved timingF3EquationSystem"
                 $ \(ARBITRARY(g)) ->
-                       let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
-                           timmaydomOfLfp    = NTICD.timmaydomOfLfp g
+                       let timingEqSolved    = PTDEP.solveTimingEquationSystem $ PTDEP.snmTimingEquationSystem g PTDEP.timingF3EquationSystem
+                           timmaydomOfLfp    = PTDEP.timmaydomOfLfp g
                        in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
                              in (m /= p) →
                                   case rmq of
-                                     NTICD.FixedSteps s            -> Set.fromList [1+s] == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
-                                     NTICD.FixedStepsPlusOther s y -> Set.fromList [1+s] == Set.fromList [ steps | (y', steps) <- Set.toList $ timmaydomOfLfp ! p, y == y']
-                                     NTICD.UndeterminedSteps       -> Set.fromList []    == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
-                                     NTICD.Unreachable             -> smp == Map.empty ∧
+                                     PTDEP.FixedSteps s            -> Set.fromList [1+s] == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
+                                     PTDEP.FixedStepsPlusOther s y -> Set.fromList [1+s] == Set.fromList [ steps | (y', steps) <- Set.toList $ timmaydomOfLfp ! p, y == y']
+                                     PTDEP.UndeterminedSteps       -> Set.fromList []    == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
+                                     PTDEP.Unreachable             -> smp == Map.empty ∧
                                                                       Set.fromList []    == Set.fromList [ steps | (m', steps) <- Set.toList $ timmaydomOfLfp ! p, m == m']
                            ),
     testProperty  "itimdomMultipleOfTwoFinger^* {no loop}  == timdomOfLfp for graphs without itimdomMultiple cycles"
@@ -3739,12 +3738,12 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                          ∧ (timdomOfLfp  ==  Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdomMultiple n m, let steps = sum $ fmap snd path ]) | n <- nodes g]),
     testProperty  "timingF3EquationSystem'  == timingF3EquationSystem"
                 $ \(ARBITRARY(g)) ->
-                       let timingEq        = NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
-                           timingEq'       = NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem'
+                       let timingEq        = PTDEP.snmTimingEquationSystem g PTDEP.timingF3EquationSystem
+                           timingEq'       = PTDEP.snmTimingEquationSystem g PTDEP.timingF3EquationSystem'
                        in  timingEq         == timingEq',
     testProperty  "timingF3dependence is transitive"
                 $ \(ARBITRARY(g)) ->
-                       let tdep    = NTICD.timingF3dependence g
+                       let tdep    = PTDEP.timingF3dependence g
                        in (∀) (nodes g) (\n ->
                             (∀) (tdep ! n) (\n' ->
                               (∀) (tdep ! n') (\n'' ->
@@ -3755,7 +3754,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                           ),
     testProperty  "timingSolvedF3dependence is transitive"
                 $ \(ARBITRARY(g)) ->
-                       let tdep    = NTICD.timingSolvedF3dependence g
+                       let tdep    = PTDEP.timingSolvedF3dependence g
                        in (∀) (nodes g) (\n ->
                             (∀) (tdep ! n) (\n' ->
                               (∀) (tdep ! n') (\n'' ->
@@ -3766,28 +3765,28 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                           ),
     testProperty  "timingDependenceViaTwoFinger        == timingSolvedF3dependence ∪ {(n,n) | n ∈ nodes}"
                 $ \(ARBITRARY(g)) ->
-                       let tdep             = NTICD.timingSolvedF3dependence g
+                       let tdep             = PTDEP.timingSolvedF3dependence g
                            tdepviatwofinger = TSCD.timingDependenceViaTwoFinger g
                        in  tdepviatwofinger == tdep ⊔ Map.fromList [(n, Set.fromList [n]) | n <- nodes g ],
     testProperty  "alternativeTimingSolvedF3dependence == timingSolvedF3dependence"
                 $ \(ARBITRARY(g)) ->
-                       let tdep            = NTICD.timingSolvedF3dependence g
-                           alternativetdep = NTICD.alternativeTimingSolvedF3dependence g
+                       let tdep            = PTDEP.timingSolvedF3dependence g
+                           alternativetdep = PTDEP.alternativeTimingSolvedF3dependence g
                        in  alternativetdep == tdep,
     testProperty  "timingSolvedF3sparseDependence^*    == timingSolvedF3dependence ∪ {(n,n) | n ∈ nodes}"
                 $ \(ARBITRARY(g)) ->
-                       let tdep             = NTICD.timingSolvedF3dependence g
-                           tdepsparse       = NTICD.timingSolvedF3sparseDependence g
+                       let tdep             = PTDEP.timingSolvedF3dependence g
+                           tdepsparse       = PTDEP.timingSolvedF3sparseDependence g
                        in (trc $ fromSuccMap $ tdepsparse :: Gr () ()) ==
                           (      fromSuccMap $ tdep ⊔ Map.fromList [(n, Set.fromList [n]) | n <- nodes g ]),
     testProperty  "timingSolvedF3dependence ⊑ timingF3dependence"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.timingSolvedF3dependence g ⊑
-                       NTICD.timingF3dependence       g,
+                       PTDEP.timingSolvedF3dependence g ⊑
+                       PTDEP.timingF3dependence       g,
     testProperty  "timingF3dependence       ⊑ timingDependence"
                 $ \(ARBITRARY(g)) ->
                        let gCfg = emap (\() -> NoOp) g in
-                       NTICD.timingF3dependence       g ⊑
+                       PTDEP.timingF3dependence       g ⊑
                              timingDependence         gCfg
   ]
 

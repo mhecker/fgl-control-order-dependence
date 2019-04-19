@@ -4,6 +4,8 @@ module Data.Graph.Inductive.Query.PureTimingDependence where
 import Control.Exception.Base (assert)
 import Debug.Trace(traceShow)
 
+import Control.Monad (liftM)
+
 import qualified Data.List as List
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -18,11 +20,11 @@ import qualified Algebra.PartialOrd as PartialOrd
 import Data.Graph.Inductive
 
 import Unicode
-import Util(without)
+import Util(fromSet, without, invert'', invert''', restrict, reachableFrom)
 
-import Data.Graph.Inductive.Util (isCond, fromSuccMap)
-import Data.Graph.Inductive.Query.NTICD (nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode, nticdF3, nticdSlice)
-
+import Data.Graph.Inductive.Util (isCond, fromSuccMap, delSuccessorEdges)
+import Data.Graph.Inductive.Query.NTICD (nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode, combinedBackwardSlice, isinkDFTwoFinger, nticdF3, nticdSlice, ntscdF3)
+import Data.Graph.Inductive.Query.TSCD (itimdomMultipleOfTwoFingerFor, itimdomMultipleOfTwoFinger)
 
 
 data Reachability  = Unreachable | Unknown | FixedSteps Integer | FixedStepsPlusOther Integer Node | UndeterminedSteps deriving (Show, Eq)
@@ -617,3 +619,49 @@ alternativeTimingXdependence snmTiming graph =
 
 alternativeTimingSolvedF3dependence :: DynGraph gr => gr a b -> Map Node (Set Node)
 alternativeTimingSolvedF3dependence = alternativeTimingXdependence snmTimingSolvedF3
+
+
+timingDependenceViaTwoFinger g =
+      invert'' $
+      Map.fromList [ (m, Set.fromList [ n | (n, Nothing) <- Map.assocs itimdom ])         | m <- nodes g,
+                                                                                            let toM  = reachable m gRev,
+                                                                                            let toMS = Set.fromList toM,
+                                                                                            let (condNodes', noLongerCondNodes) = Map.partition isCond $ fmap (List.filter (∈ toMS)) $ Map.delete m  $ restrict condNodes toMS,
+                                                                                            let usingMS = reachableFrom (fmap toSet itimdom) (Set.fromList [m]),
+                                                                                            let imdom0' = id
+                                                                                                  $ Map.insert m Nothing
+                                                                                                  $ Map.union (Map.mapWithKey (\x [z] ->  assert (z /= x) $ Just (z,1)) noLongerCondNodes)
+                                                                                                  $ Map.union (Map.mapMaybeWithKey (\x _ -> case itimdom ! x of { Just (z, _) -> if z ∈ usingMS then Just Nothing else Nothing ; _ -> Nothing }) condNodes')
+                                                                                                  $ restrict itimdom toMS,
+                                                                                            let g' = (flip delSuccessorEdges m) $ subgraph toM $ g,
+                                                                                            let worklist0' = Map.filterWithKey (\x _ -> imdom0' ! x == Nothing) condNodes',
+                                                                                            let itimdom = itimdomMultipleOfTwoFingerFor g' defaultCost condNodes' worklist0' imdom0' (invert''' $ fmap (liftM fst) $ imdom0'),
+                                                                                        assert (itimdom == (fmap fromSet $ itimdomMultipleOfTwoFinger g')) True
+                   ]
+                                               
+  where defaultCost = \_ _ -> 1
+        gRev = grev g
+        condNodes = Map.fromList [ (x, succs) | x <- nodes g, let succs = suc g x, length succs > 1 ]
+        imdom0 =             Map.fromList [ (x, Just (z,1)) | x <- nodes g, [z] <- [suc g x]]
+                 `Map.union` Map.fromList [ (x, Nothing   ) | x <- nodes g]
+        itimdom = itimdomMultipleOfTwoFingerFor g defaultCost condNodes condNodes imdom0 (invert''' $ fmap (liftM fst) $ imdom0)
+
+        toSet Nothing = Set.empty
+        toSet (Just (z, steps)) = Set.singleton z
+        isCond []  = False
+        isCond [_] = False
+        isCond _   = True
+
+
+nticdTimingSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdTimingSlice graph =  combinedBackwardSlice graph (nticd' ⊔ timing') w
+  where nticd'  = isinkDFTwoFinger graph
+        timing' = invert'' $ timingDependenceViaTwoFinger graph
+        w     = Map.empty
+
+
+ntscdTimingSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdTimingSlice graph =  combinedBackwardSlice graph (ntscd' ⊔ timing') w
+  where ntscd'  = invert'' $ ntscdF3 graph
+        timing' = invert'' $ timingDependenceViaTwoFinger graph
+        w     = Map.empty

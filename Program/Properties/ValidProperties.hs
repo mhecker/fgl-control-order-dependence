@@ -122,8 +122,8 @@ import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDe
 import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, timingCorrection, timingLeaksTransformation, tscdCostSlice, timDFCostFromUpLocalDefViaTimdoms, timDFCost, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, tscdOfNaiveCostfLfp, timdomOfLfp, tscdSlice, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
     itimdomMultipleOfTwoFingerCost, cost1, cost1F,
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
-    timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice, tscdSliceFast, tscdSliceViaTimDF)
-import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp,)
+    timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, tscdSliceFast, tscdSliceViaTimDF)
+import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice)
 
 import qualified Data.Graph.Inductive.FA as FA
 
@@ -3580,8 +3580,8 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty "ntscdTimingSlice == ntscdTimingSlice == tscdSlice == tscdSliceFast "
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
-                    ntscdtimingslicer  = TSCD.ntscdTimingSlice g
-                    nticdtimingslicer  = TSCD.nticdTimingSlice g
+                    ntscdtimingslicer  = PTDEP.ntscdTimingSlice g
+                    nticdtimingslicer  = PTDEP.nticdTimingSlice g
                     tscdslicer         = TSCD.tscdSlice        g
                     tscdslicerfast     = TSCD.tscdSliceFast    g
                 in (∀) (nodes g) (\m ->
@@ -3766,7 +3766,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty  "timingDependenceViaTwoFinger        == timingSolvedF3dependence ∪ {(n,n) | n ∈ nodes}"
                 $ \(ARBITRARY(g)) ->
                        let tdep             = PTDEP.timingSolvedF3dependence g
-                           tdepviatwofinger = TSCD.timingDependenceViaTwoFinger g
+                           tdepviatwofinger = PTDEP.timingDependenceViaTwoFinger g
                        in  tdepviatwofinger == tdep ⊔ Map.fromList [(n, Set.fromList [n]) | n <- nodes g ],
     testProperty  "alternativeTimingSolvedF3dependence == timingSolvedF3dependence"
                 $ \(ARBITRARY(g)) ->

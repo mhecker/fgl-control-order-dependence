@@ -103,8 +103,8 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF3, snmF5
   ) 
 import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay)
-import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, ntscdTimingSlice, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger)
-import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence)
+import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger)
+import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
@@ -361,7 +361,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   ] ++
   [ testCase "ntscdTimingSlice == tscdSliceForTrivialSinks"
     $           let g    = mkGraph [(-48,()),(-19,()),(-13,()),(-6,()),(47,())] [(-48,-13,()),(-19,-48,()),(-13,-48,()),(-6,-19,()),(-6,-13,()),(47,-48,()),(47,-19,()),(47,-13,()),(47,-6,())] :: Gr () ()
-                    ntscdtimingslicer  = TSCD.ntscdTimingSlice g
+                    ntscdtimingslicer  = PTDEP.ntscdTimingSlice g
                     tscdslicer         = TSCD.tscdSliceForTrivialSinks        g
                     ms = Set.fromList [-13]
                 in ntscdtimingslicer  ms == tscdslicer  ms @? ""

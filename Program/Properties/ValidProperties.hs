@@ -93,7 +93,6 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     prevCondsWithSuccNode, prevCondsWithSuccNode', 
-    timdomOfNaiveLfp, timdomMultipleOfNaiveLfp,
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
@@ -122,6 +121,7 @@ import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDe
 import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, timingCorrection, timingLeaksTransformation, tscdCostSlice, timDFCostFromUpLocalDefViaTimdoms, timDFCost, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, tscdOfNaiveCostfLfp, timdomOfLfp, tscdSlice, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
     itimdomMultipleOfTwoFingerCost, cost1, cost1F,
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
+    timdomOfNaiveLfp, timdomMultipleOfNaiveLfp,
     timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, tscdSliceFast, tscdSliceViaTimDF)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice)
 
@@ -3275,7 +3275,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 let g = generatedGraph
                     n  = toInteger $     (length $ nodes g)
                     nr = toInteger $ 2 * (length $ nodes g)
-                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
                     timdom              = TSCD.timdomOfLfp              g
 
                     itimdom    = TSCD.itimdomMultipleOfTwoFinger g
@@ -3298,7 +3298,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 let g = generatedGraph
                     n  = toInteger $     (length $ nodes g)
                     nr = toInteger $ 2 * (length $ nodes g)
-                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
                     timdom              = TSCD.timdomOfLfp              g
                 in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
                          (∃) [0..n] (\fuel ->
@@ -3336,7 +3336,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 let g = generatedGraph
                     n  = toInteger $     (length $ nodes g)
                     nr = toInteger $ 2 * (length $ nodes g)
-                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
                     timdom              = TSCD.timdomOfLfp              g
 
                     itimdom    = TSCD.itimdomMultipleOfTwoFinger g
@@ -3383,7 +3383,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 let g = generatedGraph
                     n  = toInteger $     (length $ nodes g)
                     nr = toInteger $ 2 * (length $ nodes g)
-                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
                     timdom              = TSCD.timdomOfLfp              g
 
                     itimdom    = TSCD.itimdomMultipleOfTwoFinger g
@@ -3406,7 +3406,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 let g = generatedGraph
                     n  = toInteger $     (length $ nodes g)
                     nr = toInteger $ 2 * (length $ nodes g)
-                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
                     timdom              = TSCD.timdomOfLfp              g
                 in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
                          (∃) [0..n] (\fuel ->
@@ -3523,7 +3523,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     timdom  = TSCD.timdomOfLfp      g
-                    timdom' = NTICD.timdomOfNaiveLfp g
+                    timdom' = TSCD.timdomOfNaiveLfp g
                 in timdom == timdom',
     testProperty "itimdomMultipleTwoFingercd == tscdOfLfp in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -3551,7 +3551,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 let g = generatedGraph
                     nr = toInteger $ 2 * (length $ nodes g)
                     itimdomMultiple = TSCD.itimdomMultipleOfTwoFinger g
-                    timdomMultipleNaive = NTICD.timdomMultipleOfNaiveLfp g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
                     timdomMultipleFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- pathsUpToLength itimdomMultiple nr n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
                 in timdomMultipleNaive == timdomMultipleFinger,
     testProperty "timdomOfLfp == timdomOfTwoFinger"

@@ -84,7 +84,6 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
     dfFor, anyDFFromUpLocalDefViaAnydoms,
     mDF,
-    timdomOfPrevNaiveLfp, 
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
@@ -103,7 +102,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF3, snmF5
   ) 
 import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay)
-import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger)
+import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
@@ -324,7 +323,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   ] ++
   [ testCase ("timdomOfPrevNaiveLfp == timdomOfTwoFinger^* for " ++ exampleName) $ 
                 let itimdom = TSCD.itimdomMultipleOfTwoFinger g
-                    timdomPrevNaive = NTICD.timdomOfPrevNaiveLfp g
+                    timdomPrevNaive = TSCD.timdomOfPrevNaiveLfp g
                     timdomPrevFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
                 in  timdomPrevNaive == timdomPrevFinger
     @? ""

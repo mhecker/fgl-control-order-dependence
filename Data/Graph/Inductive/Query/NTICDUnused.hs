@@ -731,3 +731,4 @@ wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
         w     = myEntryWodFast graph
         cdEdges        = Set.fromList $ edges $ trc $ (fromSuccMap cd        :: gr () ())
         cdFromDomEdges = Set.fromList $ edges $ trc $ (fromSuccMap cdFromDom :: gr () ())
+

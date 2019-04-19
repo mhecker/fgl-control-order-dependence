@@ -80,17 +80,14 @@ import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Reachability(..),
     combinedBackwardSlice,
-    cost1, cost1F,
     ntscdMyDodSlice, ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
-    validTimdomFor,
     solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem,
     sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf,
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
     dfFor, anyDFFromUpLocalDefViaAnydoms,
-    ntscdTimingSlice, tscdSliceForTrivialSinks,
     mDF,
     timingSolvedF3sparseDependence, timingSolvedF3dependence,
-    timdomOfPrevNaiveLfp, itimdomMultipleOfTwoFinger,
+    timdomOfPrevNaiveLfp, 
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
     isinkdomOfTwoFinger8,
@@ -109,7 +106,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF3, snmF5
   ) 
 import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay)
-import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,)
+import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, ntscdTimingSlice, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
@@ -264,7 +261,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger", exampleTimingDepInterestingTwoFinger)]
   ] ++
   [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
-                let (cost, _) = TSCD.timingCorrection g (NTICD.cost1 g)
+                let (cost, _) = TSCD.timingCorrection g (TSCD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
@@ -282,7 +279,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                                         ]
   ] ++
   [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
-                let (cost, _) = TSCD.timingCorrection g (NTICD.cost1 g)
+                let (cost, _) = TSCD.timingCorrection g (TSCD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
@@ -297,7 +294,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   ] ++
   [ testCase ("itimdomMultipleOfTwoFinger        relates to timingF3EquationSystem for " ++ exampleName) $ 
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
-                           itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
+                           itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
                              where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
@@ -314,7 +311,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger5", exampleTimingDepInterestingTwoFinger5)]
   ] ++
   [ testCase ("itimdomMultipleOfTwoFinger^*       == timdomOfLfp for " ++ exampleName) $ 
-                       let itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
+                       let itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
                            timdomOfLfp       = TSCD.timdomOfLfp g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                        in  
@@ -328,7 +325,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   | (exampleName, g :: Gr () ()) <-  [("exampleTimingDepInterestingTwoFinger5", exampleTimingDepInterestingTwoFinger5)]
   ] ++
   [ testCase ("timdomOfPrevNaiveLfp == timdomOfTwoFinger^* for " ++ exampleName) $ 
-                let itimdom = NTICD.itimdomMultipleOfTwoFinger g
+                let itimdom = TSCD.itimdomMultipleOfTwoFinger g
                     timdomPrevNaive = NTICD.timdomOfPrevNaiveLfp g
                     timdomPrevFinger = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- minimalPath itimdom n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
                 in  timdomPrevNaive == timdomPrevFinger
@@ -336,9 +333,9 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger5", exampleTimingDepInterestingTwoFinger5)]
   ] ++
   [ testCase ("validTimdomFor entries > 0 for " ++ exampleName) $ 
-                let validEntries = NTICD.validTimdomFor g (NTICD.cost1F g) itimdommultiple entries
+                let validEntries = TSCD.validTimdomFor g (TSCD.cost1F g) itimdommultiple entries
 
-                    itimdommultiple = NTICD.itimdomMultipleOfTwoFinger g
+                    itimdommultiple = TSCD.itimdomMultipleOfTwoFinger g
                     entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdommultiple ! n) (\(m,_) -> m ∈ cycleNodes) ]
                     (_, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdommultiple
                     cycleNodes = (∐) cycles
@@ -348,7 +345,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   ] ++
   [ testCase ("timdomOfTwoFinger        relates to timingF3EquationSystem for" ++ exampleName) $
                        let timingEqSolved    = NTICD.solveTimingEquationSystem $ NTICD.snmTimingEquationSystem g NTICD.timingF3EquationSystem
-                           itimdomMultiple   = NTICD.itimdomMultipleOfTwoFinger g
+                           itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
                              where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
@@ -366,8 +363,8 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   ] ++
   [ testCase "ntscdTimingSlice == tscdSliceForTrivialSinks"
     $           let g    = mkGraph [(-48,()),(-19,()),(-13,()),(-6,()),(47,())] [(-48,-13,()),(-19,-48,()),(-13,-48,()),(-6,-19,()),(-6,-13,()),(47,-48,()),(47,-19,()),(47,-13,()),(47,-6,())] :: Gr () ()
-                    ntscdtimingslicer  = NTICD.ntscdTimingSlice g
-                    tscdslicer         = NTICD.tscdSliceForTrivialSinks        g
+                    ntscdtimingslicer  = TSCD.ntscdTimingSlice g
+                    tscdslicer         = TSCD.tscdSliceForTrivialSinks        g
                     ms = Set.fromList [-13]
                 in ntscdtimingslicer  ms == tscdslicer  ms @? ""
   ] ++

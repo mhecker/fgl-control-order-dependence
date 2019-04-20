@@ -14,7 +14,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import Data.Graph.Inductive.Util (removeDuplicateEdges, delSuccessorEdges, delPredecessorEdges, fromSuccMap, toSuccMap)
+import Data.Graph.Inductive.Util (removeDuplicateEdges, delSuccessorEdges, delPredecessorEdges, fromSuccMap, toSuccMap, prevCondNodes, nextCondNode, toNextCondNode)
 import Data.Graph.Inductive
 
 import Unicode
@@ -24,7 +24,8 @@ import Program (Program)
 
 
 import Data.Graph.Inductive.Query.LCA(lca, lcaRMyCDForNode)
-import Data.Graph.Inductive.Query.NTICD (DomFunctionalGen, cdepGraph, cdepGraphP, sinkPathsFor, SinkPath(..), cyclesInScc, domOfGfp, domOfLfp, prevCondNodes, nextCondNode, toNextCondNode, isinkdomOfSinkContraction, smmnFMustWod, sinkdomOfGfp, myDependenceFor, colorLfpFor, combinedBackwardSlice, nticdF3, mayNaiveGfp)
+import Data.Graph.Inductive.Query.PostDominance (DomFunctionalGen, sinkPathsFor, SinkPath(..), cyclesInScc, domOfGfp, domOfLfp, sinkdomOfGfp)
+import Data.Graph.Inductive.Query.NTICD (cdepGraph, cdepGraphP, isinkdomOfSinkContraction, smmnFMustWod, myDependenceFor, colorLfpFor, combinedBackwardSlice, nticdF3, mayNaiveGfp)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
 
 

@@ -77,10 +77,10 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
+import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
     ntscdMyDodSlice, ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
-    sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf,
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
     dfFor, anyDFFromUpLocalDefViaAnydoms,
     mDF,
@@ -498,47 +498,47 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "sinkdomOf             == sinkdomNaiveGfpFullTop"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.sinkdomOf              g ==
-                       NTICD.sinkdomNaiveGfpFullTop g,
+                    in PDOM.sinkdomOf              g ==
+                       PDOM.sinkdomNaiveGfpFullTop g,
     testPropertySized 20 "sinkdom g_{M/->}^{->*M} ⊆ (sinkdom g)|{->*M}"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        sinkdom = NTICD.sinkdomOfGfp g
+                        sinkdom = PDOM.sinkdomOfGfp g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
                          let toMs = rdfs ms g
                              g' = foldr (flip delSuccessorEdges) (subgraph toMs g) ms
-                             sinkdom' = NTICD.sinkdomOfGfp g'
+                             sinkdom' = PDOM.sinkdomOfGfp g'
                          in sinkdom' ⊑ restrict sinkdom (Set.fromList toMs)
                        ))),
     testProperty "sinkdom g^{M->*}^{->*M} ⊆ (sinkdom g)|{->*M} for random sets M of random Size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                     let g = generatedGraph
-                        sinkdom = NTICD.sinkdomOfGfp g
+                        sinkdom = PDOM.sinkdomOfGfp g
                         n  = length $ nodes g
                         ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         toMs = rdfs ms g
                         g' = foldr (flip delSuccessorEdges) (subgraph toMs g) ms
-                        sinkdom' = NTICD.sinkdomOfGfp g'
+                        sinkdom' = PDOM.sinkdomOfGfp g'
                     in sinkdom' ⊑ restrict sinkdom (Set.fromList toMs),
     testPropertySized 20 "sinkdom g^{->*M} == (sinkdom g)|{->*M}"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        sinkdom = NTICD.sinkdomOfGfp g
+                        sinkdom = PDOM.sinkdomOfGfp g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
                          let toMs = rdfs ms g
                              g' = subgraph toMs g
-                             sinkdom' = NTICD.sinkdomOfGfp g'
+                             sinkdom' = PDOM.sinkdomOfGfp g'
                          in sinkdom' == restrict sinkdom (Set.fromList toMs)
                        ))),
     testProperty "sinkdom g^{->*M} == (sinkdom g)|{->*M} for random sets M of random Size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                     let g = generatedGraph
-                        sinkdom = NTICD.sinkdomOfGfp g
+                        sinkdom = PDOM.sinkdomOfGfp g
                         n  = length $ nodes g
                         ms =  [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         toMs = rdfs ms g
                         g' = subgraph toMs g
-                        sinkdom' = NTICD.sinkdomOfGfp g'
+                        sinkdom' = PDOM.sinkdomOfGfp g'
                     in sinkdom' == restrict sinkdom (Set.fromList toMs)
  ]
 

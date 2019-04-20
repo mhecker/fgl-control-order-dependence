@@ -4,12 +4,13 @@ module Data.Graph.Inductive.Util where
 import Util
 import Unicode
 
-import Data.List(delete, nub)
 
 import Algebra.PartialOrd (PartialOrd, leq)
 
 import Data.Maybe (fromJust)
 import qualified Data.Map as Map
+import Data.List(delete, nub, partition)
+import qualified Data.List as List
 import Data.Map (Map, (!))
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -336,3 +337,115 @@ ladder n = mkGraph [(i,()) | i <- [0..2*n+2]] (eds n)
 
 
 costFor g seed = Map.fromList $ zip (edges g) (fmap ((1+) . (`mod` 32) .  abs) $ more seed)
+
+{- Utility functions -}
+toNextCondNode graph n = toNextCondSeen [n] n
+    where toNextCondSeen seen n = case suc graph n of
+            []    -> seen
+            [ n'] -> if n' ∊ seen then seen else toNextCondSeen (n':seen) n'
+            (_:_) -> seen
+
+nextCondNode graph n = nextCondSeen [n] n
+    where nextCondSeen seen n = case suc graph n of
+            []    -> Nothing
+            [ n'] -> if n' ∊ seen then Nothing else nextCondSeen (n':seen) n'
+            (_:_) -> Just n
+
+
+nextLinearSinkNode graph sink n = next n
+    where next n = case suc graph n of
+            []    -> error $ "did not start from an 'entry' node for sink " ++ (show sink)
+            [ n'] -> if n' ∊ sink then n' else next n'
+            (_:_) -> error $ "reached a cond node before sink " ++ (show sink)
+
+
+
+toNextRealCondNode graph n = toNextCondSeen [n] n
+    where toNextCondSeen seen n = case List.delete n $ nub $ suc graph n of
+            []    -> seen
+            [ n'] -> if n' ∊ seen then seen else toNextCondSeen (n':seen) n'
+            (_:_) -> seen
+
+nextRealCondNode graph n = nextCondSeen [n] n
+    where nextCondSeen seen n = case List.delete n $ nub $ suc graph n of
+            []    -> Nothing
+            [ n'] -> if n' ∊ seen then Nothing else nextCondSeen (n':seen) n'
+            (_:_) -> Just n
+
+
+
+nextJoinNode graph n = nextJoinSeen [n] n
+    where nextJoinSeen seen n = case pre graph n of
+            (_:_) -> Just n
+            _     -> case suc graph n of
+              []     -> Nothing
+              [ n' ] -> if n' ∊ seen then Nothing else nextJoinSeen (n':seen) n'
+              (_:_)  -> Nothing
+
+nextJoinNodes graph n = nextJoinSeen [n] n []
+    where nextJoinSeen seen n joins = case suc graph n of
+              []     -> joins'
+              [ n' ] -> if n' ∊ seen then joins' else nextJoinSeen (n':seen) n' joins'
+              (_:_)  -> joins'
+            where joins' = case pre graph n of
+                     (_:_) -> n:joins
+                     _     -> joins
+
+
+
+prevRealCondNodes graph start = prevCondsF (List.delete start $ nub $ pre graph start)
+    where prevCondsF front = concat $ fmap prevConds front
+          prevConds  n
+            | n == start = [n]
+            | otherwise  = case List.delete n $ nub $ suc graph n of
+                [ n'] -> prevCondsF (List.delete n $ nub $ pre graph n)
+                (_:_) -> [n]
+
+
+
+
+prevCondImmediateNodes graph n = [ p | p <- pre graph n, case suc graph p of { [_] -> False ; _ -> True } ]
+
+
+prevCondNodes graph start = prevCondsF (pre graph start)
+    where prevCondsF front = concat $ fmap prevConds front
+          prevConds  n
+            | n == start = [n]
+            | otherwise  = case suc graph n of
+                [ n'] -> prevCondsF (pre graph n)
+                (_:_) -> [n]
+
+prevCondsWithSuccNode graph start = prevCondsF [(p, start) | p <- pre graph start]
+    where prevCondsF front = concat $ fmap prevConds front
+          prevConds  (n,x)
+            | n == start = [(n,x)]
+            | otherwise  = case suc graph n of
+                [ n'] -> prevCondsF [ (p,n) | p <- pre graph n]
+                (_:_) -> [(n,x)]
+
+
+prevCondsWithSuccNode' graph start = prevCondsF [(p, start) | p <- pre graph start] []
+    where prevCondsF []    found = found
+          prevCondsF front found = prevCondsF newFront (newFound ++ found)
+            where (newFound, notFound) = partition isCond front
+                  isCond (n,x)
+                    | n == start = True
+                    | otherwise = case suc graph n of
+                        [ n'] -> False 
+                        (_:_) -> True
+                  newFront = [ (p,n) | (n,x) <- notFound, p <- pre graph n]
+
+
+prevRepresentantNodes graph start =
+      case pre graph start of
+        (_:_:_) -> Just start
+        []      -> Just start
+        [n]     -> prevRepresentant [start] n start
+    where prevRepresentant seen n m -- invariance : n is only predecessor of m, m is no join node
+              | n ∊ seen  = Nothing
+              | otherwise = case suc graph n of
+                  (_:_:_) -> Just m
+                  [m']    -> assert (m' == m) $
+                             case pre graph n of
+                               [n']    -> prevRepresentant (n:seen) n' n
+                               _       -> Just n

@@ -51,6 +51,7 @@ import Unicode
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.DFS (reachable)
 
+import Data.Graph.Inductive.Query.PostDominance (sinkdomOfGfp)
 import Data.Graph.Inductive.Query.NTICD
 -- import Data.Graph.Inductive.Query.LCA
 

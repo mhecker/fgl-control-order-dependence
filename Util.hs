@@ -446,3 +446,6 @@ infix 4 ≡
          | ns == ns'    = Set.empty
          | Set.null ns  = ns'
          | otherwise    = ns
+
+traceIfFalse x b =
+  if b then b else traceShow x $ b

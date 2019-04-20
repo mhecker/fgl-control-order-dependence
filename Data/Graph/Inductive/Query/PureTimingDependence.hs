@@ -22,8 +22,8 @@ import Data.Graph.Inductive
 import Unicode
 import Util(fromSet, without, invert'', invert''', restrict, reachableFrom)
 
-import Data.Graph.Inductive.Util (isCond, fromSuccMap, delSuccessorEdges)
-import Data.Graph.Inductive.Query.NTICD (nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode, combinedBackwardSlice, isinkDFTwoFinger, nticdF3, nticdSlice, ntscdF3)
+import Data.Graph.Inductive.Util (isCond, fromSuccMap, delSuccessorEdges, nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode)
+import Data.Graph.Inductive.Query.NTICD (combinedBackwardSlice, isinkDFTwoFinger, nticdF3, nticdSlice, ntscdF3)
 import Data.Graph.Inductive.Query.TSCD (itimdomMultipleOfTwoFingerFor, itimdomMultipleOfTwoFinger)
 
 

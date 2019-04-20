@@ -21,7 +21,7 @@ import qualified Algebra.PartialOrd as PartialOrd
 
 
 import Data.Graph.Inductive
-import Data.Graph.Inductive.Util (delSuccessorEdges, controlSinks, fromSuccMapWithEdgeAnnotation)
+import Data.Graph.Inductive.Util (delSuccessorEdges, controlSinks, fromSuccMapWithEdgeAnnotation, prevCondImmediateNodes, nextCondNode, toNextCondNode)
 
 import Unicode
 import Util(reachableFrom, reachableUpToLength, distancesUpToLength, minimalPath, toSet, fromSet, foldM1, invert'', invert''', restrict, without, findCyclesM)
@@ -29,7 +29,7 @@ import IRLSOD(CFGNode)
 import Program (Program)
 
 import Data.Graph.Inductive.Query.LCA(lcaTimdomOfTwoFingerFast, lcaTimdomOfTwoFingerFastCost)
-import Data.Graph.Inductive.Query.NTICD (prevCondImmediateNodes, combinedBackwardSlice, nextCondNode, toNextCondNode, onedomOf, domsOf, dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms, imdomOfTwoFinger6, idomToDFFast, isinkDFTwoFinger, xDFcd, cdepGraph, cdepGraphP, ntscdSlice, ntscdMyDodSliceViaNtscd)
+import Data.Graph.Inductive.Query.NTICD ( combinedBackwardSlice, onedomOf, domsOf, dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms, imdomOfTwoFinger6, idomToDFFast, isinkDFTwoFinger, xDFcd, cdepGraph, cdepGraphP, ntscdSlice, ntscdMyDodSliceViaNtscd)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
 
 

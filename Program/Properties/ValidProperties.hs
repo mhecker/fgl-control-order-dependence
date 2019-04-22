@@ -86,6 +86,7 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
     mDFLocal, mDFLocalDef, mDFLocalViaMdoms, mDFUpGivenX, 
     mDFFromUpLocalDefViaMdoms, mDF,
  )
+import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges as CEDGE (nticdSliceNumberedViaCEdgesFast, ntscdSliceViaCEdgesFast, dfViaCEdges, idfViaCEdgesFast, nticdSliceViaCEdgesFast, nticdSliceViaCEdgesFastFor)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
@@ -105,7 +106,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     Color(..), smmnFMustDod, smmnFMustWod,
     colorLfpFor, colorFor,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdSlice,  nticdSliceNumberedViaCEdgesFast, ntscdSlice, nticdSliceFor, ntscdSliceViaCEdgesFast,
+    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd, nticdSlice,  ntscdSlice, nticdSliceFor, 
     myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, mayNaiveGfp,
     wccSliceViaNticd, wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
     smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
@@ -113,7 +114,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF4WithReachCheckGfp,
     isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
-    dfViaCEdges, idfViaCEdgesFast, nticdSliceViaCEdgesFast, nticdSliceNumbered, nticdSliceViaCEdgesFastFor,
+    nticdSliceNumbered,
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   )
@@ -427,7 +428,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
                     nticdslicer        = NTICD.nticdSliceFor              roots g idom
-                    nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFastFor roots g idom
+                    nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFastFor roots g idom
                 in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
     testProperty   "nticdSlice  == nticdSliceViaCEdgesFast for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
@@ -443,7 +444,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
                     nticdslicer        = NTICD.nticdSlice              g
-                    nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
+                    nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                 in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
     testProperty   "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -472,7 +473,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         nticdslicer        = NTICD.nticdSlice              g
-                        nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
+                        nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               nticdslicer ms == nticdslicerCEdges ms
                     )),
@@ -484,7 +485,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         n    = length $ nodes g
                         ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         nticdslicer        = NTICD.nticdSlice              g
-                        nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
+                        nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                     in  nticdslicer ms == nticdslicerCEdges ms,
     testProperty   "nticdSlice  == nticdslicerCEdges for random slice-criteria of random size"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
@@ -494,7 +495,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                          | n == 0 = Set.empty
                          | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         nticdslicer        = NTICD.nticdSlice              g
-                        nticdslicerCEdges  = NTICD.nticdSliceViaCEdgesFast g
+                        nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                     in  nticdslicer ms == nticdslicerCEdges ms,
     testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -502,7 +503,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         isinkdom1 = NTICD.isinkdomOfSinkContraction g
                         isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
-                         let dfViaJ = NTICD.dfViaCEdges g (fmap fromSet isinkdom) in
+                         let dfViaJ = CEDGE.dfViaCEdges g (fmap fromSet isinkdom) in
                          PDF.idomToDFFast g isinkdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
                     ),
     testProperty   "nticd*  _ == dfViaCEdges _"
@@ -510,7 +511,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let g = generatedGraph
                         nticd = NTICD.nticdF3 g
                         isinkdom = PDOM.isinkdomOfTwoFinger8 g
-                        dfViaJ = NTICD.dfViaCEdges g (fmap fromSet isinkdom)
+                        dfViaJ = CEDGE.dfViaCEdges g (fmap fromSet isinkdom)
                     in (∀) (nodes g) (\n -> (∀) (nodes g) (\m -> if m == n then True else
                          (n ∈ dfViaJ m)  == (m ∈ nticd ! n)
                     )),
@@ -836,7 +837,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom    = PDOM.imdomOfTwoFinger7  g
-                        idfViaJ  = NTICD.idfViaCEdgesFast g (fmap fromSet imdom)
+                        idfViaJ  = CEDGE.idfViaCEdgesFast g (fmap fromSet imdom)
                         ntscdslicer = NTICD.ntscdSlice g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               ntscdslicer ms == idfViaJ ms
@@ -849,7 +850,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                         n    = length $ nodes g
                         ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         ntscdslicer        = NTICD.ntscdSlice              g
-                        ntscdslicerCEdges  = NTICD.ntscdSliceViaCEdgesFast g
+                        ntscdslicerCEdges  = CEDGE.ntscdSliceViaCEdgesFast g
                     in  ntscdslicer ms == ntscdslicerCEdges ms,
     testProperty   "ntscdSlice  == ntscdslicerCEdges for random slice-criteria of random size"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
@@ -859,7 +860,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                          | n == 0 = Set.empty
                          | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                         ntscdslicer        = NTICD.ntscdSlice              g
-                        ntscdslicerCEdges  = NTICD.ntscdSliceViaCEdgesFast g
+                        ntscdslicerCEdges  = CEDGE.ntscdSliceViaCEdgesFast g
                     in  ntscdslicer ms == ntscdslicerCEdges ms,
     testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -867,7 +868,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                         imdom6 = PDOM.imdomOfTwoFinger6 g
                         imdom7 = PDOM.imdomOfTwoFinger7 g
                     in (∀) [imdom7] (\imdom ->
-                         let dfViaJ = NTICD.dfViaCEdges g (fmap fromSet imdom) in
+                         let dfViaJ = CEDGE.dfViaCEdges g (fmap fromSet imdom) in
                          PDF.idomToDFFast g imdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
                     ),
     testPropertySized 80   "mDFFromUpLocalDefViaSMdoms == mDF"

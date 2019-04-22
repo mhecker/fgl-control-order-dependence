@@ -47,7 +47,8 @@ import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs)
 
 import Data.Graph.Inductive.Query.PostDominance (sinkdomOfGfp, isinkdomOfTwoFinger8ForSinks)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFastForRoots)
-import Data.Graph.Inductive.Query.NTICD (combinedBackwardSlice, mayNaiveGfp, rotatePDomAround)
+import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
+import Data.Graph.Inductive.Query.NTICD (mayNaiveGfp, rotatePDomAround)
 import Data.Graph.Inductive.Query.LCA
 
 

@@ -29,8 +29,9 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Graph.Inductive.Query.NTICD.Util (cdepGraphP, cdepGraph)
+import Data.Graph.Inductive.Query.NTICD.Util (cdepGraphP, cdepGraph, combinedBackwardSlice)
 import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
+import Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered (isinkDFNumberedForSinks)
 import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
@@ -949,28 +950,6 @@ fMustNaive graph  must =
 
 
 
-combinedBackwardSliceSlow :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
-combinedBackwardSliceSlow graph cd od = \ms -> (㎲⊒) ms f
-  where f slice = slice
-                ⊔ Set.fromList [ n | m <- Set.toList slice, n <- Set.toList $ cd ! m ]
-                ⊔ Set.fromList [ n | m1 <- Set.toList slice, m2 <- Set.toList slice, m1 /= m2, n <- Set.toList $ Map.findWithDefault Set.empty (m1,m2) od ]
-
-combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
-combinedBackwardSlice graph cd od = \ms ->
-     let result = slice Set.empty ms 
-         slice s workset
-             | Set.null workset = s
-             | otherwise        = slice s' workset'
-           where (m, workset0) = Set.deleteFindMin workset
-                 s'  = Set.insert m s
-                 new = (fromOD ∪ fromCD) ∖ s'
-                 workset' = workset0 ∪ new
-
-                 fromCD = Map.findWithDefault Set.empty m cd
-                 fromOD
-                   | Map.null od  = Set.empty
-                   | otherwise    = (∐) [ (Map.findWithDefault Set.empty (m,m') od ) ∪ (Map.findWithDefault Set.empty (m', m) od) | m' <- Set.toList s ]
-     in result
 
 
 
@@ -989,26 +968,6 @@ ntsndDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ mdoms ! n)
                 fwd = Set.fromList $  dfs ss g'
 
 
-isinkDFNumberedForSinks :: forall gr a b. DynGraph gr => [[Node]] -> gr a b ->  Map Node (Set Node)
-isinkDFNumberedForSinks sinks graph =
-    require (Set.fromList sinks == Set.fromList (controlSinks graph)) $
-    idomToDFFastForRoots roots graph idom
-  where idom = Map.fromList $ iPDomForSinks sinks graph
-        roots = go (Map.assocs idom) [ sink | sink@(_:_:_) <- sinks ]
-          where go []     roots = roots
-                go ((n, m):as) roots = case m of 
-                  Nothing -> go as ([n]:roots)
-                  _       -> go as      roots
-
-isinkDFNumbered :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-isinkDFNumbered graph = isinkDFNumberedForSinks sinks graph
-  where sinks = controlSinks graph
-
-
-nticdSliceNumbered :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdSliceNumbered graph =  combinedBackwardSlice graph nticd w
-  where nticd = isinkDFNumbered graph
-        w     = Map.empty
 
 
 

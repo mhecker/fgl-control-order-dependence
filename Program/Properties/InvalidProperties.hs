@@ -79,8 +79,8 @@ import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, co
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf, imdomOfTwoFinger6, isinkdomOfTwoFinger8, imdomOfTwoFinger7)
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (noJoins, stepsCL, stepsCLLfp, dfFor, anyDFFromUpLocalDefViaAnydoms, mDF)
+import  Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    combinedBackwardSlice,
     ntscdMyDodSlice, ntscdMyDodSliceViaNtscd,
     mmayOf, mmayOf', 
     withPossibleIntermediateNodesFromiXdom,
@@ -676,7 +676,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                    let g = mkGraph [(1,()),(4,()),(5,())] [(1,4,()),(4,1,()),(5,1,()),(5,4,())] :: Gr () ()
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> NTICD.ntscdMyDodSlice g ms == NTICD.combinedBackwardSlice g cd Map.empty ms)) @? ""
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> NTICD.ntscdMyDodSlice g ms == combinedBackwardSlice g cd Map.empty ms)) @? ""
   ] ++
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property strong for " ++ exampleName)
             $       let myDod = NTICD.myDod g
@@ -856,7 +856,7 @@ wodTests = testGroup "(concerning weak order dependence)" $
                        nticddmywodslicer = NTICD.nticdMyWodSlice g
                        wodslicer         = NTICD.wodTEILSlice g
                        wccslicer         = FCACD.wccSlice g
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = NTICD.combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddmywodslicer ms ∨ s == wccslicer ms)) @? ""
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddmywodslicer ms ∨ s == wccslicer ms)) @? ""
   ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
                    let  myCDFromMyDom    = NTICDUnused.myCDFromMyDom g

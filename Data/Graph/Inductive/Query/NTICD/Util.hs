@@ -12,6 +12,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Basic (efilter)
 
 
+import Unicode
 import IRLSOD(CFGNode, CFGEdge(..), isIntraCFGEdge, false)
 import Program (Program (..))
 
@@ -37,3 +38,27 @@ cdepGraph :: DynGraph gr => (gr a b -> Map Node (Set Node)) -> gr a b -> gr a De
 cdepGraph cdGen graph  = mkGraph (labNodes graph) [ (n,n',ControlDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
   where dependencies = cdGen graph
 
+
+
+combinedBackwardSliceSlow :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
+combinedBackwardSliceSlow graph cd od = \ms -> (㎲⊒) ms f
+  where f slice = slice
+                ⊔ Set.fromList [ n | m <- Set.toList slice, n <- Set.toList $ cd ! m ]
+                ⊔ Set.fromList [ n | m1 <- Set.toList slice, m2 <- Set.toList slice, m1 /= m2, n <- Set.toList $ Map.findWithDefault Set.empty (m1,m2) od ]
+
+combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
+combinedBackwardSlice graph cd od = \ms ->
+     let result = slice Set.empty ms 
+         slice s workset
+             | Set.null workset = s
+             | otherwise        = slice s' workset'
+           where (m, workset0) = Set.deleteFindMin workset
+                 s'  = Set.insert m s
+                 new = (fromOD ∪ fromCD) ∖ s'
+                 workset' = workset0 ∪ new
+
+                 fromCD = Map.findWithDefault Set.empty m cd
+                 fromOD
+                   | Map.null od  = Set.empty
+                   | otherwise    = (∐) [ (Map.findWithDefault Set.empty (m,m') od ) ∪ (Map.findWithDefault Set.empty (m', m) od) | m' <- Set.toList s ]
+     in result

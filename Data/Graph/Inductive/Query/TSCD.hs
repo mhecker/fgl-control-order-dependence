@@ -32,8 +32,8 @@ import Program (Program)
 import Data.Graph.Inductive.Query.LCA(lcaTimdomOfTwoFingerFast, lcaTimdomOfTwoFingerFastCost)
 import Data.Graph.Inductive.Query.PostDominance (onedomOf, domsOf, imdomOfTwoFinger6)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms,  idomToDFFast, isinkDFTwoFinger, xDFcd)
-import Data.Graph.Inductive.Query.NTICD.Util (cdepGraph, cdepGraphP)
-import Data.Graph.Inductive.Query.NTICD (combinedBackwardSlice, ntscdSlice, ntscdMyDodSliceViaNtscd)
+import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice, cdepGraph, cdepGraphP)
+import Data.Graph.Inductive.Query.NTICD (ntscdSlice, ntscdMyDodSliceViaNtscd)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
 
 

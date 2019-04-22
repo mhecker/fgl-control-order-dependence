@@ -87,16 +87,17 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
     mDFFromUpLocalDefViaMdoms, mDF,
  )
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges as CEDGE (nticdSliceNumberedViaCEdgesFast, ntscdSliceViaCEdgesFast, dfViaCEdges, idfViaCEdgesFast, nticdSliceViaCEdgesFast, nticdSliceViaCEdgesFastFor)
+import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered as PDFNumbered (nticdSliceNumbered)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.PostDominance.Numbered as PDOMNumbered (iPDom, pdom, numberForest)
+import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives,
     nticdMyWodSliceViaNticd, ntscdMyDodSliceViaNtscd,
     nticdMyWodSliceViaISinkDom,
-    combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf',
     rotatePDomAround,
@@ -114,7 +115,6 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     snmF4WithReachCheckGfp,
     isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
-    nticdSliceNumbered,
     nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
     ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   )
@@ -1574,14 +1574,14 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                        nticd = PDF.isinkDFTwoFinger g
                        mywod =  NTICD.myWodFastPDomSimpleHeuristic g
-                       slicer = NTICD.combinedBackwardSlice g (ddep ⊔ nticd) mywod 
+                       slicer = combinedBackwardSlice g (ddep ⊔ nticd) mywod 
                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 ->
                         let ms  = [m1, m2, m3]
                             msS = Set.fromList ms
                             g' = foldr (flip delSuccessorEdges) g ms
                             nticd' = PDF.isinkDFTwoFinger g'
                             empty = Map.empty
-                            slicer' = NTICD.combinedBackwardSlice g (ddep ⊔ nticd') empty
+                            slicer' = combinedBackwardSlice g (ddep ⊔ nticd') empty
                         in slicer msS == slicer' msS
                       ))),
       testProperty "nticdMyWodSlice == nticdMyWodSliceViaNticd even when using data dependencies, for random slice-criteria of random size "
@@ -1597,13 +1597,13 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                        nticd = PDF.isinkDFTwoFinger g
                        mywod =  NTICD.myWodFastPDomSimpleHeuristic g
-                       slicer = NTICD.combinedBackwardSlice g (ddep ⊔ nticd) mywod
+                       slicer = combinedBackwardSlice g (ddep ⊔ nticd) mywod
                        
                        msS = Set.fromList ms
                        g' = foldr (flip delSuccessorEdges) g ms
                        nticd' = PDF.isinkDFTwoFinger g'
                        empty = Map.empty
-                       slicer' = NTICD.combinedBackwardSlice g (ddep ⊔ nticd') empty
+                       slicer' = combinedBackwardSlice g (ddep ⊔ nticd') empty
                    in slicer msS == slicer' msS,
     testProperty "wodTEIL ⊑ myWod ∪ nticd*"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -2429,14 +2429,14 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                        ntscd = PDF.mDFTwoFinger g
                        mydod =  NTICD.myDodFastPDom g
-                       slicer = NTICD.combinedBackwardSlice g (ddep ⊔ ntscd) mydod 
+                       slicer = combinedBackwardSlice g (ddep ⊔ ntscd) mydod 
                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 ->
                         let ms  = [m1, m2, m3]
                             msS = Set.fromList ms
                             g' = foldr (flip delSuccessorEdges) g ms
                             ntscd' = PDF.mDFTwoFinger g'
                             empty = Map.empty
-                            slicer' = NTICD.combinedBackwardSlice g (ddep ⊔ ntscd') empty
+                            slicer' = combinedBackwardSlice g (ddep ⊔ ntscd') empty
                         in slicer msS == slicer' msS
                       ))),
       testProperty  "mdomOfLfp m2                 == mustOfLfp"

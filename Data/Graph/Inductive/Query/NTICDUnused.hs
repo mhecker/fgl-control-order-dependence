@@ -26,7 +26,8 @@ import Program (Program)
 import Data.Graph.Inductive.Query.LCA(lca, lcaRMyCDForNode)
 import Data.Graph.Inductive.Query.PostDominance (DomFunctionalGen, sinkPathsFor, SinkPath(..), cyclesInScc, domOfGfp, domOfLfp, sinkdomOfGfp)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice, cdepGraph, cdepGraphP)
-import Data.Graph.Inductive.Query.NTICD (isinkdomOfSinkContraction, smmnFMustWod, myDependenceFor, colorLfpFor, nticdF3, mayNaiveGfp)
+import Data.Graph.Inductive.Query.NTICD (isinkdomOfSinkContraction, nticdF3, mayNaiveGfp)
+import Data.Graph.Inductive.Query.OrderDependence (smmnFMustWod, myDependenceFor, colorLfpFor)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
 
 

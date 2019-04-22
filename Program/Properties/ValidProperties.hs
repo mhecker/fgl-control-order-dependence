@@ -73,12 +73,11 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
-import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkdomNaiveGfp, sinkdomNaiveGfpFullTop, sinkdomOfisinkdomProperty, imdomOf, imdomOfLfp, mdomOf, mdomOfLfp, mdomNaiveLfp, mdomOfimdomProperty)
+import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkdomNaiveGfp, sinkdomNaiveGfpFullTop, sinkdomOfisinkdomProperty, imdomOf, imdomOfLfp, mdomOf, mdomOfLfp, mdomNaiveLfp, mdomOfimdomProperty, onedomOf, mdomsOf, sinkdomsOf, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,  imdomOfTwoFinger6, imdomOfTwoFinger7)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    onedomOf,
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     isinkDFTwoFinger, mDFTwoFinger,
@@ -88,7 +87,6 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
     mustOfLfp, mustOfGfp,
     mmayOf, mmayOf', noJoins, stepsCL,
-    mdomsOf, sinkdomsOf,
     rotatePDomAround,
     joiniSinkDomAround,
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -102,10 +100,10 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck, dod, dodDef, dodFast, myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic, dodColoredDagFixed, dodColoredDagFixedFast, myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay',
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
-    isinkdomOfSinkContraction, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,
+    isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
     sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, isinkdomTwoFingercd,
-    sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms, imdomOfTwoFinger6, imdomOfTwoFinger7,
+    sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
     idomToDF, idomToDFFast, dfViaCEdges, idfViaCEdgesFast, nticdSliceViaCEdgesFast, nticdSliceNumbered, nticdSliceViaCEdgesFastFor,
@@ -415,7 +413,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     idom = assert (n == 2*n0 + 3) $ 
                                        Map.fromList [(i, Just (i+2))| i <- [1,3 ..(n-3)]]
                            `Map.union` Map.fromList [(i, Nothing)   | i <- [0   ..(n-1)]]
-                    roots = assert (idom == fmap fromSet (NTICD.isinkdomOfTwoFinger8 g)) $
+                    roots = assert (idom == fmap fromSet (PDOM.isinkdomOfTwoFinger8 g)) $
                             fmap (\n -> [n]) $  Map.keys $ Map.filter (== Nothing) idom
                     
                     nrSlices = 1
@@ -448,8 +446,8 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         sinkdom = PDOM.sinkdomOfLfp g
-                        isinkdomsOf = NTICD.sinkdomsOf g
-                        idom = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 g
+                        isinkdomsOf = PDOM.sinkdomsOf g
+                        idom = fmap fromSet $ PDOM.isinkdomOfTwoFinger8 g
                         idom'  = invert''' idom
                         (cycleOfM, cycles) = findCyclesM idom
                         roots = foldr (\(n,m) roots -> if m == Nothing then Set.fromList [n] : roots else roots) cycles (Map.assocs idom)
@@ -499,7 +497,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom1 = NTICD.isinkdomOfSinkContraction g
-                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
+                        isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                          let dfViaJ = NTICD.dfViaCEdges g (fmap fromSet isinkdom) in
                          NTICD.idomToDFFast g isinkdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
@@ -508,7 +506,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         nticd = NTICD.nticdF3 g
-                        isinkdom = NTICD.isinkdomOfTwoFinger8 g
+                        isinkdom = PDOM.isinkdomOfTwoFinger8 g
                         dfViaJ = NTICD.dfViaCEdges g (fmap fromSet isinkdom)
                     in (∀) (nodes g) (\n -> (∀) (nodes g) (\m -> if m == n then True else
                          (n ∈ dfViaJ m)  == (m ∈ nticd ! n)
@@ -517,7 +515,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom1 = NTICD.isinkdomOfSinkContraction g
-                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
+                        isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g isinkdom ==
                        NTICD.sinkDF       g),
@@ -525,7 +523,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom1 = NTICD.isinkdomOfSinkContraction g
-                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
+                        isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g                isinkdom ==
                        NTICD.idomToDF     g (fromSuccMap $ isinkdom :: Gr () ())),
@@ -533,7 +531,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+                        isinkdom2 = fromSuccMap $ PDOM.isinkdomOfTwoFinger8      g :: Gr () ()
                         df1    = NTICD.idomToDF g isinkdom1
                         idomSccs1 = scc isinkdom1
                         cycles1 = [ cycle | cycle <- idomSccs1, length cycle > 1 ]
@@ -548,19 +546,19 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     in (trc $ fromSuccMap $ fmap toSet $ Map.fromList $
                               NTICDNumbered.iPDom  g :: Gr () ()) ==
                        (trc $ fromSuccMap $
-                              NTICD.isinkdomOfTwoFinger8       g),
+                              PDOM.isinkdomOfTwoFinger8       g),
     testProperty   "pdom  == isinkdomOfTwoFinger8^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (      fromSuccMap $ fmap Set.fromList $ Map.fromList $ 
                               NTICDNumbered.pdom  g :: Gr () ()) ==
                        (trc $ fromSuccMap $
-                              NTICD.isinkdomOfTwoFinger8       g),
+                              PDOM.isinkdomOfTwoFinger8       g),
     testProperty   "isinkdomOfSinkContraction is intransitive"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
-                        isinkdom2 = fromSuccMap $ NTICD.isinkdomOfTwoFinger8      g :: Gr () ()
+                        isinkdom2 = fromSuccMap $ PDOM.isinkdomOfTwoFinger8      g :: Gr () ()
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                          (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1)),
     testProperty   "isinkdomOfSinkContraction^*  == isinkdomOfTwoFinger8^*"
@@ -569,13 +567,13 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     in (trc $ fromSuccMap $
                               NTICD.isinkdomOfSinkContraction  g :: Gr () ()) ==
                        (trc $ fromSuccMap $
-                              NTICD.isinkdomOfTwoFinger8       g),
+                              PDOM.isinkdomOfTwoFinger8       g),
     testProperty   "isinkdomOf^*          == isinkdomOfTwoFinger8^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ PDOM.isinkdomOf                 g :: Gr () ()) ==
                        (trc $ fromSuccMap $
-                              NTICD.isinkdomOfTwoFinger8       g),
+                              PDOM.isinkdomOfTwoFinger8       g),
     testProperty   "isinkdomOf^*          == isinkdomOfSinkContraction^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -706,7 +704,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
 insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
             $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
-                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
+                        isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g isinkdom ==
                        NTICD.sinkDF       g) @? ""
@@ -738,7 +736,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
             $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
-                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
+                        isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        NTICD.idomToDFFast g isinkdom ==
                        NTICD.sinkDF       g) @? ""
@@ -746,7 +744,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
             $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
-                        isinkdom2 = NTICD.isinkdomOfTwoFinger8      g
+                        isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                         NTICD.idomToDFFast g isinkdom ==
                        NTICD.idomToDF     g (fromSuccMap isinkdom :: Gr () ())) @? ""
@@ -798,21 +796,21 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                     g = insEdge (exit, entry, ()) generatedGraph
-                    imdom6 = NTICD.imdomOfTwoFinger6 g
-                    imdom7 = NTICD.imdomOfTwoFinger7 g
+                    imdom6 = PDOM.imdomOfTwoFinger6 g
+                    imdom7 = PDOM.imdomOfTwoFinger7 g
                 in NTICD.idomToDFFast g imdom6 == NTICD.idomToDFFast g imdom7,
     testProperty   "idomToDFFast _ imdom6  == idomToDFFast _ imdom7"
                 $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
-                    imdom6 = NTICD.imdomOfTwoFinger6 g
-                    imdom7 = NTICD.imdomOfTwoFinger7 g
+                    imdom6 = PDOM.imdomOfTwoFinger6 g
+                    imdom7 = PDOM.imdomOfTwoFinger7 g
                 in NTICD.idomToDFFast g imdom6 == NTICD.idomToDFFast g imdom7,
     testProperty   "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         mdom = PDOM.mdomOfLfp g
-                        imdomsOf = NTICD.mdomsOf g
-                        idom = fmap fromSet $ NTICD.imdomOfTwoFinger7 g
+                        imdomsOf = PDOM.mdomsOf g
+                        idom = fmap fromSet $ PDOM.imdomOfTwoFinger7 g
                         idom'  = invert''' idom
                         (cycleOfM, cycles) = findCyclesM idom
                         roots = foldr (\(n,m) roots -> if m == Nothing then Set.fromList [n] : roots else roots) cycles (Map.assocs idom)
@@ -834,7 +832,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     testProperty   "ntscdSlice  == idfViaCEdgesFast"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom    = NTICD.imdomOfTwoFinger7  g
+                        imdom    = PDOM.imdomOfTwoFinger7  g
                         idfViaJ  = NTICD.idfViaCEdgesFast g (fmap fromSet imdom)
                         ntscdslicer = NTICD.ntscdSlice g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
@@ -863,8 +861,8 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom6 = NTICD.imdomOfTwoFinger6 g
-                        imdom7 = NTICD.imdomOfTwoFinger7 g
+                        imdom6 = PDOM.imdomOfTwoFinger6 g
+                        imdom7 = PDOM.imdomOfTwoFinger7 g
                     in (∀) [imdom7] (\imdom ->
                          let dfViaJ = NTICD.dfViaCEdges g (fmap fromSet imdom) in
                          NTICD.idomToDFFast g imdom == Map.fromList [ (n, dfViaJ n) | n <- nodes g]
@@ -876,8 +874,8 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     testProperty   "idomToDFFast _ imdom == idomToDF _ imdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom6 = NTICD.imdomOfTwoFinger6 g
-                        imdom7 = NTICD.imdomOfTwoFinger7 g
+                        imdom6 = PDOM.imdomOfTwoFinger6 g
+                        imdom7 = PDOM.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
                          NTICD.idomToDFFast g              imdom ==
                          NTICD.idomToDF     g (fromSuccMap imdom :: Gr () ())
@@ -885,8 +883,8 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     testProperty   "idomToDFFast _ imdom  == mDF _ "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom6 = NTICD.imdomOfTwoFinger6 g
-                        imdom7 = NTICD.imdomOfTwoFinger7 g
+                        imdom6 = PDOM.imdomOfTwoFinger6 g
+                        imdom7 = PDOM.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
                          NTICD.idomToDFFast g imdom ==
                          NTICD.mDF          g
@@ -894,8 +892,8 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
     testProperty   "DF of imdom Cycles are all the same"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+                        imdom6 = fromSuccMap $ PDOM.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ PDOM.imdomOfTwoFinger7 g :: Gr () ()
                     in (∀) [imdom6, imdom7] (\imdom ->
                          let df    = NTICD.idomToDF g imdom
                              idomSccs = scc imdom
@@ -906,15 +904,15 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ fromSuccMap $
-                        NTICD.imdomOfTwoFinger7            g :: Gr () ()) ==
+                        PDOM.imdomOfTwoFinger7            g :: Gr () ()) ==
                        (trc $ fromSuccMap $
-                        NTICD.imdomOfTwoFinger6            g),
+                        PDOM.imdomOfTwoFinger6            g),
     testProperty   "imdomOfLfp^*          == imdomOfTwoFinger6^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ PDOM.imdomOfLfp             g :: Gr () ()) ==
                        (trc $ fromSuccMap $
-                        NTICD.imdomOfTwoFinger6            g),
+                        PDOM.imdomOfTwoFinger6            g),
     testPropertySized 50   "mdomOf             == mdomNaiveLfp "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -1003,8 +1001,8 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
   [  testCase    ( "idomToDFFast _ mdom == mDF _ for " ++ exampleName)
-            $       let imdom6 = NTICD.imdomOfTwoFinger6  g
-                        imdom7 = NTICD.imdomOfTwoFinger7  g
+            $       let imdom6 = PDOM.imdomOfTwoFinger6  g
+                        imdom7 = PDOM.imdomOfTwoFinger7  g
                     in (∀) [imdom6, imdom7] (\imdom ->
                        NTICD.idomToDFFast g imdom ==
                        NTICD.mDF       g) @? ""
@@ -1035,8 +1033,8 @@ sensitiveDomTests = testGroup "(concerning nontermination-sensitive control depe
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ imdom == idomToDF _ imdom for " ++ exampleName)
-            $       let imdom6 = NTICD.imdomOfTwoFinger6 g
-                        imdom7 = NTICD.imdomOfTwoFinger7 g
+            $       let imdom6 = PDOM.imdomOfTwoFinger6 g
+                        imdom7 = PDOM.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
                          NTICD.idomToDFFast g              imdom ==
                          NTICD.idomToDF     g (fromSuccMap imdom :: Gr () ())
@@ -1044,8 +1042,8 @@ sensitiveDomTests = testGroup "(concerning nontermination-sensitive control depe
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ imdom == mDF _ for " ++ exampleName)
-            $       let imdom6 = NTICD.imdomOfTwoFinger6 g
-                        imdom7 = NTICD.imdomOfTwoFinger7 g
+            $       let imdom6 = PDOM.imdomOfTwoFinger6 g
+                        imdom7 = PDOM.imdomOfTwoFinger7 g
                     in (∀) [imdom6, imdom7] (\imdom ->
                          NTICD.idomToDFFast g imdom ==
                          NTICD.mDF          g
@@ -1053,8 +1051,8 @@ sensitiveDomTests = testGroup "(concerning nontermination-sensitive control depe
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "DF of imdom Cycles are all the same for " ++ exampleName)
-            $       let imdom6 = fromSuccMap $ NTICD.imdomOfTwoFinger6 g :: Gr () ()
-                        imdom7 = fromSuccMap $ NTICD.imdomOfTwoFinger7 g :: Gr () ()
+            $       let imdom6 = fromSuccMap $ PDOM.imdomOfTwoFinger6 g :: Gr () ()
+                        imdom7 = fromSuccMap $ PDOM.imdomOfTwoFinger7 g :: Gr () ()
                     in (∀) [imdom6, imdom7] (\imdom ->
                          let df    = NTICD.idomToDF g imdom
                              idomSccs = scc imdom
@@ -1065,15 +1063,15 @@ sensitiveDomTests = testGroup "(concerning nontermination-sensitive control depe
   ] ++
   [  testCase    ( "imdomOfTwoFinger7^*   == imdomOfTwoFinger6^* for " ++ exampleName)
                   $ (trc $ fromSuccMap $
-                           NTICD.imdomOfTwoFinger7            g :: Gr () ()) ==
+                           PDOM.imdomOfTwoFinger7            g :: Gr () ()) ==
                     (trc $ fromSuccMap $
-                           NTICD.imdomOfTwoFinger6            g)  @? ""
+                           PDOM.imdomOfTwoFinger6            g)  @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "imdomOfLfp^*          == imdomOfTwoFinger6^* for " ++ exampleName)
                   $ (trc $ PDOM.imdomOfLfp             g :: Gr () ()) ==
                     (trc $ fromSuccMap $
-                           NTICD.imdomOfTwoFinger6            g)  @? ""
+                           PDOM.imdomOfTwoFinger6            g)  @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
   []
@@ -1226,7 +1224,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                            let m0s = Set.toList m0S
                                g' = foldr (flip delSuccessorEdges) g m0s
                                slicer' = NTICD.nticdSlice g'
-                               sinkdoms' = NTICD.sinkdomsOf g'
+                               sinkdoms' = PDOM.sinkdomsOf g'
                                sinkdom'  = PDOM.sinkdomOfGfp g'
                            in  (∀) (slicer' m0S) (\n -> Set.null $ sinkdoms' ! n)
                              ∧ (∀) (slicer' m0S) (\n ->            sinkdom'  ! n == Set.fromList [n])
@@ -1249,12 +1247,12 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty "sinkdoms g' => sinkdoms g"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
-                    sinkdoms = NTICD.sinkdomsOf g
+                    sinkdoms = PDOM.sinkdomsOf g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let m0S = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let m0S = Set.fromList [m1, m2, m3] in
                      let  m0s = Set.toList m0S
                           toM0s = rdfs m0s g
                           g' = foldr (flip delSuccessorEdges) g m0s
-                          sinkdoms' = NTICD.sinkdomsOf g'
+                          sinkdoms' = PDOM.sinkdomsOf g'
                      in   (sinkdoms' ⊑ sinkdoms)
                    )),
       testProperty  "isinkdoms path order"
@@ -1262,7 +1260,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let g = generatedGraph
                         must = NTICD.mustOfGfp g
                         sinkdom = PDOM.sinkdomOfGfp g
-                        isinkdoms = NTICD.sinkdomsOf g
+                        isinkdoms = PDOM.sinkdomsOf g
                     in (∀) (Map.assocs sinkdom) (\(n,ms) -> (∀) (isinkdoms ! n) (\m1 ->  (∀) (ms) (\m2 ->
                          let ok  =   ((m1,m2) ∈ must ! n)
                                    ∨ (m1 ∈ sinkdom ! m2 ∧  m2 ∈ sinkdom ! m1  ∧  m2 ∈ isinkdoms ! n)
@@ -1298,7 +1296,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let g = generatedGraph
                         must = NTICD.mustOfGfp g
                         sinkdom = PDOM.sinkdomOfGfp g
-                        isinkdoms = NTICD.sinkdomsOf g
+                        isinkdoms = PDOM.sinkdomsOf g
                         ntind = NTICD.ntindDef g
                     in (∀) (nodes g) (\m0 -> (∀) (nodes g) (\n0 -> (∀) (nodes g) (\n' -> (∀) (nodes g) (\n -> (∀) (suc g n) (\x -> (∀) (suc g n) (\x' ->
                          let okn0m0 = (  True 
@@ -1434,7 +1432,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     must = NTICD.mustOfGfp g
                     slicer  = NTICD.nticdMyWodPDomSimpleHeuristic g
                     nticdslicer = NTICD.nticdSlice g
-                    sinkdoms = NTICD.sinkdomsOf g
+                    sinkdoms = PDOM.sinkdomsOf g
                     onPathBetween ss ts = fwd
                       where gTs = foldr (flip delSuccessorEdges) g ts
                             fwd = Set.fromList $  dfs ss gTs
@@ -1451,7 +1449,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           nticd' = NTICD.nticdF3 g'
                           nticd'slicer = NTICD.nticdSlice g'
                           sinkdom' = PDOM.sinkdomOfGfp g'
-                          sinkdoms' = NTICD.sinkdomsOf g'
+                          sinkdoms' = PDOM.sinkdomsOf g'
                           onPathBetween' ss ts = fwd
                             where g'Ts = foldr (flip delSuccessorEdges) g' ts
                                   fwd = Set.fromList $  dfs ss g'Ts
@@ -2037,8 +2035,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
 
                          gToN = subgraph keep' gN
                          
-                         isinkdom  = NTICD.isinkdomOfTwoFinger8 gToN
-                         isinkdom' = NTICD.isinkdomOfTwoFinger8 g'N
+                         isinkdom  = PDOM.isinkdomOfTwoFinger8 gToN
+                         isinkdom' = PDOM.isinkdomOfTwoFinger8 g'N
                          keep' = reachable n (grev gN)
                      in  isinkdom == restrict isinkdom' (Set.fromList keep')
                    ),
@@ -2050,7 +2048,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                 let g = subgraph towardsSink g0,
                                                 let gn   = Map.fromList [ (n, delSuccessorEdges       g  n)    | n <- towardsSink ],
                                                 let condNodes = Map.fromList [ (n, succs) | n <- towardsSink, let succs = suc g n, length succs > 1],
-                                                let ipdom = Map.fromList [ (n, NTICD.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- towardsSink ]
+                                                let ipdom = Map.fromList [ (n, PDOM.isinkdomOfTwoFinger8 $ gn  ! n)    | n <- towardsSink ]
                             ]
                 in (∀) sinks (\(g,gn,sink, ipdom, condNodes) ->
                             (∀) sink (\m -> 
@@ -2069,7 +2067,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                         Map.fromList [ (x, Nothing)   | x <- nodes (gn ! m), not $ x ∈ processed0, Map.member x nonSinkCondNodes] `Map.union` (fmap fromSet ipdomM'')
                                            worklist0  = Dequeue.fromList [ (x, succs) | x <- nodes (gn ! m), not $ x ∈ processed0, Just succs <- [Map.lookup x nonSinkCondNodes]]
                                            ipdomM'''' = -- traceShow (Map.size nonSinkCondNodes, Seq.length worklist0) $
-                                                        fmap toSet $ NTICD.isinkdomOftwoFinger8Up (gn ! m) nonSinkCondNodes worklist0 processed0 (invert''' imdom0) imdom0
+                                                        fmap toSet $ PDOM.isinkdomOftwoFinger8Up (gn ! m) nonSinkCondNodes worklist0 processed0 (invert''' imdom0) imdom0
                                        in (∀) sink (\y ->
                                                reachableFromTree  ipdomM''''  y
                                             ⊇  reachableFromTree (ipdom ! m) y
@@ -2256,10 +2254,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     in (∀) sinks (\sink -> let g = subgraph sink generatedGraph in
                          (∀) (nodes g) (\n ->
                            let gn   = efilter (\(x,y,_) -> x /= n) g
-                               pdom = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 gn
+                               pdom = fmap fromSet $ PDOM.isinkdomOfTwoFinger8 gn
                                condNodes = Map.fromList [ (x, succs) | x <- nodes g, let succs = suc g x, length succs  > 1 ]
                            in    (∀) (suc g n) (\m -> if m == n then True else
-                                  let pdom' = fmap fromSet $ NTICD.isinkdomOfTwoFinger8 gm
+                                  let pdom' = fmap fromSet $ PDOM.isinkdomOfTwoFinger8 gm
                                         where gm = delSuccessorEdges g m
                                       rpdom' = NTICD.rotatePDomAround g condNodes pdom (n,m)
                                   in pdom' == rpdom'
@@ -2485,7 +2483,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "myDod is contained in imdom sccs"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom  = NTICD.imdomOfTwoFinger6 g
+                        imdom  = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         myDod = NTICD.myDod g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
@@ -2548,7 +2546,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "dod is contained in imdom sccs "
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom  = NTICD.imdomOfTwoFinger6 g
+                        imdom  = PDOM.imdomOfTwoFinger6 g
                         dod = NTICD.dod g
                         imdomSccs = scc (fromSuccMap imdom :: Gr () ())
                         imdomCycleOf m =  the (m ∊) $ imdomSccs
@@ -2562,7 +2560,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "dod is contained in imdom sccs, and only possible for immediate entries into sccs"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom  = NTICD.imdomOfTwoFinger6 g
+                        imdom  = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         dod = NTICD.dod g
                     in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
@@ -2587,7 +2585,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     let graph     = generatedGraph
                         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
                         s3        = NTICD.snmF3Lfp graph
-                        imdom     = NTICD.imdomOfTwoFinger6 graph
+                        imdom     = PDOM.imdomOfTwoFinger6 graph
                         imdomTrc  = trc $ (fromSuccMap imdom :: Gr () ())
                     in (∀) (nodes graph) (\m ->
                          (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
@@ -2650,7 +2648,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "myDod is contained in imdom sccs  for " ++ exampleName)
-            $       let imdom  = NTICD.imdomOfTwoFinger6 g
+            $       let imdom  = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         myDod = NTICD.myDod g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
@@ -2713,7 +2711,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "dod is contained in imdom sccs, and only possible for immediate entries into sccs for " ++ exampleName)
-            $       let imdom  = NTICD.imdomOfTwoFinger6 g
+            $       let imdom  = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap $ imdom :: Gr () ())
                         dod = NTICD.dod g
                     in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
@@ -2774,7 +2772,7 @@ colorProps = testGroup "(concerning color algorithms)" [
     testProperty  "colorLfpFor                 == smmnFMustDod graph"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom = NTICD.imdomOfTwoFinger6 g
+                        imdom = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
                         sMust = NTICD.smmnFMustDod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
@@ -2789,7 +2787,7 @@ colorProps = testGroup "(concerning color algorithms)" [
     testProperty  "colorLfpFor                 == colorFor"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom = NTICD.imdomOfTwoFinger6 g
+                        imdom = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
                     in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
@@ -2801,7 +2799,7 @@ colorProps = testGroup "(concerning color algorithms)" [
     testProperty  "smmnFMustDod graph          == colorFor"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        imdom = NTICD.imdomOfTwoFinger6 g
+                        imdom = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
                         sMust = NTICD.smmnFMustDod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
@@ -2829,7 +2827,7 @@ colorTests = testGroup "(concerning color algorithms)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "colorLfpFor                 == smmnFMustDod graph for" ++ exampleName)
-            $       let imdom = NTICD.imdomOfTwoFinger6 g
+            $       let imdom = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
                         sMust = NTICD.smmnFMustDod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
@@ -2844,7 +2842,7 @@ colorTests = testGroup "(concerning color algorithms)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "smmnFMustDod graph          == colorFor for " ++ exampleName)
-            $       let imdom = NTICD.imdomOfTwoFinger6 g
+            $       let imdom = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
                     in (∀) (nodes g) (\m1 ->   (∀) (nodes g) (\m2 ->
                          let colorLfp = NTICD.colorLfpFor g   m1 m2
@@ -2856,7 +2854,7 @@ colorTests = testGroup "(concerning color algorithms)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "colorLfpFor                 == colorFor for " ++ exampleName)
-            $       let imdom = NTICD.imdomOfTwoFinger6 g
+            $       let imdom = PDOM.imdomOfTwoFinger6 g
                         imdomTrc = trc $ (fromSuccMap imdom :: Gr () ())
                         sMust = NTICD.smmnFMustDod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
@@ -3242,7 +3240,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     (cost, itimdomMultiple') = TSCD.timingCorrection g cost0
                       where cost0 = costFor g seed3
                     itimdomMutliple'NoK = fmap (Set.map fst) itimdomMultiple'
-                    imdom = NTICD.imdomOfTwoFinger6 g
+                    imdom = PDOM.imdomOfTwoFinger6 g
                     -- noselfloops = Map.mapWithKey (\n ms -> Set.filter (/= n) ms)
                 in (trc $ fromSuccMap $ itimdomMutliple'NoK :: Gr () ()) == (trc $ fromSuccMap $ imdom :: Gr () ()),
     testProperty "timdom implies mdom"
@@ -3261,7 +3259,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     $ \(REDUCIBLE(generatedGraph)) ->
                 let g = generatedGraph
                     timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
-                    onedom = NTICD.onedomOf timdom
+                    onedom = PDOM.onedomOf timdom
                     tscd = TSCD.tscdOfLfp g
                 in (∀) (Map.assocs $  tscd) (\(n, ms) -> (∀) ms (\m -> not $ m ∈ onedom n)),
     testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive in reducible CFG"
@@ -3569,7 +3567,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty "timdomOfLfp is transitive in graphs without imdom cycles"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
-                    imdom = NTICD.imdomOfTwoFinger6 g
+                    imdom = PDOM.imdomOfTwoFinger6 g
                     cycles = snd $ findCyclesM $ fmap fromSet $ imdom
                     timdom = TSCD.timdomOfLfp g
                 in  List.null cycles ==>
@@ -3725,7 +3723,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                            timdomOfLfp       = TSCD.timdomOfLfp g
                            mustReachFromIn   = reachableFromIn $ fmap (Set.map (\(x,steps) -> (x,(steps, Set.empty)))) $ itimdomMultiple
 
-                           imdom = NTICD.imdomOfTwoFinger6 g
+                           imdom = PDOM.imdomOfTwoFinger6 g
                            cycles = snd $ findCyclesM $ fmap (fromSet . Set.map fst ) $ itimdomMultiple
                        in  List.null cycles ==>
                            (∀) (Map.assocs timdomOfLfp) (\(n, ms) ->
@@ -3800,7 +3798,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   [  testCase    ("timingCorrection imdom for " ++ exampleName)
             $   let (cost, itimdomMultiple') = TSCD.timingCorrection g (TSCD.cost1 g)
                     itimdomMutliple'NoK = fmap (Set.map fst) itimdomMultiple'
-                    imdom = NTICD.imdomOfTwoFinger6 g
+                    imdom = PDOM.imdomOfTwoFinger6 g
                 in (trc $ fromSuccMap $ itimdomMutliple'NoK :: Gr () ()) == (trc $ fromSuccMap $ imdom :: Gr () ()) @? ""
   | (exampleName, g) <- interestingTimingDep ++ interestingIsinkdomTwoFinger
   ] ++

@@ -45,8 +45,8 @@ import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs)
 
-import Data.Graph.Inductive.Query.PostDominance (sinkdomOfGfp)
-import Data.Graph.Inductive.Query.NTICD
+import Data.Graph.Inductive.Query.PostDominance (sinkdomOfGfp, isinkdomOfTwoFinger8ForSinks)
+import Data.Graph.Inductive.Query.NTICD (combinedBackwardSlice, mayNaiveGfp, idomToDFFastForRoots, rotatePDomAround)
 import Data.Graph.Inductive.Query.LCA
 
 

@@ -28,8 +28,10 @@ import Util(reachableFrom, reachableUpToLength, distancesUpToLength, minimalPath
 import IRLSOD(CFGNode)
 import Program (Program)
 
+
 import Data.Graph.Inductive.Query.LCA(lcaTimdomOfTwoFingerFast, lcaTimdomOfTwoFingerFastCost)
-import Data.Graph.Inductive.Query.NTICD ( combinedBackwardSlice, onedomOf, domsOf, dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms, imdomOfTwoFinger6, idomToDFFast, isinkDFTwoFinger, xDFcd, cdepGraph, cdepGraphP, ntscdSlice, ntscdMyDodSliceViaNtscd)
+import Data.Graph.Inductive.Query.PostDominance (onedomOf, domsOf, imdomOfTwoFinger6)
+import Data.Graph.Inductive.Query.NTICD ( combinedBackwardSlice, dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms,  idomToDFFast, isinkDFTwoFinger, xDFcd, cdepGraph, cdepGraphP, ntscdSlice, ntscdMyDodSliceViaNtscd)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
 
 

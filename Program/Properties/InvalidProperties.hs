@@ -77,17 +77,16 @@ import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
-import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf)
+import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf, imdomOfTwoFinger6, isinkdomOfTwoFinger8, imdomOfTwoFinger7)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
-    ntscdMyDodSlice, ntscdMyDodSliceViaNtscd, imdomOfTwoFinger6,
+    ntscdMyDodSlice, ntscdMyDodSliceViaNtscd,
     noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
     dfFor, anyDFFromUpLocalDefViaAnydoms,
     mDF,
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
-    isinkdomOfTwoFinger8,
-    imdomOfTwoFinger7, joiniSinkDomAround,
+    joiniSinkDomAround,
     myWod, isinkdomOfSinkContraction, myDod, myWodFast, wodFast, myWodFastSlice,
     smmnLfp, smmnGfp, fMustBefore, fMust,
     dodDef, dodSuperFast, wodDef,
@@ -264,7 +263,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
-                      where imdom = NTICD.imdomOfTwoFinger6 g
+                      where imdom = PDOM.imdomOfTwoFinger6 g
                     s  = tscdcostslicer   ms
                     s' = ntscdmydodslicer ms
                 in   (   (s == s'))
@@ -282,7 +281,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                     ntscdmydodslicer  = NTICD.ntscdMyDodSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
-                      where imdom = NTICD.imdomOfTwoFinger6 g
+                      where imdom = PDOM.imdomOfTwoFinger6 g
 
                 in Control.Exception.Base.assert ((∀) cycles (\cycle -> Set.size (cycle ∩ ms) /= 1)) $
                    tscdcostslicer ms == ntscdmydodslicer ms
@@ -294,7 +293,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                            itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
-                             where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
+                             where isinkdom    = PDOM.isinkdomOfTwoFinger8 g
                                    isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()
                        in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
@@ -345,7 +344,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                            itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
                            mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
-                             where isinkdom    = NTICD.isinkdomOfTwoFinger8 g
+                             where isinkdom    = PDOM.isinkdomOfTwoFinger8 g
                                    isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()
                        in  (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]
@@ -646,10 +645,10 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                         sinks = controlSinks g
                     in (∀) sinks (\sink ->
                          let sinkGraph = subgraph sink g
-                             imdomRev       = NTICD.imdomOfTwoFinger7 (grev sinkGraph)
+                             imdomRev       = PDOM.imdomOfTwoFinger7 (grev sinkGraph)
                              imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
                          in (∀) sink (\s ->
-                              let isinkdomRev     = NTICD.isinkdomOfTwoFinger8 $ grev $ efilter (\(n,m,_) -> m /= s) $ sinkGraph
+                              let isinkdomRev     = PDOM.isinkdomOfTwoFinger8 $ grev $ efilter (\(n,m,_) -> m /= s) $ sinkGraph
                                   isinkdomRevTrc  = trc $ (fromSuccMap $ isinkdomRev :: Gr () ())
                               in    (Set.fromList $ [(n,m) | (n,m) <- edges isinkdomRevTrc, n /= s, m /= s])
                                  ⊇ (Set.fromList $ [(n,m) | (n,m) <- edges imdomRevTrc,    n /= s, m /= s])
@@ -659,8 +658,8 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     $ \(UNCONNECTED(generatedGraph)) ->
                     let g = delEdges [ e | e@(n,m) <- edges generatedGraph, n == m] generatedGraph
                         sinks = controlSinks g
-                        imdom    = NTICD.imdomOfTwoFinger7    $        g
-                        imdomrev = NTICD.imdomOfTwoFinger7    $ grev $ g
+                        imdom    = PDOM.imdomOfTwoFinger7    $        g
+                        imdomrev = PDOM.imdomOfTwoFinger7    $ grev $ g
                         rofldom  = NTICDUnused.rofldomOfTwoFinger7  $        g     
                     in (∀) (nodes g) (\n ->
                          let reachableForward  =  dfs [n] g

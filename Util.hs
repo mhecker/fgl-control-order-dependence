@@ -124,6 +124,15 @@ updateAt n y (x:xs)
    | otherwise = x:(updateAt (n-1) y xs)
 
 
+reachableFromSeenM :: Ord α => Map α (Maybe α) -> α -> α -> Set α -> Bool
+reachableFromSeenM imdom n m seen
+ | n == m   = True
+ | n ∈ seen = False
+ | otherwise = case imdom ! n of
+     Just n' -> reachableFromSeenM imdom n' m (Set.insert n seen)
+     Nothing -> False
+
+
 reachableFromSeen :: Ord α => Map α (Set α) -> Set α -> Set α -> Set α
 reachableFromSeen m xs seen
     | Set.null xs = seen

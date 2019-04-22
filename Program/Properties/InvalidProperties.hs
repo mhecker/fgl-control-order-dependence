@@ -78,12 +78,11 @@ import Data.Graph.Inductive (Node, subgraph)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf, imdomOfTwoFinger6, isinkdomOfTwoFinger8, imdomOfTwoFinger7)
+import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (noJoins, stepsCL, stepsCLLfp, dfFor, anyDFFromUpLocalDefViaAnydoms, mDF)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     combinedBackwardSlice,
     ntscdMyDodSlice, ntscdMyDodSliceViaNtscd,
-    noJoins, mmayOf, mmayOf', stepsCL,  stepsCLLfp,
-    dfFor, anyDFFromUpLocalDefViaAnydoms,
-    mDF,
+    mmayOf, mmayOf', 
     withPossibleIntermediateNodesFromiXdom,
     smmnFMustDod,
     joiniSinkDomAround,
@@ -181,17 +180,17 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 timingDepProps = testGroup "(concerning timingDependence)" [
     testProperty   "mDF   ⊑ timDF"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.mDF    g ⊑
+                       PDF.mDF    g ⊑
                        TSCD.timDF  g,
     testProperty   "anyDFFromUpLocalDefViaAnydoms == anyDF"
                 $ \(ARBITRARY(g)) (UNCONNECTED(anydom0)) -> 
                    let anydomG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges anydom0, let n' = toG ! n, let m' = toG ! m, (n' == m') ∨ (∀) (n' : suc g n') (\x' -> m' `elem` reachable x' g) ] :: Gr ()()
                           where toG = Map.fromList $ zip (nodes anydom0) (cycle $ nodes g)
-                       anydom = NTICD.stepsCLLfp g $
+                       anydom = PDF.stepsCLLfp g $
                                 Map.fromList [ (n, Set.fromList [n]) | n <- nodes anydomG ]
                               ⊔ Map.fromList [ (n, Set.fromList $ suc anydomG n) | n <- nodes anydomG ]
-                   in NTICD.anyDFFromUpLocalDefViaAnydoms anydom g ==
-                      NTICD.dfFor                         g anydom,
+                   in PDF.anyDFFromUpLocalDefViaAnydoms anydom g ==
+                      PDF.dfFor                         g anydom,
     testPropertySized 25 "timingSolvedF3dependence  is minimal wrt. timed traces in graphs without self-node"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g0 = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
@@ -772,19 +771,19 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (∀) (nodes g) (\m ->
-                         NTICD.stepsCL g $ NTICD.mmayOf' g m
+                         PDF.stepsCL g $ NTICD.mmayOf' g m
                        ),
     testPropertySized 40 "stepsCL mmay"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (∀) (nodes g) (\m ->
-                         NTICD.stepsCL g $ NTICD.mmayOf g m
+                         PDF.stepsCL g $ NTICD.mmayOf g m
                        ),
     testPropertySized 40 "noJoins mmay"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (∀) (nodes g) (\m ->
-                         NTICD.noJoins g $ NTICD.mmayOf g m
+                         PDF.noJoins g $ NTICD.mmayOf g m
                        ),
     testProperty "myWodSlice g' == wodTEILSlice g for CFG-shaped graphs g (with exit->entry edge: g')"
     $ \(SIMPLECFG(g)) ->

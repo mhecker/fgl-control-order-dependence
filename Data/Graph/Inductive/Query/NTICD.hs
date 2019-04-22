@@ -30,7 +30,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Graph.Inductive.Query.NTICD.Util (cdepGraphP, cdepGraph)
-import Data.Graph.Inductive.Query.NTICDNumbered (iPDomForSinks)
+import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
 import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 

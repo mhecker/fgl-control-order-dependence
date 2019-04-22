@@ -1,4 +1,4 @@
-module Data.Graph.Inductive.Query.NTICDNumbered where
+module Data.Graph.Inductive.Query.PostDominance.Numbered where
 
 
 -- Find Dominators of a graph.

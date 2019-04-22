@@ -65,8 +65,8 @@ import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence
 import Data.Graph.Inductive.Query.LCA
 import Data.Graph.Inductive.Query.PostDominance
+import Data.Graph.Inductive.Query.PostDominance.Numbered
 import Data.Graph.Inductive.Query.NTICD
-import Data.Graph.Inductive.Query.NTICDNumbered
 import Data.Graph.Inductive.Query.MyWodSlice
 import Data.Graph.Inductive.Query.InfiniteDelay
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD

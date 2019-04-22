@@ -20,7 +20,7 @@ import Util (reachableFrom, reachableFromM, invert''', findCyclesM, treeLevel, f
 import Data.Graph.Inductive.Util (controlSinks)
 import Data.Graph.Inductive.Query.PostDominance (isinkdomOfTwoFinger8ForSinks, imdomOfTwoFinger7)
 
-import Data.Graph.Inductive.Query.NTICDNumbered (iPDomForSinks)
+import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
 
 dfViaCEdges :: Graph gr => gr a b -> Map Node (Maybe Node) -> Node -> Set Node
 dfViaCEdges graph idom = \x -> Set.fromList [ y | z <- Set.toList $ reachableFrom idom' (Set.fromList [x]),

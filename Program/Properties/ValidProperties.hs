@@ -89,7 +89,7 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges as CEDGE (nticdSliceNumberedViaCEdgesFast, ntscdSliceViaCEdgesFast, dfViaCEdges, idfViaCEdgesFast, nticdSliceViaCEdgesFast, nticdSliceViaCEdgesFastFor)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
-import qualified Data.Graph.Inductive.Query.NTICDNumbered as NTICDNumbered (iPDom, pdom, numberForest)
+import qualified Data.Graph.Inductive.Query.PostDominance.Numbered as PDOMNumbered (iPDom, pdom, numberForest)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
@@ -396,7 +396,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         forest = rdff [ s| (s:_) <- sinks] g
                         tree = Tree.Node undefined forest
                         
-                        (_, nforest) = NTICDNumbered.numberForest 1 forest
+                        (_, nforest) = PDOMNumbered.numberForest 1 forest
                         ntree = Tree.Node undefined nforest
                         fromNode = Map.fromList $ zip (tail $ Tree.flatten  tree) (tail $ Tree.flatten ntree)
                         toNode   = Map.fromList $ zip (tail $ Tree.flatten ntree) (tail $ Tree.flatten  tree)
@@ -548,14 +548,14 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ fromSuccMap $ fmap toSet $ Map.fromList $
-                              NTICDNumbered.iPDom  g :: Gr () ()) ==
+                              PDOMNumbered.iPDom  g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               PDOM.isinkdomOfTwoFinger8       g),
     testProperty   "pdom  == isinkdomOfTwoFinger8^*"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (      fromSuccMap $ fmap Set.fromList $ Map.fromList $ 
-                              NTICDNumbered.pdom  g :: Gr () ()) ==
+                              PDOMNumbered.pdom  g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               PDOM.isinkdomOfTwoFinger8       g),
     testProperty   "isinkdomOfSinkContraction is intransitive"

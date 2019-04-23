@@ -60,99 +60,36 @@ import Data.Maybe(fromJust)
 import IRLSOD(CFGEdge(..))
 
 import Data.Graph.Inductive.Arbitrary.Reducible
-import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
-import Data.Graph.Inductive.Query.Dominators (iDom)
-import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
+import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge)
+import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, Node, labNodes, subgraph, reachable)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Graph.Inductive.Query.Dependence
-import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
-import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes)
-import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdges, addImplicitAndTrivialSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdgesGfpLfp)
 
-import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
-import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
-import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkdomNaiveGfp, sinkdomNaiveGfpFullTop, sinkdomOfisinkdomProperty, imdomOf, imdomOfLfp, mdomOf, mdomOfLfp, mdomNaiveLfp, mdomOfimdomProperty, onedomOf, mdomsOf, sinkdomsOf, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,  imdomOfTwoFinger6, imdomOfTwoFinger7)
+-- import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
+import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, mdomOfLfp,  mdomsOf, sinkdomsOf, isinkdomOfTwoFinger8, imdomOfTwoFinger6)
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
-    isinkDFTwoFinger, mDFTwoFinger,  noJoins, stepsCL,
-    sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, isinkdomTwoFingercd,
-    sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms,
-    sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
-    sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
-    idomToDF, idomToDFFast,
-    mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,     imdomTwoFingercd,
-    mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
-    mDFLocal, mDFLocalDef, mDFLocalViaMdoms, mDFUpGivenX, 
-    mDFFromUpLocalDefViaMdoms, mDF,
+    sinkDF,    mDFFromUpLocalDefViaMdoms,       mDFLocalDef,     mDFLocalViaMdoms,       mDFUpGivenXViaMdoms,        mDFUpDef,     mDFTwoFinger,
+    mDF,    sinkDFFromUpLocalDefViaSinkdoms, sinkDFLocalDef,  sinkDFLocalViaSinkdoms, sinkDFUpGivenXViaSinkdoms,  sinkDFUpDef, isinkDFTwoFinger,
+    --  noJoins, stepsCL,
  )
-import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges as CEDGE (nticdSliceNumberedViaCEdgesFast, ntscdSliceViaCEdgesFast, dfViaCEdges, idfViaCEdgesFast, nticdSliceViaCEdgesFast, nticdSliceViaCEdgesFastFor)
-import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered as PDFNumbered (nticdSliceNumbered)
-import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdMyWodViaWDSlice, wodTEILSliceViaBraunF2)
-import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
-import qualified Data.Graph.Inductive.Query.PostDominance.Numbered as PDOMNumbered (iPDom, pdom, numberForest)
+import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     wodTEILSliceViaISinkDom,
     wccSliceViaISinkDom,
+    nticdMyWodSliceViaISinkDom, nticdMyWodSliceViaNticd,
     nticd, ntscd,
-    sinkShrinkedGraphNoNewExitForSinks,
-    ntindDef, ntsndDef,
-    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives,
-    nticdMyWodSliceViaNticd,
-    nticdMyWodSliceViaISinkDom,
-    joiniSinkDomAround,
-    pathsBetweenBFS, pathsBetweenUpToBFS,
-    pathsBetween,    pathsBetweenUpTo,
-    possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdSlice,  ntscdSlice, nticdSliceFor, 
-    mayNaiveGfp,
-    snmF3, snmF3Lfp,
-    snmF4WithReachCheckGfp,
-    isinkdomOfSinkContraction,
-    nticdSinkContraction, nticdSinkContractionGraphP,
-    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
-    ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
-    ntscdMyDodSliceViaNtscd, mustOfLfp, mustOfGfp, mmayOf, mmayOf', rotatePDomAround, Color(..), smmnFMustDod, smmnFMustWod, colorLfpFor, colorFor,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd,
-    myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, 
-    wccSliceViaNticd, wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
-    smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck,
-    dod, dodDef, dodFast, dodColoredDagFixed, dodColoredDagFixedFast,
-    myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic,  myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay'
+    dod,
+         wodTEILSlice, wodTEILSliceViaNticd,
+    myDod, myDodFastPDom,
+    myWod, myWodFastPDom, myWodFastPDomSimpleHeuristic, nticdMyWodSlice,
+    wccSliceViaNticd, 
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay)
-import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, timingCorrection, timingLeaksTransformation, tscdCostSlice, timDFCostFromUpLocalDefViaTimdoms, timDFCost, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, tscdOfNaiveCostfLfp, timdomOfLfp, tscdSlice, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
-    itimdomMultipleOfTwoFingerCost, cost1, cost1F,
-    itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
-    timdomOfNaiveLfp, timdomMultipleOfNaiveLfp,
-    timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, tscdSliceFast, tscdSliceViaTimDF)
-import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice)
-
-import qualified Data.Graph.Inductive.FA as FA
-
 
 import Data.Graph.Inductive.Arbitrary
-
-
-import Program (Program, tcfg)
-import Program.Tests (isSecureEmpirically)
-
-import Program.Properties.Analysis
-import Program.Properties.CDom
-import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
-
-import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger, interestingImdomTwoFinger)
-import Program.Defaults (defaultInput)
-import Program.Analysis
-import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
-import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity, isSecureResumptionBasedSecurityFor)
-import Program.CDom
-import Program.Generator (toProgram, toProgramIntra, GeneratedProgram, SimpleCFG(..))
 
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
@@ -211,7 +148,7 @@ theorem1 = [
     testProperty "sinkdom    is transitive"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
-            sinkdom = PDOM.sinkdomOfLfp g
+            sinkdom = PDOM.sinkdomOfGfp g
         in (∀) (Map.assocs $ sinkdom) (\(x, ys) -> (∀) ys (\y -> (∀) (sinkdom ! y) (\z -> z ∈ sinkdom ! x))),
     testProperty "mdom    has transitive reduction that forms a pseudo forest"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -223,7 +160,7 @@ theorem1 = [
     testProperty "sinkdom has transitive reduction that forms a pseudo forest"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
-            sinkdom = PDOM.sinkdomOfLfp g
+            sinkdom = PDOM.sinkdomOfGfp g
             redu = (trr $ fromSuccMap $ sinkdom :: Gr () ())
             clos = toSuccMap $ trc redu
         in (sinkdom == clos) ∧ (∀) (Map.assocs $ toSuccMap $ redu) (\(n, ms) -> Set.size ms <= 1)
@@ -252,7 +189,7 @@ observation2 = [
     testProperty   "sink boundedness is retained  by isinkdom step"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
-            sinkdom = PDOM.sinkdomOfLfp g
+            sinkdom = PDOM.sinkdomOfGfp g
             redu = toSuccMap (trr $ fromSuccMap $ sinkdom :: Gr () ())
             sinks = controlSinks g
             sinkNodes = Set.fromList [ s | sink <- sinks, s <- sink]
@@ -397,7 +334,7 @@ observation5 = [
       testPropertySized 60  "ntiod is contained in isinkdom cycles"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        sinkdom  = PDOM.sinkdomOfLfp g
+                        sinkdom  = PDOM.sinkdomOfGfp g
                         ntiod = ODEP.myWod g
                     in  (∀) (Map.assocs ntiod) (\((m1,m2), ns) ->
                           ((not $ Set.null ns) → (m1 ∈ sinkdom ! m2 ∧ m2 ∈ sinkdom ! m1))

@@ -93,6 +93,8 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (dela
 import qualified Data.Graph.Inductive.Query.PostDominance.Numbered as PDOMNumbered (iPDom, pdom, numberForest)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    nticdViaSinkDom,
+    ntscdViaMDom,
     sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives,
@@ -104,12 +106,17 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdSlice,  ntscdSlice, nticdSliceFor, 
     mayNaiveGfp,
-    snmF3, snmF3Lfp,
-    snmF4WithReachCheckGfp,
     isinkdomOfSinkContraction,
     nticdSinkContraction, nticdSinkContractionGraphP,
-    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP, nticdDef, nticdDefGraphP, nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
-    ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,                                                                        ntscdF4, ntscdF3, ntscdF4WorkList,                      ntscdDef, ntscdDefGraphP
+    nticdDef, nticdDefGraphP, 
+    ntscdDef, ntscdDefGraphP
+  )
+import qualified Data.Graph.Inductive.Query.NTICD.SNM as SNM (
+    snmF3, snmF3Lfp,
+    snmF4WithReachCheckGfp,
+    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP,
+    nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
+    ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP, ntscdF4, ntscdF3, ntscdF4WorkList
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     ntscdMyDodSliceViaNtscd, mustOfLfp, mustOfGfp, mmayOf, mmayOf', rotatePDomAround, Color(..), smmnFMustDod, smmnFMustWod, colorLfpFor, colorFor,
@@ -329,6 +336,11 @@ giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
 
 
 insensitiveDomProps = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" [
+    testProperty   "nticdViaSinkDom          == nticdF3"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.nticdViaSinkDom g ==
+                       SNM.nticdF3          g,
     testPropertySized 20 "sinkdom g_{M/->}^{M->*} ⊆ (sinkdom g)|{M->*}"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -355,12 +367,12 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         sinkdom = PDOM.sinkdomOfGfp g
-                        nticd = NTICD.nticdF3 g
+                        nticd = NTICD.nticdViaSinkDom g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 -> let ms = [m1,m2,m3] in
                          let fromMs = dfs ms g
                              g' = subgraph fromMs g
                              sinkdom' = PDOM.sinkdomOfGfp g'
-                             nticd' = NTICD.nticdF3 g'
+                             nticd' = NTICD.nticdViaSinkDom g'
                          in   sinkdom' == restrict sinkdom (Set.fromList fromMs)
                             ∧ nticd'   == restrict nticd   (Set.fromList fromMs)
                        ))),
@@ -368,7 +380,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                     let g = generatedGraph
                         sinkdom = PDOM.sinkdomOfGfp g
-                        nticd = NTICD.nticdF3 g
+                        nticd = NTICD.nticdViaSinkDom g
                         n  = length $ nodes g
                         ms
                          | n == 0 = []
@@ -376,7 +388,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         fromMs = dfs ms g
                         g' = subgraph fromMs g
                         sinkdom' = PDOM.sinkdomOfGfp g'
-                        nticd' = NTICD.nticdF3 g'
+                        nticd' = NTICD.nticdViaSinkDom g'
                     in   sinkdom' == restrict sinkdom (Set.fromList fromMs)
                        ∧ nticd'   == restrict nticd   (Set.fromList fromMs),
     testPropertySized 40 "stepsCL sinkdom"
@@ -511,7 +523,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "nticd*  _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        nticd = NTICD.nticdF3 g
+                        nticd = NTICD.nticdViaSinkDom g
                         isinkdom = PDOM.isinkdomOfTwoFinger8 g
                         dfViaJ = CEDGE.dfViaCEdges g (fmap fromSet isinkdom)
                     in (∀) (nodes g) (\n -> (∀) (nodes g) (\m -> if m == n then True else
@@ -681,27 +693,27 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.sinkDFcd         g ==
-                       NTICD.nticdF3          g,
+                       SNM.nticdF3          g,
     testProperty   "isinkdomTwoFingercd   == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.isinkdomTwoFingercd g ==
-                       NTICD.nticdF3             g,
+                       SNM.nticdF3             g,
     testProperty   "sinkDFFromUpLocalDefcd== nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.sinkDFFromUpLocalDefcd  g==
-                       NTICD.nticdF3                 g,
+                       SNM.nticdF3                 g,
     testProperty   "sinkDFFromUpLocalcd   == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.sinkDFFromUpLocalcd     g ==
-                       NTICD.nticdF3                 g,
+                       SNM.nticdF3                 g,
     testProperty   "sinkDFF2cd            == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.sinkDFF2cd       g ==
-                       NTICD.nticdF3          g
+                       SNM.nticdF3          g
   ]
 
 
@@ -765,21 +777,21 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "sinkDFGraphP              ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFGraphP p            == NTICD.nticdF3GraphP p @? ""
+            $ PDF.sinkDFGraphP p            == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFFromUpLocalGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFFromUpLocalGraphP p == NTICD.nticdF3GraphP p @? ""
+            $ PDF.sinkDFFromUpLocalGraphP p == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFFromUpLocalDefGraphP==       nticdF3GraphP for " ++ exampleName)
             $ PDF.sinkDFFromUpLocalDefGraphP p
                                               ==
-                                                 NTICD.nticdF3GraphP p @? ""
+                                                 SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
+            $ PDF.sinkDFF2GraphP p          == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -787,6 +799,11 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
 
 
 sensitiveDomProps = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )" [
+    testProperty   "ntscdViaMDom          == ntscdF3"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in NTICD.ntscdViaMDom g ==
+                       SNM.ntscdF3        g,
     testPropertySized 40 "stepsCL sinkdom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -983,27 +1000,27 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.mDFcd            g ==
-                       NTICD.ntscdF3          g,
+                       SNM.ntscdF3          g,
     testProperty   "mDFFromUpLocalDefcd== ntscdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.mDFFromUpLocalDefcd  g ==
-                       NTICD.ntscdF3              g,
+                       SNM.ntscdF3              g,
     testProperty   "mDFFromUpLocalcd   == ntisdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.mDFFromUpLocalcd     g ==
-                       NTICD.ntscdF3              g,
+                       SNM.ntscdF3              g,
     testProperty   "imdomTwoFingercd     == ntscdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.imdomTwoFingercd   g ==
-                       NTICD.ntscdF3          g,
+                       SNM.ntscdF3          g,
     testProperty   "mDFF2cd            == ntscdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in PDF.mDFF2cd              g ==
-                       NTICD.ntscdF3              g
+                       SNM.ntscdF3              g
   ]
 sensitiveDomTests = testGroup "(concerning nontermination-sensitive control dependence via dom-like frontiers )"  $
   [  testCase    ( "idomToDFFast _ mdom == mDF _ for " ++ exampleName)
@@ -1088,12 +1105,12 @@ newcdProps = testGroup "(concerning new control dependence definitions)" [
                 $ \(ARBITRARY(generatedGraph)) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in NTICDUnused.ntacdDef         g ==
-                       NTICD.nticdF3          g
+                       SNM.nticdF3          g
   ]
 newcdTests = testGroup "(concerning new control dependence definitions)" $
   [  testCase    ( "ntnacdDefGraphP       ==  nticdF3GraphP for " ++ exampleName)
                   $ NTICDUnused.ntacdDefGraphP      p ==
-                    NTICD.nticdF3GraphP       p        @? ""
+                    SNM.nticdF3GraphP       p        @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -1432,7 +1449,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
                 let g    = generatedGraph
                     trcG = trc g
-                    nticd = NTICD.nticdF3 g
+                    nticd = NTICD.nticdViaSinkDom g
                     sinkdom = PDOM.sinkdomOfGfp g
                     mywod =  ODEP.myWodFastPDomSimpleHeuristic g
                     must = ODEP.mustOfGfp g
@@ -1452,7 +1469,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           toM0s = rdfs m0s g
                           g' = foldr (flip delSuccessorEdges) g m0s
                           trcG' = trc g'
-                          nticd' = NTICD.nticdF3 g'
+                          nticd' = NTICD.nticdViaSinkDom g'
                           nticd'slicer = NTICD.nticdSlice g'
                           sinkdom' = PDOM.sinkdomOfGfp g'
                           sinkdoms' = PDOM.sinkdomsOf g'
@@ -2246,7 +2263,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 $ \(ARBITRARY(generatedGraph)) ->
                     let graph     = generatedGraph
                         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-                        s3        = NTICD.snmF3 graph
+                        s3        = SNM.snmF3 graph
                         isinkdom     = NTICD.isinkdomOfSinkContraction graph
                         isinkdomTrc  = trc $ (fromSuccMap isinkdom :: Gr () ())
                     in (∀) (nodes graph) (\m ->
@@ -2513,7 +2530,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         myDod = ODEP.myDod g
-                        ntscd = NTICD.ntscdF3 g
+                        ntscd = NTICD.ntscdViaMDom g
                         ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
@@ -2590,7 +2607,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                 $ \(ARBITRARY(generatedGraph)) ->
                     let graph     = generatedGraph
                         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-                        s3        = NTICD.snmF3Lfp graph
+                        s3        = SNM.snmF3Lfp graph
                         imdom     = PDOM.imdomOfTwoFinger6 graph
                         imdomTrc  = trc $ (fromSuccMap imdom :: Gr () ())
                     in (∀) (nodes graph) (\m ->
@@ -2678,7 +2695,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
   ] ++
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property for " ++ exampleName)
             $       let myDod = ODEP.myDod g
-                        ntscd = NTICD.ntscdF3 g
+                        ntscd = NTICD.ntscdViaMDom g
                         ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
@@ -2881,58 +2898,58 @@ colorTests = testGroup "(concerning color algorithms)" $
 nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdFig5GraphP p        == NTICD.nticdF5GraphP p,
+                  SNM.nticdFig5GraphP p        == SNM.nticdF5GraphP p,
     testProperty  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdSinkContractionGraphP p == NTICD.nticdF3GraphP p,
+                  NTICD.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p,
     testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  controlDependenceGraphP p      == NTICD.nticdF3GraphP p,
+                  controlDependenceGraphP p      == SNM.nticdF3GraphP p,
     testProperty  "nticdF3'GraphP                == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3'GraphP p         == NTICD.nticdF3GraphP p,
+                  SNM.nticdF3'GraphP p         == SNM.nticdF3GraphP p,
     testProperty  "nticdF3'dualGraphP            == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3'dualGraphP p     == NTICD.nticdF3GraphP p,
+                  SNM.nticdF3'dualGraphP p     == SNM.nticdF3GraphP p,
     testProperty  "nticdF3'dualWorkListGraphP       == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3'dualWorkListGraphP p  == NTICD.nticdF3GraphP p,
+                  SNM.nticdF3'dualWorkListGraphP p  == SNM.nticdF3GraphP p,
     testProperty  "nticdF3WorkListGraphP         == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3WorkListGraphP p  == NTICD.nticdF3GraphP p,
+                  SNM.nticdF3WorkListGraphP p  == SNM.nticdF3GraphP p,
     testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdF3WorkListSymbolicGraphP p == NTICD.nticdF3GraphP p,
+                  SNM.nticdF3WorkListSymbolicGraphP p == SNM.nticdF3GraphP p,
     testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let (_, g) = withUniqueEndNode () () generatedGraph
-                    in NTICD.nticdFig5        g ==
-                       NTICD.nticdF5          g,
+                    in SNM.nticdFig5        g ==
+                       SNM.nticdF5          g,
     testProperty  "controlDependence      == nticdF3                for graphs with unique end node property"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g exit ==
-                       NTICD.nticdF3          g,
+                       SNM.nticdF3          g,
     testProperty  "nticdSinkContraction   == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdSinkContraction  g ==
-                       NTICD.nticdF3               g,
+                       SNM.nticdF3               g,
     testProperty  "nticdDef               == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in NTICD.nticdDef         g ==
-                       NTICD.nticdF3          g,
+                       SNM.nticdF3          g,
     testProperty  "nticdF3'               == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdF3'         g ==
-                       NTICD.nticdF3          g,
+                    in SNM.nticdF3'         g ==
+                       SNM.nticdF3          g,
     testProperty  "snmF3'dual           == snmF3 (dual)"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        snmF3      = NTICD.snmF3      g
-                        snmF3'dual = NTICD.snmF3'dual g
+                        snmF3      = SNM.snmF3      g
+                        snmF3'dual = SNM.snmF3'dual g
                     in (∀) (Map.assocs snmF3) (\((m,p), mp) ->
                          let mp' = snmF3'dual ! (m,p)
                          in  mp == Set.fromList [ (p,x) | x <- suc g p] ∖ mp'
@@ -2940,68 +2957,68 @@ nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdF3'dual           == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdF3'dual     g ==
-                       NTICD.nticdF3          g,
+                    in SNM.nticdF3'dual     g ==
+                       SNM.nticdF3          g,
     testProperty  "nticdF3'dualWorkList        == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdF3'dualWorkList  g ==
-                       NTICD.nticdF3          g,
+                    in SNM.nticdF3'dualWorkList  g ==
+                       SNM.nticdF3          g,
     testProperty  "nticdF3WorkList        == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdF3WorkList  g ==
-                       NTICD.nticdF3          g,
+                    in SNM.nticdF3WorkList  g ==
+                       SNM.nticdF3          g,
     testProperty  "nticdF3WorkListSymbolic== nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdF3WorkListSymbolic g ==
-                       NTICD.nticdF3                 g,
+                    in SNM.nticdF3WorkListSymbolic g ==
+                       SNM.nticdF3                 g,
     testProperty  "nticdF3'dorkListSymbolic  == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdF3'dualWorkListSymbolic g ==
-                       NTICD.nticdF3                      g
+                    in SNM.nticdF3'dualWorkListSymbolic g ==
+                       SNM.nticdF3                      g
   ]
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "nticdFig5GraphP           ==       nticdF5GraphP for " ++ exampleName)
-            $ NTICD.nticdFig5GraphP p         == NTICD.nticdF5GraphP p @? ""
+            $ SNM.nticdFig5GraphP p         == SNM.nticdF5GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdSinkContractionGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdSinkContractionGraphP p == NTICD.nticdF3GraphP p @? ""
+            $ NTICD.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == NTICD.nticdF3GraphP p @? ""
+                  $ controlDependenceGraphP p == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFF2GraphP p          == NTICD.nticdF3GraphP p @? ""
+            $ PDF.sinkDFF2GraphP p          == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdDefGraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdDefGraphP p          == NTICD.nticdF3GraphP p @? ""
+            $ NTICD.nticdDefGraphP p          == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3'GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdF3'GraphP p          == NTICD.nticdF3GraphP p @? ""
+            $ SNM.nticdF3'GraphP p          == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3'dualGraphP        ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdF3'dualGraphP p      == NTICD.nticdF3GraphP p @? ""
+            $ SNM.nticdF3'dualGraphP p      == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3WorkListGraphP     ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdF3WorkListGraphP p   == NTICD.nticdF3GraphP p @? ""
+            $ SNM.nticdF3WorkListGraphP p   == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3WorkListSymbolicGraphP     ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdF3WorkListSymbolicGraphP p   == NTICD.nticdF3GraphP p @? ""
+            $ SNM.nticdF3WorkListSymbolicGraphP p   == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3'dualWorkListSymbolicGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdF3'dualWorkListSymbolicGraphP p   == NTICD.nticdF3GraphP p @? ""
+            $ SNM.nticdF3'dualWorkListSymbolicGraphP p   == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -3019,7 +3036,7 @@ ntscdProps = testGroup "(concerning ntscd )" [
                 $ \(REDUCIBLE(g)) ->
                                 let
                                      wod = ODEP.wodFast g
-                                     ntscd = NTICD.ntscdF3 g
+                                     ntscd = NTICD.ntscdViaMDom g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
                                       (∀) (ns) (\n ->   (m1 ∊ suc ntscdTrc n)
@@ -3030,7 +3047,7 @@ ntscdProps = testGroup "(concerning ntscd )" [
                 $ \generated -> let  p :: Program Gr = toProgram generated
                                      g = tcfg p
                                      wod = ODEP.wodFast g
-                                     ntscd = NTICD.ntscdF3 g
+                                     ntscd = NTICD.ntscdViaMDom g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
                                       (∀) (ns) (\n ->   (m1 ∊ suc ntscdTrc n)
@@ -3039,30 +3056,30 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                    ),
     testProperty  "ntscdF4GraphP          == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.ntscdF4GraphP p         == NTICD.ntscdF3GraphP p,
+                  SNM.ntscdF4GraphP p         == SNM.ntscdF3GraphP p,
                 
     testProperty  "ntscdF4WorkListGraphP  == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.ntscdF4WorkListGraphP p == NTICD.ntscdF3GraphP p,
+                  SNM.ntscdF4WorkListGraphP p == SNM.ntscdF3GraphP p,
     testProperty  "ntscdF4WorkList == ntscdF3"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.ntscdF4WorkList g ==
-                       NTICD.ntscdF3         g,
+                       SNM.ntscdF4WorkList g ==
+                       SNM.ntscdF3         g,
     testProperty  "ntscdF4         == ntscdF3"
                 $ \(ARBITRARY(g)) ->
-                       NTICD.ntscdF4         g ==
-                       NTICD.ntscdF3         g,
+                       SNM.ntscdF4         g ==
+                       SNM.ntscdF3         g,
     testProperty  "ntscdDef        == ntscdF3"
                 $ \(ARBITRARY(g)) ->
                        NTICD.ntscdDef        g ==
-                       NTICD.ntscdF3         g
+                       SNM.ntscdF3         g
   ]
 
 ntscdTests = testGroup "(concerning ntscd)" $
   [  testCase    ( "wod ⊆ ntscd^* for                                   " ++ exampleName)
             $                   let  g = tcfg p
                                      wod = ODEP.wodFast g
-                                     ntscd = NTICD.ntscdF3 g
+                                     ntscd = NTICD.ntscdViaMDom g
                                      ntscdTrc = trc $ fromSuccMap ntscd :: Gr () ()
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
                                       (∀) (ns) (\n ->   (m1 ∊ suc ntscdTrc n)
@@ -3072,15 +3089,15 @@ ntscdTests = testGroup "(concerning ntscd)" $
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "ntscdF4GraphP            ==       ntscdF3GraphP for " ++ exampleName)
-            $ NTICD.ntscdF4GraphP p          == NTICD.ntscdF3GraphP p @? ""
+            $ SNM.ntscdF4GraphP p          == SNM.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "ntscdF4WorkListGraphP    ==       ntscdF3GraphP for " ++ exampleName)
-            $ NTICD.ntscdF4WorkListGraphP p  == NTICD.ntscdF3GraphP p @? ""
+            $ SNM.ntscdF4WorkListGraphP p  == SNM.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "ntscdDefGraphP           ==       ntscdF3GraphP for " ++ exampleName)
-            $ NTICD.ntscdDefGraphP p         == NTICD.ntscdF3GraphP p @? ""
+            $ NTICD.ntscdDefGraphP p         == SNM.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

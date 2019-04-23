@@ -25,7 +25,7 @@ import Util(fromSet, without, invert'', invert''', restrict, reachableFrom)
 import Data.Graph.Inductive.Util (isCond, fromSuccMap, delSuccessorEdges, nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
-import Data.Graph.Inductive.Query.NTICD (nticdF3, nticdSlice, ntscdF3)
+import Data.Graph.Inductive.Query.NTICD (nticdSlice, ntscdViaMDom, nticdViaSinkDom)
 import Data.Graph.Inductive.Query.TSCD (itimdomMultipleOfTwoFingerFor, itimdomMultipleOfTwoFinger)
 
 
@@ -284,7 +284,7 @@ tdepRSlice g = \m -> let nticdSliceM = slicer (Set.fromList [m]) in  Set.fromLis
               ∪ Set.fromList [ n | n <- condNodes, not $ Set.null $ tdep  ! n  ∩  s  ]
 --              ∪ Set.fromList [ n | n <- condNodes, not $ Set.null $ nticd ! n  ∩  s, not $ n ∈ nticdSliceM]
         tdep = tdepR g
-        nticd = nticdF3 g
+        nticd = nticdViaSinkDom g
         slicer = nticdSlice g
         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
 
@@ -664,6 +664,6 @@ nticdTimingSlice graph =  combinedBackwardSlice graph (nticd' ⊔ timing') w
 
 ntscdTimingSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdTimingSlice graph =  combinedBackwardSlice graph (ntscd' ⊔ timing') w
-  where ntscd'  = invert'' $ ntscdF3 graph
+  where ntscd'  = invert'' $ ntscdViaMDom graph
         timing' = invert'' $ timingDependenceViaTwoFinger graph
         w     = Map.empty

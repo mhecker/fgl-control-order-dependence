@@ -42,7 +42,7 @@ import Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges (idfViaCEdgesFas
 import Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered (isinkDFNumberedForSinks)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFastForRoots, mDFTwoFinger, isinkDFTwoFinger)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
-import Data.Graph.Inductive.Query.NTICD (snmF3, snmF3Lfp, isinkdomOfSinkContraction, ntscdF3, nticdF3)
+import Data.Graph.Inductive.Query.NTICD.SNM (snmF3, snmF3Lfp, ntscdF3, nticdF3)
 
 
 
@@ -493,7 +493,7 @@ myWodFast graph =
                                                 ]
                   ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG

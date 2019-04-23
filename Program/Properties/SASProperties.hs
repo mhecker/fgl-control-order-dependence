@@ -79,7 +79,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     wodTEILSliceViaISinkDom,
     wccSliceViaISinkDom,
     nticdMyWodSliceViaISinkDom, nticdMyWodSliceViaNticd,
-    nticd, ntscd,
+    nticdViaSinkDom, ntscdViaMDom,
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod,
@@ -246,14 +246,14 @@ algorithm2 = [
                 $ \(ARBITRARY(g)) ->
                     let imDF = PDF.mDFTwoFinger g
                         mdom = PDOM.mdomOfLfp g
-                        ntscd   = NTICD.ntscd g
+                        ntscd   = NTICD.ntscdViaMDom g
                     in   (∀) (Map.assocs ntscd)   (\(n, ms) -> (∀) ms (\m -> (n /= m) → (n ∈ imDF ! m)))
                        ∧ (∀) (Map.assocs imDF) (\(m, ns) -> (∀) ns (\n -> (n /= m) → (m ∈ ntscd ! n))),
    testProperty   "isinkDFTwoFinger == nticd"
                 $ \(ARBITRARY(g)) ->
                     let isinkDF = PDF.isinkDFTwoFinger g
                         sinkdom = PDOM.sinkdomOfGfp g
-                        nticd   = NTICD.nticd g
+                        nticd   = NTICD.nticdViaSinkDom g
                     in   (∀) (Map.assocs nticd)   (\(n, ms) -> (∀) ms (\m -> (n /= m) → (n ∈ isinkDF ! m)))
                        ∧ (∀) (Map.assocs isinkDF) (\(m, ns) -> (∀) ns (\n -> (n /= m) → (m ∈ nticd ! n)))
   ]
@@ -309,12 +309,12 @@ observation4 = [
                                              m <- Set.toList bigM
                           ]
                     in   (∀) (Map.assocs ntsod) (\((m1,m2), ns) ->
-                           let ntscd' = NTICD.ntscd (delSuccessorEdges (gNOfNode ! m2) m2) in
+                           let ntscd' = NTICD.ntscdViaMDom (delSuccessorEdges (gNOfNode ! m2) m2) in
                            (∀) ns (\n -> (∃) cycles (\bigM -> m1 ∈ bigM ∧ m2 ∈ bigM ∧ (∃) (imdom ! n) (\m -> m ∈ bigM) ∧ m1 ∈ ntscd' ! n))
                          )
                        ∧ (∀) (cycles) (\bigM -> let gN = gNOfNode ! (Set.findMin bigM) in
-                           (∀) bigM (\m2 -> let nticd' = NTICD.nticd (delSuccessorEdges gN m2) in
-                             (∀) (Map.assocs nticd') (\(n,ms) -> (∀) ms (\m1 -> (m1 ∈ bigM) → (n ∈ ntsod ! (m1, m2))))
+                           (∀) bigM (\m2 -> let ntscd' = NTICD.ntscdViaMDom (delSuccessorEdges gN m2) in
+                             (∀) (Map.assocs ntscd') (\(n,ms) -> (∀) ms (\m1 -> (m1 ∈ bigM) → (n ∈ ntsod ! (m1, m2))))
                            )
                          ),
       testProperty  "myDodFastPDom               ≡ myDod"
@@ -359,11 +359,11 @@ observation6 = [
                           ]
                     in   (Set.fromList cycles == Set.fromList [ Set.fromList sink | sink <- controlSinks g, (length sink) > 1])
                        ∧ (∀) (Map.assocs ntiod) (\((m1,m2), ns) ->
-                           let nticd' = NTICD.nticd (delSuccessorEdges (gNOfNode ! m2) m2) in
+                           let nticd' = NTICD.nticdViaSinkDom (delSuccessorEdges (gNOfNode ! m2) m2) in
                            (∀) ns (\n -> (∃) cycles (\bigM -> m1 ∈ bigM ∧ m2 ∈ bigM ∧ (∃) (isinkdom ! n) (\m -> m ∈ bigM) ∧ m1 /= n ∧ m1 ∈ nticd' ! n))
                          )
                        ∧ (∀) (cycles) (\bigM -> let gN = gNOfNode ! (Set.findMin bigM) in
-                           (∀) bigM (\m2 -> let nticd' = NTICD.nticd (delSuccessorEdges gN m2) in
+                           (∀) bigM (\m2 -> let nticd' = NTICD.nticdViaSinkDom (delSuccessorEdges gN m2) in
                              (∀) (Map.assocs nticd') (\(n,ms) -> (∀) ms (\m1 -> (m1 ∈ bigM ∧ m1 /= n) → (n ∈ ntiod ! (m1, m2))))
                            )
                          ),

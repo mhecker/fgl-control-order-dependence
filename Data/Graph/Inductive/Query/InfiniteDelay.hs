@@ -68,7 +68,7 @@ inSameBranch g = \start n m -> {-(m `elem` reachable n g) ∧ -} (n `elem` reach
       -- ∨ (∀) (Map.assocs nticd) (\(p,ns) -> (not $ m ∈ ns)  ∧  (not $ n ∈ ns))
       ∨ (Set.fromList [n,m] ⊆ reachableFrom sinkdom (Set.fromList [start]))
     )
-  where nticd = nticdF3 g
+  where nticd = nticdViaSinkDom g
         sinkdom = sinkdomOfGfp g
 
 delayedInfinitely g = \trace m -> case trace of

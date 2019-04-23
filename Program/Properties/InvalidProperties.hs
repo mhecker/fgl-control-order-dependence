@@ -81,12 +81,15 @@ import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp,
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (noJoins, stepsCL, stepsCLLfp, dfFor, anyDFFromUpLocalDefViaAnydoms, mDF)
 import  Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
+    ntscdViaMDom, nticdViaSinkDom,
     withPossibleIntermediateNodesFromiXdom,
     joiniSinkDomAround,
     isinkdomOfSinkContraction,
-    nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdIndus, nticdF3,
-    nticdF5GraphP, nticdIndusGraphP, ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaNticd, nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaChoiceAtRepresentatives,
+  )
+import qualified Data.Graph.Inductive.Query.NTICD.SNM as SNM (
+    nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdF3,
+    nticdF5GraphP,                   ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF4WithReachCheckGfp,
     snmF3, snmF5
   )
@@ -103,7 +106,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     wodTEILPDomSlice,
     nticdMyWodSlice
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay)
+import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndusGraphP, nticdIndus,)
 import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
@@ -410,47 +413,47 @@ nticdProps = testGroup "(concerning nticd )" [
                         selfedges = [ e | e@(n,m) <- edges g, n == m]
                     in
                        selfedges == [] &&
-                       NTICD.nticdF5      g /=
-                       NTICD.nticdF3      g 
+                       SNM.nticdF5      g /=
+                       SNM.nticdF3      g 
                        ==>
-                       NTICD.snmF5        g ⊑
-                       NTICD.snmF3        g,
+                       SNM.snmF5        g ⊑
+                       SNM.snmF3        g,
     testProperty  "controlDependence      == nticdF                for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g exit ==
-                       NTICD.nticdF5          g,
+                       SNM.nticdF5          g,
     testProperty  "controlDependence      == nticdFig5             for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g exit ==
-                       NTICD.nticdFig5        g,
+                       SNM.nticdFig5        g,
     testProperty  "controlDependence      == nticdIndus            for graphs with unique end node property"
                 $ \((CG entry generatedGraph) :: (Connected Gr () ())) ->
                     let (exit, g) = withUniqueEndNode () () generatedGraph
                     in controlDependence      g exit ==
-                       NTICD.nticdIndus       g
+                       NTICDUnused.nticdIndus       g
   ]
   
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "snmF5                     ⊑  snmF3 for " ++ exampleName)
                   $ let g = tcfg p
                     in
-                       NTICD.snmF5        g ⊑
-                       NTICD.snmF3        g
+                       SNM.snmF5        g ⊑
+                       SNM.snmF3        g
                     @? ""
   | (exampleName, p) <- failingSnmF3F5
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF5GraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == NTICD.nticdF5GraphP p @? ""
+                  $ controlDependenceGraphP p == SNM.nticdF5GraphP p @? ""
   | (exampleName, p) <- failingNticd
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdFig5GraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == NTICD.nticdFig5GraphP p @? ""
+                  $ controlDependenceGraphP p == SNM.nticdFig5GraphP p @? ""
   | (exampleName, p) <- failingNticd
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdIndusGraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == NTICD.nticdIndusGraphP p @? ""
+                  $ controlDependenceGraphP p == NTICDUnused.nticdIndusGraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -460,7 +463,7 @@ ntscdTests = testGroup "(concerning ntscd)" $
   [  testCase    ( "wod ⊆ ntscd for reducible graphs, as conjectured in [1], page 19 for" ++ exampleName)
             $  let g = tcfg p
                    wod = ODEP.wodDef g
-                   ntscd = NTICD.ntscdF3 g
+                   ntscd = NTICD.ntscdViaMDom g
                in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
                     (∀) (ns) (\n ->   (m1 ∈ ntscd ! n)
                                     ∨ (m2 ∈ ntscd ! n)
@@ -469,7 +472,7 @@ ntscdTests = testGroup "(concerning ntscd)" $
   | (exampleName, p) <- failingWodNtscdReducible
   ] ++
   [  testCase    ( "ntscdFig4GraphP         ==       ntscdF3GraphP for " ++ exampleName)
-            $ NTICD.ntscdFig4GraphP p       == NTICD.ntscdF3GraphP p @? ""
+            $ SNM.ntscdFig4GraphP p       == SNM.ntscdF3GraphP p @? ""
   | (exampleName, p) <- failingNtscd
   ] ++
   []
@@ -479,7 +482,7 @@ ntscdProps = testGroup "(concerning ntscd )" [
                 $ \generated -> let  p :: Program Gr = toProgram generated
                                      g = tcfg p
                                      wod = ODEP.wodDef g
-                                     ntscd = NTICD.ntscdF3 g
+                                     ntscd = NTICD.ntscdViaMDom g
                                 in (∀) (Map.assocs wod) (\((m1,m2), ns) ->
                                       (∀) (ns) (\n ->   (m1 ∈ ntscd ! n)
                                                       ∨ (m2 ∈ ntscd ! n)
@@ -487,12 +490,12 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                   ),
   testProperty  "ntscdFig4GraphP          == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.ntscdFig4GraphP p   == NTICD.ntscdF3GraphP p,
+                  SNM.ntscdFig4GraphP p   == SNM.ntscdF3GraphP p,
     testProperty  "ntscdFig4                == ntscdF3"
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry
-                    in NTICD.ntscdFig4       g ==
-                       NTICD.ntscdF3         g
+                    in SNM.ntscdFig4       g ==
+                       SNM.ntscdF3         g
   ]
 
 
@@ -604,8 +607,8 @@ miscProps = testGroup "(misc)" [
     testProperty  "snmF4WithReachCheckGfp ⊑ snmF3Gfp "
                 $ \(ARBITRARY(generatedGraph)) ->
                     let graph     = generatedGraph
-                        snmF3Gfp                = NTICD.snmF3 graph
-                        snmF4WithReachCheckGfp  = NTICD.snmF4WithReachCheckGfp graph
+                        snmF3Gfp                = SNM.snmF3 graph
+                        snmF4WithReachCheckGfp  = SNM.snmF4WithReachCheckGfp graph
                     in snmF4WithReachCheckGfp ⊑ snmF3Gfp
   ]
 
@@ -684,7 +687,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
   ] ++
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property strong for " ++ exampleName)
             $       let myDod = ODEP.myDod g
-                        ntscd = NTICD.ntscdF3 g
+                        ntscd = NTICD.ntscdViaMDom g
                     in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
                           (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
                                         (∃) (ns) (\n' -> n' ∈ ntscd ! n)

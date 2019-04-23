@@ -14,7 +14,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import Data.Graph.Inductive.Util (removeDuplicateEdges, delSuccessorEdges, delPredecessorEdges, fromSuccMap, toSuccMap, prevCondNodes, nextCondNode, toNextCondNode)
+import Data.Graph.Inductive.Util (removeDuplicateEdges, delSuccessorEdges, delPredecessorEdges, fromSuccMap, toSuccMap, prevCondNodes, nextCondNode, toNextCondNode, controlSinks)
 import Data.Graph.Inductive
 
 import Unicode
@@ -24,9 +24,10 @@ import Program (Program)
 
 
 import Data.Graph.Inductive.Query.LCA(lca, lcaRMyCDForNode)
-import Data.Graph.Inductive.Query.PostDominance (DomFunctionalGen, sinkPathsFor, SinkPath(..), cyclesInScc, domOfGfp, domOfLfp, sinkdomOfGfp)
+import Data.Graph.Inductive.Query.PostDominance (DomFunctionalGen, sinkPathsFor, SinkPath(..), cyclesInScc, domOfGfp, domOfLfp, sinkdomOfGfp, isinkdomOfTwoFinger8)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice, cdepGraph, cdepGraphP)
-import Data.Graph.Inductive.Query.NTICD (isinkdomOfSinkContraction, nticdF3, mayNaiveGfp)
+import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom, mayNaiveGfp)
+import Data.Graph.Inductive.Query.NTICD.SNM (ntscdF4)
 import Data.Graph.Inductive.Query.OrderDependence (smmnFMustWod, myDependenceFor, colorLfpFor)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
 
@@ -411,7 +412,7 @@ myCD :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 myCD graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
            ⊔ Map.fromList [ (n, myCDForNode graph n) | cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes ]
   where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
@@ -420,7 +421,7 @@ myCD graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
 myCDForNode :: forall gr a b. DynGraph gr => gr a b -> Node -> (Set Node)
 myCDForNode graph n = Set.fromList [ m |       -- m <- Set.toList $ reachableFrom isinkdom (Set.fromList [n]) Set.empty,
                                                   let gn  = delSuccessorEdges graph n,
-                                                  let isinkdomN  = isinkdomOfSinkContraction gn,
+                                                  let isinkdomN  = isinkdomOfTwoFinger8 gn,
                                                   -- let (z,relevant) = foldr1 (lcaR (fmap fromSet isinkdomN)) [(x, Set.empty) | x <- suc graph n],
                                                   -- m <- Set.toList relevant, m /= z
                                                   m <- nodes graph,
@@ -448,7 +449,7 @@ myEntryWodFast graph =
                                                 ]
                   ]
   where condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
@@ -471,7 +472,7 @@ mySinkWodFast graph = (∐) [ Map.fromList [ ((m1, m2), Set.fromList [ n ] ) ] |
                                                                            -- not $ m2 `elem` (suc cdG n)
                       ]
   where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n, x /= n] > 1 ]
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
@@ -627,11 +628,11 @@ myDom graph =
               -- let domn = (fmap Set.singleton$ Map.fromList $ iDom gn n) `Map.union` Map.fromList [ (m, Set.empty) | m <- nodes graph],
               -- Just m <- [foldM1 (lca domn) (suc graph n)]
               let gn  = delSuccessorEdges graph n,
-              let isinkdomN  = fmap fromSet $ isinkdomOfSinkContraction gn,
+              let isinkdomN  = fmap fromSet $ isinkdomOfTwoFinger8 gn,
               Just m <- [foldM1 (lca isinkdomN) (suc graph n)]
  ]
   where condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
@@ -696,7 +697,7 @@ myWodFromMay graph =  --      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes 
                                  (not $ m2 ∈ pmay ! x)  ∨  ((not $ m1 ∈ zs)  ∧  (m2 ∈ ys))
                  ]
         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
@@ -715,7 +716,7 @@ myCDFromMyDom graph = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
                                     |  cycle <- isinkdomCycles, length cycle > 1, n <- cycle, n `elem` condNodes ]
   where dom       = myDom graph
         condNodes = [ n | n <- nodes graph, length [ x | x <-  suc graph n] > 1 ]
-        isinkdom = isinkdomOfSinkContraction graph
+        isinkdom = isinkdomOfTwoFinger8 graph
         isinkdomG = fromSuccMap isinkdom :: gr () ()
         isinkdomTrc = trc $ isinkdomG
         isinkdomCycles = scc isinkdomG
@@ -728,10 +729,53 @@ wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
                                    -- traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd), graph)
                                   id
                                ) $
-                               combinedBackwardSlice graph (invert'' $ nticdF3 graph ⊔ cd) w
+                               combinedBackwardSlice graph (invert'' $ nticdViaSinkDom graph ⊔ cd) w
   where cdFromDom    = myCDFromMyDom graph
         cd           = myCD graph
         w     = myEntryWodFast graph
         cdEdges        = Set.fromList $ edges $ trc $ (fromSuccMap cd        :: gr () ())
         cdFromDomEdges = Set.fromList $ edges $ trc $ (fromSuccMap cdFromDom :: gr () ())
 
+
+nticdIndusGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
+nticdIndusGraphP = cdepGraphP nticdIndusGraph
+
+nticdIndusGraph :: DynGraph gr => gr a b ->  gr a Dependence
+nticdIndusGraph = cdepGraph nticdIndus
+
+nticdIndus :: DynGraph gr => gr a b ->  Map Node (Set Node)
+nticdIndus graph = go (nodes graph) [] deps
+    where
+      go []             seen newDeps = newDeps
+      go (dependent:ds) seen newDeps = go ds seen newDeps'
+        where newDeps' = process dependent newDeps
+      process dependent newDeps = run dependent [ d | d <- nodes graph, dependent ∈ (deps ! d)] [] newDeps
+        where 
+          run dependent []            seen newDeps = newDeps
+          run dependent (dependee:ds) seen newDeps
+            | dependee ∊ seen                                       = run
+                dependent
+                ds
+                seen
+                newDeps
+            | shouldRemoveDepBetween dependee dependent sinkNodes = run
+                dependent
+                (ds ++ [ d | d <- nodes graph, dependee ∈ (deps ! d) ])
+                (dependee:seen)
+                (Map.update (\dependents -> Just $ Set.delete  dependent  dependents) dependee newDeps)
+            | otherwise               = run
+                dependent
+                ds
+                (dependee:seen)
+                (Map.update (\dependents -> Just $ Set.insert dependent  dependents) dependee newDeps)
+          sinkNodes = nodesOfSinksNotContainingNode dependent
+      
+      deps = ntscdF4 graph
+      csinks = controlSinks graph
+      nodesOfSinksNotContainingNode node = [ n | sink <- csinks, not $ node ∊ sink, n <- sink]
+      shouldRemoveDepBetween dependee dependent sinkNodes = run [dependee] [dependent]
+        where run []     seen = True
+              run (n:ns) seen
+                | n ∊ seen   = run ns seen
+                | n ∊ sinkNodes = False
+                | otherwise = run ((suc graph n) ++ ns) (n:seen)

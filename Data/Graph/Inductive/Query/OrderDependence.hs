@@ -1134,21 +1134,26 @@ wccSliceViaNticd g msS = s
                  g'' = subgraph fromMs g'
 
         sinks            = fmap (\m -> [m]) ms
+        sinkNodes        = msS
 
-        -- sinkS            = fmap Set.fromList sinks
-        -- sinkNodes        = msS
-        -- nonSinkCondNodes = Map.fromList [ (n, succs) | n <- nodes g''', not $ n ∈ sinkNodes, let succs = suc g''' n, length succs > 1 ]
-        -- idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes g'''
-
-        idom = Map.fromList $ iPDomForSinks sinks g'''
+        nonSinkCondNodes = Map.fromList [ (n, succs) | n <- nodes g''', not $ n ∈ sinkNodes, let succs = suc g''' n, length succs > 1 ]
+        idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes g'''
 
         s = Map.keysSet $ Map.filter (== Nothing) idom 
 
 
 
-
-wodTEILSliceViaNticd :: (Show (gr a b),  DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaNticd g =  \ms ->
+wodTEILSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticd g msS = combinedBackwardSlice g nticd'' empty msS
+  where ms = Set.toList msS
+        g''   = foldr (flip delSuccessorEdges) g' ms
+          where  toMs   = rdfs ms g
+                 g' = subgraph toMs g
+        nticd'' = isinkDFTwoFinger g''
+        empty = Map.empty
+        
+wodTEILSliceViaNticdReuse :: (Show (gr a b),  DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticdReuse g =  \ms ->
     let toMs  = rdfs (Set.toList ms) g
         toMsS = Set.fromList toMs
         g'    = Set.fold (flip delSuccessorEdges) (subgraph toMs g) ms

@@ -75,6 +75,13 @@ import Control.Exception.Base (assert)
 
 tr msg x = seq x $ trace msg x
 
+ntscd g = Map.fromList [ (n, Set.fromList [m | nl <- suc g n,  m <- Set.toList $ mdom ! nl, (∃) (suc g n) (\nr -> not $ m ∈ mdom ! nr), m /= n]) | n <- nodes g]
+  where mdom = mdomOfLfp g
+
+
+nticd g = Map.fromList [ (n, Set.fromList [m | nl <- suc g n,  m <- Set.toList $ sinkdom ! nl, (∃) (suc g n) (\nr -> not $ m ∈ sinkdom ! nr), m /= n]) | n <- nodes g]
+  where sinkdom = sinkdomOfGfp g
+
 
 type T n = (n, n)
 
@@ -968,13 +975,33 @@ nticdMyWodSliceViaNticd graph msS = combinedBackwardSlice graph nticd' empty msS
 
 
 nticdMyWodSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaISinkDom graph msS =  Set.fromList [ n | n <- rdfs ms graph', {- n <- pre graph' x, -} isinkdom' ! n == Nothing]
+nticdMyWodSliceViaISinkDom graph msS =  Set.fromList [ n | n <- rdfs ms graph', isinkdom' ! n == Nothing]
   where ms = Set.toList msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         isinkdom' = isinkdomOfTwoFinger8ForSinks sinks' sinkNodes' nonSinkCondNodes' graph'
           where sinks'     =  controlSinks graph'
                 sinkNodes' = (∐) [ Set.fromList sink | sink <- sinks']
                 nonSinkCondNodes' = Map.fromList [ (n, succs) | n <- nodes graph', not $ n ∈ sinkNodes', let succs = suc graph' n, length succs > 1 ]
+
+wodTEILSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaISinkDom g msS =  Set.fromList [ n | n <- nodes g'', isinkdom'' ! n == Nothing]
+  where ms = Set.toList msS
+        g''   = foldr (flip delSuccessorEdges) g' ms
+          where  toMs   = rdfs ms g
+                 g' = subgraph toMs g
+
+        isinkdom'' = fmap fromSet $ isinkdomOfTwoFinger8 g''
+
+wccSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wccSliceViaISinkDom g msS =  Set.fromList [ n | n <- nodes g''', isinkdom''' ! n == Nothing]
+  where ms = Set.toList msS
+        g'''   = foldr (flip delSuccessorEdges) g'' ms
+          where  toMs   = rdfs ms g
+                 g' = subgraph toMs g
+                 fromMs =  dfs ms g'
+                 g'' = subgraph fromMs g'
+
+        isinkdom''' = fmap fromSet $ isinkdomOfTwoFinger8 g'''
 
 
 

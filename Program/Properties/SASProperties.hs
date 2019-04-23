@@ -96,33 +96,31 @@ testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
 testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
    where MkProperty gen = property prop
 
-main      = all
+main      = props
 
-all        = defaultMain                               $ tests
-allX       = defaultMainWithIngredients [antXMLRunner] $ tests
-pdom       = defaultMain                               $ testGroup "pdom"      [ mkTest [pdomTests], mkProp [pdomProps]]
-pdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdom"      [ mkTest [pdomTests], mkProp [pdomProps]]
+props      = defaultMain                               $ properties
+propsX     = defaultMainWithIngredients [antXMLRunner] $ properties
 
-pdf        = defaultMain                               $ testGroup "pdf"       [ mkTest [pdfTests], mkProp [pdfProps]]
-pdfX       = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdf"       [ mkTest [pdfTests], mkProp [pdfProps]]
+pdom       = defaultMain                               $ testGroup "pdom"      [ mkProp [pdomProps]]
+pdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdom"      [ mkProp [pdomProps]]
+
+pdf        = defaultMain                               $ testGroup "pdf"       [ mkProp [pdfProps]]
+pdfX       = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdf"       [ mkProp [pdfProps]]
 
 
-ntsod      = defaultMain                               $ testGroup "ntsod"     [ mkTest [ntsodTests], mkProp [ntsodProps]]
-ntsodX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntsod"     [ mkTest [ntsodTests], mkProp [ntsodProps]]
+ntsod      = defaultMain                               $ testGroup "ntsod"     [ mkProp [ntsodProps]]
+ntsodX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntsod"     [ mkProp [ntsodProps]]
 
-ntiod      = defaultMain                               $ testGroup "ntiod"     [ mkTest [ntiodTests], mkProp [ntiodProps]]
-ntiodX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntiod"     [ mkTest [ntiodTests], mkProp [ntiodProps]]
+ntiod      = defaultMain                               $ testGroup "ntiod"     [ mkProp [ntiodProps]]
+ntiodX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntiod"     [ mkProp [ntiodProps]]
+
+tests      = defaultMain                               $ unitTests
 
 mkTest = testGroup "Unit tests"
 mkProp = testGroup "Properties"
 
-
-tests :: TestTree
-tests = testGroup "Tests" [unitTests, properties]
-
-
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ pdomTests, pdfTests, ntsodTests, ntiodTests]
+unitTests  = testGroup "Unit tests" [                                  ntiodTests]
 
 properties :: TestTree
 properties = testGroup "Properties" [ pdomProps, pdfProps, ntsodProps, ntiodProps]

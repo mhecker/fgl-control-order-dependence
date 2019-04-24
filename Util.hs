@@ -458,3 +458,5 @@ infix 4 ≡
 
 traceIfFalse x b =
   if b then b else traceShow x $ b
+
+symmetric m = (∐) [ Map.fromList [((m1,m2), ns), ((m2,m1),ns) ] |  ((m1,m2),ns) <- Map.assocs m ]

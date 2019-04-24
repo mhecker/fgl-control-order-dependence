@@ -198,21 +198,6 @@ predsSeenFor imdomRev = predsSeenF where
                       _  -> predsSeenF (new ++ seen) new
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ntindDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntindDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ sinkdoms ! n) ∖ (Set.insert n $ sinkdoms ! n)) | n <- nodes g ]
   where sinkdoms = sinkdomsOf g
@@ -226,8 +211,4 @@ ntsndDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ mdoms ! n)
         onPathBetween ss ts = fwd
           where g' = foldr (flip delSuccessorEdges) g ts
                 fwd = Set.fromList $  dfs ss g'
-
-
-symmetric m = (∐) [ Map.fromList [((m1,m2), ns), ((m2,m1),ns) ] |  ((m1,m2),ns) <- Map.assocs m ]
-
 

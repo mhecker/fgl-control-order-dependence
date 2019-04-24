@@ -82,11 +82,9 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom, ntscdViaMDom,
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
-    dod,
-          
+    dod, dodDef,
     myDod, myDodFastPDom,
     myWod, myWodFastPDom, myWodFastPDomSimpleHeuristic, 
-
   )
 
 import Data.Graph.Inductive.Arbitrary
@@ -263,7 +261,14 @@ pdfTests = testGroup "(concerning generalized postdominance frontiers)" $
   []
 
 
-ntsodProps = testGroup "(concerning nontermination   sensititve order dependence)" (lemma4 ++ observation3 ++ observation4)
+ntsodProps = testGroup "(concerning nontermination   sensititve order dependence)" (dodIsDodDef ++ lemma4 ++ observation3 ++ observation4)
+dodIsDodDef = [
+    testPropertySized 40  "dod  == dodDef"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in ODEP.dod           g ==
+                       ODEP.dodDef        g
+  ]
 lemma4 = [
       testProperty  "dod is contained in imdom cycles, and only possible for immediate entries into cycles"
     $ \(ARBITRARY(generatedGraph)) ->

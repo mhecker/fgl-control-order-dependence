@@ -109,7 +109,7 @@ rofl : $(ROFL)
 	$(ROFL) $(RTS)
 
 
-sas-artifact.tar.gz : Data/Dequeue/SimpleDequeue.hs Unicode.hs Data/Graph/Inductive/Query/NTICD/Util.hs Util.hs Data/Graph/Inductive/Util.hs Data/Graph/Inductive/Query/NTICD/SNM.hs Data/Graph/Inductive/Query/LCA.hs Data/Graph/Inductive/Query/PostDominance.hs  Data/Graph/Inductive/Query/PostDominanceFrontiers.hs Data/Graph/Inductive/Query/NTICD.hs Data/Graph/Inductive/Query/Slices/NTICD.hs Data/Graph/Inductive/Query/FCACD.hs Data/Graph/Inductive/Query/Slices/PostDominance.hs Data/Graph/Inductive/Query/OrderDependence.hs Data/Graph/Inductive/Query/Slices/OrderDependence.hs Program/Properties/SASProperties.hs
+sas-artifact.tar.gz : Data/Dequeue/SimpleDequeue.hs Unicode.hs Data/Graph/Inductive/Query/NTICD/Util.hs Util.hs Data/Graph/Inductive/Util.hs Data/Graph/Inductive/Query/NTICD/SNM.hs Data/Graph/Inductive/Query/LCA.hs Data/Graph/Inductive/Query/PostDominance.hs  Data/Graph/Inductive/Query/PostDominanceFrontiers.hs Data/Graph/Inductive/Query/NTICD.hs Data/Graph/Inductive/Query/Slices/NTICD.hs Data/Graph/Inductive/Query/FCACD.hs Data/Graph/Inductive/Query/Slices/PostDominance.hs Data/Graph/Inductive/Query/OrderDependence.hs Data/Graph/Inductive/Query/Slices/OrderDependence.hs Program/Properties/SASProperties.hs fgl-control-order-dependence.cabal LICENSE Setup.hs ChangeLog.md
 	rm -f $@ ; tar czf $@ $^
 
 

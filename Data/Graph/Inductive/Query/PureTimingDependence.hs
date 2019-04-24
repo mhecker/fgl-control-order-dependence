@@ -25,7 +25,8 @@ import Util(fromSet, without, invert'', invert''', restrict, reachableFrom)
 import Data.Graph.Inductive.Util (isCond, fromSuccMap, delSuccessorEdges, nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
-import Data.Graph.Inductive.Query.NTICD (nticdSlice, ntscdViaMDom, nticdViaSinkDom)
+import Data.Graph.Inductive.Query.NTICD (ntscdViaMDom, nticdViaSinkDom)
+import Data.Graph.Inductive.Query.Slices.NTICD (nticdSlice)
 import Data.Graph.Inductive.Query.TSCD (itimdomMultipleOfTwoFingerFor, itimdomMultipleOfTwoFinger)
 
 

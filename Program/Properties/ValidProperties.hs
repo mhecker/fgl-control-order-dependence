@@ -95,17 +95,19 @@ import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.Util.GraphTransformations as TRANS (sinkShrinkedGraphNoNewExitForSinks)
 import qualified Data.Graph.Inductive.Query.NTICD.GraphTransformations as NTICD.TRANS (nticdSinkContraction, nticdSinkContractionGraphP)
 import qualified Data.Graph.Inductive.Query.PostDominance.GraphTransformations as PDOM.TRANS (isinkdomOfSinkContraction)
+import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE.TRANS (
+    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives
+ )
+import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (nticdMyWodSliceViaISinkDom)
+import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (nticdMyWodSlice, nticdSlice,  ntscdSlice)
+import qualified Data.Graph.Inductive.Query.Slices.PostDominanceFrontiers as SLICE.PDF (nticdSliceFor)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom,
     ntscdViaMDom,
     ntindDef, ntsndDef,
-    nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives,
-    nticdMyWodSliceViaNticd,
-    nticdMyWodSliceViaISinkDom,
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    nticdSlice,  ntscdSlice, nticdSliceFor, 
     mayNaiveGfp,
     nticdDef, nticdDefGraphP, 
     ntscdDef, ntscdDefGraphP
@@ -440,7 +442,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                                                         let m2 = nodes g !! (s2 `mod` n),
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
-                    nticdslicer        = NTICD.nticdSliceFor              roots g idom
+                    nticdslicer        = SLICE.PDF.nticdSliceFor              roots g idom
                     nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFastFor roots g idom
                 in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
     testProperty   "nticdSlice  == nticdSliceViaCEdgesFast for CFG-shaped graphs and randomly selected nodes"
@@ -456,7 +458,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                                                         let m2 = nodes g !! (s2 `mod` n),
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
-                    nticdslicer        = NTICD.nticdSlice              g
+                    nticdslicer        = SLICE.NTICD.nticdSlice              g
                     nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                 in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
     testProperty   "idfViaCEdgesFast properties"
@@ -485,7 +487,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "nticdSlice  == nticdslicerCEdges"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        nticdslicer        = NTICD.nticdSlice              g
+                        nticdslicer        = SLICE.NTICD.nticdSlice              g
                         nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               nticdslicer ms == nticdslicerCEdges ms
@@ -497,7 +499,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         g = insEdge (exit, entry, ()) generatedGraph
                         n    = length $ nodes g
                         ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                        nticdslicer        = NTICD.nticdSlice              g
+                        nticdslicer        = SLICE.NTICD.nticdSlice              g
                         nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                     in  nticdslicer ms == nticdslicerCEdges ms,
     testProperty   "nticdSlice  == nticdslicerCEdges for random slice-criteria of random size"
@@ -507,7 +509,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                         ms
                          | n == 0 = Set.empty
                          | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                        nticdslicer        = NTICD.nticdSlice              g
+                        nticdslicer        = SLICE.NTICD.nticdSlice              g
                         nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                     in  nticdslicer ms == nticdslicerCEdges ms,
     testProperty   "idomToDFFast _ == dfViaCEdges _"
@@ -856,7 +858,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     let g = generatedGraph
                         imdom    = PDOM.imdomOfTwoFinger7  g
                         idfViaJ  = CEDGE.idfViaCEdgesFast g (fmap fromSet imdom)
-                        ntscdslicer = NTICD.ntscdSlice g
+                        ntscdslicer = SLICE.NTICD.ntscdSlice g
                     in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1,m2] in
                               ntscdslicer ms == idfViaJ ms
                     )),
@@ -867,7 +869,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                         g = insEdge (exit, entry, ()) generatedGraph
                         n    = length $ nodes g
                         ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                        ntscdslicer        = NTICD.ntscdSlice              g
+                        ntscdslicer        = SLICE.NTICD.ntscdSlice              g
                         ntscdslicerCEdges  = CEDGE.ntscdSliceViaCEdgesFast g
                     in  ntscdslicer ms == ntscdslicerCEdges ms,
     testProperty   "ntscdSlice  == ntscdslicerCEdges for random slice-criteria of random size"
@@ -877,7 +879,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                         ms
                          | n == 0 = Set.empty
                          | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                        ntscdslicer        = NTICD.ntscdSlice              g
+                        ntscdslicer        = SLICE.NTICD.ntscdSlice              g
                         ntscdslicerCEdges  = CEDGE.ntscdSliceViaCEdgesFast g
                     in  ntscdslicer ms == ntscdslicerCEdges ms,
     testProperty   "idomToDFFast _ == dfViaCEdges _"
@@ -1122,11 +1124,11 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g    = generatedGraph
                     n    = length $ nodes g
                     ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (max 2 $ seed1 `mod` n)]
-                    slicer0  = NTICD.nticdMyWodSliceViaNticd                g
-                    slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
-                    slicer1' = NTICD.nticdMyWodSliceViaCutAtRepresentativesNoTrivial g
-                    slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
-                    slicerNX = NTICD.nticdMyWodSliceViaChoiceAtRepresentatives g
+                    slicer0  = SLICE.NTICD.nticdMyWodSlice                        g
+                    slicer1  = SLICE.TRANS.nticdMyWodSliceViaCutAtRepresentatives g
+                    slicer1' = SLICE.TRANS.nticdMyWodSliceViaCutAtRepresentativesNoTrivial g
+                    slicer2  = SLICE.TRANS.nticdMyWodSliceViaEscapeNodes          g
+                    slicerNX = SLICE.TRANS.nticdMyWodSliceViaChoiceAtRepresentatives g
                     s0 = slicer0  ms
                     s1 = slicer1  ms
                     s1'= slicer1' ms
@@ -1146,11 +1148,11 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     g = insEdge (exit, entry, ()) generatedGraph
                     n    = length $ nodes g
                     ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (max 2 $ seed1 `mod` n)]
-                    slicer0  = NTICD.nticdMyWodSliceViaNticd                g
-                    slicer1  = NTICD.nticdMyWodSliceViaCutAtRepresentatives g
-                    slicer1' = NTICD.nticdMyWodSliceViaCutAtRepresentativesNoTrivial g
-                    slicer2  = NTICD.nticdMyWodSliceViaEscapeNodes          g
-                    slicerNX = NTICD.nticdMyWodSliceViaChoiceAtRepresentatives g
+                    slicer0  = SLICE.NTICD.nticdMyWodSlice                        g
+                    slicer1  = SLICE.TRANS.nticdMyWodSliceViaCutAtRepresentatives g
+                    slicer1' = SLICE.TRANS.nticdMyWodSliceViaCutAtRepresentativesNoTrivial g
+                    slicer2  = SLICE.TRANS.nticdMyWodSliceViaEscapeNodes          g
+                    slicerNX = SLICE.TRANS.nticdMyWodSliceViaChoiceAtRepresentatives g
                     s0 = slicer0  ms
                     s1 = slicer1  ms
                     s1'= slicer1' ms
@@ -1195,7 +1197,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
 
                     toMs   = rdfs ms g
                     g''    = foldr (flip delSuccessorEdges) (subgraph fromMs $ subgraph toMs g) ms
-                    nticdslicer = NTICD.nticdSlice g''
+                    nticdslicer = SLICE.NTICD.nticdSlice g''
 
                 in   wccslicer msS == wodslicer   msS
                    ∧ wccslicer msS == nticdslicer msS
@@ -1205,8 +1207,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g    = generatedGraph
                     n    = length $ nodes g
                     ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer1  = NTICD.nticdMyWodSliceViaNticd       g
-                    slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
+                    slicer1  = SLICE.NTICD.nticdMyWodSlice               g
+                    slicer2  = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g
                 in   slicer1  ms == slicer2  ms,
     testProperty "nticdMyWodSlice == nticdMyWodSliceViaISinkDom  for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
@@ -1216,10 +1218,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer1  = NTICD.nticdMyWodSliceViaNticd       g
-                    slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
-                    slicer1' = NTICD.nticdMyWodSliceViaNticd       g'
-                    slicer2' = NTICD.nticdMyWodSliceViaISinkDom    g'
+                    slicer1  = SLICE.NTICD.nticdMyWodSlice              g
+                    slicer2  = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g
+                    slicer1' = SLICE.NTICD.nticdMyWodSlice              g'
+                    slicer2' = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g'
                 in   slicer1  ms == slicer2  ms
                    ∧ slicer1' ms == slicer2' ms,
     testPropertySized 20 "nticdMyWodSlice == nticdMyWodSliceViaISinkDom"
@@ -1227,9 +1229,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g    = generatedGraph
                     g'   = grev g
                     slicer1  = ODEP.nticdMyWodPDomSimpleHeuristic g
-                    slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
+                    slicer2  = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g
                     slicer1' = ODEP.nticdMyWodPDomSimpleHeuristic g'
-                    slicer2' = NTICD.nticdMyWodSliceViaISinkDom    g'
+                    slicer2' = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let ms = Set.fromList [m1, m2] in -- -} (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
@@ -1245,7 +1247,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     in 
                            let m0s = Set.toList m0S
                                g' = foldr (flip delSuccessorEdges) g m0s
-                               slicer' = NTICD.nticdSlice g'
+                               slicer' = SLICE.NTICD.nticdSlice g'
                                sinkdoms' = PDOM.sinkdomsOf g'
                                sinkdom'  = PDOM.sinkdomOfGfp g'
                            in  (∀) (slicer' m0S) (\n -> Set.null $ sinkdoms' ! n)
@@ -1261,9 +1263,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     slicer1  = ODEP.nticdMyWodPDomSimpleHeuristic g
-                    slicer2  = NTICD.nticdMyWodSliceViaNticd       g
+                    slicer2  = SLICE.NTICD.nticdMyWodSlice        g
                     slicer1' = ODEP.nticdMyWodPDomSimpleHeuristic g'
-                    slicer2' = NTICD.nticdMyWodSliceViaNticd       g'
+                    slicer2' = SLICE.NTICD.nticdMyWodSlice        g'
                 in   slicer1  ms == slicer2  ms
                    ∧ slicer1' ms == slicer2' ms,
     testProperty "sinkdoms g' => sinkdoms g"
@@ -1422,7 +1424,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty "nticdSlice == ntindDef"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
-                    nticdslicer = NTICD.nticdSlice g
+                    nticdslicer = SLICE.NTICD.nticdSlice g
                     ntind = NTICD.ntindDef g
                 in (∀) (nodes g) (\m ->
                      let ms = Set.fromList [m]
@@ -1453,7 +1455,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     mywod =  ODEP.myWodFastPDomSimpleHeuristic g
                     must = ODEP.mustOfGfp g
                     slicer  = ODEP.nticdMyWodPDomSimpleHeuristic g
-                    nticdslicer = NTICD.nticdSlice g
+                    nticdslicer = SLICE.NTICD.nticdSlice g
                     sinkdoms = PDOM.sinkdomsOf g
                     onPathBetween ss ts = fwd
                       where gTs = foldr (flip delSuccessorEdges) g ts
@@ -1469,7 +1471,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                           g' = foldr (flip delSuccessorEdges) g m0s
                           trcG' = trc g'
                           nticd' = NTICD.nticdViaSinkDom g'
-                          nticd'slicer = NTICD.nticdSlice g'
+                          nticd'slicer = SLICE.NTICD.nticdSlice g'
                           sinkdom' = PDOM.sinkdomOfGfp g'
                           sinkdoms' = PDOM.sinkdomsOf g'
                           onPathBetween' ss ts = fwd
@@ -1577,9 +1579,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g    = generatedGraph
                     g'   = grev g
                     slicer1  = ODEP.nticdMyWodPDomSimpleHeuristic g
-                    slicer2  = NTICD.nticdMyWodSliceViaNticd       g
+                    slicer2  = SLICE.NTICD.nticdMyWodSlice        g
                     slicer1' = ODEP.nticdMyWodPDomSimpleHeuristic g'
-                    slicer2' = NTICD.nticdMyWodSliceViaNticd       g'
+                    slicer2' = SLICE.NTICD.nticdMyWodSlice        g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let ms = Set.fromList [m1, m2] in -- -} (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
@@ -1628,7 +1630,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let g = generatedGraph
                     wodTEIL'    = ODEP.wodTEIL'PDom g
                     myWod       = ODEP.myWodFastPDomSimpleHeuristic g
-                    nticdslicer = NTICD.nticdSlice g
+                    nticdslicer = SLICE.NTICD.nticdSlice g
                 in (∀) (Map.assocs wodTEIL') (\((m1,m2), ns) ->  (∀) ns (\n ->
                        n ∈ myWod ! (m1,m2)                 ∨  n ∈ myWod ! (m2,m1)
                     ∨  n ∈ nticdslicer (Set.fromList [m1]) ∨  n ∈ nticdslicer (Set.fromList [m2])
@@ -2405,7 +2407,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty "ntscdSlice == ntsndDef"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
-                    nticdslicer = NTICD.ntscdSlice g
+                    nticdslicer = SLICE.NTICD.ntscdSlice g
                     ntind = NTICD.ntsndDef g
                 in (∀) (nodes g) (\m ->
                      let ms = Set.fromList [m]
@@ -3240,7 +3242,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     (cost'', _) = TSCD.timingCorrection          g'' cost0
                     costF'' n m = cost'' ! (n,m)
                     tscdcostslicer''  = TSCD.tscdCostSlice           g'' costF''
-                    ntscdslicer = NTICD.ntscdSlice                g''
+                    ntscdslicer = SLICE.NTICD.ntscdSlice                g''
     
                     s    = tscdcostslicer    ms
                     s'   = ntscdmydodslicer  ms

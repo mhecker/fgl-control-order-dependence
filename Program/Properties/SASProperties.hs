@@ -75,10 +75,13 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
  )
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
+import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (
+    wodTEILSliceViaISinkDom, wccSliceViaISinkDom, nticdMyWodSliceViaISinkDom,
+  )
+import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
+    nticdMyWodSlice,
+  )
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
-    wodTEILSliceViaISinkDom,
-    wccSliceViaISinkDom,
-    nticdMyWodSliceViaISinkDom, nticdMyWodSliceViaNticd,
     nticdViaSinkDom, ntscdViaMDom,
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
@@ -204,11 +207,11 @@ pdomTests = testGroup "(concerning generalized postdominance)" $
 
 pdfProps = testGroup "(concerning generalized postdominance frontiers)" (lemma1 ++ lemma2 ++ lemma3 ++ algorithm2)
 lemma1 = [
-    testProperty   "mDFFromUpLocalDefViaSinkdoms == mDF"
+    testPropertySized 60 "mDFFromUpLocalDefViaSinkdoms == mDF"
                 $ \(ARBITRARY(g)) ->
                        PDF.mDFFromUpLocalDefViaMdoms g ==
                        PDF.mDF                       g,
-    testProperty   "sinkDFFromUpLocalDefViaSinkdoms == sinkDF"
+    testPropertySized 60 "sinkDFFromUpLocalDefViaSinkdoms == sinkDF"
                 $ \(ARBITRARY(g)) ->
                        PDF.sinkDFFromUpLocalDefViaSinkdoms g ==
                        PDF.sinkDF                          g
@@ -388,9 +391,9 @@ theorem5 = [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer0  = ODEP.nticdMyWodSlice                g
-                    slicer1  = NTICD.nticdMyWodSliceViaNticd       g
-                    slicer2  = NTICD.nticdMyWodSliceViaISinkDom    g
+                    slicer0  = ODEP.nticdMyWodSlice                     g
+                    slicer1  = SLICE.NTICD.nticdMyWodSlice              g
+                    slicer2  = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g
                 in   slicer0 ms == slicer1 ms
                    ∧ slicer1 ms == slicer2 ms
   ]
@@ -426,7 +429,7 @@ observationANON = [
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     slicer0 = FCACD.wccSlice g
-                    slicer1 = NTICD.wccSliceViaISinkDom     g
+                    slicer1 = SLICE.PDOM.wccSliceViaISinkDom     g
                     slicer2 = ODEP.wccSliceViaNticd g
                 in   slicer0 ms == slicer1 ms
                    ∧ slicer1 ms == slicer2 ms,
@@ -438,7 +441,7 @@ observationANON = [
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     slicer0  = ODEP.wodTEILSlice               g
-                    slicer1  = NTICD.wodTEILSliceViaISinkDom   g
+                    slicer1  = SLICE.PDOM.wodTEILSliceViaISinkDom   g
                     slicer2  = ODEP.wodTEILSliceViaNticd       g
                 in   slicer0 ms == slicer1 ms
                    ∧ slicer1 ms == slicer2 ms

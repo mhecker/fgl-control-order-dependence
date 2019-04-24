@@ -233,21 +233,6 @@ ntsndDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ mdoms ! n)
 
 
 
-nticdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdSlice graph =  combinedBackwardSlice graph nticd w
-  where nticd = isinkDFTwoFinger graph
-        w     = Map.empty
-
-nticdSliceFor :: DynGraph gr => [[Node]] -> gr a b -> Map Node (Maybe Node) ->  Set Node -> Set Node
-nticdSliceFor roots graph idom = {- traceShow (Map.fold (\ns sum -> sum + Set.size ns) 0 nticd') $ -} combinedBackwardSlice graph nticd' w
-  where nticd' = idomToDFFastForRoots roots graph idom
-        w      = Map.empty
-
-
-ntscdSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdSlice graph =  combinedBackwardSlice graph ntscd w
-  where ntscd = mDFTwoFinger graph
-        w     = Map.empty
 
 
 
@@ -255,89 +240,6 @@ ntscdSlice graph =  combinedBackwardSlice graph ntscd w
 
 
 
-
-
-
-nticdMyWodSliceViaEscapeNodes :: (DynGraph gr) => gr () () ->  Set Node -> Set Node
-nticdMyWodSliceViaEscapeNodes g = \ms -> combinedBackwardSlice g' nticd' empty ms ∖ (Set.fromList (end:escape))
-  where (end, escape, g') = withUniqueEndNodeAndEscapeNodes () () () () g
-        nticd' = invert'' $ nticdViaSinkDom g'
-        empty = Map.empty
-
-
-
-
-nticdMyWodSliceViaChoiceAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaChoiceAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nticd'') empty ms
-  where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
-        g'' = choiceAtRepresentativesGraphOf g
-        nticd'' = invert'' $ nticdViaSinkDom g''
-        empty = Map.empty
-
-
-
-nticdMyWodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nticd ⊔ nticd'') empty ms
-  where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
-        g'' = splitRepresentativesGraphOf g
-        nticd   = invert'' $ nticdViaSinkDom g
-        nticd'' = invert'' $ nticdViaSinkDom g''
-        empty = Map.empty
-
-nticdMyWodSliceViaCutAtRepresentativesNoTrivial :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaCutAtRepresentativesNoTrivial g = \ms -> combinedBackwardSlice g'' (nticd ⊔ nticd'') empty ms
-  where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
-        g'' = splitRepresentativesGraphNoTrivialOf g
-        nticd   = invert'' $ nticdViaSinkDom g
-        nticd'' = invert'' $ nticdViaSinkDom g''
-        empty = Map.empty
-
-
-ntscdMyDodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (ntscd ⊔ ntscd'') empty ms
-  where g'' = splitRepresentativesGraphOf g
-        ntscd   = invert'' $ ntscdViaMDom g
-        ntscd'' = invert'' $ ntscdViaMDom g''
-        empty = Map.empty
-
-
-
-nticdMyWodSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaNticd graph msS = combinedBackwardSlice graph nticd' empty msS
-  where ms = Set.toList msS
-        graph' = foldr (flip delSuccessorEdges) graph ms
-        nticd' = isinkDFTwoFinger graph'
-        empty = Map.empty
-
-
-nticdMyWodSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaISinkDom graph msS =  Set.fromList [ n | n <- rdfs ms graph', isinkdom' ! n == Nothing]
-  where ms = Set.toList msS
-        graph' = foldr (flip delSuccessorEdges) graph ms
-        isinkdom' = isinkdomOfTwoFinger8ForSinks sinks' sinkNodes' nonSinkCondNodes' graph'
-          where sinks'     =  controlSinks graph'
-                sinkNodes' = (∐) [ Set.fromList sink | sink <- sinks']
-                nonSinkCondNodes' = Map.fromList [ (n, succs) | n <- nodes graph', not $ n ∈ sinkNodes', let succs = suc graph' n, length succs > 1 ]
-
-wodTEILSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaISinkDom g msS =  Set.fromList [ n | n <- nodes g'', isinkdom'' ! n == Nothing]
-  where ms = Set.toList msS
-        g''   = foldr (flip delSuccessorEdges) g' ms
-          where  toMs   = rdfs ms g
-                 g' = subgraph toMs g
-
-        isinkdom'' = fmap fromSet $ isinkdomOfTwoFinger8 g''
-
-wccSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wccSliceViaISinkDom g msS =  Set.fromList [ n | n <- nodes g''', isinkdom''' ! n == Nothing]
-  where ms = Set.toList msS
-        g'''   = foldr (flip delSuccessorEdges) g'' ms
-          where  toMs   = rdfs ms g
-                 g' = subgraph toMs g
-                 fromMs =  dfs ms g'
-                 g'' = subgraph fromMs g'
-
-        isinkdom''' = fmap fromSet $ isinkdomOfTwoFinger8 g'''
 
 
 

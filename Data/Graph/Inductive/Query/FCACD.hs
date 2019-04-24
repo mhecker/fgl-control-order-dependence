@@ -55,7 +55,7 @@ import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, reachable)
 
 
-import Data.Graph.Inductive.Query.NTICD (nticdSlice)
+import Data.Graph.Inductive.Query.Slices.NTICD (nticdSlice)
 
 import Debug.Trace
 import Control.Exception.Base (assert)

@@ -101,12 +101,14 @@ import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE
 import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (nticdMyWodSliceViaISinkDom)
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (nticdMyWodSlice, nticdSlice,  ntscdSlice)
 import qualified Data.Graph.Inductive.Query.Slices.PostDominanceFrontiers as SLICE.PDF (nticdSliceFor)
+import qualified Data.Graph.Inductive.Query.PathsBetween as PBETWEEN (
+    pathsBetweenBFS, pathsBetweenUpToBFS,
+    pathsBetween,    pathsBetweenUpTo,
+  )
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom,
     ntscdViaMDom,
     ntindDef, ntsndDef,
-    pathsBetweenBFS, pathsBetweenUpToBFS,
-    pathsBetween,    pathsBetweenUpTo,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     mayNaiveGfp,
     nticdDef, nticdDefGraphP, 
@@ -3683,8 +3685,8 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 $ \(ARBITRARY(g)) ->
                        let timingEqSolved    = PTDEP.solveTimingEquationSystem $ PTDEP.snmTimingEquationSystem g PTDEP.timingF3EquationSystem
                            trcG = trc g
-                           pathsBetween     = NTICD.pathsBetween        g trcG
-                           pathsBetweenUpTo = NTICD.pathsBetweenUpTo    g trcG
+                           pathsBetween     = PBETWEEN.pathsBetween        g trcG
+                           pathsBetweenUpTo = PBETWEEN.pathsBetweenUpTo    g trcG
                        in  -- traceShow g $
                            (∀) (Map.assocs timingEqSolved) (\((m,p), smp) ->
                              let rmq = (∐) [ r | r <- Map.elems smp ]

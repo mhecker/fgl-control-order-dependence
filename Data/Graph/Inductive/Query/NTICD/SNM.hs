@@ -16,12 +16,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 
-import IRLSOD(CFGNode)
-import Program (Program)
-
-
 import Data.Graph.Inductive.Util (nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode, prevRepresentantNodes)
-import Data.Graph.Inductive.Query.Dependence (Dependence)
 
 type T n = (n, n)
 

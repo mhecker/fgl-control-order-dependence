@@ -36,8 +36,7 @@ import Util(foldM1, the, fromSet, toSet, invert', invert'', invert''', without, 
 import Data.Graph.Inductive.Util (delSuccessorEdges, nextCondNode, toNextCondNode, fromSuccMap, controlSinks)
 import Data.Graph.Inductive.Query.LCA(lca)
 import Data.Graph.Inductive.Query.PostDominance (MaximalPath (..), inPathFor, onedomOf, isinkdomOfTwoFinger8DownSingleNodeSinks, isinkdomOftwoFinger8Up, isinkdomOfTwoFinger8, imdomOfTwoFinger7, maximalPathsFor, isinkdomOfTwoFinger8ForSinks)
-import Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered (isinkDFNumberedForSinks)
-import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFastForRoots, mDFTwoFinger, isinkDFTwoFinger)
+import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFastForRoots, mDFTwoFinger, isinkDFTwoFinger, isinkDFTwoFingerForSinks)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import Data.Graph.Inductive.Query.NTICD.SNM (snmF3, snmF3Lfp, ntscdF3, nticdF3)
 
@@ -302,7 +301,7 @@ wodTEIL'PDom graph  =
   where nticd       = convert [ (n, m1, m2)  | m2 <- nodes graph,
                                                let gM2    = delSuccessorEdges graph m2,
                                                let gToM2  = subgraph (reachable m2 (grev gM2)) gM2,
-                                               let nticd' = isinkDFNumberedForSinks [[m2]] gToM2,
+                                               let nticd' = isinkDFTwoFingerForSinks [[m2]] gToM2,
                                                (m1, ns) <- Map.assocs nticd', n <- Set.toList ns, n /= m1
                       ]
 

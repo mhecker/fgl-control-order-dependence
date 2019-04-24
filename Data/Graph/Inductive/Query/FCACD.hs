@@ -25,8 +25,6 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Graph.Inductive.Query.Dominators (dom, iDom)
-import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
 import Algebra.Lattice
 import qualified Algebra.PartialOrd as PartialOrd
@@ -39,10 +37,6 @@ import Data.List ((\\), nub, sortBy, groupBy)
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq(..), ViewL(..), (|>))
 
-import qualified Data.Foldable as Foldable
-import IRLSOD
-import Program
-
 import Util(the, invert', invert'', foldM1, reachableFrom, treeDfs, toSet, fromSet, reachableFromTree, fromIdom)
 import Unicode
 
@@ -50,8 +44,7 @@ import Unicode
 import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Basic hiding (postorder)
 import Data.Graph.Inductive.Util
-import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
-import Data.Graph.Inductive.Query.Dependence
+import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, reachable)
 
 

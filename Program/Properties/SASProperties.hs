@@ -54,7 +54,6 @@ import Data.List (sortOn)
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
-import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges)

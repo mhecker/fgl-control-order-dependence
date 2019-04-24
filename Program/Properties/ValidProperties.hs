@@ -110,7 +110,6 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntscdViaMDom,
     ntindDef, ntsndDef,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
-    mayNaiveGfp,
     nticdDef, nticdDefGraphP, 
     ntscdDef, ntscdDefGraphP
   )
@@ -130,7 +129,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod, dodDef, dodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic,  myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay'
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay)
+import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay, mayNaiveGfp)
 import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, timingCorrection, timingLeaksTransformation, tscdCostSlice, timDFCostFromUpLocalDefViaTimdoms, timDFCost, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, tscdOfNaiveCostfLfp, timdomOfLfp, tscdSlice, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
     itimdomMultipleOfTwoFingerCost, cost1, cost1F,
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
@@ -2115,7 +2114,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                    let gn'  = Map.fromList [ (n, delSuccessorEdges (grev g) n)    | n <- sink ],
                                                    let pdom = Map.fromList [ (n, PDOM.sinkdomOfGfp $ gn  ! n)    | n <- sink ],
                                                    let  dom = Map.fromList [ (n, PDOM.sinkdomOfGfp $ gn' ! n)    | n <- sink ],
-                                                   let pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ],
+                                                   let pmay = Map.fromList [ (n, NTICDUnused.mayNaiveGfp  $ gn  ! n)    | n <- sink ],
                                                    let condNodes = Set.fromList [ n | n <- sink, length (suc g n) > 1]
                             ]
                 in (∀) sinks (\(g,sink, pdom, pmay, dom, condNodes) ->
@@ -2132,7 +2131,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                    let gn'  = Map.fromList [ (n, delSuccessorEdges (grev g) n)    | n <- sink ],
                                                    let pdom = Map.fromList [ (n, PDOM.sinkdomOfGfp $ gn  ! n)    | n <- sink ],
                                                    let  dom = Map.fromList [ (n, PDOM.sinkdomOfGfp $ gn' ! n)    | n <- sink ],
-                                                   let pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
+                                                   let pmay = Map.fromList [ (n, NTICDUnused.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
                             ]
                 in (∀) sinks (\(sink, pdom, pmay, dom) ->
                             (∀) sink (\x -> (∀) sink (\m1 -> (∀) sink (\m2 -> (∀) sink (\n -> if (m1 == m2 ∨ m1 == x ∨ m2 == x) ∨ (m2 == n) then True else
@@ -2171,9 +2170,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                              gn   = Map.fromList [ (n,        delSuccessorEdges    g n) | n <- sink ]
                              gn'  = Map.fromList [ (n, grev $ delPredecessorEdges  g n) | n <- sink ]
                              pdom = Map.fromList [ (n, PDOM.sinkdomOfGfp $ gn  ! n)    | n <- sink ]
-                             pmay = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
+                             pmay = Map.fromList [ (n, NTICDUnused.mayNaiveGfp  $ gn  ! n)    | n <- sink ]
                              dom  = Map.fromList [ (n, PDOM.sinkdomOfGfp $ gn' ! n)    | n <- sink ]
-                             may  = Map.fromList [ (n, NTICD.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
+                             may  = Map.fromList [ (n, NTICDUnused.mayNaiveGfp  $ gn' ! n)    | n <- sink ]
                          in (∀) sink (\n -> (∀) sink (\m1 -> (∀) sink (\m2 -> if (n == m1 ∨ n == m2 ∨ m1 == m2) then True else
                                (  (m1 ∈ (pdom ! n) ! m2)     ↔     (      m1 ∈ ( dom ! m2) ! n )  )
                              ∧ (  (m1 ∈ (pdom ! n) ! m2)     ↔     (not $ n  ∈ (pmay ! m1) ! m2)  )

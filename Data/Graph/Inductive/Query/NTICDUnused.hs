@@ -26,7 +26,7 @@ import Program (Program)
 import Data.Graph.Inductive.Query.LCA(lca, lcaRMyCDForNode)
 import Data.Graph.Inductive.Query.PostDominance (DomFunctionalGen, sinkPathsFor, SinkPath(..), cyclesInScc, domOfGfp, domOfLfp, sinkdomOfGfp, isinkdomOfTwoFinger8)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice, cdepGraph, cdepGraphP)
-import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom, mayNaiveGfp)
+import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom)
 import Data.Graph.Inductive.Query.NTICD.SNM (ntscdF4)
 import Data.Graph.Inductive.Query.OrderDependence (smmnFMustWod, myDependenceFor, colorLfpFor)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
@@ -814,3 +814,9 @@ joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromL
 --         -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
 --         --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
 --         -- imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
+
+fMayNaive graph _ _ nextCond toNextCond = f 
+  where f maydomOf =
+                      Map.fromList [ (y, Set.fromList [y])                          | y <- nodes graph]
+                    ⊔ Map.fromList [ (y, (∐) [ maydomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
+mayNaiveGfp graph = domOfGfp graph fMayNaive

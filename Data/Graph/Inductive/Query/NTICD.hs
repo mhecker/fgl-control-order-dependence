@@ -231,10 +231,3 @@ ntsndDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ mdoms ! n)
 symmetric m = (∐) [ Map.fromList [((m1,m2), ns), ((m2,m1),ns) ] |  ((m1,m2),ns) <- Map.assocs m ]
 
 
-fMayNaive graph _ _ nextCond toNextCond = f 
-  where f maydomOf =
-                      Map.fromList [ (y, Set.fromList [y])                          | y <- nodes graph]
-                    ⊔ Map.fromList [ (y, (∐) [ maydomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
-mayNaiveGfp graph = domOfGfp graph fMayNaive
-
-

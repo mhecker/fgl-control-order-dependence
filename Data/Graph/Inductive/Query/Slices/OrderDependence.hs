@@ -16,7 +16,7 @@ import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom, ntscdViaMDom)
 import Data.Graph.Inductive.Query.OrderDependence (
     myDod, myDodFastPDom, dod,
-    myWod, myWodFastPDom, myWodFast, myWodFastPDomSimpleHeuristic,
+    ntiod, ntiodFastPDom, ntiodFast, ntiodFastPDomSimpleHeuristic,
     wodTEIL'PDom, wodTEIL',
   )
 
@@ -41,23 +41,23 @@ ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
 nticdMyWodSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
-        w     = myWod graph
+        w     = ntiod graph
 
 
 nticdMyWodFastSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodFastSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
-        w     = myWodFast graph
+        w     = ntiodFast graph
 
 nticdMyWodPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodPDomSimpleHeuristic graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
-        w     = myWodFastPDomSimpleHeuristic graph
+        w     = ntiodFastPDomSimpleHeuristic graph
 
 nticdMyWodPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
 nticdMyWodPDom graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
-        w     = myWodFastPDom graph
+        w     = ntiodFastPDom graph
 
 
 wccSliceViaWodTEILPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
@@ -73,16 +73,16 @@ wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
         toMs   = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m gRev ]
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 
-myWodFastSlice :: ( DynGraph gr) => gr a b ->  Set Node  -> Set Node
-myWodFastSlice graph =  combinedBackwardSlice graph empty w
+ntiodFastSlice :: ( DynGraph gr) => gr a b ->  Set Node  -> Set Node
+ntiodFastSlice graph =  combinedBackwardSlice graph empty w
   where empty = Map.empty
-        w     = myWodFast graph
+        w     = ntiodFast graph
 
 
-myWodFastPDomSimpleHeuristicSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-myWodFastPDomSimpleHeuristicSlice graph =  combinedBackwardSlice graph empty w
+ntiodFastPDomSimpleHeuristicSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntiodFastPDomSimpleHeuristicSlice graph =  combinedBackwardSlice graph empty w
   where empty = Map.empty
-        w     = myWodFastPDomSimpleHeuristic graph
+        w     = ntiodFastPDomSimpleHeuristic graph
 
 wodTEILSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 wodTEILSlice graph = combinedBackwardSlice graph empty w

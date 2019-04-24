@@ -88,7 +88,7 @@ import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP
     wodTEILSlice,
     wodTEILPDomSlice,
     nticdMyWodSlice,
-    myWodFastSlice, 
+    ntiodFastSlice, 
   )
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntscdViaMDom, nticdViaSinkDom,
@@ -106,13 +106,13 @@ import qualified Data.Graph.Inductive.Query.OrderDependence.Unused as ODEPUnused
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     mmayOf, mmayOf', 
     smmnFMustDod,
-    myWod, myDod, myWodFast, wodFast,
+    ntiod, myDod, ntiodFast, wodFast,
     smmnLfp, smmnGfp, fMustBefore, fMust,
     dodDef, wodDef,
     dodColoredDagFixed, dodColoredDag,
     wodTEIL', 
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndus, joiniSinkDomAround, withPossibleIntermediateNodesFromiXdom)
+import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, ntiodFromMay, nticdIndus, joiniSinkDomAround, withPossibleIntermediateNodesFromiXdom)
 import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
@@ -798,61 +798,61 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     in (∀) (nodes g) (\m ->
                          PDF.noJoins g $ ODEP.mmayOf g m
                        ),
-    testProperty "myWodSlice g' == wodTEILSlice g for CFG-shaped graphs g (with exit->entry edge: g')"
+    testProperty "ntiodSlice g' == wodTEILSlice g for CFG-shaped graphs g (with exit->entry edge: g')"
     $ \(SIMPLECFG(g)) ->
                 let [entry] = [ n | n <- nodes g, pre g n == [] ]
                     [exit]  = [ n | n <- nodes g, suc g n == [] ]
                     g' = insEdge (exit, entry, ()) g
-                    mywodslicer   = SLICE.ODEP.myWodFastSlice g'
+                    ntiodslicer   = SLICE.ODEP.ntiodFastSlice g'
                     wodteilslicer = SLICE.ODEP.wodTEILSlice   g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> let ms = Set.fromList [m1, m2] in
-                      mywodslicer ms == wodteilslicer ms
+                      ntiodslicer ms == wodteilslicer ms
                    )),
-    testProperty  "wodTEIL' ∩ sinks = myWod"
+    testProperty  "wodTEIL' ∩ sinks = ntiod"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        mywod    = Map.filter (not . Set.null) $ ODEP.myWodFast g
+                        ntiod    = Map.filter (not . Set.null) $ ODEP.ntiodFast g
                         wodTEIL' = Map.filter (not . Set.null) $ ODEP.wodTEIL' g
                         sinks    = controlSinks g
                         sinkNodes = (∐) [ Set.fromList [(m1,m2) | m1 <- sink, m2 <- sink, m1 /= m2] | sink <- sinks ]
-                    in restrict wodTEIL' sinkNodes  == mywod,
-    testProperty  "wodFast ⊑ myWodFast"
+                    in restrict wodTEIL' sinkNodes  == ntiod,
+    testProperty  "wodFast ⊑ ntiodFast"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         wod   = ODEP.wodFast g
-                        myWod = ODEP.myWodFast g
-                    in  wod ⊑ myWod,
+                        ntiod = ODEP.ntiodFast g
+                    in  wod ⊑ ntiod,
                         -- (∀) (Map.assocs wod) (\((m1,m2), ns) ->
-                        --   ns ⊑ (myWod ! (m1,m2))
+                        --   ns ⊑ (ntiod ! (m1,m2))
                         -- ),
-    testProperty  "myWod is only possible for entries into sccs"
+    testProperty  "ntiod is only possible for entries into sccs"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                         isinkdom  = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        myWod = ODEP.myWod g
-                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+                        ntiod = ODEP.ntiod g
+                    in  (∀) (Map.assocs ntiod) (\((m1,m2), ns) ->
                           (∀) ns (\n ->
                               not $
                               (n  ∊ suc isinkdomTrc m1 ∨ n  ∊ suc isinkdomTrc m2)
                           )
                         ),
-    testProperty  "myWodFromMay            == myWodFast in arbitrary control sinks"
+    testProperty  "ntiodFromMay            == ntiodFast in arbitrary control sinks"
     $ \(ARBITRARY(generatedGraph)) ->
                let sinks = controlSinks generatedGraph
                in (∀) sinks (\sink ->
                     let g = subgraph sink generatedGraph
-                        myWodFromMay = NTICDUnused.myWodFromMay g
-                        myWodFast    = ODEP.myWodFast    g
-                    in myWodFromMay == myWodFast
+                        ntiodFromMay = NTICDUnused.ntiodFromMay g
+                        ntiodFast    = ODEP.ntiodFast    g
+                    in ntiodFromMay == ntiodFast
                ),
-    testProperty  "myWod has no comparable all-max-path-reachable pairs of controlling nodes"
+    testProperty  "ntiod has no comparable all-max-path-reachable pairs of controlling nodes"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
                         isinkdom  = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
-                        myWod = ODEP.myWod g
-                    in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
+                        ntiod = ODEP.ntiod g
+                    in  (∀) (Map.assocs ntiod) (\((m1,m2), ns) ->
                           (∀) ns (\n1 -> (∀) ns (\n2 ->
                               (n1 ∊ suc isinkdomTrc n2 ∨ n2 ∊ suc isinkdomTrc n1) → (n1 == n2)
                           ))
@@ -866,10 +866,10 @@ wodTests = testGroup "(concerning weak order dependence)" $
                    let g = subgraph [6,7,8,11,13] $ mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,()),(9,()),(10,()),(11,()),(12,()),(13,()),(14,())] [(1,2,()),(1,10,()),(2,3,()),(2,6,()),(3,4,()),(3,9,()),(4,12,()),(4,14,()),(5,3,()),(6,7,()),(7,8,()),(7,11,()),(8,6,()),(9,10,()),(11,8,()),(11,13,()),(12,5,()),(13,8,()),(14,5,())] :: Gr () ()
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
-                       nticddmywodslicer = SLICE.ODEP.nticdMyWodSlice g
+                       nticddntiodslicer = SLICE.ODEP.nticdMyWodSlice g
                        wodslicer         = SLICE.ODEP.wodTEILSlice g
                        wccslicer         = FCACD.wccSlice g
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddmywodslicer ms ∨ s == wccslicer ms)) @? ""
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddntiodslicer ms ∨ s == wccslicer ms)) @? ""
   ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
                    let  myCDFromMyDom    = NTICDUnused.myCDFromMyDom g

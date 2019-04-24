@@ -60,21 +60,21 @@ import Control.Exception.Base (assert)
 
 type MyWodSliceState = (Set Node, (Map Node ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))))
 
-myWodFromSliceStep graph m1 m2 =
+ntiodFromSliceStep graph m1 m2 =
     assert (Set.null new1) $
     assert (fst s1 == Set.fromList [m1]) $
     assert (fst s2 == Set.fromList [m1, m2]) $
     -- traceShow (Map.keys $ snd s2) $ 
     new2
   where s0 = (Set.empty, Map.empty)
-        (new1, s1) = myWodSliceStep graph s0 m1
-        (new2, s2) = myWodSliceStep graph s1 m2
+        (new1, s1) = ntiodSliceStep graph s0 m1
+        (new2, s2) = ntiodSliceStep graph s1 m2
 
 
-myWodSlice graph m1 m2 = slice s0 ms0
+ntiodSlice graph m1 m2 = slice s0 ms0
   where s0  = (Set.empty, Map.empty)
         ms0 = Set.fromList [m1, m2]
-        step = myWodSliceStep graph 
+        step = ntiodSliceStep graph 
         slice s@(sliceNodes, ndoms) ms
           | Set.null ms = -- traceShow ( (-1) + ceiling ( (100 * fromIntegral (Map.size ndoms) / fromIntegral (Set.size sliceNodes) :: Double)), Set.size sliceNodes, Map.size ndoms, length $ nodes graph ) $
                           sliceNodes
@@ -85,8 +85,8 @@ myWodSlice graph m1 m2 = slice s0 ms0
                     ms' = ms0 ∪ new 
 
 
-myWodSliceStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSliceState -> Node -> (Set Node, MyWodSliceState)
-myWodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) else
+ntiodSliceStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSliceState -> Node -> (Set Node, MyWodSliceState)
+ntiodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) else
     require (assertionsDisabled ∨  
       ((∀) ms (\m -> (∀) unknownCond0 (\c ->          (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->
             (∀) (suc graph c) (\x ->       x ∈ dom  ! m)
@@ -452,10 +452,10 @@ initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
         nAndIpdomForSink = Map.fromList [ (s0, (s0, recompute graphWithConds Nothing s0)) | (s0, graphWithConds) <- Map.assocs gTowardsSink ]
 
 
-myWodFromSimpleSliceStep :: (DynGraph gr, Show (gr a b)) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Node -> Node -> Set Node
-myWodFromSimpleSliceStep newIPDomFor graph = \m1 m2 ->
-    let (new1, s1) = myWodSliceSimpleStep graph newIPDomFor s0 m1
-        (new2, s2) = myWodSliceSimpleStep graph newIPDomFor s1 m2
+ntiodFromSimpleSliceStep :: (DynGraph gr, Show (gr a b)) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Node -> Node -> Set Node
+ntiodFromSimpleSliceStep newIPDomFor graph = \m1 m2 ->
+    let (new1, s1) = ntiodSliceSimpleStep graph newIPDomFor s0 m1
+        (new2, s2) = ntiodSliceSimpleStep graph newIPDomFor s1 m2
     in  assert (Set.null new1) $
         assert (ms s1 == Set.fromList [m1]) $
         assert (ms s2 == Set.fromList [m1, m2]) $
@@ -476,7 +476,7 @@ nticdMyWodSliceSimple newIPDomFor graph = \ms ->
                           Nothing -> go as ([n]:roots)
                           _       -> go as      roots
 
-        step = myWodSliceSimpleStep graph newIPDomFor
+        step = ntiodSliceSimpleStep graph newIPDomFor
         slice s@(MyWodSimpleSliceState { ms, sinkOf,  nAndIpdomForSink }) ns
           | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
                           ms
@@ -536,10 +536,10 @@ partitionBy f ns = Set.fold (\n grouped -> Map.alter (g n) (f n) grouped) Map.em
         g n (Just ms) = Just $ Set.insert n ms
 
 
-myWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
-myWodSliceSimple newIPDomFor graph = \ms -> slice s0 ms
+ntiodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
+ntiodSliceSimple newIPDomFor graph = \ms -> slice s0 ms
   where s0 = initialMyWodSimpleSliceState graph
-        step = myWodSliceSimpleStep graph newIPDomFor
+        step = ntiodSliceSimpleStep graph newIPDomFor
         slice s@(MyWodSimpleSliceState { ms }) ns
           | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
                           ms
@@ -549,13 +549,13 @@ myWodSliceSimple newIPDomFor graph = \ms -> slice s0 ms
                     (new, s') = step s n
                     ns' = ns0 ∪ new 
 
-myWodSliceSimpleStep :: forall gr a b. (DynGraph gr) =>
+ntiodSliceSimpleStep :: forall gr a b. (DynGraph gr) =>
   gr a b ->
   ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) ->
   MyWodSimpleSliceState gr a b->
   Node ->
   (Set Node, MyWodSimpleSliceState gr a b)
-myWodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nAndIpdomForSink, ready, sinkOf, entryIntoSink, gTowardsSink}) m
+ntiodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nAndIpdomForSink, ready, sinkOf, entryIntoSink, gTowardsSink}) m
     | m ∈ ms                         = (Set.empty,                     s)
     | Map.lookup m sinkOf == Nothing = (Set.empty,                     s { ms = ms' })
     | otherwise                      = assert (ready' == ready'Fast) $

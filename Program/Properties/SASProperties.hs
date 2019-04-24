@@ -84,7 +84,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod, dodDef,
     myDod, myDodFastPDom,
-    myWod, myWodFastPDom, myWodFastPDomSimpleHeuristic, 
+    ntiod, ntiodFastPDom, ntiodFastPDomSimpleHeuristic, 
   )
 
 import Data.Graph.Inductive.Arbitrary
@@ -338,7 +338,7 @@ observation5 = [
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         sinkdom  = PDOM.sinkdomOfGfp g
-                        ntiod = ODEP.myWod g
+                        ntiod = ODEP.ntiod g
                     in  (∀) (Map.assocs ntiod) (\((m1,m2), ns) ->
                           ((not $ Set.null ns) → (m1 ∈ sinkdom ! m2 ∧ m2 ∈ sinkdom ! m1))
                         ∧ (∀) ns (\n -> (∀) (sinkdom ! n) (\m -> (m /= n) → (
@@ -347,12 +347,12 @@ observation5 = [
                         )
   ]
 observation6 = [
-      testPropertySized 60  "myWod reduction to nticd"
+      testPropertySized 60  "ntiod reduction to nticd"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         isinkdom = PDOM.isinkdomOfTwoFinger8 g
                         (cycleOf,cycles) = findCyclesM (fmap fromSet isinkdom)
-                        ntiod = ODEP.myWod g
+                        ntiod = ODEP.ntiod g
                         gNOfNode =
                           Map.fromList [ (m, gN) |
                                              bigM <- cycles,
@@ -372,18 +372,18 @@ observation6 = [
                              (∀) (Map.assocs nticd') (\(n,ms) -> (∀) ms (\m1 -> (m1 ∈ bigM ∧ m1 /= n) → (n ∈ ntiod ! (m1, m2))))
                            )
                          ),
-      testPropertySized 60  "myWodFastPDom               ≡ myWod"
+      testPropertySized 60  "ntiodFastPDom               ≡ ntiod"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in ODEP.myWodFastPDom   g ≡
-                       ODEP.myWod           g
+                    in ODEP.ntiodFastPDom   g ≡
+                       ODEP.ntiod           g
   ]
 observation8 = [
-      testPropertySized 60  "myWodFastPDom               ≡ myWod"
+      testPropertySized 60  "ntiodFastPDom               ≡ ntiod"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in ODEP.myWodFastPDomSimpleHeuristic   g ≡
-                       ODEP.myWod                          g
+                    in ODEP.ntiodFastPDomSimpleHeuristic   g ≡
+                       ODEP.ntiod                          g
   ]
 theorem5 = [
     testPropertySized 60 "nticdMyWodSlice == nticdMyWodSliceViaNticd == nticdMyWodSliceViaISinkDom ==  for random slice-criteria of random size"
@@ -413,8 +413,8 @@ observation10 = [
 
                     ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                     nticd = PDF.isinkDFTwoFinger g
-                    mywod =  ODEP.myWodFastPDomSimpleHeuristic g
-                    slicer = combinedBackwardSlice g (ddep ⊔ nticd) mywod
+                    ntiod =  ODEP.ntiodFastPDomSimpleHeuristic g
+                    slicer = combinedBackwardSlice g (ddep ⊔ nticd) ntiod
 
                     g' = foldr (flip delSuccessorEdges) g ms
                     nticd' = PDF.isinkDFTwoFinger g'

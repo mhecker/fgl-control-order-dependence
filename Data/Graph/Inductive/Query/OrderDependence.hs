@@ -463,12 +463,12 @@ myXod smmnMust s graph =
 
 
 
-myWod graph = myXod sMust s3 graph
+ntiod graph = myXod sMust s3 graph
   where sMust = smmnFMustWod graph
         s3    = snmF3 graph
 
-myWodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
-myWodFast graph =
+ntiodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
+ntiodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- isinkdomCycles,
                                        let conds   = condsIn    cycle,
@@ -644,8 +644,8 @@ rotatePDomAround graph condNodes pdom nm
 
 
 
-myWodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
-myWodFastPDomForIterationStrategy strategy graph =
+ntiodFastPDomForIterationStrategy :: forall gr a b. (DynGraph gr) => (gr a b -> [Node] -> [[Node]]) -> gr a b -> Map (Node,Node) (Set Node)
+ntiodFastPDomForIterationStrategy strategy graph =
         convert $
         [ (n,m1,m2)  |                                        cycle <- isinkdomCycles, length cycle > 1,
                                                               let cycleS = Set.fromList cycle,
@@ -720,13 +720,13 @@ myWodFastPDomForIterationStrategy strategy graph =
 -- towardsCycle graph cycleS n = dfs [n] graph
 
 
-myWodFastPDom :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
-myWodFastPDom graph = myWodFastPDomForIterationStrategy none graph
+ntiodFastPDom :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
+ntiodFastPDom graph = ntiodFastPDomForIterationStrategy none graph
   where none graph cycle = [ [n] | n <- cycle ]
 
 
-myWodFastPDomSimpleHeuristic :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
-myWodFastPDomSimpleHeuristic graph = myWodFastPDomForIterationStrategy simple graph
+ntiodFastPDomSimpleHeuristic :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
+ntiodFastPDomSimpleHeuristic graph = ntiodFastPDomForIterationStrategy simple graph
   where simple :: gr a b -> [Node] -> [[Node]]
         simple graph cycle = from (joinNodes ++ nonJoinNodes) Set.empty []
           where (joinNodes, nonJoinNodes) = partition (\n -> length (pre graph n) > 1) cycle
@@ -1055,4 +1055,4 @@ dodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
         doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
 
 
-cdFromMyWod graph =  (∐) [ Map.fromList [ (n, Set.fromList [m] ) ]  | ((m1,m2),ns) <- Map.assocs $ myWodFast graph, n <- Set.toList ns, m <- [m1,m2] ]
+cdFromMyWod graph =  (∐) [ Map.fromList [ (n, Set.fromList [m] ) ]  | ((m1,m2),ns) <- Map.assocs $ ntiodFast graph, n <- Set.toList ns, m <- [m1,m2] ]

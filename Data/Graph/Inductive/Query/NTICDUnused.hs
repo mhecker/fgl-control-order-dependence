@@ -650,11 +650,11 @@ someprop g =  smmnmay' == smmnmay
         -- g0 = tcfg pr
         -- g = insEdge (10,1,NoOp)  $ insEdge (6,9,NoOp) g0
 
-myWodFromMay :: forall gr a b. (DynGraph gr) =>  gr a b -> Map (Node, Node) (Set Node)
-myWodFromMay graph =  --      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
+ntiodFromMay :: forall gr a b. (DynGraph gr) =>  gr a b -> Map (Node, Node) (Set Node)
+ntiodFromMay graph =  --      Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
                       myEntryWodFast graph
-                   ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n]) ] | (n, m1, m2) <- mywod ]
-  where mywod =  [ (n, m1, m2) | cycle <- isinkdomCycles,
+                   ⊔ (∐) [ Map.fromList [ ((m1,m2), Set.fromList [n]) ] | (n, m1, m2) <- ntiod ]
+  where ntiod =  [ (n, m1, m2) | cycle <- isinkdomCycles,
                                  length cycle > 1,
                                  let condsInCycle     = condsIn cycle,
                                  let cycleGraph = subgraph cycle graph,

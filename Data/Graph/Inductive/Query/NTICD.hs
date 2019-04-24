@@ -30,9 +30,9 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Graph.Inductive.Query.NTICD.Util (cdepGraphP, cdepGraph, combinedBackwardSlice)
+import Data.Graph.Inductive.Query.Util.GraphTransformations (choiceAtRepresentativesGraphOf, splitRepresentativesGraphOf, splitRepresentativesGraphNoTrivialOf)
 import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered (isinkDFNumberedForSinks)
-import Data.Graph.Inductive.Query.Dominators (dom, iDom)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
 import Algebra.Lattice
@@ -69,6 +69,7 @@ import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph hiding (nfilter)  -- TODO: check if this needs to be hidden, or can just be used
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.DFS (scc, condensation, topsort, dfs, rdfs, rdff, reachable)
+import Data.Graph.Inductive.Query.Dominators (dom)
 
 import Debug.Trace
 import Control.Exception.Base (assert)
@@ -82,43 +83,6 @@ ntscdViaMDom g = Map.fromList [ (n, Set.fromList [m | nl <- suc g n,  m <- Set.t
 nticdViaSinkDom g = Map.fromList [ (n, Set.fromList [m | nl <- suc g n,  m <- Set.toList $ sinkdom ! nl, (∃) (suc g n) (\nr -> not $ m ∈ sinkdom ! nr), m /= n]) | n <- nodes g]
   where sinkdom = sinkdomOfGfp g
 
-
-
-
-nticdSinkContractionGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdSinkContractionGraphP p = cdepGraphP nticdSinkContractionGraph p 
-  where  [endNodeLabel] = newNodes 1 $ tcfg p
-
-nticdSinkContractionGraph :: DynGraph gr => gr a b ->  gr a Dependence
-nticdSinkContractionGraph = cdepGraph nticdSinkContraction
-
-nticdSinkContraction :: DynGraph gr => gr a b ->  Map Node (Set Node)
-nticdSinkContraction graph              = Map.fromList [ (n, cdepClassic ! n) | n <- nodes graph, not $ n ∈ sinkNodes ]
-                                        ⊔ Map.fromList [ (n, (∐) [ Set.fromList sink | s <- Set.toList $ cdepClassic ! n,
-                                                                                        s ∈ sinkNodes,
-                                                                                        let sink = the (s ∊) sinks ]
-                                                         ) | n <- nodes graph, not $ n ∈ sinkNodes
-                                                       ]
-                                        ⊔ Map.fromList [ (n, Set.empty) | n <- Set.toList sinkNodes ]
-    where [endNode] = newNodes 1 graph
-          sinks = controlSinks graph
-          cdepClassic = controlDependence (sinkShrinkedGraph graph endNode) endNode
-          sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
-
-sinkShrinkedGraphNoNewExitForSinks :: DynGraph gr => gr a b  -> [[Node]] -> gr () ()
-sinkShrinkedGraphNoNewExitForSinks graph sinks = mkGraph (  [ (s,())   | sink <- sinks, let s = head sink]
-                                            ++ [ (n,())   | n    <- nodes graph, not $ n ∈ sinkNodes ]
-                                          )
-                                          (
-                                               [ (n,s,())       | sink <- sinks, let s = head sink, s' <- sink, n <- pre graph s', not $ n ∊ sink]
-                                            ++ [ (n,m,()) | (n,m) <- edges graph, not $ n ∈ sinkNodes, not $ m ∈ sinkNodes ]
-                                          )
-    where sinkNodes   = Set.fromList [ x | sink <- sinks, x <- sink]
-
-sinkShrinkedGraph :: DynGraph gr => gr a b  -> Node -> gr () ()
-sinkShrinkedGraph graph endNode = foldl (flip insEdge) graph' [ (s,endNode,()) | sink <- sinks, let s = head sink ]
-    where sinks  = controlSinks graph
-          graph' = insNode (endNode, ()) $ sinkShrinkedGraphNoNewExitForSinks graph sinks 
 
 
 
@@ -178,55 +142,6 @@ ntscdDef graph =
 
 
 
-
-joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromList [m] else s) $
-        Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
-     ⊔  fwd ⊔ bwd
-  where forward n seen
-            | Set.null n's = (n, Map.empty,                                     seen     )
-            | otherwise    = (m, Map.fromList [ (n', Set.fromList [n]) ] ⊔ fwd, seenfinal)
-          where seen' = seen ∪ n's
-                n's = (imdom ! n) ∖ seen
-                [n'] = Set.toList n's
-                (m,fwd,seenfinal) = forward n' seen' 
-        (m,fwd,seen) = forward n (Set.fromList [n])
-        bwd = backward m ((Set.fromList [m]) ⊔ seen)
-        backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
-          where seen' = seen ∪ n's
-                n's = (imdomrevInv ! n) ∖ seen
-        imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
-                    ⊔ invert'' imdomrev
-        -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
-        --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
-        -- imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
-
-
--- joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromList [n] else s) $
---         Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
---      ⊔  backward n (Set.fromList [n])
---   where backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
---           where seen' = seen ∪ n's
---                 n's = (imdomrevInv ! n ∪ imdom ! n) ∖ seen
---         imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
---                     ⊔ invert'' imdomrev
---         -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
---         --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
---         -- imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
-
-
-
-
-
-
-isinkdomOfSinkContraction :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
-isinkdomOfSinkContraction graph = fmap (Set.delete endNode) $ 
-                                  Map.fromList [ (x, idomClassic ! x)  | x <- nodes graph, not $ x ∈ sinkNodes ]
-                                ⊔ Map.fromList [ (x, Set.fromList [y]) | (s:sink) <- sinks, not $ null sink, (x,y) <- zip (s:sink) (sink ++ [s])]
-                                ⊔ Map.fromList [ (x, Set.empty)        | x <- nodes graph]
-    where [endNode] = newNodes 1 graph
-          sinks = controlSinks graph
-          idomClassic = fmap (\x -> Set.fromList [x]) $ Map.fromList $ iDom (grev $ sinkShrinkedGraph graph endNode) endNode
-          sinkNodes   = Set.fromList [ x | x <- nodes graph, sink <- sinks, x <- sink]
 
 
 
@@ -350,16 +265,6 @@ nticdMyWodSliceViaEscapeNodes g = \ms -> combinedBackwardSlice g' nticd' empty m
         empty = Map.empty
 
 
-choiceAtRepresentativesGraphOf :: forall gr a b . (DynGraph gr) => gr a b ->  gr a b
-choiceAtRepresentativesGraphOf g = g''
-  where g'' :: gr a b
-        g'' = mkGraph ((nx, undefined) : (labNodes g))
-                ([ e                          | e@(n,m,l) <- labEdges g] ++
-                 [ (n,  nx, undefined)        | n <- representants]
-                )
- 
-        representants  = [ head sink | sink <- controlSinks g]
-        [nx] = newNodes 1 g
 
 
 nticdMyWodSliceViaChoiceAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
@@ -369,31 +274,6 @@ nticdMyWodSliceViaChoiceAtRepresentatives g = \ms -> combinedBackwardSlice g'' (
         nticd'' = invert'' $ nticdViaSinkDom g''
         empty = Map.empty
 
-
-
-splitRepresentativesGraphOf :: forall gr a b . (DynGraph gr) => gr a b ->  gr a b
-splitRepresentativesGraphOf g = g''
-  where g'' :: gr a b
-        g'' = mkGraph ([ (n', fromJust $ lab g n) | (n,n') <- Map.assocs splitPredOf ] ++ labNodes g)
-                ([ e                          | e@(n,m,l) <- labEdges g, not $ m ∊ representants] ++
-                 [ (n,  m',  l)               |   (n,m,l) <- labEdges g, Just m' <- [Map.lookup m splitPredOf], n /= m]
-                )
- 
-        representants = [ head sink | sink <- controlSinks g]
-        splitPred   = newNodes (length representants) g
-        splitPredOf = Map.fromList $ zip representants splitPred
-
-splitRepresentativesGraphNoTrivialOf :: forall gr a b . (DynGraph gr) => gr a b ->  gr a b
-splitRepresentativesGraphNoTrivialOf g = g''
-  where g'' :: gr a b
-        g'' = mkGraph ([ (n', fromJust $ lab g n) | (n,n') <- Map.assocs splitPredOf ] ++ labNodes g)
-                ([ e                          | e@(n,m,l) <- labEdges g, not $ m ∊ representants] ++
-                 [ (n,  m',  l)               |   (n,m,l) <- labEdges g, Just m' <- [Map.lookup m splitPredOf], n /= m]
-                )
- 
-        representants = [ head sink | sink <- controlSinks g, length sink > 1]
-        splitPred   = newNodes (length representants) g
-        splitPredOf = Map.fromList $ zip representants splitPred
 
 
 nticdMyWodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node

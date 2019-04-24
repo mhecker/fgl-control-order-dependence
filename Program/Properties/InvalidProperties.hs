@@ -80,11 +80,12 @@ import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf, imdomOfTwoFinger6, isinkdomOfTwoFinger8, imdomOfTwoFinger7)
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (noJoins, stepsCL, stepsCLLfp, dfFor, anyDFFromUpLocalDefViaAnydoms, mDF)
 import  Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
+import qualified  Data.Graph.Inductive.Query.PostDominance.GraphTransformations as PDOM.TRANS (isinkdomOfSinkContraction)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntscdViaMDom, nticdViaSinkDom,
     withPossibleIntermediateNodesFromiXdom,
-    joiniSinkDomAround,
-    isinkdomOfSinkContraction,
+    
+    
     nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaNticd, nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaChoiceAtRepresentatives,
   )
 import qualified Data.Graph.Inductive.Query.NTICD.SNM as SNM (
@@ -106,7 +107,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     wodTEILPDomSlice,
     nticdMyWodSlice
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndusGraphP, nticdIndus,)
+import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndusGraphP, nticdIndus, joiniSinkDomAround)
 import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
@@ -675,7 +676,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                 Set.fromList reachableForward  == Set.fromList (nodes g)
                               ∧ Set.fromList reachableBackward == Set.fromList (nodes g)
                          in -- (if allReachable then traceShow (allReachable, length $ nodes g) else id) $ 
-                            allReachable → (idom ==  NTICD.joiniSinkDomAround g n imdom rofldom)
+                            allReachable → (idom ==  NTICDUnused.joiniSinkDomAround g n imdom rofldom)
                        )
   ]
 dodTests = testGroup "(concerning decisive order dependence)" $
@@ -822,7 +823,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "myWod is only possible for entries into sccs"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                        isinkdom  = NTICD.isinkdomOfSinkContraction g
+                        isinkdom  = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
                         myWod = ODEP.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
@@ -843,7 +844,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "myWod has no comparable all-max-path-reachable pairs of controlling nodes"
     $ \((CG _ generatedGraph) :: (Connected Gr () ())) ->
                     let g = generatedGraph
-                        isinkdom  = NTICD.isinkdomOfSinkContraction g
+                        isinkdom  = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
                         myWod = ODEP.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->

@@ -92,22 +92,21 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, n
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (delayedInfinitely, sampleLoopPathsFor, isTracePrefixOf, sampleChoicesFor, Input(..), infinitelyDelays, runInput, observable, allChoices, isAscending, isLowEquivalentFor, isLowTimingEquivalent, isLowEquivalentTimed)
 import qualified Data.Graph.Inductive.Query.PostDominance.Numbered as PDOMNumbered (iPDom, pdom, numberForest)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
+import qualified Data.Graph.Inductive.Query.Util.GraphTransformations as TRANS (sinkShrinkedGraphNoNewExitForSinks)
+import qualified Data.Graph.Inductive.Query.NTICD.GraphTransformations as NTICD.TRANS (nticdSinkContraction, nticdSinkContractionGraphP)
+import qualified Data.Graph.Inductive.Query.PostDominance.GraphTransformations as PDOM.TRANS (isinkdomOfSinkContraction)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom,
     ntscdViaMDom,
-    sinkShrinkedGraphNoNewExitForSinks,
     ntindDef, ntsndDef,
     nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives,
     nticdMyWodSliceViaNticd,
     nticdMyWodSliceViaISinkDom,
-    joiniSinkDomAround,
     pathsBetweenBFS, pathsBetweenUpToBFS,
     pathsBetween,    pathsBetweenUpTo,
     possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdSlice,  ntscdSlice, nticdSliceFor, 
     mayNaiveGfp,
-    isinkdomOfSinkContraction,
-    nticdSinkContraction, nticdSinkContractionGraphP,
     nticdDef, nticdDefGraphP, 
     ntscdDef, ntscdDefGraphP
   )
@@ -514,7 +513,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "idomToDFFast _ == dfViaCEdges _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom1 = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                          let dfViaJ = CEDGE.dfViaCEdges g (fmap fromSet isinkdom) in
@@ -532,7 +531,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "idomToDFFast _ isinkdom == sinkDF _"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom1 = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        PDF.idomToDFFast g isinkdom ==
@@ -540,7 +539,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "idomToDFFast _ isinkdom == idomToDF _ isinkdom"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = NTICD.isinkdomOfSinkContraction g
+                        isinkdom1 = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        PDF.idomToDFFast g                isinkdom ==
@@ -548,7 +547,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "DF of isinkdom Cycles are all the same"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                        isinkdom1 = fromSuccMap $ PDOM.TRANS.isinkdomOfSinkContraction g :: Gr () ()
                         isinkdom2 = fromSuccMap $ PDOM.isinkdomOfTwoFinger8      g :: Gr () ()
                         df1    = PDF.idomToDF g isinkdom1
                         idomSccs1 = scc isinkdom1
@@ -575,7 +574,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
     testProperty   "isinkdomOfSinkContraction is intransitive"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom1 = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+                        isinkdom1 = fromSuccMap $ PDOM.TRANS.isinkdomOfSinkContraction g :: Gr () ()
                         isinkdom2 = fromSuccMap $ PDOM.isinkdomOfTwoFinger8      g :: Gr () ()
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                          (∀) (nodes isinkdom) (\n -> length (suc isinkdom n) <= 1)),
@@ -583,7 +582,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in (trc $ fromSuccMap $
-                              NTICD.isinkdomOfSinkContraction  g :: Gr () ()) ==
+                              PDOM.TRANS.isinkdomOfSinkContraction  g :: Gr () ()) ==
                        (trc $ fromSuccMap $
                               PDOM.isinkdomOfTwoFinger8       g),
     testProperty   "isinkdomOf^*          == isinkdomOfTwoFinger8^*"
@@ -597,7 +596,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     let g = generatedGraph
                     in (trc $ PDOM.isinkdomOf                 g :: Gr () ()) ==
                        (trc $ fromSuccMap $
-                              NTICD.isinkdomOfSinkContraction g),
+                              PDOM.TRANS.isinkdomOfSinkContraction g),
     testProperty   "joinUpperBound always computes an upper bound"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -721,7 +720,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
 
 insensitiveDomTests = testGroup "(concerning nontermination-insensitive control dependence via dom-like frontiers )" $
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
-            $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
+            $       let isinkdom1 = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        PDF.idomToDFFast g isinkdom ==
@@ -753,7 +752,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == sinkDF _ for " ++ exampleName)
-            $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
+            $       let isinkdom1 = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                        PDF.idomToDFFast g isinkdom ==
@@ -761,7 +760,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "idomToDFFast _ isinkdom == idomToDF _ isinkdom for " ++ exampleName)
-            $       let isinkdom1 = NTICD.isinkdomOfSinkContraction g
+            $       let isinkdom1 = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdom2 = PDOM.isinkdomOfTwoFinger8      g
                     in (∀) [isinkdom1, isinkdom2] (\isinkdom ->
                         PDF.idomToDFFast g isinkdom ==
@@ -769,7 +768,7 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "DF of isinkdom Cycles are all the same for " ++ exampleName)
-            $       let isinkdom = fromSuccMap $ NTICD.isinkdomOfSinkContraction g :: Gr () ()
+            $       let isinkdom = fromSuccMap $ PDOM.TRANS.isinkdomOfSinkContraction g :: Gr () ()
                         df    = PDF.idomToDF g isinkdom
                         idomSccs = scc isinkdom
                         cycles = [ cycle | cycle <- idomSccs, length cycle > 1 ]
@@ -2245,7 +2244,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty  "myWod is contained in isinkdom sccs"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom  = NTICD.isinkdomOfSinkContraction g
+                        isinkdom  = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
                         myWod = ODEP.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
@@ -2264,7 +2263,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     let graph     = generatedGraph
                         condNodes = [ n | n <- nodes graph, length (suc graph n) > 1 ]
                         s3        = SNM.snmF3 graph
-                        isinkdom     = NTICD.isinkdomOfSinkContraction graph
+                        isinkdom     = PDOM.TRANS.isinkdomOfSinkContraction graph
                         isinkdomTrc  = trc $ (fromSuccMap isinkdom :: Gr () ())
                     in (∀) (nodes graph) (\m ->
                          (∀) condNodes (\n ->     ((n == m) ∨ (Set.size (s3 ! (m,n)) == (Set.size $ Set.fromList $ suc graph n)))
@@ -2362,7 +2361,7 @@ wodTests = testGroup "(concerning weak order dependence)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "myWod is contained in isinkdom sccs  for " ++ exampleName)
-            $       let isinkdom  = NTICD.isinkdomOfSinkContraction g
+            $       let isinkdom  = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap $ isinkdom :: Gr () ())
                         myWod = ODEP.myWod g
                     in  (∀) (Map.assocs myWod) (\((m1,m2), ns) ->
@@ -2780,7 +2779,7 @@ colorProps = testGroup "(concerning color algorithms)" [
     testProperty  "colorLfpFor                 == smmnFMustWod graph"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        isinkdom = NTICD.isinkdomOfSinkContraction g
+                        isinkdom = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap isinkdom :: Gr () ())
                         sMust = ODEP.smmnFMustWod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
@@ -2835,7 +2834,7 @@ colorProps = testGroup "(concerning color algorithms)" [
   ]
 colorTests = testGroup "(concerning color algorithms)" $
   [  testCase    ( "colorLfpFor                 == smmnFMustWod graph for" ++ exampleName)
-            $       let isinkdom = NTICD.isinkdomOfSinkContraction g
+            $       let isinkdom = PDOM.TRANS.isinkdomOfSinkContraction g
                         isinkdomTrc = trc $ (fromSuccMap isinkdom :: Gr () ())
                         sMust = ODEP.smmnFMustWod g
                         condNodes = [ n | n <- nodes g, length (suc g n) > 1 ]
@@ -2901,7 +2900,7 @@ nticdProps = testGroup "(concerning nticd )" [
                   SNM.nticdFig5GraphP p        == SNM.nticdF5GraphP p,
     testProperty  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p,
+                  NTICD.TRANS.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p,
     testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   controlDependenceGraphP p      == SNM.nticdF3GraphP p,
@@ -2933,7 +2932,7 @@ nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdSinkContraction   == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in NTICD.nticdSinkContraction  g ==
+                    in NTICD.TRANS.nticdSinkContraction  g ==
                        SNM.nticdF3               g,
     testProperty  "nticdDef               == nticdF3"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -2986,7 +2985,7 @@ nticdTests = testGroup "(concerning nticd)" $
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdSinkContractionGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p @? ""
+            $ NTICD.TRANS.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)
@@ -3547,7 +3546,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in timdom == timdom',
     testProperty "itimdomMultipleTwoFingercd == tscdOfLfp in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
-                let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
+                let g = TRANS.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
                 in TSCD.itimdomMultipleTwoFingercd g == Map.mapWithKey Set.delete (TSCD.tscdOfLfp g),
     testProperty "timdomOfLfp is transitive up to cycles for reducible cfg"
     $ \(REDUCIBLE(generatedGraph)) ->
@@ -3582,7 +3581,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in timdom == timdom',
     testProperty "timdomOfLfp is transitive in graphs without non-trivial sinks"
     $ \(ARBITRARY(generatedGraph)) ->
-                let g = NTICD.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
+                let g = TRANS.sinkShrinkedGraphNoNewExitForSinks generatedGraph (controlSinks generatedGraph)
                     timdom = TSCD.timdomOfLfp g
                 in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
                        (z, steps+steps') ∈ timdom ! x

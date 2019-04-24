@@ -779,3 +779,38 @@ nticdIndus graph = go (nodes graph) [] deps
                 | n ∊ seen   = run ns seen
                 | n ∊ sinkNodes = False
                 | otherwise = run ((suc graph n) ++ ns) (n:seen)
+
+
+joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromList [m] else s) $
+        Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
+     ⊔  fwd ⊔ bwd
+  where forward n seen
+            | Set.null n's = (n, Map.empty,                                     seen     )
+            | otherwise    = (m, Map.fromList [ (n', Set.fromList [n]) ] ⊔ fwd, seenfinal)
+          where seen' = seen ∪ n's
+                n's = (imdom ! n) ∖ seen
+                [n'] = Set.toList n's
+                (m,fwd,seenfinal) = forward n' seen' 
+        (m,fwd,seen) = forward n (Set.fromList [n])
+        bwd = backward m ((Set.fromList [m]) ⊔ seen)
+        backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
+          where seen' = seen ∪ n's
+                n's = (imdomrevInv ! n) ∖ seen
+        imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
+                    ⊔ invert'' imdomrev
+        -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
+        --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
+        -- imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]
+
+
+-- joiniSinkDomAround g n imdom imdomrev = fmap (\s -> if Set.null s then Set.fromList [n] else s) $
+--         Map.fromList [ (m, Set.empty) | m <- nodes g, m /= n]
+--      ⊔  backward n (Set.fromList [n])
+--   where backward n seen = Map.fromList [ (n', Set.fromList [n] ) | n' <- Set.toList n's ] ⊔ (∐) [backward n' seen' | n' <- Set.toList n's]
+--           where seen' = seen ∪ n's
+--                 n's = (imdomrevInv ! n ∪ imdom ! n) ∖ seen
+--         imdomrevInv = Map.fromList [ (n, Set.empty) | n <- Map.keys imdomrev ]
+--                     ⊔ invert'' imdomrev
+--         -- imdomrevInv = (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | n <- nodes g, let preds = pre g n, (Set.size $ Set.fromList preds) == 1, m <- preds ]
+--         --                   ⊔  Map.fromList [ (m, Set.empty) | m <- nodes g]
+--         -- imdomrevInv = Map.fromList [ (m, Set.empty) | m <- nodes g]

@@ -1055,4 +1055,4 @@ dodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
         doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
 
 
-cdFromMyWod graph =  (∐) [ Map.fromList [ (n, Set.fromList [m] ) ]  | ((m1,m2),ns) <- Map.assocs $ ntiodFast graph, n <- Set.toList ns, m <- [m1,m2] ]
+cdFromNTIOD graph =  (∐) [ Map.fromList [ (n, Set.fromList [m] ) ]  | ((m1,m2),ns) <- Map.assocs $ ntiodFast graph, n <- Set.toList ns, m <- [m1,m2] ]

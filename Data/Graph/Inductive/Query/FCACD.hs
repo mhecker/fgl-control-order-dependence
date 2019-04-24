@@ -127,8 +127,8 @@ wccSlice g v' = w ∩ fromV'
         -- fromV' = (Set.fromList $ [ n | m <- Set.toList v', n <- reachable m g ])
 
 
-nticdMyWodViaWDSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodViaWDSlice graph = \ms -> let wd = wdSlice graph ms
+nticdNTIODViaWDSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdNTIODViaWDSlice graph = \ms -> let wd = wdSlice graph ms
                                     in nticd wd
   where nticd = nticdSlice graph
 

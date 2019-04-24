@@ -38,24 +38,24 @@ ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
         d     = dod graph
 
 
-nticdMyWodSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
+nticdNTIODSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdNTIODSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiod graph
 
 
-nticdMyWodFastSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodFastSlice graph =  combinedBackwardSlice graph nticd w
+nticdNTIODFastSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdNTIODFastSlice graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiodFast graph
 
-nticdMyWodPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodPDomSimpleHeuristic graph =  combinedBackwardSlice graph nticd w
+nticdNTIODPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdNTIODPDomSimpleHeuristic graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiodFastPDomSimpleHeuristic graph
 
-nticdMyWodPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodPDom graph =  combinedBackwardSlice graph nticd w
+nticdNTIODPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdNTIODPDom graph =  combinedBackwardSlice graph nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiodFastPDom graph
 
@@ -65,11 +65,11 @@ wccSliceViaWodTEILPDom graph = \ms -> let fromMs = (Set.fromList $ [ n | m <- Se
   where empty = Map.empty
         w     = wodTEIL'PDom graph
 
-wccSliceViaNticdMyWodPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
+wccSliceViaNticdNTIODPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wccSliceViaNticdNTIODPDomSimpleHeuristic g ms = s ∩ fromMs
   where gRev = grev g
         g'   = subgraph (Set.toList toMs) g
-        s    = nticdMyWodPDomSimpleHeuristic g' ms
+        s    = nticdNTIODPDomSimpleHeuristic g' ms
         toMs   = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m gRev ]
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 

@@ -70,13 +70,13 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (
-    wodTEILSliceViaISinkDom, wccSliceViaISinkDom, nticdMyWodSliceViaISinkDom,
+    wodTEILSliceViaISinkDom, wccSliceViaISinkDom, nticdNTIODSliceViaISinkDom,
   )
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
-    wodTEILSliceViaNticd,    wccSliceViaNticd,    nticdMyWodSlice
+    wodTEILSliceViaNticd,    wccSliceViaNticd,    nticdNTIODSlice
   )
 import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
-    nticdMyWodSlice, wodTEILSlice,
+    nticdNTIODSlice, wodTEILSlice,
   )
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom, ntscdViaMDom,
@@ -386,21 +386,21 @@ observation8 = [
                        ODEP.ntiod                          g
   ]
 theorem5 = [
-    testPropertySized 60 "nticdMyWodSlice == nticdMyWodSliceViaNticd == nticdMyWodSliceViaISinkDom ==  for random slice-criteria of random size"
+    testPropertySized 60 "nticdNTIODSlice == nticdNTIODSliceViaNticd == nticdNTIODSliceViaISinkDom ==  for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph
                     n    = length $ nodes g
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer0  = SLICE.ODEP.nticdMyWodSlice               g
-                    slicer1  = SLICE.NTICD.nticdMyWodSlice              g
-                    slicer2  = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g
+                    slicer0  = SLICE.ODEP.nticdNTIODSlice               g
+                    slicer1  = SLICE.NTICD.nticdNTIODSlice              g
+                    slicer2  = SLICE.PDOM.nticdNTIODSliceViaISinkDom    g
                 in   slicer0 ms == slicer1 ms
                    ∧ slicer1 ms == slicer2 ms
   ]
 observation10 = [
-    testPropertySized 60  "nticdMyWodSlice == nticdMyWodSliceViaNticd even when using data dependencies"
+    testPropertySized 60  "nticdNTIODSlice == nticdNTIODSliceViaNticd even when using data dependencies"
     $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) seed1 seed2 ->
                 let g = generatedGraph
                     n    = length $ nodes g
@@ -458,7 +458,7 @@ observation9 =  [
                        g = subgraph [6,7,8,11,13] g0
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
-                       nticdntiodslicer  = SLICE.ODEP.nticdMyWodSlice g
+                       nticdntiodslicer  = SLICE.ODEP.nticdNTIODSlice g
                        wodslicer         = SLICE.ODEP.wodTEILSlice g
                        wccslicer         = FCACD.wccSlice g
                    in (not $ (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms ->

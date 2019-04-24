@@ -58,7 +58,7 @@ import Control.Exception.Base (assert)
 
 
 
-type MyWodSliceState = (Set Node, (Map Node ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))))
+type NTIODSliceState = (Set Node, (Map Node ((Map Node (Set Node), Map Node (Set Node), Map Node (Set Node)),(Map Node (Maybe Node), Map Node (Maybe Node)))))
 
 ntiodFromSliceStep graph m1 m2 =
     assert (Set.null new1) $
@@ -85,7 +85,7 @@ ntiodSlice graph m1 m2 = slice s0 ms0
                     ms' = ms0 ∪ new 
 
 
-ntiodSliceStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  MyWodSliceState -> Node -> (Set Node, MyWodSliceState)
+ntiodSliceStep :: forall gr a b. (Show (gr a b), DynGraph gr) => gr a b ->  NTIODSliceState -> Node -> (Set Node, NTIODSliceState)
 ntiodSliceStep graph (ms, ndoms) m = if m ∈ ms then (Set.empty, (ms, ndoms)) else
     require (assertionsDisabled ∨  
       ((∀) ms (\m -> (∀) unknownCond0 (\c ->          (∃) (Map.assocs ndoms) (\(n, ((pdom, dom, pmay),_)) ->
@@ -406,7 +406,7 @@ findM2sFast dom ms xs n = assert (result == findM2s dom ms xs n) $
 
 
 
-data MyWodSimpleSliceState gr a b = MyWodSimpleSliceState {
+data NTIODSimpleSliceState gr a b = NTIODSimpleSliceState {
    ms :: Set Node,
    condNodes ::  Map Node [Node],
    nAndIpdomForSink  :: Map Node (Node, Map Node (Maybe Node)),
@@ -418,11 +418,11 @@ data MyWodSimpleSliceState gr a b = MyWodSimpleSliceState {
    gTowardsSink :: Map Node (gr a b, Map Node [Node])
 }
 
-deriving instance (Show (gr a b)) => Show (MyWodSimpleSliceState gr a b)
+deriving instance (Show (gr a b)) => Show (NTIODSimpleSliceState gr a b)
 
 
-initialMyWodSimpleSliceState :: DynGraph gr => gr a b -> MyWodSimpleSliceState gr a b
-initialMyWodSimpleSliceState graph = MyWodSimpleSliceState {
+initialNTIODSimpleSliceState :: DynGraph gr => gr a b -> NTIODSimpleSliceState gr a b
+initialNTIODSimpleSliceState graph = NTIODSimpleSliceState {
       ms               = Set.empty,
       condNodes        = restrict condNodes (entryNodes ∪ sinkNodes),
       -- nAndIpdomForSink = nAndIpdomForSink,
@@ -460,15 +460,15 @@ ntiodFromSimpleSliceStep newIPDomFor graph = \m1 m2 ->
         assert (ms s1 == Set.fromList [m1]) $
         assert (ms s2 == Set.fromList [m1, m2]) $
         new2
-  where s0 = initialMyWodSimpleSliceState graph
+  where s0 = initialNTIODSimpleSliceState graph
         
 
 
-nticdMyWodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
-nticdMyWodSliceSimple newIPDomFor graph = \ms ->
+nticdNTIODSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
+nticdNTIODSliceSimple newIPDomFor graph = \ms ->
            nticdslicer $ slice s0 ms
   where nticdslicer = combinedBackwardSlice graph nticd Map.empty
-        s0@(MyWodSimpleSliceState { sinks, isinkdom }) = initialMyWodSimpleSliceState graph
+        s0@(NTIODSimpleSliceState { sinks, isinkdom }) = initialNTIODSimpleSliceState graph
         nticd = idomToDFFastForRoots roots graph isinkdom
           where roots = go (Map.assocs isinkdom) sinks
                   where go []     roots = roots
@@ -477,7 +477,7 @@ nticdMyWodSliceSimple newIPDomFor graph = \ms ->
                           _       -> go as      roots
 
         step = ntiodSliceSimpleStep graph newIPDomFor
-        slice s@(MyWodSimpleSliceState { ms, sinkOf,  nAndIpdomForSink }) ns
+        slice s@(NTIODSimpleSliceState { ms, sinkOf,  nAndIpdomForSink }) ns
           | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
                           ms
           | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
@@ -538,9 +538,9 @@ partitionBy f ns = Set.fold (\n grouped -> Map.alter (g n) (f n) grouped) Map.em
 
 ntiodSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
 ntiodSliceSimple newIPDomFor graph = \ms -> slice s0 ms
-  where s0 = initialMyWodSimpleSliceState graph
+  where s0 = initialNTIODSimpleSliceState graph
         step = ntiodSliceSimpleStep graph newIPDomFor
-        slice s@(MyWodSimpleSliceState { ms }) ns
+        slice s@(NTIODSimpleSliceState { ms }) ns
           | Set.null ns = -- traceShow (Set.size sliceNodes, length $ nodes graph ) $
                           ms
           | otherwise   = -- traceShow (sliceNodes, Map.keys ndoms) $
@@ -552,10 +552,10 @@ ntiodSliceSimple newIPDomFor graph = \ms -> slice s0 ms
 ntiodSliceSimpleStep :: forall gr a b. (DynGraph gr) =>
   gr a b ->
   ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) ->
-  MyWodSimpleSliceState gr a b->
+  NTIODSimpleSliceState gr a b->
   Node ->
-  (Set Node, MyWodSimpleSliceState gr a b)
-ntiodSliceSimpleStep graph newIPDom s@(MyWodSimpleSliceState { ms, condNodes, nAndIpdomForSink, ready, sinkOf, entryIntoSink, gTowardsSink}) m
+  (Set Node, NTIODSimpleSliceState gr a b)
+ntiodSliceSimpleStep graph newIPDom s@(NTIODSimpleSliceState { ms, condNodes, nAndIpdomForSink, ready, sinkOf, entryIntoSink, gTowardsSink}) m
     | m ∈ ms                         = (Set.empty,                     s)
     | Map.lookup m sinkOf == Nothing = (Set.empty,                     s { ms = ms' })
     | otherwise                      = assert (ready' == ready'Fast) $
@@ -632,10 +632,10 @@ recompute (graph,_) _ m = ipdom
 
 
 
-wccSliceViaNticdMyWodSliceSimple :: (Show (gr a b), DynGraph gr) =>  ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b ->  Set Node -> Set Node
-wccSliceViaNticdMyWodSliceSimple newIPDomFor g ms = s ∩ fromMs
+wccSliceViaNticdNTIODSliceSimple :: (Show (gr a b), DynGraph gr) =>  ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b ->  Set Node -> Set Node
+wccSliceViaNticdNTIODSliceSimple newIPDomFor g ms = s ∩ fromMs
   where gRev = grev g
         g'   = subgraph (Set.toList toMs) g
-        s    = nticdMyWodSliceSimple newIPDomFor g' ms
+        s    = nticdNTIODSliceSimple newIPDomFor g' ms
         toMs   = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m gRev ]
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]

@@ -15,8 +15,8 @@ import Data.Graph.Inductive.Util (delSuccessorEdges, controlSinks)
 import Data.Graph.Inductive.Query.PostDominance (isinkdomOfTwoFinger8ForSinks, isinkdomOfTwoFinger8)
 
 
-nticdMyWodSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSliceViaISinkDom graph msS =  Set.fromList [ n | n <- rdfs ms graph', isinkdom' ! n == Nothing]
+nticdNTIODSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+nticdNTIODSliceViaISinkDom graph msS =  Set.fromList [ n | n <- rdfs ms graph', isinkdom' ! n == Nothing]
   where ms = Set.toList msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         isinkdom' = isinkdomOfTwoFinger8ForSinks sinks' sinkNodes' nonSinkCondNodes' graph'

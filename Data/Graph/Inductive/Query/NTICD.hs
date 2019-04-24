@@ -228,30 +228,6 @@ ntsndDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ mdoms ! n)
                 fwd = Set.fromList $  dfs ss g'
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 symmetric m = (∐) [ Map.fromList [((m1,m2), ns), ((m2,m1),ns) ] |  ((m1,m2),ns) <- Map.assocs m ]
 
 
@@ -260,56 +236,6 @@ fMayNaive graph _ _ nextCond toNextCond = f
                       Map.fromList [ (y, Set.fromList [y])                          | y <- nodes graph]
                     ⊔ Map.fromList [ (y, (∐) [ maydomOf ! x | x <- suc graph y ]) | y <- nodes graph, suc graph y /= []]
 mayNaiveGfp graph = domOfGfp graph fMayNaive
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- Examples
-      
--- shows necessity of change in the "linear path section" rule
-exampleLinear :: Graph gr => gr () ()
-exampleLinear = mkGraph [(-27,()),(-23,()),(-10,()),(4,()),(21,()),(25,()),(26,())] [(-27,21,()),(-23,-10,()),(-23,25,()),(21,-27,()),(25,-27,()),(25,-27,()),(25,4,()),(25,21,()),(26,-27,()),(26,-23,()),(26,-10,()),(26,4,()),(26,21,()),(26,25,())]
-
-exampleLinearSimple :: Graph gr => gr () ()
-exampleLinearSimple =
-    mkGraph [(n,()) | n <- [1..5]]
-            [(1,2,()), (1,4,()),
-             (4,5,()), (4,3,()),
-             (2,3,()), (3,2,())
-            ]
-
-exampleLinearSimpleLong :: Graph gr => gr () ()
-exampleLinearSimpleLong =
-    mkGraph [(n,()) | n <- [1..7]]
-            [(1,2,()), (1,4,()),
-             (4,5,()), (4,3,()),
-             (2,3,()), (3,6,()), (6,7,()), (7,2,())
-            ]
-
-
-
-
-
-
-
-
-
-
 
 
 

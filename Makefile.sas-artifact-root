@@ -1,0 +1,10 @@
+PROPS = randomized-tests/dist/build/props/props
+
+.PHONY: all randomized-tests-forever
+
+all: randomized-tests-forever
+
+randomized-tests-forever : $(PROPS)
+	while ./$(PROPS) ; do echo OK ; done
+$(PROPS) :
+	cd randomized-tests && cabal configure && cabal build

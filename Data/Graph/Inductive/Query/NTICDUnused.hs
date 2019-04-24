@@ -19,27 +19,16 @@ import Data.Graph.Inductive
 
 import Unicode
 import Util(reachableFrom, toSet, fromSet, foldM1, invert'')
-import IRLSOD(CFGNode)
-import Program (Program)
-
 
 import Data.Graph.Inductive.Query.LCA(lca, lcaRMyCDForNode)
 import Data.Graph.Inductive.Query.PostDominance (DomFunctionalGen, sinkPathsFor, SinkPath(..), cyclesInScc, domOfGfp, domOfLfp, sinkdomOfGfp, isinkdomOfTwoFinger8)
-import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice, cdepGraph, cdepGraphP)
+import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom)
 import Data.Graph.Inductive.Query.NTICD.SNM (ntscdF4)
 import Data.Graph.Inductive.Query.OrderDependence (smmnFMustWod, myDependenceFor, colorLfpFor)
-import Data.Graph.Inductive.Query.Dependence (Dependence)
-
 
 
 {- The definition of ntacd -}
-ntacdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntacdDefGraphP = cdepGraphP ntacdDefGraph
-
-ntacdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
-ntacdDefGraph  = cdepGraph ntacdDef
-
 ntacdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntacdDef graph =
         Map.fromList [ (n, Set.empty) | n <- nodes graph]
@@ -59,12 +48,6 @@ ntacdDef graph =
 
 
 {- The definition of ntbcd -}
-ntbcdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntbcdDefGraphP = cdepGraphP ntbcdDefGraph
-
-ntbcdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
-ntbcdDefGraph  = cdepGraph ntbcdDef
-
 ntbcdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntbcdDef graph =
         Map.fromList [ (n, Set.empty) | n <- nodes graph]
@@ -195,12 +178,6 @@ inSinkPathAfterFor' graph' n (cond, s, path) = inSinkPathFromEntries [s] path
 
 
 {- The definition of ntnrcd -}
-ntnrcdDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntnrcdDefGraphP = cdepGraphP ntnrcdDefGraph
-
-ntnrcdDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
-ntnrcdDefGraph  = cdepGraph ntnrcdDef
-
 ntnrcdDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntnrcdDef graph =
         Map.fromList [ (n, Set.empty) | n <- nodes graph]
@@ -736,12 +713,6 @@ wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
         cdEdges        = Set.fromList $ edges $ trc $ (fromSuccMap cd        :: gr () ())
         cdFromDomEdges = Set.fromList $ edges $ trc $ (fromSuccMap cdFromDom :: gr () ())
 
-
-nticdIndusGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdIndusGraphP = cdepGraphP nticdIndusGraph
-
-nticdIndusGraph :: DynGraph gr => gr a b ->  gr a Dependence
-nticdIndusGraph = cdepGraph nticdIndus
 
 nticdIndus :: DynGraph gr => gr a b ->  Map Node (Set Node)
 nticdIndus graph = go (nodes graph) [] deps

@@ -25,18 +25,13 @@ import Data.Graph.Inductive.Util (delSuccessorEdges, controlSinks, fromSuccMapWi
 
 import Unicode
 import Util(reachableFrom, reachableUpToLength, distancesUpToLength, minimalPath, toSet, fromSet, foldM1, invert'', invert''', restrict, without, findCyclesM)
-import IRLSOD(CFGNode)
-import Program (Program)
-
 
 import Data.Graph.Inductive.Query.LCA(lcaTimdomOfTwoFingerFast, lcaTimdomOfTwoFingerFastCost)
 import Data.Graph.Inductive.Query.PostDominance (onedomOf, domsOf, imdomOfTwoFinger6)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms,  idomToDFFast, isinkDFTwoFinger, xDFcd)
-import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice, cdepGraph, cdepGraphP)
+import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import Data.Graph.Inductive.Query.Slices.NTICD (ntscdSlice)
 import Data.Graph.Inductive.Query.OrderDependence (ntscdMyDodSliceViaNtscd)
-import Data.Graph.Inductive.Query.Dependence (Dependence)
-
 
 
 tscdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
@@ -384,12 +379,6 @@ itimdomMultipleOfTwoFinger graph = itimdomMultipleOfTwoFingerCost graph (\_ _ ->
 
 timMultipleDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 timMultipleDFTwoFinger graph = idomToDFFast graph $ fmap (Set.map fst) $ itimdomMultipleOfTwoFinger graph
-
-itimdomMultipleTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-itimdomMultipleTwoFingerGraphP = cdepGraphP itimdomMultipleTwoFingerGraph
-
-itimdomMultipleTwoFingerGraph :: DynGraph gr => gr a b ->  gr a Dependence
-itimdomMultipleTwoFingerGraph = cdepGraph itimdomMultipleTwoFingercd
 
 itimdomMultipleTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 itimdomMultipleTwoFingercd = xDFcd timMultipleDFTwoFinger

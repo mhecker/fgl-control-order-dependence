@@ -86,9 +86,12 @@ import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (nticdMy
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntscdViaMDom, nticdViaSinkDom,
   )
+import qualified Data.Graph.Inductive.Query.NTICD.Program as PROG (
+    nticdF5GraphP,                   ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
+    nticdIndusGraphP,
+  )
 import qualified Data.Graph.Inductive.Query.NTICD.SNM as SNM (
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdF3,
-    nticdF5GraphP,                   ntscdFig4GraphP,  ntscdF3GraphP, nticdF5GraphP, nticdFig5GraphP,
     snmF4WithReachCheckGfp,
     snmF3, snmF5
   )
@@ -105,7 +108,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     wodTEILPDomSlice,
     nticdMyWodSlice
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndusGraphP, nticdIndus, joiniSinkDomAround, withPossibleIntermediateNodesFromiXdom)
+import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndus, joiniSinkDomAround, withPossibleIntermediateNodesFromiXdom)
 import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
@@ -444,15 +447,15 @@ nticdTests = testGroup "(concerning nticd)" $
   | (exampleName, p) <- failingSnmF3F5
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF5GraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == SNM.nticdF5GraphP p @? ""
+                  $ controlDependenceGraphP p == PROG.nticdF5GraphP p @? ""
   | (exampleName, p) <- failingNticd
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdFig5GraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == SNM.nticdFig5GraphP p @? ""
+                  $ controlDependenceGraphP p == PROG.nticdFig5GraphP p @? ""
   | (exampleName, p) <- failingNticd
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdIndusGraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == NTICDUnused.nticdIndusGraphP p @? ""
+                  $ controlDependenceGraphP p == PROG.nticdIndusGraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -471,7 +474,7 @@ ntscdTests = testGroup "(concerning ntscd)" $
   | (exampleName, p) <- failingWodNtscdReducible
   ] ++
   [  testCase    ( "ntscdFig4GraphP         ==       ntscdF3GraphP for " ++ exampleName)
-            $ SNM.ntscdFig4GraphP p       == SNM.ntscdF3GraphP p @? ""
+            $ PROG.ntscdFig4GraphP p       == PROG.ntscdF3GraphP p @? ""
   | (exampleName, p) <- failingNtscd
   ] ++
   []
@@ -489,7 +492,7 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                   ),
   testProperty  "ntscdFig4GraphP          == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.ntscdFig4GraphP p   == SNM.ntscdF3GraphP p,
+                  PROG.ntscdFig4GraphP p   == PROG.ntscdF3GraphP p,
     testProperty  "ntscdFig4                == ntscdF3"
                 $ \((CG entry g) :: (Connected Gr () ())) ->
                     let exit = entry -- all this does is add a self-loop to entry

@@ -74,14 +74,25 @@ import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, ad
 import qualified Data.Graph.Inductive.Query.MyWodSlice as MyWodSlice
 import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
 import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (isinkdomOf, isinkdomOfGfp2, joinUpperBound, sinkdomOfJoinUpperBound, sinkdomOf, sinkdomOfGfp, sinkdomOfLfp, sinkdomNaiveGfp, sinkdomNaiveGfpFullTop, sinkdomOfisinkdomProperty, imdomOf, imdomOfLfp, mdomOf, mdomOfLfp, mdomNaiveLfp, mdomOfimdomProperty, onedomOf, mdomsOf, sinkdomsOf, isinkdomOfTwoFinger8, isinkdomOftwoFinger8Up,  imdomOfTwoFinger6, imdomOfTwoFinger7)
+import qualified Data.Graph.Inductive.Query.NTICD.Program as PROG (
+    sinkDFF2GraphP, sinkDFGraphP, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalGraphP,
+       mDFF2GraphP,    mDFGraphP,    mDFFromUpLocalDefGraphP,    mDFFromUpLocalGraphP,
+    nticdSinkContractionGraphP,
+    nticdDefGraphP, ntscdDefGraphP,
+    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP,
+    nticdF3WorkListGraphP,
+    nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP,  nticdF3'dualWorkListGraphP,
+    ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP,
+    ntacdDefGraphP,
+  )
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
     isinkDFTwoFinger, mDFTwoFinger,  noJoins, stepsCL,
-    sinkDFF2cd, sinkDFF2GraphP, sinkDFcd, sinkDFGraphP, sinkDFFromUpLocalDefcd, sinkDFFromUpLocalDefGraphP, sinkDFFromUpLocalcd, sinkDFFromUpLocalGraphP, isinkdomTwoFingercd,
+    sinkDFF2cd,  sinkDFcd,  sinkDFFromUpLocalDefcd, sinkDFFromUpLocalcd,  isinkdomTwoFingercd,
     sinkDFUp, sinkDFUpDef, sinkDFUpDefViaSinkdoms,
     sinkDFLocal, sinkDFLocalDef, sinkDFLocalViaSinkdoms, sinkDFUpGivenX, sinkDFUpGivenXViaSinkdoms,
     sinkDFFromUpLocalDefViaSinkdoms, sinkDF,
     idomToDF, idomToDFFast,
-    mDFF2cd,    mDFF2GraphP,    mDFcd,    mDFGraphP,   mDFFromUpLocalDefcd,     mDFFromUpLocalDefGraphP,    mDFFromUpLocalcd,    mDFFromUpLocalGraphP,     imdomTwoFingercd,
+    mDFF2cd,        mDFcd,       mDFFromUpLocalDefcd,         mDFFromUpLocalcd,         imdomTwoFingercd,
     mDFUp, mDFUpDef, mDFUpDefViaMdoms, mDFUpGivenXViaMdoms,
     mDFLocal, mDFLocalDef, mDFLocalViaMdoms, mDFUpGivenX, 
     mDFFromUpLocalDefViaMdoms, mDF,
@@ -93,7 +104,7 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (dela
 import qualified Data.Graph.Inductive.Query.PostDominance.Numbered as PDOMNumbered (iPDom, pdom, numberForest)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.Util.GraphTransformations as TRANS (sinkShrinkedGraphNoNewExitForSinks)
-import qualified Data.Graph.Inductive.Query.NTICD.GraphTransformations as NTICD.TRANS (nticdSinkContraction, nticdSinkContractionGraphP)
+import qualified Data.Graph.Inductive.Query.NTICD.GraphTransformations as NTICD.TRANS (nticdSinkContraction)
 import qualified Data.Graph.Inductive.Query.PostDominance.GraphTransformations as PDOM.TRANS (isinkdomOfSinkContraction)
 import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE.TRANS (
     nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives
@@ -109,15 +120,15 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom,
     ntscdViaMDom,
     ntindDef, ntsndDef,
-    nticdDef, nticdDefGraphP, 
-    ntscdDef, ntscdDefGraphP
+    nticdDef, 
+    ntscdDef, 
   )
 import qualified Data.Graph.Inductive.Query.NTICD.SNM as SNM (
     snmF3, snmF3Lfp,
     snmF4WithReachCheckGfp,
-    nticdF3GraphP, nticdF3'GraphP, nticdF3'dualGraphP, nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, nticdF3WorkListGraphP,
-    nticdF3WorkListSymbolicGraphP, nticdF3'dualWorkListSymbolicGraphP, nticdFig5GraphP, nticdF5GraphP, nticdF3'dualWorkList, snmF3'dual, nticdF3'dualWorkListGraphP,
-    ntscdF4GraphP, ntscdF3GraphP, ntscdF4WorkListGraphP, ntscdF4, ntscdF3, ntscdF4WorkList
+    nticdF3WorkList, nticdF3WorkListSymbolic, nticdF3'dualWorkListSymbolic,  nticdF3, nticdF5, nticdFig5, nticdF3', nticdF3'dual, 
+    nticdF3'dualWorkList, snmF3'dual,
+    ntscdF4, ntscdF3, ntscdF4WorkList
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     ntscdMyDodSliceViaNtscd, mustOfLfp, mustOfGfp, mmayOf, mmayOf', rotatePDomAround, Color(..), smmnFMustDod, smmnFMustWod, colorLfpFor, colorFor,
@@ -128,7 +139,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod, dodDef, dodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic,  myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay'
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay, mayNaiveGfp, possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom)
+import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay, mayNaiveGfp, possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom)
 import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, timingCorrection, timingLeaksTransformation, tscdCostSlice, timDFCostFromUpLocalDefViaTimdoms, timDFCost, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, tscdOfNaiveCostfLfp, timdomOfLfp, tscdSlice, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
     itimdomMultipleOfTwoFingerCost, cost1, cost1F,
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
@@ -778,21 +789,21 @@ insensitiveDomTests = testGroup "(concerning nontermination-insensitive control 
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "sinkDFGraphP              ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFGraphP p            == SNM.nticdF3GraphP p @? ""
+            $ PROG.sinkDFGraphP p            == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFFromUpLocalGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFFromUpLocalGraphP p == SNM.nticdF3GraphP p @? ""
+            $ PROG.sinkDFFromUpLocalGraphP p == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFFromUpLocalDefGraphP==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFFromUpLocalDefGraphP p
+            $ PROG.sinkDFFromUpLocalDefGraphP p
                                               ==
-                                                 SNM.nticdF3GraphP p @? ""
+                                                 PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFF2GraphP p          == SNM.nticdF3GraphP p @? ""
+            $ PROG.sinkDFF2GraphP p          == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -1110,8 +1121,8 @@ newcdProps = testGroup "(concerning new control dependence definitions)" [
   ]
 newcdTests = testGroup "(concerning new control dependence definitions)" $
   [  testCase    ( "ntnacdDefGraphP       ==  nticdF3GraphP for " ++ exampleName)
-                  $ NTICDUnused.ntacdDefGraphP      p ==
-                    SNM.nticdF3GraphP       p        @? ""
+                  $ PROG.ntacdDefGraphP      p ==
+                    PROG.nticdF3GraphP       p        @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -2899,28 +2910,28 @@ colorTests = testGroup "(concerning color algorithms)" $
 nticdProps = testGroup "(concerning nticd )" [
     testProperty  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.nticdFig5GraphP p        == SNM.nticdF5GraphP p,
+                  PROG.nticdFig5GraphP p        == PROG.nticdF5GraphP p,
     testProperty  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  NTICD.TRANS.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p,
+                  PROG.nticdSinkContractionGraphP p == PROG.nticdF3GraphP p,
     testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  controlDependenceGraphP p      == SNM.nticdF3GraphP p,
+                  controlDependenceGraphP p      == PROG.nticdF3GraphP p,
     testProperty  "nticdF3'GraphP                == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.nticdF3'GraphP p         == SNM.nticdF3GraphP p,
+                  PROG.nticdF3'GraphP p         == PROG.nticdF3GraphP p,
     testProperty  "nticdF3'dualGraphP            == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.nticdF3'dualGraphP p     == SNM.nticdF3GraphP p,
+                  PROG.nticdF3'dualGraphP p     == PROG.nticdF3GraphP p,
     testProperty  "nticdF3'dualWorkListGraphP       == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.nticdF3'dualWorkListGraphP p  == SNM.nticdF3GraphP p,
+                  PROG.nticdF3'dualWorkListGraphP p  == PROG.nticdF3GraphP p,
     testProperty  "nticdF3WorkListGraphP         == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.nticdF3WorkListGraphP p  == SNM.nticdF3GraphP p,
+                  PROG.nticdF3WorkListGraphP p  == PROG.nticdF3GraphP p,
     testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.nticdF3WorkListSymbolicGraphP p == SNM.nticdF3GraphP p,
+                  PROG.nticdF3WorkListSymbolicGraphP p == PROG.nticdF3GraphP p,
     testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let (_, g) = withUniqueEndNode () () generatedGraph
@@ -2983,43 +2994,43 @@ nticdProps = testGroup "(concerning nticd )" [
   ]
 nticdTests = testGroup "(concerning nticd)" $
   [  testCase    ( "nticdFig5GraphP           ==       nticdF5GraphP for " ++ exampleName)
-            $ SNM.nticdFig5GraphP p         == SNM.nticdF5GraphP p @? ""
+            $ PROG.nticdFig5GraphP p         == PROG.nticdF5GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdSinkContractionGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.TRANS.nticdSinkContractionGraphP p == SNM.nticdF3GraphP p @? ""
+            $ PROG.nticdSinkContractionGraphP p == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "controlDependenceGraphP   ==       nticdF3GraphP for " ++ exampleName)
-                  $ controlDependenceGraphP p == SNM.nticdF3GraphP p @? ""
+                  $ controlDependenceGraphP p == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "sinkDFF2GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ PDF.sinkDFF2GraphP p          == SNM.nticdF3GraphP p @? ""
+            $ PROG.sinkDFF2GraphP p          == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdDefGraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ NTICD.nticdDefGraphP p          == SNM.nticdF3GraphP p @? ""
+            $ PROG.nticdDefGraphP p          == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3'GraphP            ==       nticdF3GraphP for " ++ exampleName)
-            $ SNM.nticdF3'GraphP p          == SNM.nticdF3GraphP p @? ""
+            $ PROG.nticdF3'GraphP p          == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3'dualGraphP        ==       nticdF3GraphP for " ++ exampleName)
-            $ SNM.nticdF3'dualGraphP p      == SNM.nticdF3GraphP p @? ""
+            $ PROG.nticdF3'dualGraphP p      == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3WorkListGraphP     ==       nticdF3GraphP for " ++ exampleName)
-            $ SNM.nticdF3WorkListGraphP p   == SNM.nticdF3GraphP p @? ""
+            $ PROG.nticdF3WorkListGraphP p   == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3WorkListSymbolicGraphP     ==       nticdF3GraphP for " ++ exampleName)
-            $ SNM.nticdF3WorkListSymbolicGraphP p   == SNM.nticdF3GraphP p @? ""
+            $ PROG.nticdF3WorkListSymbolicGraphP p   == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "nticdF3'dualWorkListSymbolicGraphP   ==       nticdF3GraphP for " ++ exampleName)
-            $ SNM.nticdF3'dualWorkListSymbolicGraphP p   == SNM.nticdF3GraphP p @? ""
+            $ PROG.nticdF3'dualWorkListSymbolicGraphP p   == PROG.nticdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []
@@ -3057,11 +3068,11 @@ ntscdProps = testGroup "(concerning ntscd )" [
                                    ),
     testProperty  "ntscdF4GraphP          == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.ntscdF4GraphP p         == SNM.ntscdF3GraphP p,
+                  PROG.ntscdF4GraphP p         == PROG.ntscdF3GraphP p,
                 
     testProperty  "ntscdF4WorkListGraphP  == ntscdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
-                  SNM.ntscdF4WorkListGraphP p == SNM.ntscdF3GraphP p,
+                  PROG.ntscdF4WorkListGraphP p == PROG.ntscdF3GraphP p,
     testProperty  "ntscdF4WorkList == ntscdF3"
                 $ \(ARBITRARY(g)) ->
                        SNM.ntscdF4WorkList g ==
@@ -3090,15 +3101,15 @@ ntscdTests = testGroup "(concerning ntscd)" $
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "ntscdF4GraphP            ==       ntscdF3GraphP for " ++ exampleName)
-            $ SNM.ntscdF4GraphP p          == SNM.ntscdF3GraphP p @? ""
+            $ PROG.ntscdF4GraphP p          == PROG.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "ntscdF4WorkListGraphP    ==       ntscdF3GraphP for " ++ exampleName)
-            $ SNM.ntscdF4WorkListGraphP p  == SNM.ntscdF3GraphP p @? ""
+            $ PROG.ntscdF4WorkListGraphP p  == PROG.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [  testCase    ( "ntscdDefGraphP           ==       ntscdF3GraphP for " ++ exampleName)
-            $ NTICD.ntscdDefGraphP p         == SNM.ntscdF3GraphP p @? ""
+            $ PROG.ntscdDefGraphP p         == PROG.ntscdF3GraphP p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   []

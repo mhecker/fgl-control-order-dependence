@@ -42,9 +42,6 @@ import Data.Ord
 
 import Debug.Trace (traceShow, trace)
 
-import qualified Data.Dequeue as Dequeue
-import Data.Dequeue (pushBack, popFront)
-import Data.Dequeue.SimpleDequeue (SimpleDequeue)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -56,8 +53,6 @@ import Data.Ord (Down(..))
 import Data.List (sortOn)
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
-
-import IRLSOD(CFGEdge(..))
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff)

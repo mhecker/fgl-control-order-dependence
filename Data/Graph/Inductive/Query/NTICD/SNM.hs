@@ -22,7 +22,6 @@ import Program (Program)
 
 import Data.Graph.Inductive.Util (nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode, prevRepresentantNodes)
 import Data.Graph.Inductive.Query.Dependence (Dependence)
-import Data.Graph.Inductive.Query.NTICD.Util (cdepGraph, cdepGraphP)
 
 type T n = (n, n)
 
@@ -95,12 +94,6 @@ f5 graph condNodes _ _ _ s
                  ⊔ Map.fromList [ ((m,n), s ! (n,n)) | n <- condNodes, m <- suc graph n, m /= n ]
 
 
-nticdF5GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF5GraphP = cdepGraphP nticdF5Graph
-
-nticdF5Graph :: DynGraph gr => gr a b -> gr a Dependence
-nticdF5Graph = cdepGraph nticdF5
-
 nticdF5 :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF5 = ntXcd snmF5
 
@@ -142,25 +135,12 @@ f3' graph condNodes reachable nextCond toNextCond s
                                       ]
                     ) | m <- nodes graph, p <- condNodes]
 
-
-nticdF3GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3GraphP = cdepGraphP nticdF3Graph
-
-nticdF3Graph :: DynGraph gr => gr a b -> gr a Dependence
-nticdF3Graph = cdepGraph nticdF3
-
 nticdF3 :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3 = ntXcd snmF3
 
 snmF3 :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF3 graph = snmGfp graph f3
 
-
-nticdF3'GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3'GraphP = cdepGraphP nticdF3'Graph
-
-nticdF3'Graph :: DynGraph gr => gr a b -> gr a Dependence
-nticdF3'Graph = cdepGraph nticdF3'
 
 nticdF3' :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3' = ntXcd snmF3'
@@ -182,24 +162,11 @@ f3'dual graph condNodes reachable nextCond toNextCond s
   where all p m = [ (p,x) | x <- (suc graph p)]
 
 
-nticdF3'dualGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3'dualGraphP = cdepGraphP nticdF3'dualGraph
-
-nticdF3'dualGraph :: DynGraph gr => gr a b ->  gr a Dependence
-nticdF3'dualGraph = cdepGraph nticdF3'dual
-
 nticdF3'dual :: DynGraph gr => gr a b ->  Map Node (Set Node)
 nticdF3'dual = ntXcd snmF3'dual
 
 snmF3'dual :: DynGraph gr => gr a b -> Map (Node, Node) (Set (T Node))
 snmF3'dual graph = snmLfp graph f3'dual
-
-
-nticdF3'dualWorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3'dualWorkListGraphP = cdepGraphP nticdF3'dualWorkListGraph
-
-nticdF3'dualWorkListGraph :: DynGraph gr => gr a b -> gr a Dependence
-nticdF3'dualWorkListGraph = cdepGraph nticdF3'dualWorkList
 
 nticdF3'dualWorkList :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3'dualWorkList = ntXcd snmF3'dualWorkListLfp
@@ -229,12 +196,6 @@ snmF3'dualWorkListLfp graph = snmWorkList (Set.fromList [ (m,n,x) | p <- condNod
 {- the same, with less memory consumption -}
 -- here, for given node node m, S[m,p] is represented by S[m',p] for that condition or join node m'
 -- which preceeds  m in the graph (or: m itself, if there is no such node)
-nticdF3'dualWorkListSymbolicGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3'dualWorkListSymbolicGraphP = cdepGraphP nticdF3'dualWorkListSymbolicGraph
-
-nticdF3'dualWorkListSymbolicGraph :: DynGraph gr => gr a b -> gr a Dependence
-nticdF3'dualWorkListSymbolicGraph = cdepGraph nticdF3'dualWorkListSymbolic
-
 nticdF3'dualWorkListSymbolic :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3'dualWorkListSymbolic = ntXcd snmF3'dualWorkListSymbolicLfp
 
@@ -265,12 +226,6 @@ snmF3'dualWorkListSymbolicLfp graph = snmWorkList (Set.fromList [ (m,n,x) | p <-
                          ⊔ Map.fromList [ ((m,p), Set.empty)  | p <- condNodes, m <- nodes graph, Nothing == representantOf m]
 
 {- A Worklist-Implementation of nticd, based on f3 -}
-nticdF3WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3WorkListGraphP = cdepGraphP nticdF3WorkListGraph
-
-nticdF3WorkListGraph :: DynGraph gr => gr a b -> gr a Dependence
-nticdF3WorkListGraph = cdepGraph nticdF3WorkList
-
 nticdF3WorkList :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3WorkList = ntXcd snmF3WorkListGfp
 
@@ -305,12 +260,6 @@ snmF3WorkListGfp graph = snmWorkList (Set.fromList [ (m,p) | p <- condNodes, m <
 {- the same, with less memory consumption -}
 -- here, for given node node m, S[m,p] is represented by S[m',p] for that condition or join node m'
 -- which preceeds  m in the graph (or: m itself, if there is no such node)
-nticdF3WorkListSymbolicGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdF3WorkListSymbolicGraphP = cdepGraphP nticdF3WorkListSymbolicGraph
-
-nticdF3WorkListSymbolicGraph :: DynGraph gr => gr a b -> gr a Dependence
-nticdF3WorkListSymbolicGraph = cdepGraph nticdF3WorkListSymbolic
-
 nticdF3WorkListSymbolic :: DynGraph gr => gr a b -> Map Node (Set Node)
 nticdF3WorkListSymbolic = ntXcd snmF3WorkListSymbolicGfp
 
@@ -349,12 +298,6 @@ snmF3WorkListSymbolicGfp graph = snmWorkList (Set.fromList [ (m,p) | p <- condNo
 {- A correct implementation of ntscd, as given in [1], Figure 4,
    using the lfp of functional f4
 -}
-ntscdF4GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntscdF4GraphP p = cdepGraphP ntscdF4Graph p
-
-ntscdF4Graph :: DynGraph gr => gr a b -> gr a Dependence
-ntscdF4Graph = cdepGraph ntscdF4 
-
 ntscdF4 :: DynGraph gr => gr a b -> Map Node (Set Node)
 ntscdF4 = ntXcd snmF4
 
@@ -397,12 +340,6 @@ f4withReachCheck graph condNodes reachable _ _ s
 
 
 {- A correct implementation of ntscd, by a tiny modification of [1], Figure 4 -}
-ntscdF4WorkListGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntscdF4WorkListGraphP = cdepGraphP ntscdF4WorkListGraph
-
-ntscdF4WorkListGraph :: DynGraph gr => gr a b ->  gr a Dependence
-ntscdF4WorkListGraph = cdepGraph ntscdF4WorkList
-
 ntscdF4WorkList :: DynGraph gr => gr a b -> Map Node (Set Node)
 ntscdF4WorkList = ntXcd snmF4WorkListLfp
 
@@ -430,12 +367,6 @@ snmF4WorkListLfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- su
 
 
 {- A faulty implementation of ntscd, as given in [1], Figure 4 -}
-ntscdFig4GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntscdFig4GraphP = cdepGraphP ntscdFig4Graph
-
-ntscdFig4Graph :: DynGraph gr => gr a b ->  gr a Dependence
-ntscdFig4Graph = cdepGraph ntscdFig4
-
 ntscdFig4 :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntscdFig4 = ntXcd snmFig4Lfp
 
@@ -462,12 +393,6 @@ snmFig4Lfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- suc grap
 
 
 {- A faulty implementation of nticd, as given in [1], Figure 5, with attempts to fix the worklist updates  -}
-nticdFig5GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdFig5GraphP = cdepGraphP nticdFig5Graph
-
-nticdFig5Graph :: DynGraph gr => gr a b ->  gr a Dependence
-nticdFig5Graph = cdepGraph nticdFig5
-
 nticdFig5 :: DynGraph gr => gr a b ->  Map Node (Set Node)
 nticdFig5 = ntXcd snmFig5Lfp
 
@@ -509,12 +434,6 @@ snmFig5Lfp graph = snmWorkList (Set.fromList [ m | n <- condNodes, m <- suc grap
 
    This shows that ntscd and nticd are, essentially, the lfp/gfp (respectively) of the *same* functional f3.
 -}
-ntscdF3GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-ntscdF3GraphP = cdepGraphP ntscdF3Graph
-
-ntscdF3Graph :: DynGraph gr => gr a b ->  gr a Dependence
-ntscdF3Graph = cdepGraph ntscdF3
-
 ntscdF3 :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntscdF3 = ntXcd snmF3Lfp
 

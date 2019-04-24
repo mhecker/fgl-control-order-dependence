@@ -13,22 +13,11 @@ import Data.Graph.Inductive.Graph
 
 import Util(the)
 import Unicode
-import IRLSOD(CFGNode)
-import Program(Program(..))
 
 import Data.Graph.Inductive.Util(controlSinks)
-import Data.Graph.Inductive.Query.NTICD.Util (cdepGraphP, cdepGraph)
-import Data.Graph.Inductive.Query.Dependence (Dependence)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependence)
 
 import Data.Graph.Inductive.Query.Util.GraphTransformations (sinkShrinkedGraph)
-
-nticdSinkContractionGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-nticdSinkContractionGraphP p = cdepGraphP nticdSinkContractionGraph p 
-  where  [endNodeLabel] = newNodes 1 $ tcfg p
-
-nticdSinkContractionGraph :: DynGraph gr => gr a b ->  gr a Dependence
-nticdSinkContractionGraph = cdepGraph nticdSinkContraction
 
 nticdSinkContraction :: DynGraph gr => gr a b ->  Map Node (Set Node)
 nticdSinkContraction graph              = Map.fromList [ (n, cdepClassic ! n) | n <- nodes graph, not $ n ∈ sinkNodes ]

@@ -19,16 +19,10 @@ import Data.Graph.Inductive.Query.DFS (scc)
 
 import Unicode
 import Util(invert', the, invert''', dfsTree, roots, fromSet)
-import IRLSOD(CFGNode)
-import Program (Program)
-
-
 
 
 import Data.Graph.Inductive.Util (immediateOf, controlSinks)
-import Data.Graph.Inductive.Query.Dependence (Dependence)
 import Data.Graph.Inductive.Query.PostDominance (domsOf, onedomOf, sinkdomOf, sinkdomsOf, mdomOfLfp, mdomOf, mdomsOf, imdomOfTwoFinger7, isinkdomOfTwoFinger8ForSinks)
-import Data.Graph.Inductive.Query.NTICD.Util (cdepGraph, cdepGraphP)
 
 
 
@@ -119,12 +113,6 @@ dfFor graph dom =
                    | x <- nodes graph ]
   where onedom = onedomOf dom
 
-
-sinkDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-sinkDFGraphP = cdepGraphP sinkDFGraph
-
-sinkDFGraph :: DynGraph gr => gr a b ->  gr a Dependence
-sinkDFGraph = cdepGraph sinkDFcd
 
 sinkDFcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFcd = xDFcd sinkDF
@@ -258,13 +246,6 @@ sinkDFFromUpLocalDefViaSinkdoms graph =
 
 
 
-
-sinkDFFromUpLocalDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-sinkDFFromUpLocalDefGraphP = cdepGraphP sinkDFFromUpLocalDefGraph
-
-sinkDFFromUpLocalDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
-sinkDFFromUpLocalDefGraph = cdepGraph sinkDFFromUpLocalDefcd
-
 sinkDFFromUpLocalDefcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFFromUpLocalDefcd = xDFcd sinkDFFromUpLocalDef
 
@@ -280,12 +261,6 @@ sinkDFFromUpLocal graph =
         isinkdom = immediateOf sinkdom :: gr () ()
 
 
-sinkDFFromUpLocalGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-sinkDFFromUpLocalGraphP = cdepGraphP sinkDFFromUpLocalGraph
-
-sinkDFFromUpLocalGraph :: DynGraph gr => gr a b ->  gr a Dependence
-sinkDFFromUpLocalGraph = cdepGraph sinkDFFromUpLocalcd
-
 sinkDFFromUpLocalcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFFromUpLocalcd = xDFcd sinkDFFromUpLocal
 
@@ -294,13 +269,6 @@ sinkDFF2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 sinkDFF2 graph = idomToDF graph isinkdom
   where sinkdom  = sinkdomOf graph
         isinkdom = immediateOf sinkdom :: gr () ()
-
-
-sinkDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-sinkDFF2GraphP = cdepGraphP sinkDFF2Graph
-
-sinkDFF2Graph :: DynGraph gr => gr a b ->  gr a Dependence
-sinkDFF2Graph = cdepGraph sinkDFF2cd
 
 sinkDFF2cd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 sinkDFF2cd = xDFcd sinkDFF2
@@ -329,12 +297,6 @@ mDF graph =
   where mdom = mdomOfLfp graph
         onedom = onedomOf mdom
 
-
-mDFGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-mDFGraphP = cdepGraphP sinkDFGraph
-
-mDFGraph :: DynGraph gr => gr a b ->  gr a Dependence
-mDFGraph = cdepGraph mDFcd
 
 mDFcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 mDFcd = xDFcd mDF
@@ -456,12 +418,6 @@ mDFFromUpLocalDefViaMdoms graph =
         mdomsInv = invert' (fmap Set.toList mdoms) `Map.union` (Map.fromList [ (x, []) | x <- nodes graph ])
 
 
-mDFFromUpLocalDefGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-mDFFromUpLocalDefGraphP = cdepGraphP mDFFromUpLocalDefGraph
-
-mDFFromUpLocalDefGraph :: DynGraph gr => gr a b ->  gr a Dependence
-mDFFromUpLocalDefGraph = cdepGraph mDFFromUpLocalDefcd
-
 mDFFromUpLocalDefcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 mDFFromUpLocalDefcd = xDFcd mDFFromUpLocalDef
 
@@ -478,12 +434,6 @@ mDFFromUpLocal graph =
         imdom = immediateOf mdom :: gr () ()
 
 
-mDFFromUpLocalGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-mDFFromUpLocalGraphP = cdepGraphP mDFFromUpLocalGraph
-
-mDFFromUpLocalGraph :: DynGraph gr => gr a b ->  gr a Dependence
-mDFFromUpLocalGraph = cdepGraph mDFFromUpLocalcd
-
 mDFFromUpLocalcd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 mDFFromUpLocalcd = xDFcd mDFFromUpLocal
 
@@ -493,12 +443,6 @@ mDFF2 :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFF2 graph = idomToDF graph imdom
   where mdom  = mdomOfLfp graph
         imdom = immediateOf mdom :: gr () ()
-
-mDFF2GraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-mDFF2GraphP = cdepGraphP mDFF2Graph
-
-mDFF2Graph :: DynGraph gr => gr a b ->  gr a Dependence
-mDFF2Graph = cdepGraph mDFF2cd
 
 mDFF2cd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 mDFF2cd = xDFcd mDFF2
@@ -568,12 +512,6 @@ idomToDFFastLazy graph cycleOf idom' = \df x -> case Map.lookup x df of
 mDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 mDFTwoFinger graph = idomToDFFast graph $ imdomOfTwoFinger7 graph
 
-imdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-imdomTwoFingerGraphP = cdepGraphP imdomTwoFingerGraph
-
-imdomTwoFingerGraph :: DynGraph gr => gr a b ->  gr a Dependence
-imdomTwoFingerGraph = cdepGraph imdomTwoFingercd
-
 imdomTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 imdomTwoFingercd = xDFcd mDFTwoFinger
 
@@ -597,12 +535,6 @@ isinkDFTwoFinger :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node)
 isinkDFTwoFinger graph = isinkDFTwoFingerForSinks sinks graph
   where sinks = controlSinks graph
 
-
-isinkdomTwoFingerGraphP :: DynGraph gr => Program gr -> gr CFGNode Dependence
-isinkdomTwoFingerGraphP = cdepGraphP isinkdomTwoFingerGraph
-
-isinkdomTwoFingerGraph :: DynGraph gr => gr a b ->  gr a Dependence
-isinkdomTwoFingerGraph = cdepGraph isinkdomTwoFingercd
 
 isinkdomTwoFingercd :: DynGraph gr => gr a b ->  Map Node (Set Node)
 isinkdomTwoFingercd = xDFcd isinkDFTwoFinger

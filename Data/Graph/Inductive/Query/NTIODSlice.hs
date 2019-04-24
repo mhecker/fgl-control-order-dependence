@@ -4,7 +4,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE StandaloneDeriving #-}
 #define require assert
-module Data.Graph.Inductive.Query.MyWodSlice where
+module Data.Graph.Inductive.Query.NTIODSlice where
 
 import Data.Ord (comparing)
 import Data.Maybe(fromJust)

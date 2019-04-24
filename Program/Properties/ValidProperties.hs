@@ -109,7 +109,6 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom,
     ntscdViaMDom,
     ntindDef, ntsndDef,
-    possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom,
     nticdDef, nticdDefGraphP, 
     ntscdDef, ntscdDefGraphP
   )
@@ -129,7 +128,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod, dodDef, dodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic,  myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay'
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay, mayNaiveGfp)
+import qualified Data.Graph.Inductive.Query.NTICDUnused  as NTICDUnused (ntacdDef, ntacdDefGraphP, wodMyEntryWodMyCDSlice, myCD, myCDFromMyDom, myDom, allDomNaiveGfp, myWodFromMay, mayNaiveGfp, possibleIntermediateNodesFromiXdom, withPossibleIntermediateNodesFromiXdom)
 import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, timingCorrection, timingLeaksTransformation, tscdCostSlice, timDFCostFromUpLocalDefViaTimdoms, timDFCost, tscdOfLfp, timDF, timDFFromUpLocalDefViaTimdoms, timDFUpGivenXViaTimdomsDef, timDFUpGivenXViaTimdoms, timDFLocalDef, timDFLocalViaTimdoms, tscdOfNaiveCostfLfp, timdomOfLfp, tscdSlice, timdomsFromItimdomMultipleOf, validTimdomFor, validTimdomLfp,
     itimdomMultipleOfTwoFingerCost, cost1, cost1F,
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,

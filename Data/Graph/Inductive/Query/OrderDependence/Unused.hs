@@ -14,7 +14,7 @@ import Unicode
 
 import Data.Graph.Inductive.Util (fromSuccMap)
 import Data.Graph.Inductive.Query.PostDominance (imdomOfTwoFinger7)
-import Data.Graph.Inductive.Query.NTICD (possibleIntermediateNodesFromiXdom)
+import Data.Graph.Inductive.Query.NTICDUnused (possibleIntermediateNodesFromiXdom)
 
 
 {- this algorithm does *not* work, see: Program.Examples.dodSuperFastCounterExample6 -}

@@ -85,7 +85,6 @@ import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (nticdMyWodSlice)
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     ntscdViaMDom, nticdViaSinkDom,
-    withPossibleIntermediateNodesFromiXdom,
   )
 import qualified Data.Graph.Inductive.Query.NTICD.SNM as SNM (
     nticdF5,                         ntscdFig4,       ntscdF3, nticdF5, nticdFig5, nticdF3,
@@ -106,7 +105,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     wodTEILPDomSlice,
     nticdMyWodSlice
   )
-import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndusGraphP, nticdIndus, joiniSinkDomAround)
+import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, myWodFromMay, nticdIndusGraphP, nticdIndus, joiniSinkDomAround, withPossibleIntermediateNodesFromiXdom)
 import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
@@ -297,7 +296,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   [ testCase ("itimdomMultipleOfTwoFinger        relates to timingF3EquationSystem for " ++ exampleName) $ 
                        let timingEqSolved    = PTDEP.solveTimingEquationSystem $ PTDEP.snmTimingEquationSystem g PTDEP.timingF3EquationSystem
                            itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
-                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
+                           mustReachFromIn   = reachableFromIn $ NTICDUnused.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
                              where isinkdom    = PDOM.isinkdomOfTwoFinger8 g
                                    isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()
@@ -315,7 +314,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   [ testCase ("itimdomMultipleOfTwoFinger^*       == timdomOfLfp for " ++ exampleName) $ 
                        let itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
                            timdomOfLfp       = TSCD.timdomOfLfp g
-                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
+                           mustReachFromIn   = reachableFromIn $ NTICDUnused.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                        in  
                            (∀) (Map.assocs timdomOfLfp) (\(n, ms) ->
                               (∀) (ms) (\(m,steps) -> Set.fromList [steps] == mustReachFromIn n m)
@@ -348,7 +347,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
   [ testCase ("timdomOfTwoFinger        relates to timingF3EquationSystem for" ++ exampleName) $
                        let timingEqSolved    = PTDEP.solveTimingEquationSystem $ PTDEP.snmTimingEquationSystem g PTDEP.timingF3EquationSystem
                            itimdomMultiple   = TSCD.itimdomMultipleOfTwoFinger g
-                           mustReachFromIn   = reachableFromIn $ NTICD.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
+                           mustReachFromIn   = reachableFromIn $ NTICDUnused.withPossibleIntermediateNodesFromiXdom g $ itimdomMultiple
                            mustReachFrom x   = suc isinkdomTrc x
                              where isinkdom    = PDOM.isinkdomOfTwoFinger8 g
                                    isinkdomTrc = trc $ fromSuccMap isinkdom :: Gr () ()

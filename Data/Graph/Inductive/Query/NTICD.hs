@@ -138,66 +138,6 @@ ntscdDef graph =
         doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-withPossibleIntermediateNodesFromiXdom :: forall gr a b x. (Ord x, DynGraph gr) => gr a b -> Map Node (Set (Node, x)) -> Map Node (Set (Node, (x, Set Node)))
-withPossibleIntermediateNodesFromiXdom graph ixdom = Map.fromList [ (n, Set.fromList [(m,(x,pi))])  | (n, ms) <- Map.assocs ixdom, [(m,x)] <- [Set.toList $ ms], let pi = pis ! n ]
-                                                   ⊔ Map.fromList [ (n, Set.fromList []          )  | (n, ms) <- Map.assocs ixdom, []      <- [Set.toList $ ms]                   ]
-  where pis = possibleIntermediateNodesFromiXdom graph $  fmap (Set.map fst) $ ixdom
-  
-possibleIntermediateNodesFromiXdom :: forall gr a b. DynGraph gr => gr a b -> Map Node (Set Node) -> Map Node (Set Node)
-possibleIntermediateNodesFromiXdom graph ixdom = (㎲⊒) init f
-  where init     = Map.fromList [ (n, Set.empty)                       | n <- Map.keys ixdom ]
-        f pis    = pis
-                 ⊔ Map.fromList [ (p, Set.delete z $
-                                      (∐) [ Set.fromList [ y ]  ⊔  pis ! y | x <- suc graph p,
-                                                                              let path = revPathFromTo ixdom x z,
-                                                                              y <- path
-                                      ]
-                                  )
-                                | p <- condNodes,
-                                  [z] <- [Set.toList $ ixdom ! p]
-                   ]
-        condNodes   = [ x | x <- nodes graph, length (suc graph x) > 1 ]
-
-        revPathFromTo ixdom x z = revPathFromToA x []
-          where revPathFromToA x ps 
-                   | x == z    = ps
-                   | otherwise = revPathFromToA next (x:ps)
-                 where [next] = Set.toList $ ixdom ! x
-
-
-
-
--- TODO: limit this to starts of linear section
-predsSeenFor :: Map Node [Node] -> [Node] -> [Node] -> [Node]
-predsSeenFor imdomRev = predsSeenF where
-      predsSeenF :: [Node] -> [Node] -> [Node]
-      predsSeenF seen front = concat $ fmap (predsSeen seen) front
-      predsSeen  :: [Node] -> Node -> [Node]
-      predsSeen seen x = case Map.lookup x imdomRev of 
-        Nothing  -> seen
-        Just ys  -> let new = (filter (not . (∊ seen)) ys) in case new of
-                      [] -> seen
-                      _  -> predsSeenF (new ++ seen) new
-
-
 ntindDef :: DynGraph gr => gr a b ->  Map Node (Set Node)
 ntindDef g = Map.fromList [ (n, onPathBetween (suc g n) (Set.toList $ sinkdoms ! n) ∖ (Set.insert n $ sinkdoms ! n)) | n <- nodes g ]
   where sinkdoms = sinkdomsOf g

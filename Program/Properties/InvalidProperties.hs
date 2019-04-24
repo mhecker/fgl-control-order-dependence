@@ -106,7 +106,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence.Unused as ODEPUnused
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     mmayOf, mmayOf', 
     smmnFMustDod,
-    ntiod, myDod, ntiodFast, wodFast,
+    ntiod, ntsod, ntiodFast, wodFast,
     smmnLfp, smmnGfp, fMustBefore, fMust,
     dodDef, wodDef,
     dodColoredDagFixed, dodColoredDag,
@@ -272,12 +272,12 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                 let (cost, _) = TSCD.timingCorrection g (TSCD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
                       where imdom = PDOM.imdomOfTwoFinger6 g
                     s  = tscdcostslicer   ms
-                    s' = ntscdmydodslicer ms
+                    s' = ntscdntsodslicer ms
                 in   (   (s == s'))
                    ∨ (   (s  ⊇ s')
                       ∧ (∃) cycles (\cycle -> Set.size (cycle ∩ s') == 1))
@@ -290,13 +290,13 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                 let (cost, _) = TSCD.timingCorrection g (TSCD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
                       where imdom = PDOM.imdomOfTwoFinger6 g
 
                 in Control.Exception.Base.assert ((∀) cycles (\cycle -> Set.size (cycle ∩ ms) /= 1)) $
-                   tscdcostslicer ms == ntscdmydodslicer ms
+                   tscdcostslicer ms == ntscdntsodslicer ms
     @? ""
   | (exampleName, g :: Gr () (), ms) <- [(" exampleTimingDepCorrectionInteresting10",  exampleTimingDepCorrectionInteresting10, Set.fromList [-11,-10])]
   ] ++
@@ -630,7 +630,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     in ODEP.smmnLfp g ODEP.fMustBefore        ==
                        ODEP.smmnLfp g ODEP.fMust,
     -- TODO: select a counter examples, since counter examples arent realiably found within 100 graphs
-    -- testProperty  "some myDod-outside-of-imdom-sccs-property"
+    -- testProperty  "some ntsod-outside-of-imdom-sccs-property"
     -- $ \(ARBITRARY(generatedGraph)) ->
     --                 let g = generatedGraph
     --                     imdom          = NTICD.imdomOfTwoFinger7 g
@@ -640,8 +640,8 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     --                     imdomRev       = NTICD.imdomOfTwoFinger7 (grev g)
     --                     imdomRevTrc    = trc $ (fromSuccMap $ imdomRev :: Gr () ())
     --                     sMust = NTICD.smmnFMustDod g
-    --                     myDod = NTICD.myDod g
-    --                 in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
+    --                     ntsod = NTICD.ntsod g
+    --                 in  (∀) (Map.assocs ntsod) (\((m1,m2), ns) ->
     --                       (∀) ns (\n ->
     --                           (∃) (suc g n) (\x -> (n,x) ∈ sMust ! (m1,m2,n))
     --                         ∧ (∀) (suc g n) (\x ->
@@ -692,10 +692,10 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                    in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> SLICE.ODEP.ntscdMyDodSlice g ms == combinedBackwardSlice g cd Map.empty ms)) @? ""
   ] ++
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property strong for " ++ exampleName)
-            $       let myDod = ODEP.myDod g
+            $       let ntsod = ODEP.ntsod g
                         ntscd = NTICD.ntscdViaMDom g
-                    in  (∀) (Map.assocs myDod) (\((m1,m2), ns) ->
-                          (∀) ns (\n -> n ∈ myDod ! (m2,m1) ∨
+                    in  (∀) (Map.assocs ntsod) (\((m1,m2), ns) ->
+                          (∀) ns (\n -> n ∈ ntsod ! (m2,m1) ∨
                                         (∃) (ns) (\n' -> n' ∈ ntscd ! n)
                           )
                         ) @? ""

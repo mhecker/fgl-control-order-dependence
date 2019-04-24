@@ -15,7 +15,7 @@ import Data.Graph.Inductive.Util (delSuccessorEdges)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom, ntscdViaMDom)
 import Data.Graph.Inductive.Query.OrderDependence (
-    myDod, myDodFastPDom, dod,
+    ntsod, ntsodFastPDom, dod,
     ntiod, ntiodFastPDom, ntiodFast, ntiodFastPDomSimpleHeuristic,
     wodTEIL'PDom, wodTEIL',
   )
@@ -24,12 +24,12 @@ import Data.Graph.Inductive.Query.OrderDependence (
 ntscdMyDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdViaMDom graph
-        d     = myDod graph
+        d     = ntsod graph
 
 ntscdMyDodFastPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
 ntscdMyDodFastPDomSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdViaMDom graph
-        d     = myDodFastPDom graph
+        d     = ntsodFastPDom graph
 
 
 ntscdDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node

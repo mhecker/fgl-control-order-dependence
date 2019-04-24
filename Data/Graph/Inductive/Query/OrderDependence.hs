@@ -755,13 +755,13 @@ dod graph = xod sMust s3 graph
   where sMust = smmnFMustDod graph
         s3    = snmF3Lfp graph
 
-myDod graph = myXod sMust s3 graph
+ntsod graph = myXod sMust s3 graph
   where sMust = smmnFMustDod graph
         s3    = snmF3Lfp graph
 
 
-myDodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
-myDodFast graph =
+ntsodFast :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
+ntsodFast graph =
       Map.fromList [ ((m1,m2), Set.empty) | m1 <- nodes graph, m2 <- nodes graph, m1 /= m2 ]
     ⊔ Map.fromList [ ((m1,m2), ns)   | cycle <- imdomCycles,
                                        m1 <- cycle,
@@ -784,8 +784,8 @@ myDodFast graph =
         entriesFor cycle = [ n | n <- condNodes, not $ n ∊ cycle, [n'] <- [Set.toList $ imdom ! n], n' ∊ cycle]
         myDependence = myDependenceFor graph
 
-myDodFastPDom :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
-myDodFastPDom graph =
+ntsodFastPDom :: forall gr a b. (DynGraph gr) => gr a b -> Map (Node,Node) (Set Node)
+ntsodFastPDom graph =
         convert $
         [ (n,m1,m2)  |                                        cycle <- imdomCycles, length cycle > 1,
                                                               let cycleS = Set.fromList cycle,

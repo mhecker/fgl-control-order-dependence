@@ -83,7 +83,7 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod, dodDef,
-    myDod, myDodFastPDom,
+    ntsod, ntsodFastPDom,
     ntiod, ntiodFastPDom, ntiodFastPDomSimpleHeuristic, 
   )
 
@@ -288,7 +288,7 @@ observation3 = [
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         mdom  = PDOM.mdomOfLfp g
-                        ntsod = ODEP.myDod g
+                        ntsod = ODEP.ntsod g
                     in  (∀) (Map.assocs ntsod) (\((m1,m2), ns) ->
                           ((not $ Set.null ns) → (m1 ∈ mdom ! m2 ∧ m2 ∈ mdom ! m1))
                         ∧ (∀) ns (\n -> (not $ n ∈ mdom ! m1) ∧ (not $ n ∈ mdom ! m2))
@@ -298,12 +298,12 @@ observation3 = [
                         )
   ]
 observation4 = [
-      testPropertySized 60  "myDod reduction to ntscd"
+      testPropertySized 60  "ntsod reduction to ntscd"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         imdom = PDOM.imdomOfTwoFinger6 g
                         (cycleOf,cycles) = findCyclesM (fmap fromSet imdom)
-                        ntsod = ODEP.myDod g
+                        ntsod = ODEP.ntsod g
                         gNOfNode =
                           Map.fromList [ (m, gN) |
                                              bigM <- cycles,
@@ -322,11 +322,11 @@ observation4 = [
                              (∀) (Map.assocs ntscd') (\(n,ms) -> (∀) ms (\m1 -> (m1 ∈ bigM) → (n ∈ ntsod ! (m1, m2))))
                            )
                          ),
-      testProperty  "myDodFastPDom               ≡ myDod"
+      testProperty  "ntsodFastPDom               ≡ ntsod"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                    in ODEP.myDodFastPDom   g ≡
-                       ODEP.myDod           g
+                    in ODEP.ntsodFastPDom   g ≡
+                       ODEP.ntsod           g
   ]
 ntsodTests = testGroup "(concerning nontermination   sensititve order dependence)" $
   []

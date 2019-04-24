@@ -1,8 +1,33 @@
 PROPS = randomized-tests/dist/build/props/props
 
-.PHONY: all randomized-tests-forever
+.PHONY: all randomized-tests-forever benchmarks .FORCE
 
-all: randomized-tests-forever
+all: benchmarks-results randomized-tests-forever
+
+
+
+benchmark-results : ntiodSIZE-3000-x1-15n-maxdepth100.csv ntiodTIME-3000-x1-15n-maxdepth100.csv randomnticd.oneentryperline.csv
+
+ntiod.csv : .FORCE
+	cd benchmarks && mvn clean install -DskipTests 
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main countNTIODSize -rf csv -rff $@
+
+ntiodSIZE-3000-x1-15n-maxdepth100.csv : ntiod.csv
+	cat $< | grep ":size" | awk '{gsub(/\"/,"")};1' > $@
+
+ntiodTIME-3000-x1-15n-maxdepth100.csv : ntiod.csv
+	cat $< | grep -v ":size" | grep -v "Unit" | awk '{gsub(/\"/,"")};1' > $@
+
+
+randomnticd.csv : .FORCE
+	cd benchmarks && mvn clean install -DskipTests 
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main testRandom -rf csv -rff $@
+
+randomnticd.oneentryperline.csv : randomnticd.csv
+	cat $< | dos2unix | tail -n +2 |                                awk '{gsub(/\"/,"")};1' > $@
+
+
+
 
 randomized-tests-forever : $(PROPS)
 	while ./$(PROPS) ; do echo OK ; done

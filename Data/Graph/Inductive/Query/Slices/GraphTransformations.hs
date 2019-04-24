@@ -52,8 +52,8 @@ nticdMyWodSliceViaCutAtRepresentativesNoTrivial g = \ms -> combinedBackwardSlice
         empty = Map.empty
 
 
-ntscdMyDodSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (ntscd ⊔ ntscd'') empty ms
+ntscdNTSODSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdNTSODSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (ntscd ⊔ ntscd'') empty ms
   where g'' = splitRepresentativesGraphOf g
         ntscd   = invert'' $ ntscdViaMDom g
         ntscd'' = invert'' $ ntscdViaMDom g''

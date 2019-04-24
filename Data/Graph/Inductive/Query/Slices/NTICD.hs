@@ -33,8 +33,8 @@ nticdMyWodSlice graph msS = combinedBackwardSlice graph nticd' empty msS
         nticd' = invert'' $ nticdViaSinkDom graph'
         empty = Map.empty
 
-ntscdMyDodSliceViaNtscd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodSliceViaNtscd graph msS = combinedBackwardSlice graph ntscd' empty msS
+ntscdNTSODSliceViaNtscd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdNTSODSliceViaNtscd graph msS = combinedBackwardSlice graph ntscd' empty msS
   where ms = Set.toList msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         ntscd' = invert'' $ ntscdViaMDom graph'

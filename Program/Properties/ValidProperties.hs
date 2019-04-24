@@ -112,12 +112,12 @@ import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE
 import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (nticdMyWodSliceViaISinkDom)
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
     nticdMyWodSlice, nticdSlice,  ntscdSlice,
-    ntscdMyDodSliceViaNtscd, wodTEILSliceViaNticd,
+    ntscdNTSODSliceViaNtscd, wodTEILSliceViaNticd,
     wccSliceViaNticd,
   )
 import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
     nticdMyWodFastSlice, wodTEILPDomSlice, 
-    ntiodFastPDomSimpleHeuristicSlice, ntiodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, 
+    ntiodFastPDomSimpleHeuristicSlice, ntiodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdNTSODSlice, ntscdNTSODFastPDomSlice, 
     wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
   )
 import qualified Data.Graph.Inductive.Query.Slices.PostDominanceFrontiers as SLICE.PDF (nticdSliceFor)
@@ -2432,7 +2432,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                          s' = Set.fromList [ n | n <- nodes g, m ∈ ntind ! n ]
                      in s == s'
                    ),
-    testPropertySized 30 "ntscdMyDodSlice == ntscdMyDodSliceViaNticd for random slice-criteria of random size"
+    testPropertySized 30 "ntscdNTSODSlice == ntscdNTSODSliceViaNticd for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph
                     g'   = grev g
@@ -2440,25 +2440,25 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer1  = SLICE.ODEP.ntscdMyDodSlice               g
-                    slicer2  = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g
-                    slicer1' = SLICE.ODEP.ntscdMyDodSlice               g'
-                    slicer2' = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g'
+                    slicer1  = SLICE.ODEP.ntscdNTSODSlice               g
+                    slicer2  = SLICE.NTICD.ntscdNTSODSliceViaNtscd      g
+                    slicer1' = SLICE.ODEP.ntscdNTSODSlice               g'
+                    slicer2' = SLICE.NTICD.ntscdNTSODSliceViaNtscd      g'
                 in   slicer1  ms == slicer2  ms
                    ∧ slicer1' ms == slicer2' ms,
-    testProperty "ntscdMyDodSlice == nticdMyDodSliceViaNtscd"
+    testProperty "ntscdNTSODSlice == nticdNTSODSliceViaNtscd"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    slicer1  = SLICE.ODEP.ntscdMyDodFastPDomSlice       g
-                    slicer2  = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g
-                    slicer1' = SLICE.ODEP.ntscdMyDodFastPDomSlice       g'
-                    slicer2' = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g'
+                    slicer1  = SLICE.ODEP.ntscdNTSODFastPDomSlice       g
+                    slicer2  = SLICE.NTICD.ntscdNTSODSliceViaNtscd      g
+                    slicer1' = SLICE.ODEP.ntscdNTSODFastPDomSlice       g'
+                    slicer2' = SLICE.NTICD.ntscdNTSODSliceViaNtscd      g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let ms = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
                    )), -- ),
-      testProperty  "ntscdMyDodSlice == ntscdMyDodSliceViaNtscd even when using data dependencies"
+      testProperty  "ntscdNTSODSlice == ntscdNTSODSliceViaNtscd even when using data dependencies"
                 $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) ->
                    let g = generatedGraph
                        ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
@@ -2544,7 +2544,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                               (n  ∊ reachable m1 g  ∨ n  ∊ reachable m2 g)
                           )
                         ),
-    testProperty  "ntscdDodSlice == ntscdMyDodSlice property"
+    testProperty  "ntscdDodSlice == ntscdNTSODSlice property"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         ntsod = ODEP.ntsod g
@@ -2555,15 +2555,15 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                                         (∃) (ns ∩ (ntsod ! (m2, m1))) (\n' -> n' ∊ (suc ntscdTrc n))
                           )
                         ),
-    testProperty  "ntscdDodSlice == ntscdMyDodSlice"
+    testProperty  "ntscdDodSlice == ntscdNTSODSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         ntscdDodSlice     = SLICE.ODEP.ntscdDodSlice g
-                        ntscdMyDodSlice   = SLICE.ODEP.ntscdMyDodSlice g
+                        ntscdNTSODSlice   = SLICE.ODEP.ntscdNTSODSlice g
                     in  -- traceShow (length $ nodes g) $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           ntscdDodSlice   (Set.fromList [m1, m2]) ==
-                          ntscdMyDodSlice (Set.fromList [m1, m2])
+                          ntscdNTSODSlice (Set.fromList [m1, m2])
                         )),
     testProperty  "dod implies ntsod"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -2711,7 +2711,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property for " ++ exampleName)
+  [  testCase    ( "ntscdDodSlice == ntscdNTSODSlice property for " ++ exampleName)
             $       let ntsod = ODEP.ntsod g
                         ntscd = NTICD.ntscdViaMDom g
                         ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
@@ -2722,13 +2722,13 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                         ) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice for " ++ exampleName)
+  [  testCase    ( "ntscdDodSlice == ntscdNTSODSlice for " ++ exampleName)
             $       let ntscdDodSlice     = SLICE.ODEP.ntscdDodSlice g
-                        ntscdMyDodSlice   = SLICE.ODEP.ntscdMyDodSlice g
+                        ntscdNTSODSlice   = SLICE.ODEP.ntscdNTSODSlice g
                     in  -- traceShow (length $ nodes g) $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           ntscdDodSlice   (Set.fromList [m1, m2]) ==
-                          ntscdMyDodSlice (Set.fromList [m1, m2])
+                          ntscdNTSODSlice (Set.fromList [m1, m2])
                         )) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
@@ -3142,14 +3142,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                           ))
                        )
                 ))),
-    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in reducible CFG"
+    testProperty "timingCorrection tscdCostSlice == ntscdNTSODSlice for random slice criteria of random size in reducible CFG"
     $ \(REDUCIBLE(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
                     (cost, _) = TSCD.timingCorrection g cost0
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3160,7 +3160,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdntsodslicer ms
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
-    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in CFG with unique exit node"
+    testProperty "timingCorrection tscdCostSlice == ntscdNTSODSlice for random slice criteria of random size in CFG with unique exit node"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                 let (_, g) = withUniqueEndNode () () generatedGraph
                     
@@ -3168,7 +3168,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3179,7 +3179,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     s' = ntscdntsodslicer ms
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok,
-    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in CFG with empty ntsod"
+    testProperty "timingCorrection tscdCostSlice == ntscdNTSODSlice for random slice criteria of random size in CFG with empty ntsod"
     $ \(REDUCIBLE(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
                     ntsod = ODEP.ntsodFastPDom   g
@@ -3188,7 +3188,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3200,14 +3200,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in ((∀) (Map.assocs ntsod) (\(_,ns) -> Set.null ns)) ==>
                    let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s, ntsod) ok,
-    testProperty "timingCorrection tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size in CFG with unique exit node, but fixed examples"
+    testProperty "timingCorrection tscdCostSlice == ntscdNTSODSlice for random slice criteria of random size in CFG with unique exit node, but fixed examples"
     $ \seed1 seed2 seed3 -> (∀) interestingTimingDep (\(exampleName, example) ->
                 let (_, g) = withUniqueEndNode () () example
                     (cost, _) = TSCD.timingCorrection g cost0
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3219,7 +3219,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in let ok = s == s'
                    in if ok then ok else traceShow (g,ms,s',s) ok
                 ),
-    testProperty "timingLeaksTransformation tscdCostSlice == ntscdMyDodSlice for random slice criteria of random size, but fixed examples"
+    testProperty "timingLeaksTransformation tscdCostSlice == ntscdNTSODSlice for random slice criteria of random size, but fixed examples"
     $ \seed1 seed2 seed3 -> (∀) interestingTimingDep (\(exampleName, example) ->
                 let g = example :: Gr () ()
                     n    = length $ nodes g
@@ -3231,7 +3231,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
                     
                     s  = tscdcostslicer   ms
                     s' = ntscdntsodslicer ms
@@ -3240,7 +3240,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 in let ok = (s == s')
                    in if ok then ok else traceShow (g,ms,s',s) ok
                 ),
-    testProperty "timingCorrection tscdCostSlice g[ms -/> ] ms == ntscdMyDodSlice ms for random slice criteria of random size"
+    testProperty "timingCorrection tscdCostSlice g[ms -/> ] ms == ntscdNTSODSlice ms for random slice criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                 let g = generatedGraph
                     n = length $ nodes g
@@ -3253,7 +3253,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     (cost,   _) = TSCD.timingLeaksTransformation g   cost0 ms
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g   costF  
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
 
                     g'' = foldr (flip delSuccessorEdges) g ms
                     (cost'', _) = TSCD.timingCorrection          g'' cost0
@@ -3453,14 +3453,14 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                            )
                          )
                    ),
-    testProperty   "ntscdMyDodSlice ⊆ tscdSlice for random slice-criteria of random size"
+    testProperty   "ntscdNTSODSlice ⊆ tscdSlice for random slice-criteria of random size"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                     let g = generatedGraph
                         n    = length $ nodes g
                         ms
                           | n == 0 = Set.empty
                           | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                        ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd   g
+                        ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd   g
                         tscdslicer        = TSCD.tscdSliceFast g
                         subseteq = ntscdntsodslicer ms ⊆ tscdslicer ms
                     in  (if subseteq then id  else traceShow (ms, g)) subseteq,
@@ -4185,13 +4185,13 @@ indepsTests = testGroup "(concerning dependencey graph representations using ind
 
 
 delayProps = testGroup "(concerning inifinte delay)" [
-    testPropertySized 25 "ntscdMyDodFastPDomSlice  is sound"
+    testPropertySized 25 "ntscdNTSODFastPDomSlice  is sound"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
-                        slicer     = SLICE.ODEP.ntscdMyDodFastPDomSlice g
+                        slicer     = SLICE.ODEP.ntscdNTSODFastPDomSlice g
                         ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
                         runInput   = InfiniteDelay.runInput         g
                     in (∀) ss (\s ->
@@ -4211,14 +4211,14 @@ delayProps = testGroup "(concerning inifinte delay)" [
                                ))
                          in not differentobservation
                     ),
-    testPropertySized 25 "ntscdMyDodFastPDomSlice  is minimal"
+    testPropertySized 25 "ntscdNTSODFastPDomSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = SLICE.ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                        s = SLICE.ODEP.ntscdNTSODFastPDomSlice g (Set.fromList [m1, m2])
                         runInput         = InfiniteDelay.runInput g
                     in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
@@ -4331,13 +4331,13 @@ delayProps = testGroup "(concerning inifinte delay)" [
                        ))
   ]
 delayTests = testGroup "(concerning  inifinite delay)" $
-  [  testCase    ( "ntscdMyDodFastPDomSlice  is minimal for " ++ exampleName) $
+  [  testCase    ( "ntscdNTSODFastPDomSlice  is minimal for " ++ exampleName) $
                let n = toInteger $ length $ nodes g
                    condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                    choices    = InfiniteDelay.allChoices g Map.empty condNodes
                    runInput   = InfiniteDelay.runInput         g
                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
-                    let s = SLICE.ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                    let s = SLICE.ODEP.ntscdNTSODFastPDomSlice g (Set.fromList [m1, m2])
                     in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
@@ -4362,13 +4362,13 @@ delayTests = testGroup "(concerning  inifinite delay)" $
                   )) @? ""
   | (exampleName, g) <- interestingDodWod
   ] ++
-  [  testCase    ( "ntscdMyDodFastPDomSlice  is sound for " ++ exampleName) $ 
+  [  testCase    ( "ntscdNTSODFastPDomSlice  is sound for " ++ exampleName) $ 
                let n = toInteger $ length $ nodes g
                    condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                    choices    = InfiniteDelay.allChoices g Map.empty condNodes
                    runInput   = InfiniteDelay.runInput         g
                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
-                    let s = SLICE.ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                    let s = SLICE.ODEP.ntscdNTSODFastPDomSlice g (Set.fromList [m1, m2])
                         observable       = InfiniteDelay.observable         s
                         differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice

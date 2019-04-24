@@ -21,13 +21,13 @@ import Data.Graph.Inductive.Query.OrderDependence (
   )
 
 
-ntscdMyDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
+ntscdNTSODSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdNTSODSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdViaMDom graph
         d     = ntsod graph
 
-ntscdMyDodFastPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodFastPDomSlice graph =  combinedBackwardSlice graph ntscd d
+ntscdNTSODFastPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdNTSODFastPDomSlice graph =  combinedBackwardSlice graph ntscd d
   where ntscd = invert'' $ ntscdViaMDom graph
         d     = ntsodFastPDom graph
 

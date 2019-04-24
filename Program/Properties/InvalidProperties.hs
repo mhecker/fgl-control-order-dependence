@@ -82,9 +82,9 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (noJoi
 import  Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified  Data.Graph.Inductive.Query.PostDominance.GraphTransformations as PDOM.TRANS (isinkdomOfSinkContraction)
 import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE.TRANS (nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaChoiceAtRepresentatives)
-import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (nticdMyWodSlice, ntscdMyDodSliceViaNtscd)
+import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (nticdMyWodSlice, ntscdNTSODSliceViaNtscd)
 import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
-    ntscdMyDodSlice,
+    ntscdNTSODSlice,
     wodTEILSlice,
     wodTEILPDomSlice,
     nticdMyWodSlice,
@@ -268,11 +268,11 @@ timingDepTests = testGroup "(concerning timingDependence)" $
     @? ""
   | (exampleName, g :: Gr () ()) <- [("exampleTimingDepInterestingTwoFinger", exampleTimingDepInterestingTwoFinger)]
   ] ++
-  [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
+  [ testCase ("timingCorrection tscdCostSlice == ntscdNTSODSlice for " ++ exampleName) $ 
                 let (cost, _) = TSCD.timingCorrection g (TSCD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
                       where imdom = PDOM.imdomOfTwoFinger6 g
@@ -286,11 +286,11 @@ timingDepTests = testGroup "(concerning timingDependence)" $
                                          (" exampleTimingDepCorrectionInteresting11Simple", exampleTimingDepCorrectionInteresting11Simple, Set.fromList [-30,6])
                                         ]
   ] ++
-  [ testCase ("timingCorrection tscdCostSlice == ntscdMyDodSlice for " ++ exampleName) $ 
+  [ testCase ("timingCorrection tscdCostSlice == ntscdNTSODSlice for " ++ exampleName) $ 
                 let (cost, _) = TSCD.timingCorrection g (TSCD.cost1 g)
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdntsodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
 
                     (cycleOf, cycles) = findCyclesM $ fmap fromSet $ imdom
                       where imdom = PDOM.imdomOfTwoFinger6 g
@@ -689,9 +689,9 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                    let g = mkGraph [(1,()),(4,()),(5,())] [(1,4,()),(4,1,()),(5,1,()),(5,4,())] :: Gr () ()
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> SLICE.ODEP.ntscdMyDodSlice g ms == combinedBackwardSlice g cd Map.empty ms)) @? ""
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> SLICE.ODEP.ntscdNTSODSlice g ms == combinedBackwardSlice g cd Map.empty ms)) @? ""
   ] ++
-  [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice property strong for " ++ exampleName)
+  [  testCase    ( "ntscdDodSlice == ntscdNTSODSlice property strong for " ++ exampleName)
             $       let ntsod = ODEP.ntsod g
                         ntscd = NTICD.ntscdViaMDom g
                     in  (∀) (Map.assocs ntsod) (\((m1,m2), ns) ->

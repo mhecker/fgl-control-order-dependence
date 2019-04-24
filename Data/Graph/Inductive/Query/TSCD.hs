@@ -30,7 +30,7 @@ import Data.Graph.Inductive.Query.LCA(lcaTimdomOfTwoFingerFast, lcaTimdomOfTwoFi
 import Data.Graph.Inductive.Query.PostDominance (onedomOf, domsOf, imdomOfTwoFinger6)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms,  idomToDFFast, isinkDFTwoFinger, xDFcd)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
-import Data.Graph.Inductive.Query.Slices.NTICD (ntscdSlice, ntscdMyDodSliceViaNtscd)
+import Data.Graph.Inductive.Query.Slices.NTICD (ntscdSlice, ntscdNTSODSliceViaNtscd)
 
 
 tscdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
@@ -195,7 +195,7 @@ timingLeaksTransformation g0 cost0 ms  = f notmissing itimdomMultiple0 cost0
           where condNodes = Set.fromList [ n | n <- nodes g, let succs = suc g n, length succs > 1]
                 imdom = imdomOfTwoFinger6 g
 
-                ns = assert (s' == ntscdMyDodSliceViaNtscd g0        ms) $
+                ns = assert (s' == ntscdNTSODSliceViaNtscd g0        ms) $
                      assert (s0 == tscdCostSlice           g0 cost0F ms) $
                      assert (nsSimple == nsLimitedToTscdFrontiers) $
                      nsSimple

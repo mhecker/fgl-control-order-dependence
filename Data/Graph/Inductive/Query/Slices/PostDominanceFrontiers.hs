@@ -38,3 +38,20 @@ nticdMyWodSlice graph msS = combinedBackwardSlice graph nticd' empty msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         nticd' = isinkDFTwoFinger graph'
         empty = Map.empty
+
+ntscdMyDodSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdMyDodSlice graph msS = combinedBackwardSlice graph ntscd' empty msS
+  where ms = Set.toList msS
+        graph' = foldr (flip delSuccessorEdges) graph ms
+        ntscd' = mDFTwoFinger graph'
+        empty = Map.empty
+
+wodTEILSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticd g msS = combinedBackwardSlice g nticd'' empty msS
+  where ms = Set.toList msS
+        g''   = foldr (flip delSuccessorEdges) g' ms
+          where  toMs   = rdfs ms g
+                 g' = subgraph toMs g
+        nticd'' = isinkDFTwoFinger g''
+        empty = Map.empty
+

@@ -110,7 +110,16 @@ import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE
     nticdMyWodSliceViaCutAtRepresentatives, nticdMyWodSliceViaEscapeNodes, nticdMyWodSliceViaCutAtRepresentativesNoTrivial, nticdMyWodSliceViaChoiceAtRepresentatives
  )
 import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (nticdMyWodSliceViaISinkDom)
-import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (nticdMyWodSlice, nticdSlice,  ntscdSlice)
+import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
+    nticdMyWodSlice, nticdSlice,  ntscdSlice,
+    ntscdMyDodSliceViaNtscd, wodTEILSliceViaNticd,
+    wccSliceViaNticd,
+  )
+import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
+    nticdMyWodFastSlice, wodTEILPDomSlice, 
+    myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, 
+    wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
+  )
 import qualified Data.Graph.Inductive.Query.Slices.PostDominanceFrontiers as SLICE.PDF (nticdSliceFor)
 import qualified Data.Graph.Inductive.Query.PathsBetween as PBETWEEN (
     pathsBetweenBFS, pathsBetweenUpToBFS,
@@ -131,10 +140,7 @@ import qualified Data.Graph.Inductive.Query.NTICD.SNM as SNM (
     ntscdF4, ntscdF3, ntscdF4WorkList
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
-    ntscdMyDodSliceViaNtscd, mustOfLfp, mustOfGfp, mmayOf, mmayOf', rotatePDomAround, Color(..), smmnFMustDod, smmnFMustWod, colorLfpFor, colorFor,
-    nticdMyWodFastSlice, wodTEILPDomSlice, wodTEILSliceViaNticd,
-    myWodFastPDomSimpleHeuristicSlice, myWodFastSlice, nticdMyWodSlice, wodTEILSlice, ntscdDodSlice, ntscdMyDodSlice, ntscdMyDodFastPDomSlice, 
-    wccSliceViaNticd, wccSliceViaNticdMyWodPDomSimpleHeuristic, nticdMyWodPDomSimpleHeuristic,
+     mustOfLfp, mustOfGfp, mmayOf, mmayOf', rotatePDomAround, Color(..), smmnFMustDod, smmnFMustWod, colorLfpFor, colorFor,
     smmnGfp, smmnLfp, fMust, fMustBefore, fMustNoReachCheck,
     dod, dodDef, dodFast, dodColoredDagFixed, dodColoredDagFixedFast,
     myWod, myWodFast, myWodFastPDom, myWodFastPDomSimpleHeuristic,  myDod, myDodFast, myDodFastPDom, wodTEIL', wodTEIL'PDom, wodDef, wodFast, fMay, fMay'
@@ -1188,7 +1194,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     ms = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
 
                     wccslicer   = FCACD.wccSlice g
-                    wccslicer'  = ODEP.wccSliceViaNticd g
+                    wccslicer'  = SLICE.NTICD.wccSliceViaNticd g
                 in wccslicer ms == wccslicer'  ms,
     testProperty "wccSlice == * for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
@@ -1200,11 +1206,11 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     msS = Set.fromList ms
 
                     wccslicer   = FCACD.wccSlice g
-                    wccslicer'  = ODEP.wccSliceViaNticd g
+                    wccslicer'  = SLICE.NTICD.wccSliceViaNticd g
 
                     fromMs =  dfs ms g
                     g'    = subgraph fromMs g
-                    wodslicer = ODEP.wodTEILSliceViaNticd g'
+                    wodslicer = SLICE.NTICD.wodTEILSliceViaNticd g'
 
                     toMs   = rdfs ms g
                     g''    = foldr (flip delSuccessorEdges) (subgraph fromMs $ subgraph toMs g) ms
@@ -1239,9 +1245,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    slicer1  = ODEP.nticdMyWodPDomSimpleHeuristic g
+                    slicer1  = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g
                     slicer2  = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g
-                    slicer1' = ODEP.nticdMyWodPDomSimpleHeuristic g'
+                    slicer1' = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g'
                     slicer2' = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let ms = Set.fromList [m1, m2] in -- -} (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
                        slicer1  ms == slicer2  ms
@@ -1273,10 +1279,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer1  = ODEP.nticdMyWodPDomSimpleHeuristic g
-                    slicer2  = SLICE.NTICD.nticdMyWodSlice        g
-                    slicer1' = ODEP.nticdMyWodPDomSimpleHeuristic g'
-                    slicer2' = SLICE.NTICD.nticdMyWodSlice        g'
+                    slicer1  = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g
+                    slicer2  = SLICE.NTICD.nticdMyWodSlice              g
+                    slicer1' = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g'
+                    slicer2' = SLICE.NTICD.nticdMyWodSlice              g'
                 in   slicer1  ms == slicer2  ms
                    ∧ slicer1' ms == slicer2' ms,
     testProperty "sinkdoms g' => sinkdoms g"
@@ -1465,7 +1471,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     sinkdom = PDOM.sinkdomOfGfp g
                     mywod =  ODEP.myWodFastPDomSimpleHeuristic g
                     must = ODEP.mustOfGfp g
-                    slicer  = ODEP.nticdMyWodPDomSimpleHeuristic g
+                    slicer  = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g
                     nticdslicer = SLICE.NTICD.nticdSlice g
                     sinkdoms = PDOM.sinkdomsOf g
                     onPathBetween ss ts = fwd
@@ -1589,10 +1595,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    slicer1  = ODEP.nticdMyWodPDomSimpleHeuristic g
-                    slicer2  = SLICE.NTICD.nticdMyWodSlice        g
-                    slicer1' = ODEP.nticdMyWodPDomSimpleHeuristic g'
-                    slicer2' = SLICE.NTICD.nticdMyWodSlice        g'
+                    slicer1  = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g
+                    slicer2  = SLICE.NTICD.nticdMyWodSlice              g
+                    slicer1' = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g'
+                    slicer2' = SLICE.NTICD.nticdMyWodSlice              g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let ms = Set.fromList [m1, m2] in -- -} (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
@@ -1660,8 +1666,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
     testProperty "unique node property for nticdMyWodPDomSimpleHeuristic"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
-                    mywodslicer   = ODEP.nticdMyWodPDomSimpleHeuristic g
-                    wodteilslicer = ODEP.wodTEILPDomSlice g
+                    mywodslicer   = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g
+                    wodteilslicer = SLICE.ODEP.wodTEILPDomSlice g
                     property1 s s' g' unique = (∀) s' (\n -> (length (unique ! n) <= 1))
                     property2 s s' g' unique = (∀) s' (\n -> (∀) (suc g n) (\n' ->
                                                  (n' ∈ s) ∨ (unique ! n == unique ! n')
@@ -1706,7 +1712,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
-                        slicer     = ODEP.nticdMyWodPDomSimpleHeuristic g
+                        slicer     = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g
                         -- slicer     = NTICD.wodTEILPDomSlice g
                         ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
                         runInput   = InfiniteDelay.runInput         g
@@ -1739,9 +1745,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    mywodteilslicer  = ODEP.nticdMyWodPDomSimpleHeuristic g
+                    mywodteilslicer  = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g
                     wdslicer         = FCACD.nticdMyWodViaWDSlice          g
-                    mywodteilslicer' = ODEP.nticdMyWodPDomSimpleHeuristic g'
+                    mywodteilslicer' = SLICE.ODEP.nticdMyWodPDomSimpleHeuristic g'
                     wdslicer'        = FCACD.nticdMyWodViaWDSlice          g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
                        mywodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
@@ -1751,9 +1757,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    wodteilslicer    = ODEP.wodTEILSlice           g
+                    wodteilslicer    = SLICE.ODEP.wodTEILSlice           g
                     wdslicer         = FCACD.wodTEILSliceViaBraunF2 g
-                    wodteilslicer'   = ODEP.wodTEILSlice           g'
+                    wodteilslicer'   = SLICE.ODEP.wodTEILSlice           g'
                     wdslicer'        = FCACD.wodTEILSliceViaBraunF2 g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> if m1 == m2 then True else
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
@@ -1763,9 +1769,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    wodteilslicer    = ODEP.wodTEILSlice g
+                    wodteilslicer    = SLICE.ODEP.wodTEILSlice g
                     wdslicer         = FCACD.wdSlice      g
-                    wodteilslicer'   = ODEP.wodTEILSlice g'
+                    wodteilslicer'   = SLICE.ODEP.wodTEILSlice g'
                     wdslicer'        = FCACD.wdSlice      g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
@@ -1778,8 +1784,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    wodteilslicer    = ODEP.wodTEILSlice g
-                    wodteilslicer'   = ODEP.wodTEILSliceViaNticd g
+                    wodteilslicer    = SLICE.ODEP.wodTEILSlice g
+                    wodteilslicer'   = SLICE.NTICD.wodTEILSliceViaNticd g
                 in wodteilslicer ms  == wodteilslicer' ms,
     testProperty "wodTEILSliceViaNticd  == wdSlice for CFG-shaped graphs and randomly selected nodes"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 seed3 ->
@@ -1795,7 +1801,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
                     wdslicer  = FCACD.wdSlice g
-                    wodslicer = ODEP.wodTEILSliceViaNticd g
+                    wodslicer = SLICE.NTICD.wodTEILSliceViaNticd g
                 in (∀) mss (\ms ->
                      wdslicer ms == wodslicer ms
                    ),
@@ -1808,7 +1814,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     fromMs = Set.fromList $ dfs (Set.toList ms) g
                     wccslicer  = FCACD.wccSlice g
-                    wodslicer = ODEP.wodTEILSliceViaNticd g
+                    wodslicer = SLICE.NTICD.wodTEILSliceViaNticd g
                 in wccslicer ms == wodslicer ms ∩ fromMs,
     testProperty "wodTEILSliceViaNticd  == wdSlice for randomly selected nodes"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
@@ -1823,7 +1829,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
                     wdslicer  = FCACD.wdSlice g
-                    wodslicer = ODEP.wodTEILSliceViaNticd g
+                    wodslicer = SLICE.NTICD.wodTEILSliceViaNticd g
                 in (∀) mss (\ms ->
                      wdslicer ms == wodslicer ms
                    ),
@@ -1831,9 +1837,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    wodteilslicer    = ODEP.wodTEILSliceViaNticd g
+                    wodteilslicer    = SLICE.NTICD.wodTEILSliceViaNticd g
                     wdslicer         = FCACD.wdSlice      g
-                    wodteilslicer'   = ODEP.wodTEILSliceViaNticd g'
+                    wodteilslicer'   = SLICE.NTICD.wodTEILSliceViaNticd g'
                     wdslicer'        = FCACD.wdSlice      g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
                        wodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
@@ -1845,7 +1851,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     m1 = (cycle $ nodes g) !! 32904
                     m2 = (cycle $ nodes g) !! 87653
                     wccSlicer  = FCACD.wccSlice g
-                    wccSlicer' = ODEP.wccSliceViaNticdMyWodPDomSimpleHeuristic g
+                    wccSlicer' = SLICE.ODEP.wccSliceViaNticdMyWodPDomSimpleHeuristic g
                 in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
     testProperty "wccSliceViaNticdMyWodSliceSimple  == wccSlice for randomly selected nodes"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -1878,10 +1884,10 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g   =      generatedGraph
                     rev = grev generatedGraph
-                    wodteilslicer    = ODEP.wodTEILSlice g
+                    wodteilslicer    = SLICE.ODEP.wodTEILSlice g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
                      let g' = subgraph (List.nub $ (reachable m1 rev) ++ (reachable m2 rev)) g
-                         nticdmywodslicer  = ODEP.nticdMyWodFastSlice g'
+                         nticdmywodslicer  = SLICE.ODEP.nticdMyWodFastSlice g'
                      in wodteilslicer (Set.fromList [m1, m2]) == nticdmywodslicer (Set.fromList [m1, m2])
                    )),
     testProperty "wodTEILPDomSlice = wodTEILSliceViaNticd"
@@ -1896,8 +1902,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                                         let m2 = nodes g !! (s2 `mod` n),
                                                         let m3 = nodes g !! (s3 `mod` n)
                           ]
-                    wodteilslicer    = ODEP.wodTEILPDomSlice g
-                    wodteilslicer'   = ODEP.wodTEILSliceViaNticd g
+                    wodteilslicer    = SLICE.ODEP.wodTEILPDomSlice g
+                    wodteilslicer'   = SLICE.NTICD.wodTEILSliceViaNticd g
                 in (∀) mss (\ms ->
                      wodteilslicer ms  == wodteilslicer' ms
                    ),
@@ -1905,7 +1911,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g   =      generatedGraph
                     rev = grev generatedGraph
-                    wodteilslicer    = ODEP.wodTEILPDomSlice g
+                    wodteilslicer    = SLICE.ODEP.wodTEILPDomSlice g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
                      let g' = subgraph (List.nub $ (reachable m1 rev) ++ (reachable m2 rev)) g
                          nticdmywodslicer  = MyWodSlice.nticdMyWodSliceSimple MyWodSlice.cutNPasteIfPossible g'
@@ -1976,7 +1982,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                    (∀) sinks (\sink ->
                      let g = subgraph sink g0
                          mywodslicer     = MyWodSlice.myWodSlice g
-                         mywodfastslicer = ODEP.myWodFastSlice g
+                         mywodfastslicer = SLICE.ODEP.myWodFastSlice g
                      in (∀) sink (\m1 -> (∀) sink (\m2 -> (m1 == m2) ∨
                           mywodslicer m1 m2 == mywodfastslicer (Set.fromList [m1, m2])
                         ))
@@ -1987,7 +1993,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                     g = insEdge (exit, entry, ()) generatedGraph
                     mywodslicer     = MyWodSlice.myWodSlice g
-                    mywodpdomslicer = ODEP.myWodFastPDomSimpleHeuristicSlice g
+                    mywodpdomslicer = SLICE.ODEP.myWodFastPDomSimpleHeuristicSlice g
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        mywodslicer m1 m2 == mywodpdomslicer (Set.fromList [m1, m2])
                     )),
@@ -2003,7 +2009,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
-                    mywodfastslicer   = ODEP.myWodFastSlice g
+                    mywodfastslicer   = SLICE.ODEP.myWodFastSlice g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           mywodsimpleslicer (Set.fromList [m1, m2]) == mywodfastslicer (Set.fromList [m1, m2])
                    )),
@@ -2013,7 +2019,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                     g = insEdge (exit, entry, ()) generatedGraph
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.cutNPasteIfPossible g
-                    mywodpdomslicer = ODEP.myWodFastPDomSimpleHeuristicSlice g
+                    mywodpdomslicer = SLICE.ODEP.myWodFastPDomSimpleHeuristicSlice g
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        mywodsimpleslicer (Set.fromList [m1, m2]) == mywodpdomslicer (Set.fromList [m1, m2])
                     )),
@@ -2029,7 +2035,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
-                    mywodfastslicer   = ODEP.myWodFastSlice g
+                    mywodfastslicer   = SLICE.ODEP.myWodFastSlice g
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           mywodsimpleslicer (Set.fromList [m1, m2]) == mywodfastslicer (Set.fromList [m1, m2])
                    )),
@@ -2039,7 +2045,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                     g = insEdge (exit, entry, ()) generatedGraph
                     mywodsimpleslicer = MyWodSlice.myWodSliceSimple MyWodSlice.recompute g
-                    mywodpdomslicer = ODEP.myWodFastPDomSimpleHeuristicSlice g
+                    mywodpdomslicer = SLICE.ODEP.myWodFastPDomSimpleHeuristicSlice g
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        mywodsimpleslicer (Set.fromList [m1, m2]) == mywodpdomslicer (Set.fromList [m1, m2])
                     )),
@@ -2230,7 +2236,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         nticdWodSlice   = NTICDUnused.wodMyEntryWodMyCDSlice g
-                        wodTEILSlice    = ODEP.wodTEILSlice           g
+                        wodTEILSlice    = SLICE.ODEP.wodTEILSlice           g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           wodTEILSlice (Set.fromList [m1, m2]) ⊆ nticdWodSlice (Set.fromList [m1, m2])
                         )),
@@ -2240,7 +2246,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
                         g = insEdge (exit, entry, ()) generatedGraph
                         nticdWodSlice   = NTICDUnused.wodMyEntryWodMyCDSlice g
-                        wodTEILSlice    = ODEP.wodTEILSlice           g
+                        wodTEILSlice    = SLICE.ODEP.wodTEILSlice           g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           let s  = wodTEILSlice (Set.fromList [m1, m2])
                               s' = nticdWodSlice (Set.fromList [m1, m2])
@@ -2249,8 +2255,8 @@ wodProps = testGroup "(concerning weak order dependence)" [
   testPropertySized 30  "wodTEILSlice is contained in nticdMyWodSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        nticdWodSlice   = ODEP.nticdMyWodSlice g
-                        wodTEILSlice    = ODEP.wodTEILSlice g
+                        nticdWodSlice   = SLICE.ODEP.nticdMyWodSlice g
+                        wodTEILSlice    = SLICE.ODEP.wodTEILSlice g
                     in (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           wodTEILSlice (Set.fromList [m1, m2]) ⊑   nticdWodSlice (Set.fromList [m1, m2])
                         )),
@@ -2366,8 +2372,8 @@ wodTests = testGroup "(concerning weak order dependence)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "wodTEILSlice is contained in nticdMyWodSlice for " ++ exampleName)
-            $       let nticdWodSlice   = ODEP.nticdMyWodSlice g
-                        wodTEILSlice    = ODEP.wodTEILSlice g
+            $       let nticdWodSlice   = SLICE.ODEP.nticdMyWodSlice g
+                        wodTEILSlice    = SLICE.ODEP.wodTEILSlice g
                     in  (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           wodTEILSlice (Set.fromList [m1, m2])  ⊑  nticdWodSlice (Set.fromList [m1, m2])
                         )) @? ""
@@ -2434,20 +2440,20 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer1  = ODEP.ntscdMyDodSlice               g
-                    slicer2  = ODEP.ntscdMyDodSliceViaNtscd       g
-                    slicer1' = ODEP.ntscdMyDodSlice               g'
-                    slicer2' = ODEP.ntscdMyDodSliceViaNtscd       g'
+                    slicer1  = SLICE.ODEP.ntscdMyDodSlice               g
+                    slicer2  = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g
+                    slicer1' = SLICE.ODEP.ntscdMyDodSlice               g'
+                    slicer2' = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g'
                 in   slicer1  ms == slicer2  ms
                    ∧ slicer1' ms == slicer2' ms,
     testProperty "ntscdMyDodSlice == nticdMyDodSliceViaNtscd"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
-                    slicer1  = ODEP.ntscdMyDodFastPDomSlice       g
-                    slicer2  = ODEP.ntscdMyDodSliceViaNtscd       g
-                    slicer1' = ODEP.ntscdMyDodFastPDomSlice       g'
-                    slicer2' = ODEP.ntscdMyDodSliceViaNtscd       g'
+                    slicer1  = SLICE.ODEP.ntscdMyDodFastPDomSlice       g
+                    slicer2  = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g
+                    slicer1' = SLICE.ODEP.ntscdMyDodFastPDomSlice       g'
+                    slicer2' = SLICE.NTICD.ntscdMyDodSliceViaNtscd      g'
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  let ms = Set.fromList [m1, m2] in -- (∀) (nodes g) (\m3 -> let ms = Set.fromList [m1, m2, m3] in 
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
@@ -2552,8 +2558,8 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "ntscdDodSlice == ntscdMyDodSlice"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        ntscdDodSlice     = ODEP.ntscdDodSlice g
-                        ntscdMyDodSlice   = ODEP.ntscdMyDodSlice g
+                        ntscdDodSlice     = SLICE.ODEP.ntscdDodSlice g
+                        ntscdMyDodSlice   = SLICE.ODEP.ntscdMyDodSlice g
                     in  -- traceShow (length $ nodes g) $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           ntscdDodSlice   (Set.fromList [m1, m2]) ==
@@ -2717,8 +2723,8 @@ dodTests = testGroup "(concerning decisive order dependence)" $
   | (exampleName, g) <- interestingDodWod
   ] ++
   [  testCase    ( "ntscdDodSlice == ntscdMyDodSlice for " ++ exampleName)
-            $       let ntscdDodSlice     = ODEP.ntscdDodSlice g
-                        ntscdMyDodSlice   = ODEP.ntscdMyDodSlice g
+            $       let ntscdDodSlice     = SLICE.ODEP.ntscdDodSlice g
+                        ntscdMyDodSlice   = SLICE.ODEP.ntscdMyDodSlice g
                     in  -- traceShow (length $ nodes g) $
                         (∀) (nodes g) (\m1 ->  (∀) (nodes g) (\m2 ->
                           ntscdDodSlice   (Set.fromList [m1, m2]) ==
@@ -3143,7 +3149,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = ODEP.ntscdMyDodSliceViaNtscd g
+                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3162,7 +3168,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = ODEP.ntscdMyDodSliceViaNtscd g
+                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3182,7 +3188,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = ODEP.ntscdMyDodSliceViaNtscd g
+                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3201,7 +3207,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = ODEP.ntscdMyDodSliceViaNtscd g
+                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
 
                     n    = length $ nodes g
                     ms
@@ -3225,7 +3231,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                       where cost0 = costFor g seed3
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g costF
-                    ntscdmydodslicer  = ODEP.ntscdMyDodSliceViaNtscd g
+                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
                     
                     s  = tscdcostslicer   ms
                     s' = ntscdmydodslicer ms
@@ -3247,7 +3253,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     (cost,   _) = TSCD.timingLeaksTransformation g   cost0 ms
                     costF n m = cost ! (n,m)
                     tscdcostslicer    = TSCD.tscdCostSlice           g   costF  
-                    ntscdmydodslicer  = ODEP.ntscdMyDodSliceViaNtscd g
+                    ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd g
 
                     g'' = foldr (flip delSuccessorEdges) g ms
                     (cost'', _) = TSCD.timingCorrection          g'' cost0
@@ -3454,7 +3460,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                         ms
                           | n == 0 = Set.empty
                           | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                        ntscdmydodslicer  = ODEP.ntscdMyDodSliceViaNtscd   g
+                        ntscdmydodslicer  = SLICE.NTICD.ntscdMyDodSliceViaNtscd   g
                         tscdslicer        = TSCD.tscdSliceFast g
                         subseteq = ntscdmydodslicer ms ⊆ tscdslicer ms
                     in  (if subseteq then id  else traceShow (ms, g)) subseteq,
@@ -4185,7 +4191,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         n = toInteger $ length $ nodes g
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
-                        slicer     = ODEP.ntscdMyDodFastPDomSlice g
+                        slicer     = SLICE.ODEP.ntscdMyDodFastPDomSlice g
                         ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
                         runInput   = InfiniteDelay.runInput         g
                     in (∀) ss (\s ->
@@ -4212,7 +4218,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                        s = SLICE.ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
                         runInput         = InfiniteDelay.runInput g
                     in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
@@ -4260,7 +4266,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = ODEP.nticdMyWodFastSlice g (Set.fromList [m1, m2])
+                        s = SLICE.ODEP.nticdMyWodFastSlice g (Set.fromList [m1, m2])
                         infinitelyDelays = InfiniteDelay.infinitelyDelays g s
                         runInput         = InfiniteDelay.runInput         g
                         observable       = InfiniteDelay.observable         s
@@ -4284,7 +4290,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
                         choices    = InfiniteDelay.allChoices g Map.empty condNodes
                         [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = ODEP.nticdMyWodFastSlice g (Set.fromList [m1, m2])
+                        s = SLICE.ODEP.nticdMyWodFastSlice g (Set.fromList [m1, m2])
                         runInput         = InfiniteDelay.runInput g
                     in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
@@ -4312,7 +4318,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                         startNodes =               sampleFrom       seed1 (n `div` 10 + 1) (nodes g)
                         choices    = InfiniteDelay.sampleChoicesFor seed2 (n `div`  2 + 1)        g
                         [m1,m2]    =               sampleFrom       seed3                2 (nodes g)
-                        s = ODEP.nticdMyWodFastSlice g (Set.fromList [m1, m2])
+                        s = SLICE.ODEP.nticdMyWodFastSlice g (Set.fromList [m1, m2])
                         infinitelyDelays = InfiniteDelay.infinitelyDelays g s
                     in -- traceShow ("Graph: ", length $ nodes g) $
                        (∀) choices (\choice -> (∀) startNodes (\startNode  -> 
@@ -4331,7 +4337,7 @@ delayTests = testGroup "(concerning  inifinite delay)" $
                    choices    = InfiniteDelay.allChoices g Map.empty condNodes
                    runInput   = InfiniteDelay.runInput         g
                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
-                    let s = ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                    let s = SLICE.ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
                     in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
                        (∀) s (\n -> n == m1  ∨  n == m2  ∨
                          let s' = Set.delete n s
@@ -4362,7 +4368,7 @@ delayTests = testGroup "(concerning  inifinite delay)" $
                    choices    = InfiniteDelay.allChoices g Map.empty condNodes
                    runInput   = InfiniteDelay.runInput         g
                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
-                    let s = ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
+                    let s = SLICE.ODEP.ntscdMyDodFastPDomSlice g (Set.fromList [m1, m2])
                         observable       = InfiniteDelay.observable         s
                         differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice

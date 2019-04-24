@@ -30,8 +30,7 @@ import Data.Graph.Inductive.Query.LCA(lcaTimdomOfTwoFingerFast, lcaTimdomOfTwoFi
 import Data.Graph.Inductive.Query.PostDominance (onedomOf, domsOf, imdomOfTwoFinger6)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (dfFor, anyDFLocalDef, anyDFUpGivenXViaAnydomsDef, anyDFFromUpLocalDefViaAnydoms,  idomToDFFast, isinkDFTwoFinger, xDFcd)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
-import Data.Graph.Inductive.Query.Slices.NTICD (ntscdSlice)
-import Data.Graph.Inductive.Query.OrderDependence (ntscdMyDodSliceViaNtscd)
+import Data.Graph.Inductive.Query.Slices.NTICD (ntscdSlice, ntscdMyDodSliceViaNtscd)
 
 
 tscdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node

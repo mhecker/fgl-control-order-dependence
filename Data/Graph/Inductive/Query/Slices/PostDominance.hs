@@ -43,4 +43,3 @@ wccSliceViaISinkDom g msS =  Set.fromList [ n | n <- nodes g''', isinkdom''' ! n
                  g'' = subgraph fromMs g'
 
         isinkdom''' = fmap fromSet $ isinkdomOfTwoFinger8 g'''
-

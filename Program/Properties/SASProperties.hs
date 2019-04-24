@@ -74,17 +74,20 @@ import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (
     wodTEILSliceViaISinkDom, wccSliceViaISinkDom, nticdMyWodSliceViaISinkDom,
   )
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
-    nticdMyWodSlice,
+    wodTEILSliceViaNticd,    wccSliceViaNticd,    nticdMyWodSlice
+  )
+import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
+    nticdMyWodSlice, wodTEILSlice,
   )
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom, ntscdViaMDom,
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod,
-         wodTEILSlice, wodTEILSliceViaNticd,
+          
     myDod, myDodFastPDom,
-    myWod, myWodFastPDom, myWodFastPDomSimpleHeuristic, nticdMyWodSlice,
-    wccSliceViaNticd, 
+    myWod, myWodFastPDom, myWodFastPDomSimpleHeuristic, 
+
   )
 
 import Data.Graph.Inductive.Arbitrary
@@ -386,7 +389,7 @@ theorem5 = [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer0  = ODEP.nticdMyWodSlice                     g
+                    slicer0  = SLICE.ODEP.nticdMyWodSlice               g
                     slicer1  = SLICE.NTICD.nticdMyWodSlice              g
                     slicer2  = SLICE.PDOM.nticdMyWodSliceViaISinkDom    g
                 in   slicer0 ms == slicer1 ms
@@ -425,7 +428,7 @@ observationANON = [
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
                     slicer0 = FCACD.wccSlice g
                     slicer1 = SLICE.PDOM.wccSliceViaISinkDom     g
-                    slicer2 = ODEP.wccSliceViaNticd g
+                    slicer2 = SLICE.NTICD.wccSliceViaNticd g
                 in   slicer0 ms == slicer1 ms
                    ∧ slicer1 ms == slicer2 ms,
     testPropertySized 40 "wodTEILSliceViaISinkDom = wodTEILSliceViaNticd == wodTEILSlice for random slice-criteria of random size"
@@ -435,9 +438,9 @@ observationANON = [
                     ms
                       | n == 0 = Set.empty
                       | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
-                    slicer0  = ODEP.wodTEILSlice               g
-                    slicer1  = SLICE.PDOM.wodTEILSliceViaISinkDom   g
-                    slicer2  = ODEP.wodTEILSliceViaNticd       g
+                    slicer0  = SLICE.ODEP.wodTEILSlice               g
+                    slicer1  = SLICE.PDOM.wodTEILSliceViaISinkDom    g
+                    slicer2  = SLICE.NTICD.wodTEILSliceViaNticd      g
                 in   slicer0 ms == slicer1 ms
                    ∧ slicer1 ms == slicer2 ms
   ]
@@ -451,8 +454,8 @@ observation9 =  [
                        g = subgraph [6,7,8,11,13] g0
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
-                       nticdntiodslicer  = ODEP.nticdMyWodSlice g
-                       wodslicer         = ODEP.wodTEILSlice g
+                       nticdntiodslicer  = SLICE.ODEP.nticdMyWodSlice g
+                       wodslicer         = SLICE.ODEP.wodTEILSlice g
                        wccslicer         = FCACD.wccSlice g
                    in (not $ (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms ->
                         let s = combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticdntiodslicer ms ∨ s == wccslicer ms

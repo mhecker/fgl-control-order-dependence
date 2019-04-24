@@ -21,7 +21,6 @@ import Data.STRef
 
 import qualified Data.Dequeue as Dequeue
 import Data.Dequeue (pushBack, popFront)
-import Data.Dequeue.SimpleDequeue (SimpleDequeue)
 
 import Algebra.Lattice
 import qualified Algebra.PartialOrd as PartialOrd
@@ -37,8 +36,6 @@ import Util(foldM1, the, fromSet, toSet, invert', invert'', invert''', without, 
 import Data.Graph.Inductive.Util (delSuccessorEdges, nextCondNode, toNextCondNode, fromSuccMap, controlSinks)
 import Data.Graph.Inductive.Query.LCA(lca)
 import Data.Graph.Inductive.Query.PostDominance (MaximalPath (..), inPathFor, onedomOf, isinkdomOfTwoFinger8DownSingleNodeSinks, isinkdomOftwoFinger8Up, isinkdomOfTwoFinger8, imdomOfTwoFinger7, maximalPathsFor, isinkdomOfTwoFinger8ForSinks)
-import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
-import Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges (idfViaCEdgesFastForCycles)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered (isinkDFNumberedForSinks)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFastForRoots, mDFTwoFinger, isinkDFTwoFinger)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
@@ -1058,178 +1055,5 @@ dodDef graph = Map.fromList [ ((m1,m2), Set.fromList [ p | p <- condNodes,
         inPathBefore = inPathForBefore graph doms
         doms = Map.fromList [ (entry, dom (subgraph (sccOf entry) graph) entry) | entry <- nodes graph ] -- in general, we don't actually need doms for all nodes, but we're just lazy here.
 
-
-
-ntscdMyDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodSlice graph =  combinedBackwardSlice graph ntscd d
-  where ntscd = invert'' $ ntscdF3 graph
-        d     = myDod graph
-
-ntscdMyDodFastPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodFastPDomSlice graph =  combinedBackwardSlice graph ntscd d
-  where ntscd = invert'' $ ntscdF3 graph
-        d     = myDodFastPDom graph
-
-
-ntscdMyDodSliceViaNtscd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdMyDodSliceViaNtscd graph msS = combinedBackwardSlice graph ntscd' empty msS
-  where ms = Set.toList msS
-        graph' = foldr (flip delSuccessorEdges) graph ms
-        ntscd' = mDFTwoFinger graph'
-        empty = Map.empty
-
-
-ntscdDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
-  where ntscd = invert'' $ ntscdF3 graph
-        d     = dod graph
-
-
-nticdMyWodSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodSlice graph =  combinedBackwardSlice graph nticd w
-  where nticd = invert'' $ nticdF3 graph
-        w     = myWod graph
-
-
-nticdMyWodFastSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodFastSlice graph =  combinedBackwardSlice graph nticd w
-  where nticd = isinkDFTwoFinger graph
-        w     = myWodFast graph
-
-nticdMyWodPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodPDomSimpleHeuristic graph =  combinedBackwardSlice graph nticd w
-  where nticd = isinkDFTwoFinger graph
-        w     = myWodFastPDomSimpleHeuristic graph
-
-nticdMyWodPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdMyWodPDom graph =  combinedBackwardSlice graph nticd w
-  where nticd = isinkDFTwoFinger graph
-        w     = myWodFastPDom graph
-
-
-wccSliceViaWodTEILPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wccSliceViaWodTEILPDom graph = \ms -> let fromMs = (Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m graph ]) in combinedBackwardSlice graph empty w ms ∩ fromMs
-  where empty = Map.empty
-        w     = wodTEIL'PDom graph
-
-
-wccSliceViaNticdMyWodPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wccSliceViaNticdMyWodPDomSimpleHeuristic g ms = s ∩ fromMs
-  where gRev = grev g
-        g'   = subgraph (Set.toList toMs) g
-        s    = nticdMyWodPDomSimpleHeuristic g' ms
-        toMs   = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m gRev ]
-        fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
-
-
-wccSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wccSliceViaNticd g msS = s
-  where ms = Set.toList msS
-
-        g'''   = foldr (flip delSuccessorEdges) g'' ms
-          where  toMs   = rdfs ms g
-                 g' = subgraph toMs g
-                 
-                 fromMs =  dfs ms g'
-                 g'' = subgraph fromMs g'
-
-        sinks            = fmap (\m -> [m]) ms
-        sinkNodes        = msS
-
-        nonSinkCondNodes = Map.fromList [ (n, succs) | n <- nodes g''', not $ n ∈ sinkNodes, let succs = suc g''' n, length succs > 1 ]
-        idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes g'''
-
-        s = Map.keysSet $ Map.filter (== Nothing) idom 
-
-
-
-wodTEILSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaNticd g msS = combinedBackwardSlice g nticd'' empty msS
-  where ms = Set.toList msS
-        g''   = foldr (flip delSuccessorEdges) g' ms
-          where  toMs   = rdfs ms g
-                 g' = subgraph toMs g
-        nticd'' = isinkDFTwoFinger g''
-        empty = Map.empty
-        
-wodTEILSliceViaNticdReuse :: (Show (gr a b),  DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaNticdReuse g =  \ms ->
-    let toMs  = rdfs (Set.toList ms) g
-        toMsS = Set.fromList toMs
-        g'    = Set.fold (flip delSuccessorEdges) (subgraph toMs g) ms
-        msSinks = [ sink | sink <- sinks, (∃) ms (\m -> m `elem` sink) ]
-        idom'0 = id
-               $ Map.union (Map.fromSet    (\m     -> Nothing) $ ms)
-               $ Map.union (Map.mapWithKey (\x _   -> Nothing) $ Map.filterWithKey isEntry $ condNodes')
-               $ Map.union (Map.mapWithKey (\x [z] ->                     assert (z /= x) $ Just z                   ) noLongerCondNodes)
-               $ Map.union (Map.fromList  [ (x, case suc g' x of { [z] -> assert (z /= x) $ Just z  ; _ -> Nothing  }) | msSink <- msSinks, x <- msSink ])
-               $ fmap intoMs
-               $ restrict idom toMsS
-          where isEntry x _ = case idom ! x of
-                  Nothing -> False
-                  Just z -> z ∈ sinkNodes
-                intoMs n@(Nothing) = n
-                intoMs n@(Just x)
-                  | x ∈ toMsS = n
-                  | otherwise = Nothing
-        idom'0Rev   = invert''' idom'0
-        processed'0 = reachableFrom idom'0Rev ms
-        todo'0      = without nonSinkCondNodes' processed'0
-        worklist'0  = Dequeue.fromList $ Map.assocs todo'0
-        idom'1 = Map.union (fmap (\x -> Nothing) todo'0)
-               $ idom'0
-        idom'1Rev = invert''' idom'1
-        idom'2 = isinkdomOftwoFinger8Up                  g'                                                               nonSinkCondNodes'   worklist'0  processed'0 idom'1Rev idom'1
-        idom'  = isinkdomOfTwoFinger8DownSingleNodeSinks g' sinkNodes' (Map.filterWithKey (\x _ -> idom'2 ! x /= Nothing) nonSinkCondNodes')                                    idom'2
-        sinks' = [ [m] | m <- Set.toList ms]
-        sinkNodes' = ms
-        (condNodes', noLongerCondNodes) =
-              Map.partition isCond
-            $ fmap (List.filter (∈ toMsS))
-            $ restrict condNodes (toMsS ∖ ms)
-          where isCond []  = False
-                isCond [_] = False
-                isCond _   = True
-        nonSinkCondNodes' = condNodes'
-
-        sinkS' = fmap Set.fromList sinks'
-        cycleOf' =  Map.fromList [ (s, sink) | sink <- sinkS', s <- Set.toList $ sink ]
-        
-        idom'Direct = Map.fromList $ iPDomForSinks sinks' g'
-    in -- (if idom' == idom'Direct then id else traceShow (ms, g, "*****", idom, idom'0, idom'1, idom'2, idom', fmap fromSet $ isinkdomOfTwoFinger8 g')) $ 
-       assert (idom' == idom'Direct) $
-       -- nticdSliceLazy g' cycleOf' (invert''' idom'Direct) ms
-       idfViaCEdgesFastForCycles (cycleOf', sinkS') g' idom'Direct ms
-  where
-        sinks            = controlSinks g
-        sinkNodes        = (∐) [ Set.fromList sink | sink <- sinks]
-        condNodes        = Map.fromList [ (n, succs) | n <- nodes g, let succs = suc g n, length succs > 1 ]
-        nonSinkCondNodes = without condNodes sinkNodes
-        idom = isinkdomOfTwoFinger8ForSinks sinks sinkNodes nonSinkCondNodes g
-
-
-
-myWodFastSlice :: ( DynGraph gr) => gr a b ->  Set Node  -> Set Node
-myWodFastSlice graph =  combinedBackwardSlice graph empty w
-  where empty = Map.empty
-        w     = myWodFast graph
-
-
-myWodFastPDomSimpleHeuristicSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-myWodFastPDomSimpleHeuristicSlice graph =  combinedBackwardSlice graph empty w
-  where empty = Map.empty
-        w     = myWodFastPDomSimpleHeuristic graph
-
-
-
-wodTEILSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSlice graph = combinedBackwardSlice graph empty w
-  where empty = Map.empty
-        w     = wodTEIL' graph
-
-wodTEILPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILPDomSlice graph = combinedBackwardSlice graph empty w
-  where empty = Map.empty
-        w     = wodTEIL'PDom graph
 
 cdFromMyWod graph =  (∐) [ Map.fromList [ (n, Set.fromList [m] ) ]  | ((m1,m2),ns) <- Map.assocs $ myWodFast graph, n <- Set.toList ns, m <- [m1,m2] ]

@@ -32,3 +32,31 @@ nticdMyWodSlice graph msS = combinedBackwardSlice graph nticd' empty msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         nticd' = invert'' $ nticdViaSinkDom graph'
         empty = Map.empty
+
+ntscdMyDodSliceViaNtscd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdMyDodSliceViaNtscd graph msS = combinedBackwardSlice graph ntscd' empty msS
+  where ms = Set.toList msS
+        graph' = foldr (flip delSuccessorEdges) graph ms
+        ntscd' = invert'' $ ntscdViaMDom graph'
+        empty = Map.empty
+
+wodTEILSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wodTEILSliceViaNticd g msS = combinedBackwardSlice g nticd'' empty msS
+  where ms = Set.toList msS
+        g''   = foldr (flip delSuccessorEdges) g' ms
+          where  toMs   = rdfs ms g
+                 g' = subgraph toMs g
+        nticd'' = invert'' $ nticdViaSinkDom g''
+        empty = Map.empty
+
+wccSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+wccSliceViaNticd g msS = combinedBackwardSlice g nticd''' empty msS
+  where ms = Set.toList msS
+        g'''   = foldr (flip delSuccessorEdges) g'' ms
+          where  toMs   = rdfs ms g
+                 g' = subgraph toMs g
+                 
+                 fromMs =  dfs ms g'
+                 g'' = subgraph fromMs g'
+        nticd''' = invert'' $ nticdViaSinkDom g'''
+        empty = Map.empty

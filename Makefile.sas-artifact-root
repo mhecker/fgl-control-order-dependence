@@ -1,35 +1,90 @@
-PROPS = randomized-tests/dist/build/props/props
+CTIOGA=ctioga2
 
-.PHONY: all randomized-tests-forever benchmarks .FORCE
+RANDOMIZED_TESTS = randomized-tests/dist/build/props/props
+TESTS = randomizes-tests/dist/build/tests/tests
 
-all: benchmarks-results randomized-tests-forever
+.PHONY: all benchmark-results benchmark-results-huge plots plots-huge tests randomized-tests randomized-tests-forever .FORCE
+
+all: benchmarks-results plots tests randomized-tests
 
 
+benchmark-results : wccISINKDOM-65000-x10-20n.csv wccFCACD-65000-x10-20n.csv ntiodSIZE-3000-x1-15n-maxdepth100.csv ntiodTIME-3000-x1-15n-maxdepth100.csv randomnticd.csv 
 
-benchmark-results : ntiodSIZE-3000-x1-15n-maxdepth100.csv ntiodTIME-3000-x1-15n-maxdepth100.csv randomnticd.oneentryperline.csv
+benchmark-results-huge: wccISINKDOM-65000-x100-20n.csv wccFCACD-65000-x100-20n.csv wccISINKDOM-250000-x100-20n.csv wccFCACD-250000-x100-20n.csv
 
-ntiod.csv : .FORCE
+plots : wccISINKDOM-65000-x10-20n-vs-wccFCACD-65000-x10-20n.pdf ntiodSIZE-3000-x1-15n-maxdepth100-vs-ntiodTIME-3000-x1-15n-maxdepth100.pdf randomnticd.pdf 
+plots-huge : wccISINKDOM-65000-x100-20n-vs-wccFCACD-65000-x100-20n.pdf wccISINKDOM-250000-x100-20n-vs-wccFCACD-250000-x100-20n.pdf  
+
+define GEN_RULE
+data/$1-vs-$2.pdf : data/$1.csv data/$2.csv Makefile
+	$(CTIOGA) -O data --use amsmath --name $1-vs-$2 --page-size '12cmx8cm' --legend-inside tl --legend-style /scale=1.5 --label-style bottom /scale=1.1 --label-style left /scale=1.2 --margin "0.05" --right off --top off --yscale "$3" --xlabel '\hspace{-2em}$$$$\left|N\right|$$$$ \  \rlap{\scriptsize ($$$$\left|\rightarrow_{G}\right| = $4 \left|N\right|,\left|M\right| = 3$$$$)}' /scale=1.3 --ylabel "time (ms)" /scale=1.5 --line-style no --text-separator , --marker-color orange --marker cross --legend '$5' data/$1.csv @2:4 --marker-color blue --marker triangledown --legend '$6' data/$2.csv @2:4 $7
+endef
+
+WCC=~~~~$$$$\operatorname{WCC}_{G}\left(M\right)$$$$
+ISINKDOM=$$$$\left(\rightarrow_{\operatorname{nticd}}^{G_M}\right)^{*}\left(M\right)$$$$
+ZOOMBOX=--define-line-style '*' /color=Magenta --draw-line 0,0 0,500 --draw-line 0,500, 65000,500 --draw-line 65000,500 65000,0 --draw-line 65000,0 0,0
+$(eval $(call GEN_RULE,wccISINKDOM-65000-x10-20n,wccFCACD-65000-x10-20n,0.1,2,$(ISINKDOM),$(WCC),))   # 0.1 == (1/10)
+$(eval $(call GEN_RULE,wccISINKDOM-65000-x100-20n,wccFCACD-65000-x100-20n,0.01,2,$(ISINKDOM),$(WCC),))   # 0.01 == (1/100)
+$(eval $(call GEN_RULE,wccISINKDOM-250000-x100-20n,wccFCACD-250000-x100-20n,0.01,2,$(ISINKDOM),$(WCC),$(ZOOMBOX))) # 0.01 == (1/100)
+
+
+ntiod.raw :
 	cd benchmarks && mvn clean install -DskipTests 
 	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main countNTIODSize -rf csv -rff $@
 
-ntiodSIZE-3000-x1-15n-maxdepth100.csv : ntiod.csv
+ntiodSIZE-3000-x1-15n-maxdepth100.csv : ntiod.raw
 	cat $< | grep ":size" | awk '{gsub(/\"/,"")};1' > $@
 
-ntiodTIME-3000-x1-15n-maxdepth100.csv : ntiod.csv
+ntiodTIME-3000-x1-15n-maxdepth100.csv : ntiod.raw
 	cat $< | grep -v ":size" | grep -v "Unit" | awk '{gsub(/\"/,"")};1' > $@
 
 
-randomnticd.csv : .FORCE
+
+%.csv : %.raw
+	cat $< | dos2unix | tail -n +2 |                                awk '{gsub(/\"/,"")};1' > $@
+
+randomnticd.raw :
 	cd benchmarks && mvn clean install -DskipTests 
 	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main testRandom -rf csv -rff $@
 
-randomnticd.oneentryperline.csv : randomnticd.csv
-	cat $< | dos2unix | tail -n +2 |                                awk '{gsub(/\"/,"")};1' > $@
+wccISINKDOM-65000-x10-20n.raw : 
+	cd benchmarks && mvn clean install -DskipTests 
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main 'testFullWeakControlClosureViaISINKDOMSmall10$$' -rf csv -rff $@
+	
+wccFCACD-65000-x10-20n.raw :
+	cd benchmarks && mvn clean install -DskipTests
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main 'testFullWeakControlClosureViaFCACDSmall10$$' -rf csv -rff $@
+
+wccISINKDOM-65000-x100-20n.raw : 
+	cd benchmarks && mvn clean install -DskipTests 
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main testFullWeakControlClosureViaISINKDOMSmall100 -rf csv -rff $@
+	
+wccFCACD-65000-x100-20n.raw :
+	cd benchmarks && mvn clean install -DskipTests
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main testFullWeakControlClosureViaFCACDSmall100 -rf csv -rff $@
+
+wccISINKDOM-250000-x100-20n.raw :
+	cd benchmarks && mvn clean install -DskipTests 
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main testFullWeakControlClosureViaISINKDOMBig100 -rf csv -rff $@
+
+wccFCACD-250000-x100-20n.raw :
+	cd benchmarks && mvn clean install -DskipTests 
+	java -cp 'benchmarks/target/benchmarks.jar' org.openjdk.jmh.Main testFullWeakControlClosureViaFCACDBig100 -rf csv -rff $@
 
 
+tests : $(TESTS)
+	./$(TESTS)
 
 
-randomized-tests-forever : $(PROPS)
-	while ./$(PROPS) ; do echo OK ; done
-$(PROPS) :
+randomized-tests : $(RANDOMIZED_TESTS)
+	./$(RANDOMIZED_TESTS) 
+
+randomized-tests-forever : $(RANDOMIZED_TESTS)
+	while ./$(RANDOMIZED_TESTS) ; do echo OK ; done
+
+$(TESTS) :
 	cd randomized-tests && cabal configure && cabal build
+
+$(RANDOMIZED_TESTS) :
+	cd randomized-tests && cabal configure && cabal build
+

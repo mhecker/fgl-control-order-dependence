@@ -57,7 +57,7 @@ executable props
   other-extensions:    RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.9 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, QuickCheck >=2.8 && <2.9, fgl >=5.5 && <5.6, logict >=0.6 && <0.7, random >=1.1 && <1.2, data-default-instances-containers >= 0.0.1 && < 0.2, MonadRandom == 0.5.1, monad-gen == 0.3.0.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, fgl-arbitrary == 0.2.0.3, tasty-ant-xml == 1.1.3, dequeue == 0.1.12, pqueue == 1.4.1.1, bitwise == 0.1.1.1, safe
+  build-depends:       base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, QuickCheck >=2.8 && <2.9, fgl >=5.5 && <5.6, logict >=0.6 && <0.7, random >=1.1 && <1.2, data-default-instances-containers >= 0.0.1 && < 0.2, MonadRandom == 0.5.1, monad-gen == 0.3.0.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, fgl-arbitrary == 0.2.0.3, tasty-ant-xml >= 1.0.5 && < 1.2, dequeue == 0.1.12, pqueue >= 1.3.2 && < 1.5, bitwise == 0.1.1.1, safe
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -73,7 +73,7 @@ executable tests
   other-extensions:    RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.9 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, QuickCheck >=2.8 && <2.9, fgl >=5.5 && <5.6, logict >=0.6 && <0.7, random >=1.1 && <1.2, data-default-instances-containers >= 0.0.1 && < 0.2, MonadRandom == 0.5.1, monad-gen == 0.3.0.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, fgl-arbitrary == 0.2.0.3, tasty-ant-xml == 1.1.3, dequeue == 0.1.12, pqueue == 1.4.1.1, bitwise == 0.1.1.1, safe
+  build-depends:       base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, QuickCheck >=2.8 && <2.9, fgl >=5.5 && <5.6, logict >=0.6 && <0.7, random >=1.1 && <1.2, data-default-instances-containers >= 0.0.1 && < 0.2, MonadRandom == 0.5.1, monad-gen == 0.3.0.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, fgl-arbitrary == 0.2.0.3, tasty-ant-xml >= 1.0.5 && < 1.2, dequeue == 0.1.12, pqueue >= 1.3.2 && < 1.5, bitwise == 0.1.1.1, safe
   
   -- Directories containing source files.
   -- hs-source-dirs:      

@@ -49,15 +49,93 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 
+library
+  exposed-modules:
+    IRLSOD
+    Unicode
+    Program.Examples
+    Program.Analysis
+    Program.Generator
+    -- Program.Tests
+    Program.MultiThread
+    -- Program.Properties.Analysis
+    -- Program.Properties.TimingDependence
+    -- Program.Properties.TransitionSystems
+    -- Program.Properties.NameOfFunction
+    -- Program.Properties.Properties
+    -- Program.Properties.CDom
+    Program.Typing.ResumptionBasedSecurity
+    Program.Typing.FlexibleSchedulerIndependentChannels
+    -- Program.Typing.ImprovedTypingsSmith
+    -- Program.Typing.FlexibleSchedulerIndependent
+    Program.CDom
+    Program.MHP
+    Program.TransitionSystem
+    Program.Defaults
+    Program.For
+    -- Setup
+    Execution
+    PNI
+    Program
+    ListUnicode
+    ExecutionTree
+    Util
+    Data.Graph.Inductive.Arbitrary.Reducible
+    Data.Graph.Inductive.FA
+    Data.Graph.Inductive.Query.DataDependence
+    Data.Graph.Inductive.Query.InterThreadDependence
+    Data.Graph.Inductive.Query.TSCD
+    -- Data.Graph.Inductive.Query.ControlDependenceTests
+    Data.Graph.Inductive.Query.OrderDependence.Unused
+    Data.Graph.Inductive.Query.InfiniteDelay
+    Data.Graph.Inductive.Query.PureTimingDependence
+    Data.Graph.Inductive.Query.TimingDependence
+    Data.Graph.Inductive.Query.ControlDependence
+    Data.Graph.Inductive.Query.LCA
+    Data.Graph.Inductive.Query.OrderDependence
+    Data.Graph.Inductive.Query.NTIODSlice
+    Data.Graph.Inductive.Query.PathsBetween
+    Data.Graph.Inductive.Query.PostDominanceFrontiers
+    Data.Graph.Inductive.Query.BalancedSCC
+    Data.Graph.Inductive.Query.DataConflict
+    Data.Graph.Inductive.Query.NTICD
+    Data.Graph.Inductive.Query.ProgramDependence
+    Data.Graph.Inductive.Query.Dependence
+    Data.Graph.Inductive.Query.Dataflow
+    Data.Graph.Inductive.Query.Util.GraphTransformations
+    Data.Graph.Inductive.Query.FCACD
+    Data.Graph.Inductive.Query.NTICDUnused
+    Data.Graph.Inductive.Query.PostDominance.GraphTransformations
+    Data.Graph.Inductive.Query.PostDominance.Numbered
+    Data.Graph.Inductive.Query.Slices.GraphTransformations
+    Data.Graph.Inductive.Query.Slices.OrderDependence
+    Data.Graph.Inductive.Query.Slices.CEdges
+    Data.Graph.Inductive.Query.Slices.PostDominanceFrontiers
+    Data.Graph.Inductive.Query.Slices.NTICD
+    Data.Graph.Inductive.Query.Slices.PostDominance
+    Data.Graph.Inductive.Query.PostDominance
+    Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges
+    Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered
+    Data.Graph.Inductive.Query.NTICD.SNM
+    Data.Graph.Inductive.Query.NTICD.GraphTransformations
+    Data.Graph.Inductive.Query.NTICD.Program
+    Data.Graph.Inductive.Query.NTICD.Util
+    Data.Graph.Inductive.Util
+    Data.Dequeue.SimpleDequeue
+    -- Data.Util
+  
+  build-depends:       base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, mtl >= 2.2, template-haskell >= 2.10, array >= 0.5, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, QuickCheck >=2.8 && <2.9, logict >=0.6 && <0.7, random >=1.1 && <1.2, data-default-instances-containers >= 0.0.1 && < 0.2, MonadRandom == 0.5.1, monad-gen == 0.3.0.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0,   dequeue == 0.1.12, pqueue >= 1.3.2 && < 1.5, bitwise == 0.1.1.1, time >= 1.5 && < 1.6, safe
+  
+  ghc-options:         -O2 -fno-ignore-asserts -main-is Program.Properties.SASProperties.props
+  
+  default-language:    Haskell2010
+
 executable props
   main-is:             Program/Properties/SASProperties.hs
   ghc-options:         -O2 -fno-ignore-asserts -main-is Program.Properties.SASProperties.props
+  build-depends:       fgl-control-order-dependence == 0.1.0.0,  base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers-unicode-symbols == 0.3.1.1, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, tasty-ant-xml >= 1.0.5 && < 1.2, QuickCheck >=2.8 && <2.9,  bitwise == 0.1.1.1, safe,  dequeue == 0.1.12, logict >=0.6 && <0.7, random >=1.1 && <1.2, lattices == 1.5.0, MonadRandom == 0.5.1
   
-  -- LANGUAGE extensions used by modules in this package.
   other-extensions:    RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving
-  
-  -- Other library packages from which modules are imported.
-  build-depends:       base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, QuickCheck >=2.8 && <2.9, fgl >=5.5 && <5.6, logict >=0.6 && <0.7, random >=1.1 && <1.2, data-default-instances-containers >= 0.0.1 && < 0.2, MonadRandom == 0.5.1, monad-gen == 0.3.0.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, fgl-arbitrary == 0.2.0.3, tasty-ant-xml >= 1.0.5 && < 1.2, dequeue == 0.1.12, pqueue >= 1.3.2 && < 1.5, bitwise == 0.1.1.1, safe
   
   -- Directories containing source files.
   -- hs-source-dirs:      

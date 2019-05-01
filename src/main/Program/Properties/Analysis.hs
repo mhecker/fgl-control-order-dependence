@@ -18,7 +18,7 @@ import Program.Generator
 
 import Program.CDom
 
-import Program.Tests (isSecureEmpirically)
+import Program.DynamicAnalysis (isSecureEmpirically)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Graph

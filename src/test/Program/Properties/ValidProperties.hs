@@ -160,7 +160,7 @@ import Data.Graph.Inductive.Arbitrary
 
 
 import Program (Program, tcfg)
-import Program.Tests (isSecureEmpirically)
+import Program.DynamicAnalysis (isSecureEmpirically)
 
 import Program.Properties.Analysis
 import Program.Properties.CDom

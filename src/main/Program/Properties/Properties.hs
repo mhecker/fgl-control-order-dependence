@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Program.Properties where
+module Program.Properties.Properties where
 
 import Algebra.Lattice
 import Unicode

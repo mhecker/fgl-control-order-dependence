@@ -3,8 +3,12 @@
 # DEBUG=defined
 
 
-fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.cpp
-	cpp -nostdinc -C -P $< $@
+# fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.cpp
+# 	cpp -nostdinc -C -P $< $@
+
+fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.m4
+	m4 $<
+
 
 #VALID=Program.Properties.ValidProperties
 VALID=Program.Properties.SASProperties

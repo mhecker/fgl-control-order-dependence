@@ -37,6 +37,8 @@ dist/build/%.bin : fgl-control-order-dependence.cabal .FORCE
 
 clean :
 	cabal clean
+	find -name "*.prof"    -not -path "./.cabal-sandbox/*" -delete
+	find -name "*.dot"     -not -path "./.cabal-sandbox/*" -delete
 	find -name "*~"        -not -path "./.cabal-sandbox/*" -delete
 
 expand = $1

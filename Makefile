@@ -37,11 +37,6 @@ dist/build/%.bin : fgl-control-order-dependence.cabal .FORCE
 
 clean :
 	cabal clean
-	find -name "*.hi"      -not -path "./.cabal-sandbox/*" -delete
-	find -name "*.dyn_hi"  -not -path "./.cabal-sandbox/*" -delete
-	find -name "*.o"       -not -path "./.cabal-sandbox/*" -delete
-	find -name "*.dyn_o"   -not -path "./.cabal-sandbox/*" -delete
-	find -name "*.p_o"     -not -path "./.cabal-sandbox/*" -delete
 	find -name "*~"        -not -path "./.cabal-sandbox/*" -delete
 
 expand = $1

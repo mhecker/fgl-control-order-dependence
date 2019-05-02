@@ -2,6 +2,10 @@
 # PROF=defined
 # DEBUG=defined
 
+
+fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.cpp
+	cpp $< $@
+
 #VALID=Program.Properties.ValidProperties
 VALID=Program.Properties.SASProperties
 INVALID=Program.Properties.InvalidProperties

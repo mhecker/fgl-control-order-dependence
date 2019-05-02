@@ -49,6 +49,14 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 
+
+#define COMMON_EXTENSIONS RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving
+#define COMMON_GHC_FLAGS -O2 -fno-ignore-asserts
+
+#define COMMON_DEPENDENCIES base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, QuickCheck >=2.8 && <2.9, logict >=0.6 && <0.7, random >=1.1 && <1.2, MonadRandom == 0.5.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, dequeue == 0.1.12, bitwise == 0.1.1.1
+#define MAIN_DEPENDENCIES mtl >= 2.2, template-haskell >= 2.10, array >= 0.5, data-default-instances-containers >= 0.0.1 && < 0.2, monad-gen == 0.3.0.1, pqueue >= 1.3.2 && < 1.5, time >= 1.5 && < 1.6, safe
+#define TEST_DEPENDENCIES fgl-control-order-dependence, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, tasty-ant-xml >= 1.0.5 && < 1.2
+
 library
   hs-source-dirs: src/main/
   exposed-modules:
@@ -125,34 +133,37 @@ library
     Data.Dequeue.SimpleDequeue
     Data.Util
   
-  build-depends:       base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, mtl >= 2.2, template-haskell >= 2.10, array >= 0.5, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, QuickCheck >=2.8 && <2.9, logict >=0.6 && <0.7, random >=1.1 && <1.2, data-default-instances-containers >= 0.0.1 && < 0.2, MonadRandom == 0.5.1, monad-gen == 0.3.0.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0,   dequeue == 0.1.12, pqueue >= 1.3.2 && < 1.5, bitwise == 0.1.1.1, time >= 1.5 && < 1.6, safe
+  build-depends:       COMMON_DEPENDENCIES, MAIN_DEPENDENCIES
   
-  ghc-options:         -O2 -fno-ignore-asserts -main-is Program.Properties.SASProperties.props
+  ghc-options:         COMMON_GHC_FLAGS
   
   default-language:    Haskell2010
+
+
+
 
 executable sas-props
   hs-source-dirs: src/test/
   main-is:             Program/Properties/SASProperties.hs
-  ghc-options:         -O2 -fno-ignore-asserts -main-is Program.Properties.SASProperties.props
-  build-depends:       fgl-control-order-dependence == 0.1.0.0,  base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers-unicode-symbols == 0.3.1.1, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, tasty-ant-xml >= 1.0.5 && < 1.2, QuickCheck >=2.8 && <2.9,  bitwise == 0.1.1.1, safe,  dequeue == 0.1.12, logict >=0.6 && <0.7, random >=1.1 && <1.2, lattices == 1.5.0, MonadRandom == 0.5.1
-  other-extensions:    RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.SASProperties.props
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
   default-language:    Haskell2010
   
 executable sas-tests
   hs-source-dirs: src/test/
   main-is:             Program/Properties/SASProperties.hs
-  ghc-options:         -O2 -fno-ignore-asserts -main-is Program.Properties.SASProperties.tests
-  build-depends:       fgl-control-order-dependence == 0.1.0.0,  base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers-unicode-symbols == 0.3.1.1, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, tasty-ant-xml >= 1.0.5 && < 1.2, QuickCheck >=2.8 && <2.9,  bitwise == 0.1.1.1, safe,  dequeue == 0.1.12, logict >=0.6 && <0.7, random >=1.1 && <1.2, lattices == 1.5.0, MonadRandom == 0.5.1
-  other-extensions:    RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.SASProperties.tests
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
   default-language:    Haskell2010
   
 
 executable all.valid
   hs-source-dirs: src/test/
   main-is:             Program/Properties/ValidProperties.hs
-  ghc-options:         -O2 -fno-ignore-asserts -main-is Program.Properties.ValidProperties.all
-  build-depends:       fgl-control-order-dependence == 0.1.0.0,  base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers-unicode-symbols == 0.3.1.1, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, tasty-ant-xml >= 1.0.5 && < 1.2, QuickCheck >=2.8 && <2.9,  bitwise == 0.1.1.1, safe,  dequeue == 0.1.12, logict >=0.6 && <0.7, random >=1.1 && <1.2, lattices == 1.5.0, MonadRandom == 0.5.1
-  other-extensions:    RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.ValidProperties.all
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
   default-language:    Haskell2010
-  
+

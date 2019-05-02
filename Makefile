@@ -4,7 +4,7 @@
 
 
 fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.cpp
-	cpp $< $@
+	cpp -nostdinc -C -P $< $@
 
 #VALID=Program.Properties.ValidProperties
 VALID=Program.Properties.SASProperties

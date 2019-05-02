@@ -5,13 +5,12 @@
 
         <target name="gen">
 	        <!-- <property name="xmlfile"/> -->
-                <property name="genReportDir" location="${basedir}/unitTestReports/${xmlfile}/"/>
+	        	<basename property="xmlfileBase" file="${xmlfile}"/>
+                <property name="genReportDir" location="${basedir}/unitTestReports/${xmlfileBase}/"/>
                 <delete dir="${genReportDir}"/>
                 <mkdir dir="${genReportDir}"/>
-                <junitreport todir="${basedir}/unitTestReports/${xmlfile}/">
-                        <fileset dir="${basedir}">
-                                <include name="${xmlfile}"/>
-                        </fileset>
+                <junitreport todir="${basedir}/unitTestReports/${xmlfileBase}/">
+                        <fileset file="${xmlfile}"/>
                         <report format="frames" todir="${genReportDir}/html"/>
                 </junitreport>
         </target>

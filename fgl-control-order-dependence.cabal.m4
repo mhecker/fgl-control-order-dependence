@@ -48,10 +48,8 @@ extra-source-files:  ChangeLog.md
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
-
-
 define(COMMON_EXTENSIONS, `RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving')dnl
-define(COMMON_GHC_FLAGS, `-O2 -fno-ignore-asserts')dnl
+define(COMMON_GHC_FLAGS, `-O2')dnl
 
 define(COMMON_DEPENDENCIES, `base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, QuickCheck >=2.8 && <2.9, logict >=0.6 && <0.7, random >=1.1 && <1.2, MonadRandom == 0.5.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, dequeue == 0.1.12, bitwise == 0.1.1.1')dnl
 define(MAIN_DEPENDENCIES, `mtl >= 2.2, template-haskell >= 2.10, array >= 0.5, data-default-instances-containers >= 0.0.1 && < 0.2, monad-gen == 0.3.0.1, pqueue >= 1.3.2 && < 1.5, time >= 1.5 && < 1.6, safe')dnl
@@ -140,9 +138,7 @@ library
   default-language:    Haskell2010
 
 
-
-
-executable sas-props
+executable sas-props.bin
   hs-source-dirs: src/test/
   main-is:             Program/Properties/SASProperties.hs
   ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.SASProperties.props
@@ -150,7 +146,7 @@ executable sas-props
   other-extensions:    COMMON_EXTENSIONS
   default-language:    Haskell2010
   
-executable sas-tests
+executable sas-tests.bin
   hs-source-dirs: src/test/
   main-is:             Program/Properties/SASProperties.hs
   ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.SASProperties.tests
@@ -159,11 +155,79 @@ executable sas-tests
   default-language:    Haskell2010
   
 
-executable all.valid
+define(VALID,`
+executable $1.valid.bin
   hs-source-dirs: src/test/
   main-is:             Program/Properties/ValidProperties.hs
-  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.ValidProperties.all
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.ValidProperties.$1
   build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
   other-extensions:    COMMON_EXTENSIONS
   default-language:    Haskell2010
 
+executable $1.valid.xml.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Properties/ValidProperties.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.ValidProperties.$1X
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+')dnl
+
+VALID(all)
+VALID(cdom)
+VALID(balanced)
+VALID(timing)
+VALID(timingDep)
+VALID(simon)
+VALID(giffhorn)
+VALID(soundness)
+VALID(preccex)
+VALID(nticd)
+VALID(ntscd)
+VALID(newcd)
+VALID(dod)
+VALID(wod)
+VALID(color)
+VALID(reducible)
+VALID(indeps)
+VALID(delay)
+VALID(insensitiveDom)
+VALID(sensitiveDom)
+VALID(misc)
+
+define(EXPECTED_FAILURE_DEPENDENCY, `tasty-expected-failure >= 0.11 && < 0.12')
+
+define(INVALID,`
+executable $1.invalid.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Properties/InvalidProperties.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.InvalidProperties.$1
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES, EXPECTED_FAILURE_DEPENDENCY
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+
+executable $1.invalid.xml.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Properties/InvalidProperties.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.InvalidProperties.$1X
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES, EXPECTED_FAILURE_DEPENDENCY
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+')dnl
+
+INVALID(all)
+INVALID(cdom)
+INVALID(balanced)
+INVALID(timing)
+INVALID(timingDep)
+INVALID(giffhorn)
+INVALID(soundness)
+INVALID(preccex)
+INVALID(nticd)
+INVALID(ntscd)
+INVALID(newcd)
+INVALID(dod)
+INVALID(wod)
+INVALID(insensitiveDom)
+INVALID(sensitiveDom)
+INVALID(misc)

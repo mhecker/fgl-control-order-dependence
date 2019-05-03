@@ -34,7 +34,6 @@ dist/build/%.bin : fgl-control-order-dependence.cabal .FORCE
 
 %.xml.fixed.xml : %.xml flatten-testsuite.xslt
 	cat $< | xmllint --format - | saxon-xslt /dev/stdin flatten-testsuite.xslt  > $@
-	# cat $< | sed -e 's/<testsuites[^>]*>//g' | sed -e 's/<\/testsuites>//g' | xmllint --format - | saxon-xslt /dev/stdin flatten-testsuite.xslt  > $@
 
 clean :
 	cabal clean

@@ -1,6 +1,6 @@
 # uncomment for profiling builds
 # PROF=defined
-DEBUG=defined
+# DEBUG=defined
 
 fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.m4
 	m4 $< > $@
@@ -32,8 +32,9 @@ dist/build/%.bin : fgl-control-order-dependence.cabal .FORCE
 
 
 
-%.xml.fixed.xml : %.xml
-	cat $< | sed -e 's/<testsuites[^>]*>//g' | sed -e 's/<\/testsuites>//g' > $@
+%.xml.fixed.xml : %.xml flatten-testsuite.xslt
+	cat $< | xmllint --format - | saxon-xslt /dev/stdin flatten-testsuite.xslt  > $@
+	# cat $< | sed -e 's/<testsuites[^>]*>//g' | sed -e 's/<\/testsuites>//g' | xmllint --format - | saxon-xslt /dev/stdin flatten-testsuite.xslt  > $@
 
 clean :
 	cabal clean

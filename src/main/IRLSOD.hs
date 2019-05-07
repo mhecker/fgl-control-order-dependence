@@ -252,35 +252,8 @@ eventStepAt index icfg config@(control,globalσ,tlσs,i) =
            c = (globalσ,tlσ,i)
            σ = globalσ `Map.union` tlσ
            succs = lsuc icfg n
-       -- let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ [ e | e@(n', cfgEdge) <- lsuc icfg n, case cfgEdge of { CallSummary -> False ; _ -> True } ]
-       -- let (spawn,normal) = go [] [] succs
-       --       where go spawn normal [] = (spawn, normal)
-       --             go spawn normal ( e@(n', cfgEdge) : es) = case cfgEdge of
-       --               Spawn       -> go (e:spawn)   normal  es
-       --               CallSummary -> go    spawn    normal  es
-       --               _           -> go    spawn (e:normal) es
-
-       -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-           -- configs' = [ (fromEdge σ i cfgEdge, control',c')  | e@(n', cfgEdge) <- succs,
-           --                                                     case cfgEdge of { Spawn -> False ; CallSummary -> False ;  _ -> True },
-           --                                                     c' <- stepFor cfgEdge c,
-           --                                                     control' <- controlStateFor e nCs
-           --            ]
            spawn = filter (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False}) succs
 
-           -- result = case (spawn, configs') of (_ ,[(event,control', (globalσ', tlσ', i'))]) ->
-           --                                                                      ((n,event,index),(control' : ([(spawned,[])   | (spawned, _) <- spawn] ++ (deleteAt index control)),
-           --                                                                                        globalσ',
-           --                                                                                        tlσ'     : ([Map.empty      | (spawned, _) <- spawn] ++ (deleteAt index tlσs   )),
-           --                                                                                        i'
-           --                                                                      ))
-           --                                    ([],[])                 ->        ((n,Tau,index),  (                                                    deleteAt index control,
-           --                                                                                        globalσ,
-           --                                                                                                                                            deleteAt index tlσs,
-           --                                                                                        i
-           --                                                                      ))
-           --                                    (_ ,[])                 -> error "spawn an exit-node"
-           --                                    (_ ,_)                  -> error "nichtdeterministisches Programm"
            resultFast = go succs
              where go []                     = case spawn of [] ->              ((n,Tau,index),  (                                                    deleteAt index control,
                                                                                                   globalσ,
@@ -301,8 +274,6 @@ eventStepAt index icfg config@(control,globalσ,tlσs,i) =
                                                                                 ))
                                         _ -> go es
                                       _ -> go es
-           -- eq (event, (a,b,c,_)) (event', (a', b', c',_)) = event == event' && a == a' && b == b' && c == c' 
-       -- in if (result `eq` resultFast) then resultFast else error "eventStep"
        in resultFast
 
 

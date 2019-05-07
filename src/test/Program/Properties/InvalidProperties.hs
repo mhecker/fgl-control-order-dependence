@@ -119,8 +119,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
 
--- all        = defaultMain                               $ expectFail $ tests
-all        = defaultMain $ soundnessProps
+all        = defaultMain                               $ expectFail $ tests
 allX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ tests
 cdom       = defaultMain                               $ expectFail $ testGroup "cdom"      [ mkTest [cdomTests, cdomCdomTests], mkProp [cdomProps, cdomCdomProps]]
 cdomX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "cdom"      [ mkTest [cdomTests, cdomCdomTests], mkProp [cdomProps, cdomCdomProps]]

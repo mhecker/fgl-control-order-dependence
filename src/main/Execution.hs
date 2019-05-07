@@ -14,6 +14,7 @@ import Control.Monad (liftM)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Data.List as List(null)
 
 import Control.Monad(forM_)
 
@@ -140,9 +141,9 @@ someFinishedReversedAnnotatedExecutionTraces n program@(Program { tcfg }) input 
           | finished  = return t0
           | otherwise = do
                index0 <- getRandomR (1, length ns)
-               let ((n,e',index),c'') = eventStepAt (index0 - 1) tcfg c'
-               sampleTrace ((c',(n,e',index),c''):t0)
-         where finished = ns == []
+               let (event,c'') = eventStepAt (index0 - 1) tcfg c'
+               sampleTrace ((c',event,c''):t0)
+         where finished = List.null ns
                (ns,_,_,_) = c'
 
 someFinishedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]

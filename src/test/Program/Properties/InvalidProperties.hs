@@ -119,7 +119,8 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
 
-all        = defaultMain                               $ expectFail $ tests
+-- all        = defaultMain                               $ expectFail $ tests
+all        = defaultMain $ soundnessProps
 allX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ tests
 cdom       = defaultMain                               $ expectFail $ testGroup "cdom"      [ mkTest [cdomTests, cdomCdomTests], mkProp [cdomProps, cdomCdomProps]]
 cdomX      = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "cdom"      [ mkTest [cdomTests, cdomCdomTests], mkProp [cdomProps, cdomCdomProps]]
@@ -168,7 +169,7 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 soundnessProps =  localOption d $ testGroup "(concerning soundness)" [
-    testPropertySized 10
+  testPropertySized 10
      ("allSoundIntraMulti [ unsoundIRLSODAttempt  ] ")
      ( allSoundIntraMulti [ unsoundIRLSODAttempt  ] )
   ]
@@ -601,10 +602,10 @@ balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops
 
 cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
   [ testCase ("chopsCdomArePrefixes idomBischof for " ++ exampleName)  $ chopsCdomArePrefixes idomBischof p @? ""
-  | (exampleName, p) <- testsuite
+  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
   ] ++
   [ testCase ("chopsCdomAreExclChops idomBischof for " ++ exampleName)  $ chopsCdomAreExclChops idomBischof p @? ""
-  | (exampleName, p) <- testsuite
+  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
   ] ++
   []
 

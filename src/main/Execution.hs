@@ -139,10 +139,11 @@ someFinishedReversedAnnotatedExecutionTraces n program@(Program { tcfg }) input 
         sampleTrace t0@((c,e,c'):cs)
           | finished  = return t0
           | otherwise = do
-               ((n,e',index),c'') <- sample successors
+               index0 <- getRandomR (1, length ns)
+               let ((n,e',index),c'') = eventStepAt (index0 - 1) tcfg c'
                sampleTrace ((c',(n,e',index),c''):t0)
-         where finished   = successors == []
-               successors = eventStep tcfg c'
+         where finished = ns == []
+               (ns,_,_,_) = c'
 
 someFinishedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
 someFinishedAnnotatedExecutionTraces n p i = liftM (fmap (\(t,p) -> (reverse t,p))) $  someFinishedReversedAnnotatedExecutionTraces n p i

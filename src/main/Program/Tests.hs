@@ -36,6 +36,7 @@ import Program.MultiThread
 import Program.MHP
 import Program.CDom
 import Program.Analysis
+import Program.DynamicAnalysis (isSecureEmpirically)
 import Program.Generator (GeneratedProgram(..), toCode, toProgram,
                           IntraGeneratedProgram(..), toCodeIntra, toProgramIntra,
                           SimpleProgram(..), toCodeSimple, toProgramSimple,
@@ -141,7 +142,7 @@ showDomTree cdomComputation p = showGraph idom
 
 p :: Program Gr
 -- p = cdomIsBroken'
--- p = figure5right'
+p = figure5right'
 -- p = someGeneratedProgram
 -- p = timingSecureButNotCombinedTimingSecure
 -- p = aSecureGeneratedProgram
@@ -151,7 +152,7 @@ p :: Program Gr
 -- p = notReallyUnsound8
 -- p = timingVsFSI3
 -- p = notReallyUnsound9
-p = notReallyUnsound21
+-- p = notReallyUnsound21
 --p = minimalClassificationVstimingClassificationDomPathsCounterExampleMartin
 
 testSinkPaths = do

@@ -227,7 +227,7 @@ eventStep icfg config@(control,globalσ,tlσs,i) = do
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
        let configs' = [ ((n,fromEdge σ i cfgEdge), (control',globalσ', tlσ', i'))  | (n', cfgEdge) <- normal,
                                                                                          (globalσ',tlσ', i') <- stepFor cfgEdge (globalσ,tlσ,i),
-                                                                                         control' <- controlStateFor (n, n', cfgEdge) (n, callString)
+                                                                                         control' <- controlStateFor (n', cfgEdge) (n, callString)
                       ]
 
 
@@ -246,6 +246,42 @@ eventStep icfg config@(control,globalσ,tlσs,i) = do
                                  (_ ,_)                               -> error "nichtdeterministisches Programm"
 
 
+eventStepAt :: Graph gr => Int ->  gr CFGNode CFGEdge -> Configuration -> ((Node,Event,Int),Configuration)
+eventStepAt index icfg config@(control,globalσ,tlσs,i) = do
+       let (nCs@(n,callString),tlσ) = (zip control tlσs) !! index
+       let c = (globalσ,tlσ,i)
+       let σ = globalσ `Map.union` tlσ
+       -- let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ [ e | e@(n', cfgEdge) <- lsuc icfg n, case cfgEdge of { CallSummary -> False ; _ -> True } ]
+       let (spawn,normal) = go [] [] (lsuc icfg n)
+             where go spawn normal [] = (spawn, normal)
+                   go spawn normal ( e@(n', cfgEdge) : es) = case cfgEdge of
+                     Spawn       -> go (e:spawn)   normal  es
+                     CallSummary -> go    spawn    normal  es
+                     _           -> go    spawn (e:normal) es
+
+       -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
+       let configs' = [ (fromEdge σ i cfgEdge, control',c')  | e@(n', cfgEdge) <- normal,
+                                                               c' <- stepFor cfgEdge c,
+                                                               control' <- controlStateFor e nCs
+                      ]
+
+
+       case (spawn, configs') of (_ ,[(event,control', (globalσ', tlσ', i'))]) ->
+                                                                                ((n,event,index),(control' : ([(spawned,[])   | (spawned, _) <- spawn] ++ (deleteAt index control)),
+                                                                                                  globalσ',
+                                                                                                  tlσ'     : ([Map.empty      | (spawned, _) <- spawn] ++ (deleteAt index tlσs   )),
+                                                                                                  i'
+                                                                                ))
+                                 ([],[])                              ->        ((n,Tau,index),  (                                                    deleteAt index control,
+                                                                                                  globalσ,
+                                                                                                                                                      deleteAt index tlσs,
+                                                                                                  i
+                                                                                ))
+                                 (_ ,[])                              -> error "spawn an exit-node"
+                                 (_ ,_)                               -> error "nichtdeterministisches Programm"
+
+
+
 step :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [Configuration]
 step icfg config@(control,globalσ,tlσs,i) = do
        ((n, callString),tlσ,index) <- zip3 control tlσs [0..]
@@ -255,7 +291,7 @@ step icfg config@(control,globalσ,tlσs,i) = do
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
        let configs' = [ (control',globalσ', tlσ', i')  | (n', cfgEdge) <- normal,
                                                          (globalσ',tlσ', i') <- stepFor cfgEdge (globalσ,tlσ,i),
-                                                         control' <- controlStateFor (n, n', cfgEdge) (n, callString)
+                                                         control' <- controlStateFor (n', cfgEdge) (n, callString)
                       ]
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
@@ -274,30 +310,30 @@ step icfg config@(control,globalσ,tlσs,i) = do
                                  (_,_)                   -> error "nichtdeterministisches Programm"
 
 
-controlStateFor :: (Node, Node, CFGEdge) -> ThreadLocalControlState -> [ThreadLocalControlState]
-controlStateFor (n, m, Call)   (nn, stack) = assert (n == nn) $ [(m, (n, m):stack)]
-controlStateFor (n, m, Return) (nn, (m', n'):stack)
-  | n == n' && m == m'  = assert (n == nn) $ [(m, stack)]
-  | otherwise           = assert (n == nn) $ []
-controlStateFor (n, m, CallSummary) _ = error "cannot pass CallSummary"
-controlStateFor (n, m, _)      (nn, stack) = assert (n == nn) $ [(m, stack)]
+controlStateFor :: (Node, CFGEdge) -> ThreadLocalControlState -> [ThreadLocalControlState]
+controlStateFor (m, Call)   (n, stack) =  [(m, (n, m):stack)]
+controlStateFor (m, Return) (n, (m', n'):stack)
+  | n == n' && m == m'  = [(m, stack)]
+  | otherwise           = []
+controlStateFor (m, CallSummary) _ = error "cannot pass CallSummary"
+controlStateFor (m, _)      (n, stack) = [(m, stack)]
 
 stepFor :: CFGEdge -> (GlobalState,ThreadLocalState,Input) -> [(GlobalState,ThreadLocalState,Input)]
-stepFor e (globalσ,tlσ,i)  = step e where
+stepFor e c@(globalσ,tlσ,i)  = step e where
       σ = globalσ `Map.union` tlσ
       step :: CFGEdge ->  [(GlobalState,ThreadLocalState,Input)]
       step (Guard b bf)
-        | b == evalB σ bf                = [(                             globalσ,                              tlσ,                    i)]
+        | b == evalB σ bf                = [c]
         | otherwise                      = []
       step (Assign x@(Global _)      vf) = [(Map.insert x (evalV σ vf)    globalσ,                              tlσ,                    i)]
       step (Assign x@(ThreadLocal _) vf) = [(                             globalσ, Map.insert x (evalV σ vf)    tlσ,                    i)]
       step (Read   x@(Global _)      ch) = [(Map.insert x (head $ i ! ch) globalσ,                              tlσ, Map.adjust tail ch i)]
       step (Read   x@(ThreadLocal _) ch) = [(                             globalσ, Map.insert x (head $ i ! ch) tlσ, Map.adjust tail ch i)]
-      step (Print  x ch)                 = [(                             globalσ,                              tlσ,                    i)]
+      step (Print  x ch)                 = [c]
       step (Spawn      )                 = undefined
-      step (NoOp       )                 = [(                             globalσ,                              tlσ,                    i)]
-      step (Call       )                 = [(                             globalσ,                              tlσ,                    i)]
-      step (Return     )                 = [(                             globalσ,                              tlσ,                    i)]
+      step (NoOp       )                 = [c]
+      step (Call       )                 = [c]
+      step (Return     )                 = [c]
 
 hide (a,b,c,d) = (a,b,c)
 

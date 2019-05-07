@@ -2421,7 +2421,7 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
-    testProperty "ntscdSlice == ntsndDef"
+    testPropertySized 40 "ntscdSlice == ntsndDef"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     nticdslicer = SLICE.NTICD.ntscdSlice g
@@ -2446,7 +2446,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                     slicer2' = SLICE.NTICD.ntscdNTSODSliceViaNtscd      g'
                 in   slicer1  ms == slicer2  ms
                    ∧ slicer1' ms == slicer2' ms,
-    testProperty "ntscdNTSODSlice == nticdNTSODSliceViaNtscd"
+    testPropertySized 40 "ntscdNTSODSlice == ntscdNTSODSliceViaNtscd"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
@@ -2458,7 +2458,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        slicer1  ms == slicer2  ms
                      ∧ slicer1' ms == slicer2' ms
                    )), -- ),
-      testProperty  "ntscdNTSODSlice == ntscdNTSODSliceViaNtscd even when using data dependencies"
+      testPropertySized 25  "ntscdNTSODSlice == ntscdNTSODSliceViaNtscd even when using data dependencies"
                 $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) ->
                    let g = generatedGraph
                        ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
@@ -2914,28 +2914,28 @@ colorTests = testGroup "(concerning color algorithms)" $
 
 
 nticdProps = testGroup "(concerning nticd )" [
-    testProperty  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
+    testPropertySized 40  "nticdFig5GraphP               == nticdF5GraphP    for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   PROG.nticdFig5GraphP p        == PROG.nticdF5GraphP p,
-    testProperty  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
+    testPropertySized 40  "nticdSinkContraction          == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   PROG.nticdSinkContractionGraphP p == PROG.nticdF3GraphP p,
-    testProperty  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
+    testPropertySized 40  "controlDependenceGraphp       == nticdF3GraphP   for For-Programs, which by construction have the unique end node property"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   controlDependenceGraphP p      == PROG.nticdF3GraphP p,
-    testProperty  "nticdF3'GraphP                == nticdF3GraphP"
+    testPropertySized 40  "nticdF3'GraphP                == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   PROG.nticdF3'GraphP p         == PROG.nticdF3GraphP p,
-    testProperty  "nticdF3'dualGraphP            == nticdF3GraphP"
+    testPropertySized 40  "nticdF3'dualGraphP            == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   PROG.nticdF3'dualGraphP p     == PROG.nticdF3GraphP p,
-    testProperty  "nticdF3'dualWorkListGraphP       == nticdF3GraphP"
+    testPropertySized 40  "nticdF3'dualWorkListGraphP       == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   PROG.nticdF3'dualWorkListGraphP p  == PROG.nticdF3GraphP p,
-    testProperty  "nticdF3WorkListGraphP         == nticdF3GraphP"
+    testPropertySized 40  "nticdF3WorkListGraphP         == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   PROG.nticdF3WorkListGraphP p  == PROG.nticdF3GraphP p,
-    testProperty  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
+    testPropertySized 40  "nticdF3WorkListSymbolicGraphP == nticdF3GraphP"
                 $ \generated -> let  p :: Program Gr = toProgram generated in
                   PROG.nticdF3WorkListSymbolicGraphP p == PROG.nticdF3GraphP p,
     testProperty  "nticdFig5              == nticdF5                for graphs with unique end node property"

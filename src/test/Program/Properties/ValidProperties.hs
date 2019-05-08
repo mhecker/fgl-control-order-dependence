@@ -3901,6 +3901,37 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
     testProperty          "selfChopsSCC"                       $ selfChopsSCC
   ]
 
+cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
+  [ testCase ("chopsCdomArePrefixes idomChef for " ++ exampleName)  $ chopsCdomArePrefixes idomChef p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomArePrefixes idomMohrEtAl for " ++ exampleName)  $ chopsCdomArePrefixes idomMohrEtAl p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("idomChefTreeIsDomTree for " ++ exampleName)  $ idomChefTreeIsDomTree p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomChef for " ++ exampleName)  $ chopsCdomAreExclChops idomChef p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomMohrEtAl for " ++ exampleName)  $ chopsCdomAreExclChops idomMohrEtAl p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("inclChopIsChop for " ++ exampleName)  $ inclChopIsChop p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("exclChopContainedinclChop for " ++ exampleName)  $ exclChopContainedinclChop p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("selfChopsSame for " ++ exampleName)  $ selfChopsSame p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("selfChopsSCC for " ++ exampleName)  $ selfChopsSCC p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  []
+
+
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
     testProperty  "alternative implementation of  pre*[at(m2) ∩ pre*[at(m3)]] " $
       \(INTERCFG(cfg)) seed seed' ->
@@ -4024,37 +4055,6 @@ balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops
                 (sameLevelSummaryGraph'WithoutBs, "sameLevelSummaryGraph'WithoutBs")
                ]
        rpad m xs = take m $ xs ++ repeat ' '
-
-cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
-  [ testCase ("chopsCdomArePrefixes idomChef for " ++ exampleName)  $ chopsCdomArePrefixes idomChef p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("chopsCdomArePrefixes idomMohrEtAl for " ++ exampleName)  $ chopsCdomArePrefixes idomMohrEtAl p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("idomChefTreeIsDomTree for " ++ exampleName)  $ idomChefTreeIsDomTree p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("chopsCdomAreExclChops idomChef for " ++ exampleName)  $ chopsCdomAreExclChops idomChef p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("chopsCdomAreExclChops idomMohrEtAl for " ++ exampleName)  $ chopsCdomAreExclChops idomMohrEtAl p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("inclChopIsChop for " ++ exampleName)  $ inclChopIsChop p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("exclChopContainedinclChop for " ++ exampleName)  $ exclChopContainedinclChop p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("selfChopsSame for " ++ exampleName)  $ selfChopsSame p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  [ testCase ("selfChopsSCC for " ++ exampleName)  $ selfChopsSCC p @? ""
-  | (exampleName, p) <- testsuite
-  ] ++
-  []
-
 
 indepsProps = testGroup "(concerning dependencey graph representations using independencies)" [
     testPropertySized 25 "addNonImplicitNonTrivialSummaryEdgesGfpLfp  =~   addNonImplicitNonTrivialSummaryEdges"

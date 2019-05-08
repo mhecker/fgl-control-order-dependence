@@ -12,8 +12,8 @@ time             make dist/build/preccex.valid.xml.bin/preccex.valid.xml        
 time             make dist/build/nticd.valid.xml.bin/nticd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/ntscd.valid.xml.bin/ntscd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/newcd.valid.xml.bin/newcd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
-time timeout 60m make dist/build/dod.valid.xml.bin/dod.valid.xml                       RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
-time timeout 60m make dist/build/wod.valid.xml.bin/wod.valid.xml                       RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
+time             make dist/build/dod.valid.xml.bin/dod.valid.xml                       RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
+time             make dist/build/wod.valid.xml.bin/wod.valid.xml                       RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/color.valid.xml.bin/color.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/reducible.valid.xml.bin/reducible.valid.xml           RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/indeps.valid.xml.bin/indeps.valid.xml                 RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
@@ -22,4 +22,4 @@ time             make dist/build/insensitiveDom.valid.xml.bin/insensitiveDom.val
 time             make dist/build/sensitiveDom.valid.xml.bin/sensitiveDom.valid.xml     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/misc.valid.xml.bin/misc.valid.xml                     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 
-# time timeout 60m make dist/build/all.invalid.xml.bin/all.invalid.xml                   RTS="+RTS -M22288m -RTS"
+time timeout 60m make dist/build/all.invalid.xml.bin/all.invalid.xml                   RTS="+RTS -M22288m -RTS"

@@ -1,5 +1,7 @@
 set +e
+make fgl-control-order-dependence.cabal
 make clean
+cabal install --only-dependencies
 time             make dist/build/all.valid.xml.bin/all.valid.xml                       RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Unit tests/**'"
 time             make dist/build/cdom.valid.xml.bin/cdom.valid.xml                     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/balanced.valid.xml.bin/balanced.valid.xml             RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"

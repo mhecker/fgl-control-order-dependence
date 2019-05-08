@@ -3429,11 +3429,10 @@ precisionCounterExamples = [
             ]
 
 
-failingCdomIsCdom' = [
+failingCdomIsCdom' = failingCdomIsCdom'Both
+
+failingCdomIsCdom'Both = [
               $(withName 'example8),
-              $(withName 'threadSpawn1),
-              $(withName 'cdomIsBroken),
-              $(withName 'cdomIsBroken'),
               $(withName 'cdomIsBroken2),
               $(withName 'noninterferingSchedulers),
               $(withName 'figure5right'),
@@ -3449,6 +3448,12 @@ failingCdomIsCdom' = [
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample2),
               $(withName 'minimalClassificationVstimingClassificationDomPathsCounterExample3)
+            ]
+
+failingCdomIsCdom'ChefOnly = [
+              $(withName 'threadSpawn1),
+              $(withName 'cdomIsBroken),
+              $(withName 'cdomIsBroken')
             ]
 
 

@@ -3854,47 +3854,58 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations p execs idomChef == []
   ] ++
-  [ testPropertySized 10 ("cdomIsCdom' idomMohrEtAl")
-                $ \generated -> let  p :: Program Gr = toProgramIntra generated
-                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
-                                in cdomIsCdomViolations' p execs idomMohrEtAl == []
-  ] ++
   [ testPropertySized 10 ("cdomIsCdom idomMohrEtAl")
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations p execs idomMohrEtAl == []
+  ] ++
+  [ testPropertySized 10 ("cdomIsCdom idomMohrEtAlNoCycleTest")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+                                in cdomIsCdomViolations p execs idomMohrEtAlNoCycleTest == []
   ] ++
   [ testPropertySized 10 ("cdomIsCdom idomBischof")
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated
                                      execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
                                 in cdomIsCdomViolations p execs idomBischof == []
   ] ++
+  [ testPropertySized 10 ("cdomIsCdom' idomMohrEtAl")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
+                                     execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+                                in cdomIsCdomViolations' p execs idomMohrEtAl == []
+  ] ++
   []
 
 
 cdomCdomTests = testGroup "(concerning cdoms)" $
-  [ testCase ("cdomIsCdom idomChef for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomChef) == [] @? ""
+  [ testCase ("cdomIsCdom idomChef for " ++ exampleName) $                 (cdomIsCdomViolations  p execs idomChef) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++
-  [ testCase ("cdomIsCdom' idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomMohrEtAl) == [] @? ""
+  [ testCase ("cdomIsCdom idomMohrEtAl for " ++ exampleName) $             (cdomIsCdomViolations  p execs idomMohrEtAl) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++
-  [ testCase ("cdomIsCdom idomMohrEtAl for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomMohrEtAl) == [] @? ""
+  [ testCase ("cdomIsCdom idomMohrEtAlNoCycleTest for " ++ exampleName)  $ (cdomIsCdomViolations  p execs idomMohrEtAlNoCycleTest) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++
-  [ testCase ("cdomIsCdom idomBischof for " ++ exampleName)  $ (cdomIsCdomViolations p execs idomBischof) == [] @? ""
+  [ testCase ("cdomIsCdom idomBischof for " ++ exampleName) $              (cdomIsCdomViolations  p execs idomBischof) == [] @? ""
+  | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+  ] ++
+  [ testCase ("cdomIsCdom' idomMohrEtAl for " ++ exampleName) $            (cdomIsCdomViolations' p execs idomMohrEtAl) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++
   []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
-    testPropertySized 40  "idomIsTreeProgram idomChef"         $ idomIsTreeProgram idomChef,
-    testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"     $ idomIsTreeProgram idomMohrEtAl,
-    testPropertySized 10  "chopsCdomArePrefixes idomChef"      $ chopsCdomArePrefixes idomChef,
-    testPropertySized 10  "chopsCdomArePrefixes idomMohrEtAl"  $ chopsCdomArePrefixes idomMohrEtAl,
+    testPropertySized 40  "idomIsTreeProgram idomChef"                   $ idomIsTreeProgram idomChef,
+    testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"                $ idomIsTreeProgram idomMohrEtAl,
+    testPropertySized 80  "idomIsTreeProgram idomMohrEtAlNoCycleTest"     $ idomIsTreeProgram idomMohrEtAlNoCycleTest,
+    testPropertySized 10  "chopsCdomArePrefixes idomChef"                 $ chopsCdomArePrefixes idomChef,
+    testPropertySized 10  "chopsCdomArePrefixes idomMohrEtAl"             $ chopsCdomArePrefixes idomMohrEtAl,
+    testPropertySized 10  "chopsCdomArePrefixes idomMohrEtAlNoCycleTest"  $ chopsCdomArePrefixes idomMohrEtAlNoCycleTest,
     testPropertySized 60  "idomChefTreeIsDomTree"              $ idomChefTreeIsDomTree,
     testPropertySized 10  "chopsCdomAreExclChops idomChef"     $ chopsCdomAreExclChops idomChef,
-    testPropertySized 10  "chopsCdomAreExclChops idomMohrEtAl" $ chopsCdomAreExclChops idomMohrEtAl,
+    testPropertySized 10  "chopsCdomAreExclChops idomMohrEtAl"            $ chopsCdomAreExclChops idomMohrEtAl,
+    testPropertySized 10  "chopsCdomAreExclChops idomMohrEtAlNoCycleTest" $ chopsCdomAreExclChops idomMohrEtAlNoCycleTest,
     testPropertySized 10  "inclChopIsChop"                     $ inclChopIsChop,
     testPropertySized 10  "exclChopContainedinclChop"          $ exclChopContainedinclChop,
     testPropertySized 70  "selfChopsSame"                      $ selfChopsSame,
@@ -3908,6 +3919,9 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   [ testCase ("chopsCdomArePrefixes idomMohrEtAl for " ++ exampleName)  $ chopsCdomArePrefixes idomMohrEtAl p @? ""
   | (exampleName, p) <- testsuite
   ] ++
+  [ testCase ("chopsCdomArePrefixes idomMohrEtAlNoCycleTest for " ++ exampleName)  $ chopsCdomArePrefixes idomMohrEtAlNoCycleTest p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [ testCase ("idomChefTreeIsDomTree for " ++ exampleName)  $ idomChefTreeIsDomTree p @? ""
   | (exampleName, p) <- testsuite
   ] ++
@@ -3915,6 +3929,9 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   | (exampleName, p) <- testsuite
   ] ++
   [ testCase ("chopsCdomAreExclChops idomMohrEtAl for " ++ exampleName)  $ chopsCdomAreExclChops idomMohrEtAl p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomMohrEtAlNoCycleTest for " ++ exampleName)  $ chopsCdomAreExclChops idomMohrEtAlNoCycleTest p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [ testCase ("inclChopIsChop for " ++ exampleName)  $ inclChopIsChop p @? ""

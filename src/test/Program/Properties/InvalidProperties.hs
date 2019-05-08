@@ -557,6 +557,12 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
   [ testCase ("cdomIsCdom' idomChef for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomChef) == [] @? ""
   | (exampleName, p) <- failingCdomIsCdom', let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++
+  [ testCase ("cdomIsCdom' idomBischof for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomBischof) == [] @? ""
+  | (exampleName, p) <- failingCdomIsCdom', let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+  ] ++
+  [ testCase ("cdomIsCdom' idomMohrEtAlNoCycleTest for " ++ exampleName)  $ (cdomIsCdomViolations' p execs idomMohrEtAlNoCycleTest) == [] @? ""
+  | (exampleName, p) <- failingCdomIsCdom', let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
+  ] ++
   []
 
 

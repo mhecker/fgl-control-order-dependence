@@ -91,7 +91,30 @@ idomMohrEtAl p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromLis
 
         leastValidFrom :: Node -> Node
         leastValidFrom c
-          | (inMulti ! c) {- ∨ (inCycle c) -} = leastValidFrom (dom ! c)
+          | (inMulti ! c) ∨ (inCycle c) = leastValidFrom (dom ! c)
+          | otherwise                   = c
+
+
+        lca :: Node -> Node -> Node
+        lca n n' = c
+          where (c,_) = last $ takeWhile (\(a,b) -> a==b) $ zip (pathToRoot n)
+                                                                (pathToRoot n')
+                pathToRoot node
+                  | node `Map.member` dom = pathToRoot (dom ! node) ++ [node]
+                  | otherwise             = [node]
+
+
+idomMohrEtAlNoCycleTest :: DynGraph gr => Program gr ->  Map (Node,Node) Node
+idomMohrEtAlNoCycleTest p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
+    [ ((n,n'), leastValidFrom $ lca n n')   | n <- nodes tcfg, n' <- nodes tcfg ]
+  where dom :: Map Node Node
+        dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
+
+        inMulti = isInMultiThread p
+
+        leastValidFrom :: Node -> Node
+        leastValidFrom c
+          | (inMulti ! c)               = leastValidFrom (dom ! c)
           | otherwise                   = c
 
 

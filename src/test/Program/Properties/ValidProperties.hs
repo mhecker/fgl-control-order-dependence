@@ -1158,7 +1158,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in -- (if Set.size s0 /= Set.size s1 ∨ Set.size s1 /= Set.size s2 then traceShow (Set.size ms, Set.size s0, Set.size s1, Set.size s2, ms, g) else id) $
                    -- (if Set.size s0 < Set.size sNX then trace ((show $ length $ nodes $ g) ++ ",\t" ++ (show $ Set.size ms) ++ ",\t" ++ (show $ Set.size s0) ++ ",\tGO,\t" ++ (show $ Set.size s1) ++ ",\t" ++ (show $ Set.size s1') ++ ",\t" ++ (show $ Set.size s2) ++ ",\t" ++ (show $ Set.size sNX)) else id) $
                   (if ok then id else traceShow (g, ms)) ok,
-    testProperty "nticdNTIODSlice ⊆ nticdNTIODSliceViaCutAtRepresentatives = nticdNTIODSliceViaCutAtRepresentativesNoTrivial ⊆ nticdNTIODSliceViaEscapeNodes ⊆ nticdNTIODSliceViaChoiceAtRepresentatives for random slice-criteria of random size and CFG-shaped graphs with exit->entry edge"
+    testPropertySized 60 "nticdNTIODSlice ⊆ nticdNTIODSliceViaCutAtRepresentatives = nticdNTIODSliceViaCutAtRepresentativesNoTrivial ⊆ nticdNTIODSliceViaEscapeNodes ⊆ nticdNTIODSliceViaChoiceAtRepresentatives for random slice-criteria of random size and CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) seed1 seed2 ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -1285,7 +1285,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     slicer2' = SLICE.NTICD.nticdNTIODSlice              g'
                 in   slicer1  ms == slicer2  ms
                    ∧ slicer1' ms == slicer2' ms,
-    testProperty "sinkdoms g' => sinkdoms g"
+    testPropertySized 40 "sinkdoms g' => sinkdoms g"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     sinkdoms = PDOM.sinkdomsOf g
@@ -1332,7 +1332,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                                    ∨ (m1 == m2)
                          in (if ok  then id else traceShow (g, n, m1, m2)) ok
                        ))),
-      testProperty  "nticd nticdNTIOD Proof"
+      testPropertySized 25  "nticd nticdNTIOD Proof"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         must = ODEP.mustOfGfp g
@@ -1449,7 +1449,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                          s' = Set.fromList [ n | n <- nodes g, m ∈ ntind ! n ]
                      in s == s'
                    ),
-      testProperty  "sinkdomOfLfp ms                 == (∀) mustOfLfp  property"
+      testPropertySized 40  "sinkdomOfLfp ms                 == (∀) mustOfLfp  property"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         must = ODEP.mustOfGfp g
@@ -1591,7 +1591,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                            )
                    -- )))),
                    ,
-    testProperty "nticdNTIODSlice == nticdNTIODSliceViaNticd"
+    testPropertySized 25 "nticdNTIODSlice == nticdNTIODSliceViaNticd"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
@@ -1706,7 +1706,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                               in  (not $ property1 sn sn' gn' uniquen)
                            )
                      )),
-    testProperty "nticdNTIODSlice is termination sensitively sound for always-terminating graphs"
+    testPropertySized 25 "nticdNTIODSlice is termination sensitively sound for always-terminating graphs"
     $ \(ARBITRARY(generatedGraph)) ->
                 let     g   = removeDuplicateEdges $ efilter (\(n,m,_) -> n /= m) $ condensation generatedGraph
                         n = toInteger $ length $ nodes g
@@ -1716,9 +1716,9 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         -- slicer     = NTICD.wodTEILPDomSlice g
                         ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
                         runInput   = InfiniteDelay.runInput         g
-                    in traceShow (n, Set.size ss) $
+                    in -- traceShow (n, Set.size ss) $
                        (∀) ss (\s ->
-                         traceShow s $
+                         -- traceShow s $
                          let observable   = InfiniteDelay.observable s
                              differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
                                let input = InfiniteDelay.Input startNode choice
@@ -1753,7 +1753,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        ntiodteilslicer  (Set.fromList [m1, m2]) == wdslicer  (Set.fromList [m1, m2])
                      ∧ ntiodteilslicer' (Set.fromList [m1, m2]) == wdslicer' (Set.fromList [m1, m2])
                    )),
-    testPropertySized 40 "wodTEILSlice  == wodTEILSliceViaBraunF2"
+    testPropertySized 30 "wodTEILSlice  == wodTEILSliceViaBraunF2"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     g'   = grev g
@@ -1853,7 +1853,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     wccSlicer  = FCACD.wccSlice g
                     wccSlicer' = SLICE.ODEP.wccSliceViaNticdNTIODPDomSimpleHeuristic g
                 in wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
-    testProperty "wccSliceViaNticdNTIODSliceSimple  == wccSlice for randomly selected nodes"
+    testPropertySized 40 "wccSliceViaNticdNTIODSliceSimple  == wccSlice for randomly selected nodes"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph
                     m1 = (cycle $ nodes g) !! 32904
@@ -1862,7 +1862,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                     wccSlicer' = NTIODSlice.wccSliceViaNticdNTIODSliceSimple NTIODSlice.cutNPasteIfPossible g
                 in -- traceShow (length $ nodes g) $
                    wccSlicer' (Set.fromList [m1, m2]) == wccSlicer (Set.fromList [m1, m2]),
-    testProperty "wccSliceViaNticdNTIODSliceSimple  == wccSlice for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 70 "wccSliceViaNticdNTIODSliceSimple  == wccSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -1907,7 +1907,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in (∀) mss (\ms ->
                      wodteilslicer ms  == wodteilslicer' ms
                    ),
-    testPropertySized 70 "wodTEILPDomSlice g ms = nticdNTIODSliceSimple g{ n | n ->* ms} ms"
+    testPropertySized 60 "wodTEILPDomSlice g ms = nticdNTIODSliceSimple g{ n | n ->* ms} ms"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g   =      generatedGraph
                     rev = grev generatedGraph
@@ -2039,7 +2039,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                           ntiodsimpleslicer (Set.fromList [m1, m2]) == ntiodfastslicer (Set.fromList [m1, m2])
                    )),
-    testPropertySized 40  "ntiodSliceSimple recompute           == ntiodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 30  "ntiodSliceSimple recompute           == ntiodFastPDomSimpleHeuristicSlice for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -2049,7 +2049,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 in  (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (m1 == m2) ∨
                        ntiodsimpleslicer (Set.fromList [m1, m2]) == ntiodpdomslicer (Set.fromList [m1, m2])
                     )),
-    testPropertySized 70  "ntiodSliceSimple recompute           == ntiodSliceSimple recomputecutNPasteIfPossible for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 40  "ntiodSliceSimple recompute           == ntiodSliceSimple recomputecutNPasteIfPossible for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                 let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                     [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -2208,7 +2208,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in  isTransitive $ (fromSuccMap $ NTICDUnused.myDom g :: Gr () ()),
-  testProperty  "isTransitive myDom  for CFG-shaped graphs with exit->entry edge"
+  testPropertySized 40  "isTransitive myDom  for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -2222,7 +2222,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         myCDTrc          = trc $ (fromSuccMap $ myCD          :: Gr () ())
                         myCDFromMyDomTrc = trc $ (fromSuccMap $ myCDFromMyDom :: Gr () ())
                     in  (Set.fromList $ edges myCDFromMyDomTrc) == (Set.fromList $ edges myCDTrc),
-  testProperty  "myCDFromMyDom == myCD  for CFG-shaped graphs with exit->entry edge"
+  testPropertySized 40  "myCDFromMyDom == myCD  for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]
@@ -2340,7 +2340,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                         ntiodFastPDom                = ODEP.ntiodFastPDom                 g
                     in   True
                        ∧ ntiodFastPDomSimpleHeuristic == ntiodFastPDom,
-    testPropertySized 40  "ntiodFastPDom*             == ntiodFastPDom* for CFG-shaped graphs with exit->entry edge"
+    testPropertySized 30  "ntiodFastPDom*             == ntiodFastPDom* for CFG-shaped graphs with exit->entry edge"
     $ \(SIMPLECFG(generatedGraph)) ->
                     let [entry] = [ n | n <- nodes generatedGraph, pre generatedGraph n == [] ]
                         [exit]  = [ n | n <- nodes generatedGraph, suc generatedGraph n == [] ]

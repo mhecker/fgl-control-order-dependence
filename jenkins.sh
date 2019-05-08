@@ -9,7 +9,6 @@ time             make dist/build/timing.valid.xml.bin/timing.valid.xml          
 time             make dist/build/timingDep.valid.xml.bin/timingDep.valid.xml           RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/simon.valid.xml.bin/simon.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/giffhorn.valid.xml.bin/giffhorn.valid.xml             RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
-time timeout 60m make dist/build/soundness.valid.xml.bin/soundness.valid.xml           RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/preccex.valid.xml.bin/preccex.valid.xml               RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/nticd.valid.xml.bin/nticd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/ntscd.valid.xml.bin/ntscd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
@@ -23,5 +22,6 @@ time             make dist/build/delay.valid.xml.bin/delay.valid.xml            
 time             make dist/build/insensitiveDom.valid.xml.bin/insensitiveDom.valid.xml RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/sensitiveDom.valid.xml.bin/sensitiveDom.valid.xml     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/misc.valid.xml.bin/misc.valid.xml                     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
+time timeout 60m make dist/build/soundness.valid.xml.bin/soundness.valid.xml           RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 
 time timeout 60m make dist/build/all.invalid.xml.bin/all.invalid.xml                   RTS="+RTS -M22288m -RTS"

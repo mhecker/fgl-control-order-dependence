@@ -569,6 +569,16 @@ cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" 
     testPropertySized 10  "chopsCdomAreExclChops idomBischof " $ chopsCdomAreExclChops idomBischof
   ]
 
+cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
+  [ testCase ("chopsCdomArePrefixes idomBischof for " ++ exampleName)  $ chopsCdomArePrefixes idomBischof p @? ""
+  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomBischof for " ++ exampleName)  $ chopsCdomAreExclChops idomBischof p @? ""
+  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
+  ] ++
+  []
+
+
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
     testProperty  "classification loops in krinkeSCC graphs"      $
       \(INTERCFG(g)) seed ->
@@ -597,15 +607,6 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
   ]
 
 balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" $
-  []
-
-cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
-  [ testCase ("chopsCdomArePrefixes idomBischof for " ++ exampleName)  $ chopsCdomArePrefixes idomBischof p @? ""
-  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
-  ] ++
-  [ testCase ("chopsCdomAreExclChops idomBischof for " ++ exampleName)  $ chopsCdomAreExclChops idomBischof p @? ""
-  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
-  ] ++
   []
 
 

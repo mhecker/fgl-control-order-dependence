@@ -52,7 +52,7 @@ define(COMMON_EXTENSIONS, `RankNTypes, CPP, ScopedTypeVariables, FlexibleInstanc
 define(COMMON_GHC_FLAGS, `-O2 -rtsopts')dnl
 
 define(COMMON_DEPENDENCIES, `process >= 1.2.3 && < 1.4, base >=4.8 && <4.10, base-unicode-symbols >=0.2 && <0.3, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-arbitrary == 0.2.0.3, fgl-visualize >= 0.1.0.1 && < 0.2, QuickCheck >=2.8 && <2.9, logict >=0.6 && <0.7, random >=1.1 && <1.2, MonadRandom == 0.5.1, containers-unicode-symbols == 0.3.1.1, lattices == 1.5.0, dequeue == 0.1.12, bitwise == 0.1.1.1')dnl
-define(MAIN_DEPENDENCIES, `mtl >= 2.2, template-haskell >= 2.10, array >= 0.5, data-default-instances-containers >= 0.0.1 && < 0.2, monad-gen == 0.3.0.1, pqueue >= 1.3.2 && < 1.5, time >= 1.5 && < 1.6, safe')dnl
+define(MAIN_DEPENDENCIES, `mtl >= 2.2, template-haskell >= 2.10, array >= 0.5, data-default-instances-containers >= 0.0.1 && < 0.2, monad-gen == 0.3.0.1, pqueue >= 1.3.2 && < 1.5, time >= 1.5 && < 1.6, statistics, vector, safe')dnl
 define(TEST_DEPENDENCIES, `fgl-control-order-dependence, tasty >=0.11 && <0.12, tasty-quickcheck >=0.8 && <0.9, tasty-hunit >=0.9 && <0.10, tasty-ant-xml >= 1.0.5 && < 1.2')dnl
 
 library

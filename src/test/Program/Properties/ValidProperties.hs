@@ -4300,7 +4300,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                     in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
                        (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
                        not differentobservation,
-    testPropertySized 30 "nticdNTIODFastSlice  is minimal"
+    testPropertySized 25 "nticdNTIODFastSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
                         n = toInteger $ length $ nodes g
@@ -4328,7 +4328,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                             (if differentobservation then id else traceShow (m1, m2, n, differentobservation)) $
                             differentobservation
                        ),
-    testProperty "inifiniteDelays  is unique w.r.t nticdNTIODFastSlice"
+    testProperty 25 "inifiniteDelays  is unique w.r.t nticdNTIODFastSlice"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                     let g = generatedGraph
                         n = toInteger $ length $ nodes g

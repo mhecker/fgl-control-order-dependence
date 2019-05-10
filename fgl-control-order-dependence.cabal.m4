@@ -60,6 +60,7 @@ library
   exposed-modules:
     IRLSOD
     Unicode
+    Statistics
     Program.Examples
     Program.Analysis
     Program.DynamicAnalysis

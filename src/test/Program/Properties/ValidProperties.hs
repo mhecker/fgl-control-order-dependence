@@ -4328,7 +4328,7 @@ delayProps = testGroup "(concerning inifinte delay)" [
                             (if differentobservation then id else traceShow (m1, m2, n, differentobservation)) $
                             differentobservation
                        ),
-    testProperty 25 "inifiniteDelays  is unique w.r.t nticdNTIODFastSlice"
+    testPropertySized 25 "inifiniteDelays  is unique w.r.t nticdNTIODFastSlice"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
                     let g = generatedGraph
                         n = toInteger $ length $ nodes g

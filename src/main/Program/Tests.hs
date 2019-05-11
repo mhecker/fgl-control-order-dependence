@@ -383,3 +383,12 @@ someGen3 = IntraGeneratedProgram
         ("thread2",Generated (ForC 2 (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 17) "stdOut")) (If CFalse (Ass (Global "c") (Val 0)) (ReadFromChannel (Global "a") "lowIn1")))) undefined undefined undefined),
         ("thread3",Generated (If CTrue (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
     ])
+
+
+someGen4 = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (ForC 2 (ForC 2 (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 17) "stdOut"))))) undefined undefined undefined),
+        ("thread2",Generated (Seq (ForC 1 (Seq (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val 0) "stdOut"))) (Seq (Ass (Global "a") (Val 42)) (ReadFromChannel (Global "b") "stdIn"))) undefined undefined undefined),
+        ("thread3",Generated (Seq (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
+    ])

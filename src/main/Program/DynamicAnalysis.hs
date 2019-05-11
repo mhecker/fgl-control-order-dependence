@@ -40,7 +40,7 @@ import Program.Defaults
 import Program
 
 
-isSecureEmpirically program@(Program { tcfg, observability }) = unsafePerformIO $ do
+isSecureEmpiricallyMyOwnSuckyOldTest program@(Program { tcfg, observability }) = unsafePerformIO $ do
   θ  <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces n program defaultInput
   θ' <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces n program defaultInput'
   let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotatedIf areDifferent tcfg observability θ θ'
@@ -54,7 +54,7 @@ type Count = Integer
 
 isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Bool
 isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test 0 0 Map.empty Map.empty Map.empty
-  where α = 0.0001
+  where α = 0.000000001
         ε = 0.01
         
         newExecutionTrace :: MonadRandom m => Input -> m ExecutionTrace
@@ -102,8 +102,12 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
                 --       right = gtest vRight
                 where left  = wellektest ε α vLeft
                       right = wellektest ε α vRight
+          let ts = traceShow (θs, θ's)
+          let ts = traceShow (toId, θs, θ's)
+          let ts b = traceShow ("Finished:  ", n, b, θs, θ's) b
+          let tsSome = if (n < 5) ∨ (n `mod` 100 == 0) then traceShow ("Sample: ", n) else id
 
-          if (n < 1000) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
+          if (n < 20000) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
             e  <- newExecutionTrace defaultInput
             e' <- newExecutionTrace defaultInput'
             let t  = observable tcfg observability Low $ toTrace e
@@ -114,40 +118,18 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
 
             let (knownId', toId'') = Map.insertLookupWithKey useKnown t' nextId'  toId'
             let (id', nextId'') = case knownId' of { Nothing -> (nextId', nextId' + 1) ; Just id -> (id, nextId') }
-
             let ts = traceShow (t, t')
-            let ts = traceShow (θs, θ's)
-            ts $ test (n+1) nextId'' toId'' (Map.insertWith (+) id 1 θs) (Map.insertWith (+) id' 1 θ's)
+
+            test (n+1) nextId'' toId'' (Map.insertWith (+) id 1 θs) (Map.insertWith (+) id' 1 θ's)
           else if (evidenceThatObservationsAreDifferent ==    Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then
-            return $ traceShow (toId, θs, θ's) $ False
+            return $ ts $ False
           else if (evidenceThatObservationsAreDifferent == NotSignificant  ∧  evidenceThatObservationsAreWithinEpsilonDistance ==    Significant) then
-            return $ traceShow (toId, θs, θ's) $ True
+            return $ ts $ True
           else 
             return
-              $ traceShow (toId, θs, θ's)
               $ assert ( evidenceThatObservationsAreDifferent == Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == Significant)
               $ error "Tests are contradictory, wtf."
 
-        
+isSecureEmpirically :: Graph gr => Program gr -> Bool
+isSecureEmpirically = isSecureEmpiricallyCombinedTest
 
--- someFinishedReversedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
--- someFinishedReversedAnnotatedExecutionTraces n program@(Program { tcfg }) input = sampleSome [] 0
---   where initialTraces  =  [ [(initialConfiguration program input, e, c')] | (e,c') <- initialSteps ]
---         initialSteps   = eventStep tcfg $ initialConfiguration program input
---         p              = 1 / (toRational n)
---         sampleSome sampled i
---           | i >= n            = return $ fmap (,p) sampled
---           | otherwise         = do
---               t0 <- sample initialTraces
---               newTrace <- sampleTrace t0
---               sampleSome (newTrace:sampled) (i+1)
---         sampleTrace t0@((c,e,c'):cs)
---           | finished  = return t0
---           | otherwise = do
---                index0 <- getRandomR (1, length ns)
---                let (event,c'') = eventStepAt (index0 - 1) tcfg c'
---                sampleTrace ((c',event,c''):t0)
---          where finished = List.null ns
---                (ns,_,_,_) = c'
-
-  

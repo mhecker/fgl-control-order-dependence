@@ -246,9 +246,9 @@ soundnessProps =  testGroup "(concerning soundness)" [
     -- testPropertySized 3
     --  ("isSound  isSecureResumptionBasedSecurity")
     --  (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
-    testPropertySized 3
-     ("allSound [ timingClassification, timingClassification, timingClassification, timingClassificationSimple,  timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] ")
-     ( allSound [ {-isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths,-} isSecureTimingClassification{-, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification-} ] )
+    testPropertySized 10
+     ("allSoundIntra [ timingClassification, timingClassification, timingClassification, timingClassificationSimple,  timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] ")
+     ( allSoundIntra [ {-isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths,-} isSecureTimingClassification{-, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification-} ] )
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $

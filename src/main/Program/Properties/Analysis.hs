@@ -2,6 +2,8 @@
 
 module Program.Properties.Analysis where
 
+import Debug.Trace (traceShow)
+
 import Algebra.Lattice
 import Unicode
 
@@ -67,9 +69,9 @@ isSoundPartialGen isSecurePartial gen =
      in checkEmpirically ==> isSecureEmpirically p
 
 
-allSound ::  [(Program Gr -> Bool)] -> GeneratedProgram -> Property
-allSound as generated = any ($ p) as  ==> isSecureEmpirically p
-  where p = toProgram generated
+allSoundIntra ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
+allSoundIntra as generated = any ($ p) as  ==> traceShow ("New Program: ", (length $ nodes $ tcfg p, generated, tcfg p)) $ isSecureEmpirically p
+  where p = toProgramIntra generated
 
 allSoundIntraMulti ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
 allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ==> isSecureEmpirically p

@@ -11,7 +11,6 @@ import Statistics.Test.ChiSquared
 import Statistics.Function (square)
 import Statistics.Test.Types (significant)
 
--- import Data.Vector.Generic
 import Data.Vector (Vector, generate)
 import qualified Data.Vector as Vector
 
@@ -134,14 +133,11 @@ gtestViaChi2 p ndf vec
 chi2 vec = sum $ fmap (\(o,e) -> square (fromIntegral o - e) / e) vec
 
 
-
--- euclid2 :: Vector (Int, Double) -> Double
--- euclid2 v = Vector.sum $ fmap (\(x,y) -> (fromIntegral x - y) ^ 2) $ v
-
 wellektest :: Double -> Double -> Vector (Int, Double) -> TestResult
 wellektest ε α rss =
-      -- traceShow (euclid2, ε, uα, v / (sqrt n)) $
-      significant
+      id
+    $ traceShow (euclid2, ε, uα, v / (sqrt n))
+    $ significant
     $ euclid2 < (ε^2 - (uα * v / (sqrt n)))
    where n   = assert (nLeft == nRight) $ fromIntegral nLeft
            where nLeft  =         Vector.sum $ fmap fst $ rss
@@ -156,19 +152,3 @@ wellektest ε α rss =
          v = sqrt v2
 
          uα = quantile standard (1 - α)
--- likelihood' :: Vector (Int, Double) -> Double
--- likelihood' rss = Vector.sum $ fmap f rs
---   where rs = fmap (\(x,y) -> (fromIntegral x, y)) rss
---         r = Vector.sum $ fmap fst $ rs
---         s = Vector.sum $ fmap snd $ rs
---         f (ri,si)  =  (  ri *. log ((ri * (r+s)) / (r * (ri + si)))  )
---                    +  (  si *. log ((si * (r+s)) / (s * (ri + si)))  )
-
--- g :: Vector (Int, Double) -> (Double, Double, 
--- g rss = Vector.sum $ fmap f rs
---   where rs = fmap (\(x,y) -> (fromIntegral x, y)) rss
---         r = Vector.sum $ fmap fst $ rs
---         s = Vector.sum $ fmap snd $ rs
---         f (ri,si)  =  (  ri *. log ((ri / r) / ((ri+si)/(r+s)))  )
---                    +  (  si *. log ((si / s) / ((ri+si)/(r+s)))  )
-        

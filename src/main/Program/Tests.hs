@@ -359,3 +359,27 @@ timingVsFSI2 = GeneratedProgram  (Map.fromList [(1, "1")]) (Map.fromList [
   ])
 
 
+someGen :: GeneratedProgram
+someGen =
+  GeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [
+        ("main",Generated (Seq (PrintToChannel (Val (-1)) "stdOut") (CallProcedure "procH")) undefined undefined undefined),
+        ("procH",Generated (Seq (CallProcedure "procH") Skip) undefined undefined undefined)
+    ])
+
+someGen2 = GeneratedProgram
+    (Map.fromList [(1,"main"),(3,"thread3")])
+    (Map.fromList [
+        ("main", Generated (ForC 1 (CallProcedure "procF")) undefined undefined undefined),
+        ("procF",Generated (Seq (CallProcedure "procF") (SpawnThread 3)) undefined undefined undefined),
+        ("thread3",Generated (If CTrue (Ass (Global "z") (Val 17)) Skip) undefined undefined undefined)
+    ])
+
+someGen3 = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (Seq (ForC 2 (ForC 1 (SpawnThread 2))) (Seq (SpawnThread 3) (ReadFromChannel (Global "c") "lowIn1"))) undefined undefined undefined),
+        ("thread2",Generated (ForC 2 (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 17) "stdOut")) (If CFalse (Ass (Global "c") (Val 0)) (ReadFromChannel (Global "a") "lowIn1")))) undefined undefined undefined),
+        ("thread3",Generated (If CTrue (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
+    ])

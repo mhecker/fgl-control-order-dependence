@@ -142,7 +142,7 @@ showDomTree cdomComputation p = showGraph idom
 
 p :: Program Gr
 -- p = cdomIsBroken'
-p = figure5right'
+-- p = figure5right'
 -- p = someGeneratedProgram
 -- p = timingSecureButNotCombinedTimingSecure
 -- p = aSecureGeneratedProgram
@@ -153,8 +153,9 @@ p = figure5right'
 -- p = timingVsFSI3
 -- p = notReallyUnsound9
 -- p = notReallyUnsound21
---p = minimalClassificationVstimingClassificationDomPathsCounterExampleMartin
-
+-- p = minimalClassificationVstimingClassificationDomPathsCounterExampleMartin
+p = toProgramIntra someGen6
+  
 testSinkPaths = do
   (CG _ generatedGraph) <- (generate $ resize 40 arbitrary :: IO ((Connected Gr () ())))
   --(NME generatedGraph) <- (generate $ resize 30 arbitrary :: IO ((NoMultipleEdges Gr () ())))
@@ -399,4 +400,15 @@ someGen5 = IntraGeneratedProgram
     (Map.fromList [("main",Generated (ForC 2 (ForC 1 (Seq (Seq (SpawnThread 2) (SpawnThread 3)) (If CTrue (PrintToChannel (Val 0) "stdOut") (Ass (Global "y") (Val 4)))))) undefined undefined undefined),
                    ("thread2",Generated (Seq (Seq (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Plus (Var (Global "z")) (Var (Global "z"))) "stdOut")) (ForC 1 (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (ReadFromChannel (Global "c") "lowIn1")))) undefined undefined undefined),
                    ("thread3",Generated (If CFalse (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut")) undefined undefined undefined)
+    ])
+
+
+someGen6 = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (Seq (ForC 1 (ReadFromChannel (Global "c") "lowIn1")) (Seq (SpawnThread 3) (SpawnThread 2))) undefined undefined undefined),
+        ("thread2",Generated (ForC 1 (If (Leq (Val 0) (Var (Global "c")))
+                                       (If (Leq (Val 0) (Neg (Var (Global "c")))) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (PrintToChannel (Val 9) "stdOut"))
+                                       (ForC 1 (PrintToChannel (Val 1) "stdOut")))) undefined undefined undefined),
+        ("thread3",Generated (Seq (ReadFromChannel (Global "a") "lowIn1") (ReadFromChannel (Global "c") "stdIn")) undefined undefined undefined)
     ])

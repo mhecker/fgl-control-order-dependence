@@ -53,7 +53,7 @@ type ID = Int
 type Count = Integer
 
 isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Bool
-isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test 0 0 Map.empty Map.empty Map.empty
+isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test (0, 0, Map.empty, Map.empty, Map.empty)
   where α = 0.000000001
         ε = 0.01
         
@@ -74,6 +74,23 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
                   where finished = List.null ns
                         (ns,_,_,_) = c'
 
+
+        newSamplePairs :: MonadRandom m => Integer -> (Integer, ID, Map Trace ID, Map ID Count , Map ID Count) -> m (Integer, ID, Map Trace ID, Map ID Count , Map ID Count)
+        newSamplePairs 0 state = return state
+        newSamplePairs k (n, nextId, toId, θs, θ's) = do
+            e  <- newExecutionTrace defaultInput
+            e' <- newExecutionTrace defaultInput'
+            let t  = observable tcfg observability Low $ toTrace e
+            let t' = observable tcfg observability Low $ toTrace e'
+          
+            let (knownId,  toId' ) = Map.insertLookupWithKey useKnown t  nextId   toId
+            let (id, nextId'  ) = case knownId  of { Nothing -> (nextId , nextId  + 1) ; Just id -> (id, nextId ) }
+
+            let (knownId', toId'') = Map.insertLookupWithKey useKnown t' nextId'  toId'
+            let (id', nextId'') = case knownId' of { Nothing -> (nextId', nextId' + 1) ; Just id -> (id, nextId') }
+
+            newSamplePairs (k-1) (n+1, nextId'', toId'', Map.insertWith (+) id 1 θs, Map.insertWith (+) id' 1 θ's)
+
         useKnown  _ _ known = known
 
         gen ::  Map ID Count -> Map ID Count -> ID -> (Int, Double)
@@ -82,8 +99,8 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
             fromIntegral $ Map.findWithDefault 0 id θ's
           )
 
-        test :: MonadRandom m => Integer -> ID -> Map Trace ID -> Map ID Count -> Map ID Count -> m Bool
-        test n nextId toId θs θ's = do
+        test :: MonadRandom m => (Integer, ID, Map Trace ID, Map ID Count , Map ID Count) -> m Bool
+        test state@(n, nextId, toId, θs, θ's) = do
 
           let vLeft  = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θs  θ's
           let vRight = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θ's θs 
@@ -108,19 +125,8 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
           let tsSome = if (n < 5) ∨ (n `mod` 100 == 0) then traceShow ("Sample: ", n) else id
 
           if (n < 20000) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
-            e  <- newExecutionTrace defaultInput
-            e' <- newExecutionTrace defaultInput'
-            let t  = observable tcfg observability Low $ toTrace e
-            let t' = observable tcfg observability Low $ toTrace e'
-          
-            let (knownId,  toId' ) = Map.insertLookupWithKey useKnown t  nextId   toId
-            let (id, nextId'  ) = case knownId  of { Nothing -> (nextId , nextId  + 1) ; Just id -> (id, nextId ) }
-
-            let (knownId', toId'') = Map.insertLookupWithKey useKnown t' nextId'  toId'
-            let (id', nextId'') = case knownId' of { Nothing -> (nextId', nextId' + 1) ; Just id -> (id, nextId') }
-            let ts = traceShow (t, t')
-
-            test (n+1) nextId'' toId'' (Map.insertWith (+) id 1 θs) (Map.insertWith (+) id' 1 θ's)
+            state' <- newSamplePairs 100 state
+            test state'
           else if (evidenceThatObservationsAreDifferent ==    Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then
             return $ ts $ False
           else if (evidenceThatObservationsAreDifferent == NotSignificant  ∧  evidenceThatObservationsAreWithinEpsilonDistance ==    Significant) then

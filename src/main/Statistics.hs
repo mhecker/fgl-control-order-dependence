@@ -1,7 +1,11 @@
 module Statistics where
 
+import Control.Exception.Base (assert)
+import Debug.Trace (traceShow)
+
 import Statistics.Distribution
 import Statistics.Distribution.ChiSquared
+import Statistics.Distribution.Normal (standard)
 import Statistics.Test.ChiSquared
 
 import Statistics.Function (square)
@@ -30,6 +34,17 @@ wikipediaExample' = generate 6 f
         f 5 = (25, 10)
 
 
+wellekExample91 :: Vector (Int, Double)
+wellekExample91 = generate 6 f
+  where e = 100.0/6.0
+        f 0 = (17, e)
+        f 1 = (16, e)
+        f 2 = (25, e)
+        f 3 = ( 9, e)
+        f 4 = (16, e)
+        f 5 = (17, e)
+
+
 fair :: Vector (Int, Double)
 fair = generate 6 f
   where f 0 = (10, 10)
@@ -38,6 +53,12 @@ fair = generate 6 f
         f 3 = (10, 10)
         f 4 = (10, 10)
         f 5 = (10, 10)
+
+
+deterministic :: Int -> Vector (Int, Double)
+deterministic n = generate 1 f
+  where nn = fromIntegral n
+        f 0 = (n, nn)
 
 
 
@@ -110,7 +131,31 @@ gtestViaChi2 p ndf vec
     chi2test :: Double -> Int -> Vector (Int,Double) -> TestResult #-}
 
 
+chi2 vec = sum $ fmap (\(o,e) -> square (fromIntegral o - e) / e) vec
 
+
+
+-- euclid2 :: Vector (Int, Double) -> Double
+-- euclid2 v = Vector.sum $ fmap (\(x,y) -> (fromIntegral x - y) ^ 2) $ v
+
+wellektest :: Double -> Double -> Vector (Int, Double) -> TestResult
+wellektest ε α rss =
+      -- traceShow (euclid2, ε, uα, v / (sqrt n)) $
+      significant
+    $ euclid2 < (ε^2 - (uα * v / (sqrt n)))
+   where n   = assert (nLeft == nRight) $ fromIntegral nLeft
+           where nLeft  =         Vector.sum $ fmap fst $ rss
+                 nRight = round $ Vector.sum $ fmap snd $ rss
+         rs' = fmap (\(x,y) -> (x / n, y / n)) rs
+          where rs  = fmap (\(x,y) -> (fromIntegral x,       y)) rss
+         euclid2 =         Vector.sum $ fmap (\(x,y) ->  (x - y) ^ 2)      $ rs'
+         v2 = 4 * (sum1 - sum2)
+           where sum1    = Vector.sum $ fmap (\(x,y) -> ((x - y) ^ 2) * x) $ rs'
+                 sum2    =        sum [ (x1 - y1) * (x2 - y2) * x1 * x2 | (x1, y1) <- Vector.toList rs', (x2,y2) <- Vector.toList rs' ]
+
+         v = sqrt v2
+
+         uα = quantile standard (1 - α)
 -- likelihood' :: Vector (Int, Double) -> Double
 -- likelihood' rss = Vector.sum $ fmap f rs
 --   where rs = fmap (\(x,y) -> (fromIntegral x, y)) rss

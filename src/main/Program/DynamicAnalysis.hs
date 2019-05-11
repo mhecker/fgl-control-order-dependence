@@ -29,7 +29,7 @@ import Statistics.Test.Types (TestResult(..))
 
 import Data.Graph.Inductive.Graph
 
-import Statistics (gtest, gtestViaChi2)
+import Statistics (gtest, gtestViaChi2, wellektest)
 
 import Unicode
 import IRLSOD(Trace, ExecutionTrace, Input, eventStep, eventStepAt, toTrace, SecurityLattice (..), observable)
@@ -55,6 +55,7 @@ type Count = Integer
 isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Bool
 isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test 0 0 Map.empty Map.empty Map.empty
   where α = 0.0001
+        ε = 0.01
         
         newExecutionTrace :: MonadRandom m => Input -> m ExecutionTrace
         newExecutionTrace input = do
@@ -94,8 +95,15 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
                 where left  = gtestViaChi2 α 0 vLeft
                       right = gtestViaChi2 α 0 vRight
             
+          let evidenceThatObservationsAreWithinEpsilonDistance = assert (left == right) $ left
+                -- where left  = chi2test α 0 vLeft
+                --       right = chi2test α 0 vRight
+                -- where left  = gtest vLeft
+                --       right = gtest vRight
+                where left  = wellektest ε α vLeft
+                      right = wellektest ε α vRight
 
-          if (n == 0) ∨ (evidenceThatObservationsAreDifferent == NotSignificant) then do
+          if (n < 1000) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
             e  <- newExecutionTrace defaultInput
             e' <- newExecutionTrace defaultInput'
             let t  = observable tcfg observability Low $ toTrace e
@@ -110,10 +118,15 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
             let ts = traceShow (t, t')
             let ts = traceShow (θs, θ's)
             ts $ test (n+1) nextId'' toId'' (Map.insertWith (+) id 1 θs) (Map.insertWith (+) id' 1 θ's)
-          else if (evidenceThatObservationsAreDifferent == Significant) then
+          else if (evidenceThatObservationsAreDifferent ==    Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then
             return $ traceShow (toId, θs, θ's) $ False
-          else
-            return $ traceShow (toId, θs, θ's) $ error "umpussible"
+          else if (evidenceThatObservationsAreDifferent == NotSignificant  ∧  evidenceThatObservationsAreWithinEpsilonDistance ==    Significant) then
+            return $ traceShow (toId, θs, θ's) $ True
+          else 
+            return
+              $ traceShow (toId, θs, θ's)
+              $ assert ( evidenceThatObservationsAreDifferent == Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == Significant)
+              $ error "Tests are contradictory, wtf."
 
         
 

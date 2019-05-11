@@ -227,13 +227,27 @@ instance DynGraph gr => Arbitrary (Program gr) where
 
 expGenerator :: Set Var -> Gen VarFunction
 expGenerator varsAvailable
-  | Set.null varsAvailable = elements $ fmap Val [-1,0,1,17,42]
+  | Set.null varsAvailable = elements $ fmap Val vals
   | otherwise              = frequency [
+    (1, do x <- elements vals
+           return $ (Val x)
+    ),
+    (1, do x <- elements $ Set.toList varsAvailable
+           return $ (Var x)
+    ),
+    (1, do x <- elements $ Set.toList varsAvailable
+           return $ (Neg (Var x))
+    ),
+    (1, do x <- elements $ Set.toList varsAvailable
+           y <- elements $ Set.toList varsAvailable
+           return $ (Var x) `Plus` (Var y)
+    ),
     (1, do x <- elements $ Set.toList varsAvailable
            y <- elements $ Set.toList varsAvailable
            return $ (Var x) `Times` (Var y)
     )
   ]
+ where vals = [-1,0,1,9,4]
 
 bexpGenerator :: Set Var -> Gen BoolFunction
 bexpGenerator varsAvailable

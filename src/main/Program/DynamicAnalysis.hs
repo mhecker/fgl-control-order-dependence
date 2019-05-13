@@ -29,7 +29,7 @@ import Statistics.Test.Types (TestResult(..))
 
 import Data.Graph.Inductive.Graph
 
-import Statistics (gtest, gtestViaChi2, wellektest)
+import Statistics (gtest, gtestViaChi2, wellektest, wellektestSignificantDifference, mytestSignificantDifference)
 
 import Unicode
 import IRLSOD(Trace, ExecutionTrace, Input, eventStep, eventStepAt, toTrace, SecurityLattice (..), observable)
@@ -104,19 +104,17 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
 
           let vLeft  = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θs  θ's
           let vRight = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θ's θs 
-          let evidenceThatObservationsAreDifferent = assert (left == right) $ left
+          -- let evidenceThatObservationsAreDifferent = assert (left == right) $ left
                 -- where left  = chi2test α 0 vLeft
                 --       right = chi2test α 0 vRight
                 -- where left  = gtest vLeft
                 --       right = gtest vRight
-                where left  = gtestViaChi2 α 0 vLeft
-                      right = gtestViaChi2 α 0 vRight
-            
-          let evidenceThatObservationsAreWithinEpsilonDistance = assert (left == right) $ left
-                -- where left  = chi2test α 0 vLeft
-                --       right = chi2test α 0 vRight
-                -- where left  = gtest vLeft
-                --       right = gtest vRight
+                -- where left  = gtestViaChi2 α 0 vLeft
+                --       right = gtestViaChi2 α 0 vRight
+          let evidenceThatObservationsAreDifferent = if left == right then left else NotSignificant
+                where left  = wellektestSignificantDifference ε α vLeft
+                      right = wellektestSignificantDifference ε α vRight
+          let evidenceThatObservationsAreWithinEpsilonDistance = if left == right then left else NotSignificant
                 where left  = wellektest ε α vLeft
                       right = wellektest ε α vRight
           let ts = traceShow (θs, θ's)

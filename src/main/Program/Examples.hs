@@ -2426,9 +2426,20 @@ notReallyUnsound9 :: Program Gr
 notReallyUnsound9 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code
         code = Map.fromList $ [
-          (1, (Seq (Seq Skip (PrintToChannel (Val 0) "stdOut")) (Seq (SpawnThread 2) (PrintToChannel (Val 1) "stdOut")))),
-          (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut") (SpawnThread 3)) (Seq (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "b") "lowIn1")))),
-          (3, (If CFalse (Seq (ReadFromChannel (Global "x") "stdIn") (Ass (Global "z") (Times (Var (Global "x")) (Var (Global "x"))))) (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))))
+          (1, (Seq (Seq Skip
+                        (PrintToChannel (Val 0) "stdOut")) (Seq
+                        (SpawnThread 2)
+                        (PrintToChannel (Val 1) "stdOut")))),
+          (2, (Seq (Seq (PrintToChannel (Val 1) "stdOut")
+                        (SpawnThread 3))
+                   (Seq (ReadFromChannel (Global "y") "lowIn1")
+                        (ReadFromChannel (Global "b") "lowIn1")))),
+          (3,           (If CFalse
+                             (Seq (ReadFromChannel (Global "x") "stdIn")
+                                  (Ass (Global "z") (Times (Var (Global "x")) (Var (Global "x")))))
+                          {- else -}
+                             (Seq (PrintToChannel (Val (-1)) "stdOut")
+                                  (PrintToChannel (Val (-1)) "stdOut"))))
          ]
 
 

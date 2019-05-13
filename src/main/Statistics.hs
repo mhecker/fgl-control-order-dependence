@@ -136,7 +136,7 @@ chi2 vec = sum $ fmap (\(o,e) -> square (fromIntegral o - e) / e) vec
 wellektest :: Double -> Double -> Vector (Int, Double) -> TestResult
 wellektest ε α rss =
       id
-    $ traceShow (euclid2, ε, uα, v / (sqrt n))
+    $ traceShow (sqrt euclid2, ε, uα, v / (sqrt n))
     $ significant
     $ euclid2 < (ε^2 - (uα * v / (sqrt n)))
    where n   = assert (nLeft == nRight) $ fromIntegral nLeft
@@ -152,3 +152,53 @@ wellektest ε α rss =
          v = sqrt v2
 
          uα = quantile standard (1 - α)
+
+
+
+wellektestSignificantDifference :: Double -> Double -> Vector (Int, Double) -> TestResult
+wellektestSignificantDifference ε α rss =
+      id
+    $ traceShow ("Wellek", sqrt euclid2, ε, uα', v / (sqrt n), "....", euclid2, " >= ", (ε^2 - (uα' * v / (sqrt n))))
+    $ significant
+    $ assert (limit >= 0)
+    $ euclid2 >= limit 
+   where limit = ((ε^2 - (uα' * v / (sqrt n))))
+         n   = assert (nLeft == nRight) $ fromIntegral nLeft
+           where nLeft  =         Vector.sum $ fmap fst $ rss
+                 nRight = round $ Vector.sum $ fmap snd $ rss
+         rs' = fmap (\(x,y) -> (x / n, y / n)) rs
+          where rs  = fmap (\(x,y) -> (fromIntegral x,       y)) rss
+         α' = 1 - α
+         euclid2 =         Vector.sum $ fmap (\(x,y) ->  (x - y) ^ 2)      $ rs'
+         v2 = 4 * (sum1 - sum2)
+           where sum1    = Vector.sum $ fmap (\(x,y) -> ((x - y) ^ 2) * x) $ rs'
+                 sum2    =        sum [ (x1 - y1) * (x2 - y2) * x1 * x2 | (x1, y1) <- Vector.toList rs', (x2,y2) <- Vector.toList rs' ]
+
+         v = sqrt v2
+
+         uα' = quantile standard (1 - α')
+
+
+mytestSignificantDifference :: Double -> Double -> Vector (Int, Double) -> TestResult
+mytestSignificantDifference ε α rss =
+      id
+    $ traceShow (wellektestSignificantDifference ε α rss)
+    $ traceShow ("My    ", sqrt euclid2, ε, uα', v / (sqrt n), "....", euclid2, " >= ", (ε^2 - (uα' * v / (sqrt n))))
+    $ significant
+    $ euclid2 >= limit 
+   where limit = ((ε^2 - (uα' * v / (sqrt n))))
+         n   = assert (nLeft == nRight) $ fromIntegral nLeft
+           where nLeft  =         Vector.sum $ fmap fst $ rss
+                 nRight = round $ Vector.sum $ fmap snd $ rss
+         rs' = fmap (\(x,y) -> (x / n, y / n)) rs
+          where rs  = fmap (\(x,y) -> (fromIntegral x,       y)) rss
+         α' = 1 - α
+         euclid2 =         Vector.sum $ fmap (\(x,y) ->  (x - y) ^ 2)      $ rs'
+         v2 = 4 * (sum1 - sum2)
+           where sum1    = Vector.sum $ fmap (\(x,y) -> ((x - y - 0) ^ 2) * (x - y)) $ rs'
+                 sum2    =        sum [ (x1 - y1) * (x2 - y2) * (x1 - y1) * (x2 - y2) | (x1, y1) <- Vector.toList rs', (x2,y2) <- Vector.toList rs' ]
+
+         v = sqrt v2
+
+         uα' = quantile standard (1 - α')
+

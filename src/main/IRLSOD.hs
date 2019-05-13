@@ -13,7 +13,9 @@ import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+
 import Data.List (partition,delete)
+import qualified Data.List as List
 
 data Var = Global String | ThreadLocal String deriving (Show, Eq, Ord)
 type Val = Integer
@@ -334,7 +336,7 @@ stepFor e c@(globalσ,tlσ,i)  = step e where
 hide (a,b,c,d) = (a,b,c)
 
 toTrace :: ExecutionTrace -> Trace
-toTrace eTrace = [ (globalσ `Map.union` (tlσs !! index) , (n,e), globalσ' `Map.union` (tlσs' !! 0)) | ((_,globalσ,tlσs,_), (n,e,index), (_,globalσ',tlσs',_)) <- eTrace ]
+toTrace eTrace = [ (globalσ `Map.union` (tlσs !! index) , (n,e), globalσ' `Map.union` (if not $ List.null tlσs' then tlσs' !! 0 else Map.empty)) | ((_,globalσ,tlσs,_), (n,e,index), (_,globalσ',tlσs',_)) <- eTrace ]
 
 
 

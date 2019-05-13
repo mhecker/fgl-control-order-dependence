@@ -124,7 +124,7 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
           let ts b = traceShow ("Finished:  ", n, b, θs, θ's) b
           let tsSome = if (n < 5) ∨ (n `mod` 100 == 0) then traceShow ("Sample: ", n) else id
 
-          if (n < 20000) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
+          if (n < 1000) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
             state' <- newSamplePairs 100 state
             test state'
           else if (evidenceThatObservationsAreDifferent ==    Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then

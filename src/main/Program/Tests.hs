@@ -154,7 +154,7 @@ p :: Program Gr
 -- p = notReallyUnsound9
 -- p = notReallyUnsound21
 -- p = minimalClassificationVstimingClassificationDomPathsCounterExampleMartin
-p = toProgramIntra someGen6
+p = toProgramIntra someGen6'
   
 testSinkPaths = do
   (CG _ generatedGraph) <- (generate $ resize 40 arbitrary :: IO ((Connected Gr () ())))
@@ -162,22 +162,22 @@ testSinkPaths = do
   showGraph $ withNodes $ withoutMultipeEdges generatedGraph
   let n = head $ nodes generatedGraph
   forM ((sinkPathsFor generatedGraph) ! n) (\p -> putStrLn $ show (n,p))
-mainEquiv = do
+mainEquiv p = do
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedExecutionTraces p defaultInput'
   showCounterExamplesPniForEquiv p defaultInput defaultInput'
 
-mainEquivAnnotated = do
+mainEquivAnnotated p = do
   putStrLn $ show $ length $ allFinishedAnnotatedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedAnnotatedExecutionTraces p defaultInput'
   showCounterExamplesPniForEquivAnnotated p defaultInput defaultInput'
 
-mainEquivAnnotatedSampled = do
+mainEquivAnnotatedSampled p = do
   putStrLn $ show $ length $ allFinishedAnnotatedExecutionTraces p defaultInput
   putStrLn $ show $ length $ allFinishedAnnotatedExecutionTraces p defaultInput'
   showCounterExamplesPniForEquivAnnotatedSampled p defaultInput defaultInput'
 
-mainEquivAnnotatedSome = do
+mainEquivAnnotatedSome p = do
   showCounterExamplesPniForEquivAnnotatedSome 7500 p defaultInput defaultInput'
 
 
@@ -410,5 +410,31 @@ someGen6 = IntraGeneratedProgram
         ("thread2",Generated (ForC 1 (If (Leq (Val 0) (Var (Global "c")))
                                        (If (Leq (Val 0) (Neg (Var (Global "c")))) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (PrintToChannel (Val 9) "stdOut"))
                                        (ForC 1 (PrintToChannel (Val 1) "stdOut")))) undefined undefined undefined),
+        ("thread3",Generated (Seq (ReadFromChannel (Global "a") "lowIn1") (ReadFromChannel (Global "c") "stdIn")) undefined undefined undefined)
+    ])
+
+
+someGen6' = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (
+                    (ReadFromChannel (Global "c") "lowIn1")  `Seq`
+                    (SpawnThread 3) `Seq`
+                    (ForC 1 (If (Leq (Val 0) (Var (Global "c")))
+                                       (If (Leq (Val 0) (Neg (Var (Global "c")))) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (PrintToChannel (Val 9) "stdOut"))
+                                       (ForC 1 (PrintToChannel (Val 1) "stdOut"))))
+                ) undefined undefined undefined),
+        ("thread3",Generated (Seq (ReadFromChannel (Global "a") "lowIn1") (ReadFromChannel (Global "c") "stdIn")) undefined undefined undefined)
+    ])
+
+someGen6'' = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (Seq (ReadFromChannel (Global "c") "lowIn1") (Seq (SpawnThread 3) (Seq Skip (SpawnThread 2)))) undefined undefined undefined),
+        ("thread2",Generated (If (Leq (Val 0) (Var (Global "c")))
+                                       (If (Leq (Val 0) (Neg (Var (Global "c"))))
+                                           (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut")
+                                           (PrintToChannel (Val 9) "stdOut"))
+                                       (PrintToChannel (Val 1) "stdOut")) undefined undefined undefined),
         ("thread3",Generated (Seq (ReadFromChannel (Global "a") "lowIn1") (ReadFromChannel (Global "c") "stdIn")) undefined undefined undefined)
     ])

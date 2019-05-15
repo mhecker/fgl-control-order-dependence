@@ -167,7 +167,7 @@ import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
-import Program.Examples (testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger, interestingImdomTwoFinger)
+import Program.Examples (insecure, testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger, interestingImdomTwoFinger)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -255,6 +255,10 @@ soundnessTests =  testGroup "(concerning soundness)" $
   [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
                   ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
   | (exampleName, example) <- testsuite
+  ] ++
+  [ testCase      ("insecure example programs are  identified as such by the empiric test for " ++ exampleName)
+                  ( (not $ isSecureEmpirically example) @? "")
+  | (exampleName, example) <- insecure
   ] ++
   -- [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
   --                 ( (isSecureResumptionBasedSecurityFor ZeroOneBisimilarity forExample)

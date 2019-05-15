@@ -208,7 +208,6 @@ mytestSignificantDifference ε α rss =
 {- https://doi.org/10.1007/s11749-018-0600-8 -}
 {- Two-sample test for sparse high-dimensional multinomialdistributions -}
 {- Amanda Plunkett·Junyong Park -}
-
 plunketttest :: Double -> Vector (Int, Double) -> TestResult
 plunketttest α rss =
       id

@@ -113,21 +113,6 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
           let allGt5 = (∀) vLeft ok
           let gt5CounterExamples = List.sortBy (comparing (\(x,y) -> max (fromIntegral x) y)) $ Vector.toList $ Vector.filter (not . ok) vLeft
           let tsCounterExamples = if n < nMin then id else let { l1 = length gt5CounterExamples ; l2 =  Vector.length vLeft } in traceShow (l1, l2, fromIntegral l1 / fromIntegral l2 :: Double, take 10 gt5CounterExamples)
-          -- let modifiedchi2test α dof v = if allGt5 then chi2test α dof v else tsCounterExamples $ NotSignificant
-          -- let zeroCorrection v = fmap f v
-          --       where f z@(x, y) = if y == 0 then (x, y + c) else z
-          --             c = 1.0 / (fromIntegral n)
-          -- let modifiedchi2test α dof v = chi2test α dof (zeroCorrection v)
-
-          -- let evidenceThatObservationsAreDifferent = assert (left == right) $ left
-                -- where left  = chi2test α 0 vLeft
-                --       right = chi2test α 0 vRight
-                -- where left  = gtest vLeft
-                --       right = gtest vRight
-                -- where left  = gtestViaChi2 α 0 vLeft
-                --       right = gtestViaChi2 α 0 vRight
-                -- where left  = wellektestSignificantDifference ε α vLeft
-                --       right = wellektestSignificantDifference ε α vRight
           let evidenceThatObservationsAreDifferent = assert (left == right) $ left
                 where left  = plunketttest α vLeft
                       right = plunketttest α vRight
@@ -135,10 +120,7 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
                 where left  = wellektest ε α vLeft
                       right = wellektest ε α vRight
 
-          let ts = traceShow (θs, θ's)
-          let ts = traceShow (toId, θs, θ's)
           let ts b = traceShow ("Finished:  ", n, b, θs, θ's) b
-          let tsSome = if (n < 5) ∨ (n `mod` 100 == 0) then traceShow ("Sample: ", n) else id
 
           if (n < nMin) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
             state' <- newSamplePairs nDelta state

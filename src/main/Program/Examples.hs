@@ -3,7 +3,7 @@ module Program.Examples where
 
 
 import Program
-import Program.Generator (Generated(..), GeneratedProgram(..), IntraGeneratedProgram(..), toProgram)
+import Program.Generator (Generated(..), GeneratedProgram(..), IntraGeneratedProgram(..), toProgram, toProgramIntra)
 import Program.For
 import Program.Defaults
 
@@ -2776,6 +2776,48 @@ notReallyUnsound21 = p { observability = defaultObservabilityMap (tcfg p) }
           ("procG", (PrintToChannel (Val 42) "stdOut"))
          ]
 
+{- someGen7 -}
+notReallyUnsound22 :: Program Gr
+notReallyUnsound22 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (ForC 1 (ForC 2 (Ass (Global "z") (Val 9))))) undefined undefined undefined),
+        ("thread2",Generated (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") Skip) (If CTrue (PrintToChannel (Val 0) "stdOut") (ReadFromChannel (Global "x") "lowIn1"))) undefined undefined undefined),
+        ("thread3",Generated (Seq (Ass (Global "a") (Val 4)) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")) undefined undefined undefined)
+    ])
+
+{- someGen5 -}
+notReallyUnsound23 :: Program Gr
+notReallyUnsound23 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("main",Generated (ForC 2 (ForC 1 (Seq (Seq (SpawnThread 2) (SpawnThread 3)) (If CTrue (PrintToChannel (Val 0) "stdOut") (Ass (Global "y") (Val 4)))))) undefined undefined undefined),
+                   ("thread2",Generated (Seq (Seq (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Plus (Var (Global "z")) (Var (Global "z"))) "stdOut")) (ForC 1 (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (ReadFromChannel (Global "c") "lowIn1")))) undefined undefined undefined),
+                   ("thread3",Generated (If CFalse (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut")) undefined undefined undefined)
+    ])
+
+
+{- someGen4 -}
+notReallyUnsound24 :: Program Gr
+notReallyUnsound24 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (ForC 2 (ForC 2 (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 17) "stdOut"))))) undefined undefined undefined),
+        ("thread2",Generated (Seq (ForC 1 (Seq (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val 0) "stdOut"))) (Seq (Ass (Global "a") (Val 42)) (ReadFromChannel (Global "b") "stdIn"))) undefined undefined undefined),
+        ("thread3",Generated (Seq (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
+    ])
+
+
+
+{- someGen3 -}
+notReallyUnsound25 :: Program Gr
+notReallyUnsound25 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main",Generated (Seq (ForC 2 (ForC 1 (SpawnThread 2))) (Seq (SpawnThread 3) (ReadFromChannel (Global "c") "lowIn1"))) undefined undefined undefined),
+        ("thread2",Generated (ForC 2 (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 17) "stdOut")) (If CFalse (Ass (Global "c") (Val 0)) (ReadFromChannel (Global "a") "lowIn1")))) undefined undefined undefined),
+        ("thread3",Generated (If CTrue (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
+    ])
+
 
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
@@ -3421,6 +3463,10 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound19),
               $(withName 'notReallyUnsound20),
               $(withName 'notReallyUnsound21),
+              $(withName 'notReallyUnsound22),
+              $(withName 'notReallyUnsound23),
+              $(withName 'notReallyUnsound24),
+              $(withName 'notReallyUnsound25),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

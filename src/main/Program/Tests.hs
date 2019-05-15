@@ -93,7 +93,7 @@ import qualified Data.Set as Set
 
 
 
-main = let { p = toProgramIntra someGen3 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; return $ isSecureEmpiricallyCombinedTest p }
+main = let { p = notReallyUnsound25 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; return $ isSecureEmpiricallyCombinedTest p }
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 
@@ -376,32 +376,6 @@ someGen2 = GeneratedProgram
         ("procF",Generated (Seq (CallProcedure "procF") (SpawnThread 3)) undefined undefined undefined),
         ("thread3",Generated (If CTrue (Ass (Global "z") (Val 17)) Skip) undefined undefined undefined)
     ])
-
-someGen3 = IntraGeneratedProgram
-    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
-    (Map.fromList [
-        ("main",Generated (Seq (ForC 2 (ForC 1 (SpawnThread 2))) (Seq (SpawnThread 3) (ReadFromChannel (Global "c") "lowIn1"))) undefined undefined undefined),
-        ("thread2",Generated (ForC 2 (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 17) "stdOut")) (If CFalse (Ass (Global "c") (Val 0)) (ReadFromChannel (Global "a") "lowIn1")))) undefined undefined undefined),
-        ("thread3",Generated (If CTrue (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
-    ])
-
-
-someGen4 = IntraGeneratedProgram
-    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
-    (Map.fromList [
-        ("main",Generated (ForC 2 (ForC 2 (Seq (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 17) "stdOut"))))) undefined undefined undefined),
-        ("thread2",Generated (Seq (ForC 1 (Seq (PrintToChannel (Val 42) "stdOut") (PrintToChannel (Val 0) "stdOut"))) (Seq (Ass (Global "a") (Val 42)) (ReadFromChannel (Global "b") "stdIn"))) undefined undefined undefined),
-        ("thread3",Generated (Seq (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
-    ])
-
-
-someGen5 = IntraGeneratedProgram
-    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
-    (Map.fromList [("main",Generated (ForC 2 (ForC 1 (Seq (Seq (SpawnThread 2) (SpawnThread 3)) (If CTrue (PrintToChannel (Val 0) "stdOut") (Ass (Global "y") (Val 4)))))) undefined undefined undefined),
-                   ("thread2",Generated (Seq (Seq (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Plus (Var (Global "z")) (Var (Global "z"))) "stdOut")) (ForC 1 (Seq (PrintToChannel (Times (Var (Global "z")) (Var (Global "z"))) "stdOut") (ReadFromChannel (Global "c") "lowIn1")))) undefined undefined undefined),
-                   ("thread3",Generated (If CFalse (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut")) undefined undefined undefined)
-    ])
-
 
 someGen6 = IntraGeneratedProgram
     (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])

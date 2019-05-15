@@ -3,6 +3,10 @@ module Statistics where
 import Control.Exception.Base (assert)
 import Debug.Trace (traceShow)
 
+import Data.Map ( Map, (!) )
+import qualified Data.Map as Map
+
+
 import Statistics.Distribution
 import Statistics.Distribution.ChiSquared
 import Statistics.Distribution.Normal (standard)
@@ -52,6 +56,11 @@ fair = generate 6 f
         f 3 = (10, 10)
         f 4 = (10, 10)
         f 5 = (10, 10)
+
+
+fromListPair :: (Map Int Int, Map Int Int) -> Vector (Int, Double)
+fromListPair (m1,m2) = assert (Map.size m1 == Map.size m2) $ generate (Map.size m1) f
+  where f id = (m1 ! id, fromIntegral $ m2 ! id)
 
 
 deterministic :: Int -> Vector (Int, Double)
@@ -126,9 +135,6 @@ gtestViaChi2 p ndf vec
       where gg = 2 * (likelihood  vec)
             chi2  = sum $ fmap (\(o,e) -> square (fromIntegral o - e) / e) vec
     d     = chiSquared n
-{-# SPECIALIZE
-    chi2test :: Double -> Int -> Vector (Int,Double) -> TestResult #-}
-
 
 chi2 vec = sum $ fmap (\(o,e) -> square (fromIntegral o - e) / e) vec
 

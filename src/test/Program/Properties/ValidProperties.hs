@@ -243,12 +243,12 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
-    -- testPropertySized 3
-    --  ("isSound  isSecureResumptionBasedSecurity")
-    --  (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
+    testPropertySized 3
+     ("isSound  isSecureResumptionBasedSecurity")
+     (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 10
-     ("allSoundIntraMulti [ timingClassification, timingClassification, timingClassification, timingClassificationSimple,  timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] ")
-     ( allSoundIntraMulti [ {-isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths,-} isSecureTimingClassification{-, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification-} ] )
+     ("allSoundIntraMulti [ timingClassificationAtUses, timingClassificationDomPaths, timingClassification, timingClassificationSimple,  timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] ")
+     ( allSoundIntraMulti [ isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
@@ -260,12 +260,12 @@ soundnessTests =  testGroup "(concerning soundness)" $
                   ( (not $ isSecureEmpirically example) @? "")
   | (exampleName, example) <- insecure
   ] ++
-  -- [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
-  --                 ( (isSecureResumptionBasedSecurityFor ZeroOneBisimilarity forExample)
-  --                   →
-  --                   (isSecureEmpirically $ code2Program example)  @? "")
-  -- | (exampleName, example) <- syntacticCodeExamples, Just forExample <- [code2ResumptionForProgram example]
-  -- ] ++
+  [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
+                  ( (isSecureResumptionBasedSecurityFor ZeroOneBisimilarity forExample)
+                    →
+                    (isSecureEmpirically $ code2Program example)  @? "")
+  | (exampleName, example) <- syntacticCodeExamples, Just forExample <- [code2ResumptionForProgram example]
+  ] ++
   []
 
 

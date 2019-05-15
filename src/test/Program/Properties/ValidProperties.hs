@@ -3901,7 +3901,7 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
     testPropertySized 40  "idomIsTreeProgram idomChef"                   $ idomIsTreeProgram idomChef,
-    testPropertySized 40  "idomIsTreeProgram idomBischof"                $ idomIsTreeProgram idomBischof,
+    testPropertySized 20  "idomIsTreeProgram idomBischof"                $ idomIsTreeProgram idomBischof,
     testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"                $ idomIsTreeProgram idomMohrEtAl,
     testPropertySized 80  "idomIsTreeProgram idomMohrEtAlNoCycleTest"     $ idomIsTreeProgram idomMohrEtAlNoCycleTest,
     testPropertySized 10  "chopsCdomArePrefixes idomChef"                 $ chopsCdomArePrefixes idomChef,

@@ -1456,6 +1456,7 @@ timingDependenceExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code
         code = Map.fromList $ [
            (1, Skip                                         `Seq`
+               Ass (Global "x") (Val 0) `Seq`
                ReadFromChannel (Global "h") "stdIn"                  `Seq`
                SpawnThread 2                                `Seq`
                ForV (Global "h") (Ass (Global "x") (Val 42))                  `Seq`
@@ -3396,6 +3397,24 @@ dFUpInteresting1 = mkGraph [(-7,()),(-2,()),(2,()),(3,())] [(-7,-2,()),(-2,2,())
 dFUpInteresting2 :: DynGraph gr => gr () ()
 dFUpInteresting2 = mkGraph [(-22,()),(-2,()),(31,()),(32,())] [(-22,-2,()),(-22,31,()),(31,-22,()),(32,-22,()),(32,-2,()),(32,31,())]
 
+
+insecure  = [ 
+              $(withName 'directFlow),
+              $(withName 'directFlowThread),
+              $(withName 'indirectFlow),
+              $(withName 'orderConflict),
+              $(withName 'dubiousOrderConflict),
+              $(withName 'cdomIsBroken),
+              $(withName 'cdomIsBroken'),
+              $(withName 'cdomIsBroken2),
+              $(withName 'timingDependenceExample),
+              $(withName 'figure5right),
+              $(withName 'figure5right'),
+              $(withName 'figure5right''),
+              $(withName 'ijisLSODistkaputt),
+              $(withName 'anotherGeneratedProgram)
+  ]
+
 testsuite = [ $(withName 'example1),
               $(withName 'example2),
               $(withName 'example2'),
@@ -3409,22 +3428,9 @@ testsuite = [ $(withName 'example1),
               $(withName 'joachim2),
               $(withName 'joachim3),
               $(withName 'noFlow),
-              $(withName 'directFlow),
-              $(withName 'directFlowThread),
               $(withName 'noDirectFlowThread),
-              $(withName 'indirectFlow),
-              $(withName 'orderConflict),
-              $(withName 'dubiousOrderConflict),
-              $(withName 'cdomIsBroken),
-              $(withName 'cdomIsBroken'),
-              $(withName 'cdomIsBroken2),
               $(withName 'noninterferingSchedulers),
-              $(withName 'timingDependenceExample),
               $(withName 'figure5left),
-              $(withName 'figure5right),
-              $(withName 'figure5right'),
-              $(withName 'figure5right''),
-              $(withName 'ijisLSODistkaputt),
               $(withName 'minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD),
               $(withName 'minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD2),
               $(withName 'minimalClassificationIsLessPreciseThanSimonClassification),
@@ -3433,7 +3439,6 @@ testsuite = [ $(withName 'example1),
               $(withName 'timingSecureButNotCombinedTimingSecure),
               $(withName 'timingSecureButNotCombinedTimingSecureGenerated),
               $(withName 'someGeneratedProgram),
-              $(withName 'anotherGeneratedProgram),
               $(withName 'aSecureGeneratedProgram),
               $(withName 'clientServerKeyExample),
               $(withName 'clientServerKeyExampleSimple),
@@ -3470,6 +3475,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++
+            insecure ++
             []
 
 -- These are counter-Examples to the claim that timingClassification (i.e.: the old version, not the "atUses" version)

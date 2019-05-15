@@ -93,7 +93,7 @@ import qualified Data.Set as Set
 
 
 
-main = let { p = notReallyUnsound25 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; return $ isSecureEmpiricallyCombinedTest p }
+main = let { p = notReallyUnsound22 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; putStrLn $ show $ isSecureEmpiricallyCombinedTest p }
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 

@@ -252,10 +252,10 @@ soundnessProps =  testGroup "(concerning soundness)" [
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
-  -- [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
-  --                 ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
-  -- | (exampleName, example) <- testsuite
-  -- ] ++
+  [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
+                  ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
+  | (exampleName, example) <- testsuite
+  ] ++
   -- [ testCase      ("isSound  isSecureResumptionBasedSecurity for " ++ exampleName)
   --                 ( (isSecureResumptionBasedSecurityFor ZeroOneBisimilarity forExample)
   --                   →

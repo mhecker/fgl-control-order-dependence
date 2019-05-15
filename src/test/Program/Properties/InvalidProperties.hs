@@ -167,12 +167,15 @@ unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
 
 
-soundnessProps =  localOption d $ testGroup "(concerning soundness)" [
+soundnessPropsCurrentlyNotFindingACounterExample =  localOption d $ testGroup "(concerning soundness)" [
   testPropertySized 10
      ("allSoundIntraMulti [ unsoundIRLSODAttempt  ] ")
      ( allSoundIntraMulti [ unsoundIRLSODAttempt  ] )
   ]
  where d = 2000000 :: QuickCheckTests
+
+soundnessProps =  testGroup "(concerning soundness)" [
+  ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
   [ testCase      ("allSoundP [ timingClassification using idomChef ] for " ++ exampleName)

@@ -570,18 +570,9 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
   []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
-    testPropertySized 20  "idomIsTreeProgram idomBischof"  $ idomIsTreeProgram idomBischof,
-    testPropertySized 10  "chopsCdomArePrefixes idomBischof"   $ chopsCdomArePrefixes idomBischof,
-    testPropertySized 10  "chopsCdomAreExclChops idomBischof " $ chopsCdomAreExclChops idomBischof
   ]
 
 cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
-  [ testCase ("chopsCdomArePrefixes idomBischof for " ++ exampleName)  $ chopsCdomArePrefixes idomBischof p @? ""
-  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
-  ] ++
-  [ testCase ("chopsCdomAreExclChops idomBischof for " ++ exampleName)  $ chopsCdomAreExclChops idomBischof p @? ""
-  | (exampleName, p) <- testsuite, exampleName `elem` [ "anotherGeneratedProgram", "notReallyUnsound8", "notReallyUnsound9" ]
-  ] ++
   []
 
 

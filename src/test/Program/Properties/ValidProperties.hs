@@ -3901,13 +3901,16 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
     testPropertySized 40  "idomIsTreeProgram idomChef"                   $ idomIsTreeProgram idomChef,
+    testPropertySized 40  "idomIsTreeProgram idomBischof"                $ idomIsTreeProgram idomBischof,
     testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"                $ idomIsTreeProgram idomMohrEtAl,
     testPropertySized 80  "idomIsTreeProgram idomMohrEtAlNoCycleTest"     $ idomIsTreeProgram idomMohrEtAlNoCycleTest,
     testPropertySized 10  "chopsCdomArePrefixes idomChef"                 $ chopsCdomArePrefixes idomChef,
+    testPropertySized 10  "chopsCdomArePrefixes idomBischof"              $ chopsCdomArePrefixes idomBischof,
     testPropertySized 10  "chopsCdomArePrefixes idomMohrEtAl"             $ chopsCdomArePrefixes idomMohrEtAl,
     testPropertySized 10  "chopsCdomArePrefixes idomMohrEtAlNoCycleTest"  $ chopsCdomArePrefixes idomMohrEtAlNoCycleTest,
     testPropertySized 60  "idomChefTreeIsDomTree"              $ idomChefTreeIsDomTree,
     testPropertySized 10  "chopsCdomAreExclChops idomChef"     $ chopsCdomAreExclChops idomChef,
+    testPropertySized 10  "chopsCdomAreExclChops idomBischof"  $ chopsCdomAreExclChops idomBischof,
     testPropertySized 10  "chopsCdomAreExclChops idomMohrEtAl"            $ chopsCdomAreExclChops idomMohrEtAl,
     testPropertySized 10  "chopsCdomAreExclChops idomMohrEtAlNoCycleTest" $ chopsCdomAreExclChops idomMohrEtAlNoCycleTest,
     testPropertySized 10  "inclChopIsChop"                     $ inclChopIsChop,
@@ -3920,6 +3923,9 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   [ testCase ("chopsCdomArePrefixes idomChef for " ++ exampleName)  $ chopsCdomArePrefixes idomChef p @? ""
   | (exampleName, p) <- testsuite
   ] ++
+  [ testCase ("chopsCdomArePrefixes idomBischof for " ++ exampleName)  $ chopsCdomArePrefixes idomBischof p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [ testCase ("chopsCdomArePrefixes idomMohrEtAl for " ++ exampleName)  $ chopsCdomArePrefixes idomMohrEtAl p @? ""
   | (exampleName, p) <- testsuite
   ] ++
@@ -3930,6 +3936,9 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
   | (exampleName, p) <- testsuite
   ] ++
   [ testCase ("chopsCdomAreExclChops idomChef for " ++ exampleName)  $ chopsCdomAreExclChops idomChef p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("chopsCdomAreExclChops idomBischof for " ++ exampleName)  $ chopsCdomAreExclChops idomBischof p @? ""
   | (exampleName, p) <- testsuite
   ] ++
   [ testCase ("chopsCdomAreExclChops idomMohrEtAl for " ++ exampleName)  $ chopsCdomAreExclChops idomMohrEtAl p @? ""

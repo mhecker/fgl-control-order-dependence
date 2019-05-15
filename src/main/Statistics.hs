@@ -202,3 +202,34 @@ mytestSignificantDifference ε α rss =
 
          uα' = quantile standard (1 - α')
 
+
+
+
+{- https://doi.org/10.1007/s11749-018-0600-8 -}
+{- Two-sample test for sparse high-dimensional multinomialdistributions -}
+{- Amanda Plunkett·Junyong Park -}
+
+plunketttest :: Double -> Vector (Int, Double) -> TestResult
+plunketttest α rss =
+      id
+    $ traceShow ("plunkett", sigma2estimate, "....", t, " > ", zα)
+    $ significant
+    $ t > zα
+   where n   = assert (nLeft == nRight) $ fromIntegral nLeft
+           where nLeft  =         Vector.sum $ fmap fst $ rss
+                 nRight = round $ Vector.sum $ fmap snd $ rss
+         bigNs = fmap (\(n1,n2) -> (fromIntegral n1, n2)) rss
+         ps = fmap (\(x,y) -> (x / n, y / n)) bigNs
+
+         sigma2estimate = sum1 + sum2
+           where sum1 =                Vector.sum $ fmap (\(p1, p2) -> innersum p1 + innersum p2) ps
+                 sum2 = (4.0 / n^2) * (Vector.sum $ fmap (\(p1, p2) -> p1 * p2) ps)
+                 
+                 innersum p = (2.0 / n^2) * (p^2 - (p / n))
+                 
+         fStar (x1, x2) = ((x1 / n) - (x2 / n))^2 - (x1 / n^2) - (x2 / n^2)
+
+         t = (Vector.sum $ fmap fStar bigNs) / (sqrt sigma2estimate)
+
+         zα = quantile standard (1 - α)
+

@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Program.DynamicAnalysis where
@@ -8,6 +9,7 @@ import Control.Exception.Base (assert)
 import Control.Monad.Random (evalRandIO, MonadRandom(..))
 import Debug.Trace (traceShow)
 
+import Data.Ord (comparing)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -29,7 +31,8 @@ import Statistics.Test.Types (TestResult(..))
 
 import Data.Graph.Inductive.Graph
 
-import Statistics (gtest, gtestViaChi2, wellektest, wellektestSignificantDifference, mytestSignificantDifference)
+import Statistics (gtest, gtestViaChi2, wellektest, wellektestSignificantDifference, mytestSignificantDifference, plunketttest)
+import Statistics.Test.ChiSquared (chi2test)
 
 import Unicode
 import IRLSOD(Trace, ExecutionTrace, Input, eventStep, eventStepAt, toTrace, SecurityLattice (..), observable)
@@ -54,8 +57,10 @@ type Count = Integer
 
 isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Bool
 isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test (0, 0, Map.empty, Map.empty, Map.empty)
-  where α = 0.000000001
+  where α = 0.0000001
         ε = 0.01
+        nMin = 1000
+        nDelta = 1000
         
         newExecutionTrace :: MonadRandom m => Input -> m ExecutionTrace
         newExecutionTrace input = do
@@ -104,6 +109,16 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
 
           let vLeft  = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θs  θ's
           let vRight = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θ's θs 
+          let ok (x,y0) = let y = round y0 in  (x >= 3 ∨ y >= 3 ∨ x == y)
+          let allGt5 = (∀) vLeft ok
+          let gt5CounterExamples = List.sortBy (comparing (\(x,y) -> max (fromIntegral x) y)) $ Vector.toList $ Vector.filter (not . ok) vLeft
+          let tsCounterExamples = if n < nMin then id else let { l1 = length gt5CounterExamples ; l2 =  Vector.length vLeft } in traceShow (l1, l2, fromIntegral l1 / fromIntegral l2 :: Double, take 10 gt5CounterExamples)
+          -- let modifiedchi2test α dof v = if allGt5 then chi2test α dof v else tsCounterExamples $ NotSignificant
+          -- let zeroCorrection v = fmap f v
+          --       where f z@(x, y) = if y == 0 then (x, y + c) else z
+          --             c = 1.0 / (fromIntegral n)
+          -- let modifiedchi2test α dof v = chi2test α dof (zeroCorrection v)
+
           -- let evidenceThatObservationsAreDifferent = assert (left == right) $ left
                 -- where left  = chi2test α 0 vLeft
                 --       right = chi2test α 0 vRight
@@ -111,19 +126,22 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
                 --       right = gtest vRight
                 -- where left  = gtestViaChi2 α 0 vLeft
                 --       right = gtestViaChi2 α 0 vRight
-          let evidenceThatObservationsAreDifferent = if left == right then left else NotSignificant
-                where left  = wellektestSignificantDifference ε α vLeft
-                      right = wellektestSignificantDifference ε α vRight
+                -- where left  = wellektestSignificantDifference ε α vLeft
+                --       right = wellektestSignificantDifference ε α vRight
+          let evidenceThatObservationsAreDifferent = assert (left == right) $ left
+                where left  = plunketttest α vLeft
+                      right = plunketttest α vRight
           let evidenceThatObservationsAreWithinEpsilonDistance = if left == right then left else NotSignificant
                 where left  = wellektest ε α vLeft
                       right = wellektest ε α vRight
+
           let ts = traceShow (θs, θ's)
           let ts = traceShow (toId, θs, θ's)
           let ts b = traceShow ("Finished:  ", n, b, θs, θ's) b
           let tsSome = if (n < 5) ∨ (n `mod` 100 == 0) then traceShow ("Sample: ", n) else id
 
-          if (n < 1000) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
-            state' <- newSamplePairs 100 state
+          if (n < nMin) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
+            state' <- newSamplePairs nDelta state
             test state'
           else if (evidenceThatObservationsAreDifferent ==    Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then
             return $ ts $ False

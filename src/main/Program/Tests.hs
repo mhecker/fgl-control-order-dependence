@@ -93,7 +93,7 @@ import qualified Data.Set as Set
 
 
 
-main = let {  pr = timingAtUsesVsResumptionBasedBugInTranslationExample2 } in showCounterExamplesPniForEquivAnnotatedSome 7500 pr defaultInput defaultInput'
+main = let { p = toProgramIntra someGen3 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; return $ isSecureEmpiricallyCombinedTest p }
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 

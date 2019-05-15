@@ -142,7 +142,7 @@ chi2 vec = sum $ fmap (\(o,e) -> square (fromIntegral o - e) / e) vec
 wellektest :: Double -> Double -> Vector (Int, Double) -> TestResult
 wellektest ε α rss =
       id
-    $ traceShow (sqrt euclid2, ε, uα, v / (sqrt n))
+    -- $ traceShow (sqrt euclid2, ε, uα, v / (sqrt n))
     $ significant
     $ euclid2 < (ε^2 - (uα * v / (sqrt n)))
    where n   = assert (nLeft == nRight) $ fromIntegral nLeft
@@ -217,7 +217,7 @@ mytestSignificantDifference ε α rss =
 plunketttest :: Double -> Vector (Int, Double) -> TestResult
 plunketttest α rss =
       id
-    $ traceShow ("plunkett", sigma2estimate, "....", t, " > ", zα)
+    -- $ traceShow ("plunkett", sigma2estimate, "....", t, " > ", zα)
     $ significant
     $ t > zα
    where n   = assert (nLeft == nRight) $ fromIntegral nLeft

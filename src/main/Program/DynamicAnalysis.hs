@@ -17,22 +17,14 @@ import qualified Data.Map as Map
 import qualified Data.List as List
 
 
--- import Data.Vector.Generic
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
-
-
-
--- import Statistics.Distribution
--- import Statistics.Distribution.ChiSquared
--- import Statistics.Test.ChiSquared
 
 import Statistics.Test.Types (TestResult(..))
 
 import Data.Graph.Inductive.Graph
 
-import Statistics (gtest, gtestViaChi2, wellektest, wellektestSignificantDifference, mytestSignificantDifference, plunketttest)
-import Statistics.Test.ChiSquared (chi2test)
+import Statistics (wellektest, plunketttest)
 
 import Unicode
 import IRLSOD(Trace, ExecutionTrace, Input, eventStep, eventStepAt, toTrace, SecurityLattice (..), observable)

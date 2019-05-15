@@ -139,6 +139,15 @@ library
   default-language:    Haskell2010
 
 
+executable tests.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Tests.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Tests.main
+  build-depends:       COMMON_DEPENDENCIES, MAIN_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+
+
 executable sas-props.bin
   hs-source-dirs: src/test/
   main-is:             Program/Properties/SASProperties.hs

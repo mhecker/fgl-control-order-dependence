@@ -51,8 +51,7 @@ isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Bool
 isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test (0, 0, Map.empty, Map.empty, Map.empty)
   where α = 0.0000001
         ε = 0.01
-        nMin = 5000
-        nDelta = 1000
+        nMin = 4096
         
         newExecutionTrace :: MonadRandom m => Input -> m ExecutionTrace
         newExecutionTrace input = do
@@ -115,7 +114,7 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
           let ts b = traceShow ("Finished:  ", n, b, θs, θ's) b
 
           if (n < nMin) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
-            state' <- newSamplePairs nDelta state
+            state' <- newSamplePairs (max nMin n) state
             test state'
           else if (evidenceThatObservationsAreDifferent ==    Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then
             return $ ts $ False

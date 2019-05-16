@@ -93,7 +93,7 @@ import qualified Data.Set as Set
 
 
 
-main = let { p = notReallyUnsound22 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; putStrLn $ show $ isSecureEmpiricallyCombinedTest p }
+main = let { p = toProgramIntra someGen10 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; putStrLn $ show $ isSecureEmpiricallyCombinedTest p }
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 
@@ -412,3 +412,11 @@ someGen6'' = IntraGeneratedProgram
                                        (PrintToChannel (Val 1) "stdOut")) undefined undefined undefined),
         ("thread3",Generated (Seq (ReadFromChannel (Global "a") "lowIn1") (ReadFromChannel (Global "c") "stdIn")) undefined undefined undefined)
     ])
+
+
+someGen10 = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [
+        ("main", Generated (Seq (If CFalse (ReadFromChannel (Global "b") "stdIn") (SpawnThread 2)) (ForC 1 (Seq (PrintToChannel (Val 1) "stdOut") (SpawnThread 3)))) undefined undefined undefined),
+        ("thread2",Generated (ForC 2 (If CTrue (Seq (PrintToChannel (Val 9) "stdOut") Skip) (Seq (Ass (Global "x") (Val 4)) (Ass (Global "c") (Neg (Var (Global "x"))))))) undefined undefined undefined),
+        ("thread3",Generated (If CTrue (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut")) undefined undefined undefined)])

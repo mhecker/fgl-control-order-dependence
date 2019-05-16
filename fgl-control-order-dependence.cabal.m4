@@ -60,6 +60,7 @@ library
   exposed-modules:
     IRLSOD
     Unicode
+    NNGraph
     Statistics
     Program.Examples
     Program.Analysis

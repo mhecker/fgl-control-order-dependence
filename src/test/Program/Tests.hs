@@ -53,6 +53,7 @@ import ExecutionTree
 import PNI
 import Unicode
 import Util
+import NNGraph
 
 import Algebra.Lattice
 

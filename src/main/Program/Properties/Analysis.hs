@@ -70,11 +70,11 @@ isSoundPartialGen isSecurePartial gen =
 
 
 allSoundIntra ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
-allSoundIntra as generated = any ($ p) as  ==> traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ isSecureEmpirically p
+allSoundIntra as generated = any ($ p) as  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecureEmpirically p
   where p = toProgramIntra generated
 
 allSoundIntraMulti ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
-allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ==> traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ isSecureEmpirically p
+allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecureEmpirically p
   where p = toProgramIntra generated
 
 allSoundP ::  [(Program Gr -> Bool)] -> Program Gr -> Bool

@@ -50,7 +50,7 @@ type Count = Integer
 isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Bool
 isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test (0, 0, Map.empty, Map.empty, Map.empty)
   where α = 0.0000001
-        ε = 0.01
+        ε = 0.009
         nMin = 4096
         
         newExecutionTrace :: MonadRandom m => Input -> m ExecutionTrace

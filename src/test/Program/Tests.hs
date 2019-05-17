@@ -421,3 +421,32 @@ someGen10 = IntraGeneratedProgram
         ("main", Generated (Seq (If CFalse (ReadFromChannel (Global "b") "stdIn") (SpawnThread 2)) (ForC 1 (Seq (PrintToChannel (Val 1) "stdOut") (SpawnThread 3)))) undefined undefined undefined),
         ("thread2",Generated (ForC 2 (If CTrue (Seq (PrintToChannel (Val 9) "stdOut") Skip) (Seq (Ass (Global "x") (Val 4)) (Ass (Global "c") (Neg (Var (Global "x"))))))) undefined undefined undefined),
         ("thread3",Generated (If CTrue (PrintToChannel (Val 0) "stdOut") (PrintToChannel (Val 1) "stdOut")) undefined undefined undefined)])
+
+
+someGen11 = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2")])
+    (Map.fromList [
+        ("main",Generated (Seq (Seq (Seq (Seq (PrintToChannel (Val 4) "stdOut") Skip) (Seq (PrintToChannel (Val (-1)) "stdOut") (ReadFromChannel (Global "z") "stdIn"))) (Seq (Seq (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "b") "lowIn1")) (Seq (ReadFromChannel (Global "z") "stdIn") (Ass (Global "y") (Neg (Var (Global "b"))))))) (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "b")))) (ForV (Global "z") (If (Leq (Val 0) (Plus (Var (Global "b")) (Var (Global "b")))) (Ass (Global "b") (Val 0)) (Ass (Global "a") (Neg (Var (Global "z")))))) (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (SpawnThread 2)) (ForC 1 (PrintToChannel (Val 0) "stdOut"))))) undefined undefined undefined),
+        ("thread2",Generated (Seq (If (Leq (Val 0) (Val (-1))) (ForC 2 (Seq (Ass (Global "z") (Var (Global "b"))) (PrintToChannel (Val 0) "stdOut"))) (Seq (ForV (Global "a") (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "b"))))) (Seq (Ass (Global "c") (Val (-1))) (Ass (Global "a") (Val 1))))) (Seq (If (Leq (Val 0) (Val (-1))) (Seq (Ass (Global "c") (Plus (Var (Global "y")) (Var (Global "b")))) (PrintToChannel (Plus (Var (Global "y")) (Var (Global "b"))) "stdOut")) (ForV (Global "y") (ReadFromChannel (Global "z") "lowIn1"))) (Seq (Seq (PrintToChannel (Var (Global "b")) "stdOut") (Ass (Global "c") (Plus (Var (Global "z")) (Var (Global "b"))))) (ForC 2 (ReadFromChannel (Global "b") "stdIn"))))) undefined undefined undefined)])
+
+someGen11' = IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2")])
+    (Map.fromList [
+        ("main",Generated (Seq (Seq (Seq (Seq
+                            (PrintToChannel (Val 4) "stdOut") Skip)
+                       (Seq (PrintToChannel (Val (-1)) "stdOut")
+                            (ReadFromChannel (Global "z") "stdIn")))
+                  (Seq (Seq (ReadFromChannel (Global "b") "lowIn1")
+                            (ReadFromChannel (Global "b") "lowIn1"))
+                       (Seq (ReadFromChannel (Global "z") "stdIn")
+                            (Ass (Global "y") (Neg (Var (Global "b")))))))
+                            (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "b"))))
+                                (ForV (Global "z")
+                                    (If (Leq (Val 0) (Plus (Var (Global "b")) (Var (Global "b"))))
+                                            (Ass (Global "b") (Val 0))
+                                    {- ELSE -}
+                                            (Ass (Global "a") (Neg (Var (Global "z"))))))
+                             {- ELSE -}
+                                (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (SpawnThread 2)) (ForC 1 (PrintToChannel (Val 0) "stdOut"))))) undefined undefined undefined),
+        ("thread2",Generated (Seq (If (Leq (Val 0) (Val (-1))) (ForC 2 (Seq (Ass (Global "z") (Var (Global "b"))) (PrintToChannel (Val 0) "stdOut"))) (Seq (ForV (Global "a") (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "b"))))) (Seq (Ass (Global "c") (Val (-1))) (Ass (Global "a") (Val 1))))) (Seq (If (Leq (Val 0) (Val (-1))) (Seq (Ass (Global "c") (Plus (Var (Global "y")) (Var (Global "b")))) (PrintToChannel (Plus (Var (Global "y")) (Var (Global "b"))) "stdOut")) (ForV (Global "y") (ReadFromChannel (Global "z") "lowIn1"))) (Seq (Seq (PrintToChannel (Var (Global "b")) "stdOut") (Ass (Global "c") (Plus (Var (Global "z")) (Var (Global "b"))))) (ForC 2 (ReadFromChannel (Global "b") "stdIn"))))) undefined undefined undefined)])
+

@@ -238,3 +238,9 @@ plunketttest α rss =
 
          zα = quantile standard (1 - α)
 
+
+someGen11Vector :: Vector (Int, Double)
+someGen11Vector = Vector.fromList [(260422,262098),(1722,46)]
+
+someGen11Vector2 :: Vector (Int, Double)
+someGen11Vector2 = Vector.fromList [(260507,262086),(1637,58)]

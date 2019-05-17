@@ -215,6 +215,10 @@ indepsX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "indeps"    [
 delay     = defaultMain                               $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
 delayX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
 
+long     = defaultMain                               $ testGroup "long"    [ mkTest [longTests], mkProp [longProps]]
+longX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "long"    [ mkTest [longTests], mkProp [longProps]]
+
+  
 
 
 insensitiveDom    = defaultMain                               $ testGroup "insensitiveDom"   [ mkTest [insensitiveDomTests],  mkProp [insensitiveDomProps]]
@@ -237,9 +241,47 @@ tests = testGroup "Tests" [unitTests, properties]
 
 properties :: TestTree
 properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps, indepsProps, simonClassificationProps, newcdProps, delayProps]
-
+  where missing = [longProps]
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, sensitiveDomTests, timingDepTests, dodTests, wodTests, colorTests                , indepsTests, simonClassificationTests, newcdTests, delayTests]
+  where missing = [longTests]
+
+
+longProps = testGroup "(long running)" [
+    testPropertySized 25 "nticdNTIODSlice is termination sensitively sound for always-terminating graphs"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let     g   = removeDuplicateEdges $ efilter (\(n,m,_) -> n /= m) $ condensation generatedGraph
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        slicer     = SLICE.ODEP.nticdNTIODPDomSimpleHeuristic g
+                        -- slicer     = NTICD.wodTEILPDomSlice g
+                        ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
+                        runInput   = InfiniteDelay.runInput         g
+                    in -- traceShow (n, Set.size ss) $
+                       (∀) ss (\s ->
+                         -- traceShow s $
+                         let observable   = InfiniteDelay.observable s
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   obs   = observable trace
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        obs'   = observable trace'
+                                        different = not $ obs == obs'
+                                     in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                         in not differentobservation
+                    )
+  ]
+
+longTests =  testGroup "(long running)" $ [
+  ] ++
+  []
 
 
 soundnessProps =  testGroup "(concerning soundness)" [
@@ -1710,35 +1752,6 @@ wodProps = testGroup "(concerning weak order dependence)" [
                               in  (not $ property1 sn sn' gn' uniquen)
                            )
                      )),
-    testPropertySized 25 "nticdNTIODSlice is termination sensitively sound for always-terminating graphs"
-    $ \(ARBITRARY(generatedGraph)) ->
-                let     g   = removeDuplicateEdges $ efilter (\(n,m,_) -> n /= m) $ condensation generatedGraph
-                        n = toInteger $ length $ nodes g
-                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
-                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
-                        slicer     = SLICE.ODEP.nticdNTIODPDomSimpleHeuristic g
-                        -- slicer     = NTICD.wodTEILPDomSlice g
-                        ss         = Set.fromList [ slicer (Set.fromList [m1, m2]) | m1 <- nodes g, m2 <- nodes g ]
-                        runInput   = InfiniteDelay.runInput         g
-                    in -- traceShow (n, Set.size ss) $
-                       (∀) ss (\s ->
-                         -- traceShow s $
-                         let observable   = InfiniteDelay.observable s
-                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
-                               let input = InfiniteDelay.Input startNode choice
-                                   trace = runInput input
-                                   obs   = observable trace
-                               in (∃) choices' (\choice' ->
-                                    let input' = InfiniteDelay.Input startNode choice'
-                                        trace' = runInput input'
-                                        obs'   = observable trace'
-                                        different = not $ obs == obs'
-                                     in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
-                                        different
-                                  )
-                               ))
-                         in not differentobservation
-                    ),
     testPropertySized 40 "noJoins mmay'"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

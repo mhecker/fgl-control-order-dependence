@@ -123,7 +123,7 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
           else 
             return
               $ assert ( evidenceThatObservationsAreDifferent == Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == Significant)
-              $ error "Tests are contradictory, wtf."
+              $ error ("Tests are contradictory, wtf:" ++ show (n, θs, θ's))
 
 isSecureEmpirically :: Graph gr => Program gr -> Bool
 isSecureEmpirically = isSecureEmpiricallyCombinedTest

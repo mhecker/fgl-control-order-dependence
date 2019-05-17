@@ -248,6 +248,8 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 longProps = testGroup "(long running)" [
+    testPropertySized 15   "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
+                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 25 "nticdNTIODSlice is termination sensitively sound for always-terminating graphs"
     $ \(ARBITRARY(generatedGraph)) ->
                 let     g   = removeDuplicateEdges $ efilter (\(n,m,_) -> n /= m) $ condensation generatedGraph
@@ -324,8 +326,6 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
-    testPropertySized 15   "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
-                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 30  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated in
                 isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,

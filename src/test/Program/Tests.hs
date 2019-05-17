@@ -94,7 +94,7 @@ import qualified Data.Set as Set
 
 
 
-main = let { p = toProgramIntra someGen10 :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; putStrLn $ show $ isSecureEmpiricallyCombinedTest p }
+main = let { p = toProgramIntra someGen11' :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; putStrLn $ show $ isSecureEmpiricallyCombinedTest p }
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 
@@ -447,6 +447,24 @@ someGen11' = IntraGeneratedProgram
                                     {- ELSE -}
                                             (Ass (Global "a") (Neg (Var (Global "z"))))))
                              {- ELSE -}
-                                (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (SpawnThread 2)) (ForC 1 (PrintToChannel (Val 0) "stdOut"))))) undefined undefined undefined),
-        ("thread2",Generated (Seq (If (Leq (Val 0) (Val (-1))) (ForC 2 (Seq (Ass (Global "z") (Var (Global "b"))) (PrintToChannel (Val 0) "stdOut"))) (Seq (ForV (Global "a") (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "b"))))) (Seq (Ass (Global "c") (Val (-1))) (Ass (Global "a") (Val 1))))) (Seq (If (Leq (Val 0) (Val (-1))) (Seq (Ass (Global "c") (Plus (Var (Global "y")) (Var (Global "b")))) (PrintToChannel (Plus (Var (Global "y")) (Var (Global "b"))) "stdOut")) (ForV (Global "y") (ReadFromChannel (Global "z") "lowIn1"))) (Seq (Seq (PrintToChannel (Var (Global "b")) "stdOut") (Ass (Global "c") (Plus (Var (Global "z")) (Var (Global "b"))))) (ForC 2 (ReadFromChannel (Global "b") "stdIn"))))) undefined undefined undefined)])
+                                (Seq (Seq
+                                (ReadFromChannel (Global "a") "stdIn")
+                                (SpawnThread 2))
+                                (ForC 1 (PrintToChannel (Val 0) "stdOut"))))) undefined undefined undefined),
+        ("thread2",Generated (Seq
+                            (If (Leq (Val 0) (Val (-1)))
+                                Skip
+                            {- ELSE -} 
+                           (Seq (ForV (Global "a")
+                                         (Ass (Global "x") (Times (Var (Global "a")) (Var (Global "b")))))
+                           (Seq (Ass (Global "c") (Val (-1)))
+                                (Ass (Global "a") (Val 1)))))
+                      (Seq  (If (Leq (Val 0) (Val (-1)))
+                                Skip
+                            {- ELSE -}
+                                (ForV (Global "y")
+                                    (ReadFromChannel (Global "z") "lowIn1")))
+                  (Seq (Seq (PrintToChannel (Var (Global "b")) "stdOut")
+                            (Ass (Global "c") (Plus (Var (Global "z")) (Var (Global "b")))))
+                            (ForC 2 (ReadFromChannel (Global "b") "stdIn"))))) undefined undefined undefined)])
 

@@ -2819,6 +2819,15 @@ notReallyUnsound25 = toProgramIntra $ IntraGeneratedProgram
         ("thread3",Generated (If CTrue (PrintToChannel (Val 1) "stdOut") Skip) undefined undefined undefined)
     ])
 
+{- http://i44pc16:8080/job/irlsod/3143/testReport/(root)/soundness%20Properties%20(concerning%20soundness)/allSoundIntraMulti___timingClassificationAtUses__timingClassificationDomPaths__timingClassification__timingClassificationSimple___timingClassificationIdomBischof__minimalClassification__giffhornLSOD__simonClassification___/ -}
+notReallyUnsound26 :: Program Gr
+notReallyUnsound26 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2")])
+    (Map.fromList [("main",Generated (Seq (If CTrue (ReadFromChannel (Global "z") "lowIn1") Skip) (ForC 2 (Seq (SpawnThread 2) (ReadFromChannel (Global "b") "stdIn")))) undefined undefined undefined),
+                   ("thread2",Generated
+                    (Seq (Seq (Ass (Global "y") (Val 9)) (ReadFromChannel (Global "x") "lowIn1")) (ForC 2 (Seq (ReadFromChannel (Global "b") "lowIn1") (PrintToChannel (Neg (Var (Global "x"))) "stdOut")))) undefined undefined undefined)
+    ])
+
 
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
@@ -3472,6 +3481,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound23),
               $(withName 'notReallyUnsound24),
               $(withName 'notReallyUnsound25),
+              $(withName 'notReallyUnsound26),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

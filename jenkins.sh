@@ -24,4 +24,4 @@ time             make dist/build/sensitiveDom.valid.xml.bin/sensitiveDom.valid.x
 time             make dist/build/misc.valid.xml.bin/misc.valid.xml                     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time timeout 60m make dist/build/soundness.valid.xml.bin/soundness.valid.xml           RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 
-time timeout 60m make dist/build/all.invalid.xml.bin/all.invalid.xml                   RTS="+RTS -M22288m -RTS"
+time             make dist/build/all.invalid.xml.bin/all.invalid.xml                   RTS="+RTS -M22288m -RTS"

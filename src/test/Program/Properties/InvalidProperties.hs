@@ -152,6 +152,10 @@ dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup 
 wod        = defaultMain                               $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 wodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 
+long        = defaultMain                               $ expectFail $ testGroup "long"     [ mkTest [longTests], mkProp [longProps]]
+longX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "long"     [ mkTest [longTests], mkProp [longProps]]
+
+
 mkTest = testGroup "Unit tests"
 mkProp = testGroup "Properties"
 
@@ -162,17 +166,25 @@ tests = testGroup "Tests" [unitTests, properties]
 
 properties :: TestTree
 properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps, timingDepProps, insensitiveDomProps ]
-
+  where missing = [longProps]
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
+  where missing = [longTests]
 
-
-soundnessPropsCurrentlyNotFindingACounterExample =  localOption d $ testGroup "(concerning soundness)" [
-  testPropertySized 10
+longProps = localOption d $ testGroup "(long running)" [
+  testPropertySized 30
      ("allSoundIntraMulti [ unsoundIRLSODAttempt  ] ")
-     ( allSoundIntraMulti [ unsoundIRLSODAttempt  ] )
+     ( allSoundIntraMulti [ unsoundIRLSODAttempt  ] ),
+  testPropertySized 30 
+     ("allSoundIntraMultiRelativeTo  isSecureTimingClassificationAtUses  [ unsoundIRLSODAttempt  ] ")
+     ( allSoundIntraMultiRelativeTo  isSecureTimingClassificationAtUses  [ unsoundIRLSODAttempt  ] )
   ]
  where d = 2000000 :: QuickCheckTests
+
+longTests =  testGroup "(long running)" $ [
+  ] ++
+  []
+  
 
 soundnessProps =  testGroup "(concerning soundness)" [
   ]

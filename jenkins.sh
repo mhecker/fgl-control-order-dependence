@@ -11,7 +11,7 @@ time             make dist/build/simon.valid.xml.bin/simon.valid.xml            
 time             make dist/build/giffhorn.valid.xml.bin/giffhorn.valid.xml             RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/preccex.valid.xml.bin/preccex.valid.xml               RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/nticd.valid.xml.bin/nticd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
-time timeout  3h make dist/build/ntscd.valid.xml.bin/ntscd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
+time             make dist/build/ntscd.valid.xml.bin/ntscd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/newcd.valid.xml.bin/newcd.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/dod.valid.xml.bin/dod.valid.xml                       RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/wod.valid.xml.bin/wod.valid.xml                       RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"

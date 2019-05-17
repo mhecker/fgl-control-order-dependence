@@ -3091,7 +3091,7 @@ ntscdProps = testGroup "(concerning ntscd )" [
                 $ \(ARBITRARY(g)) ->
                        SNM.ntscdF4         g ==
                        SNM.ntscdF3         g,
-    testProperty  "ntscdDef        == ntscdF3"
+    testPropertySized 60  "ntscdDef        == ntscdF3"
                 $ \(ARBITRARY(g)) ->
                        NTICD.ntscdDef        g ==
                        SNM.ntscdF3         g

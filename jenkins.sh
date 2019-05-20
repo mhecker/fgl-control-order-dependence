@@ -18,7 +18,7 @@ time             make dist/build/wod.valid.xml.bin/wod.valid.xml                
 time             make dist/build/color.valid.xml.bin/color.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/reducible.valid.xml.bin/reducible.valid.xml           RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/indeps.valid.xml.bin/indeps.valid.xml                 RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
-time timeout 60m make dist/build/delay.valid.xml.bin/delay.valid.xml                   RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
+time timeout 2h  make dist/build/delay.valid.xml.bin/delay.valid.xml                   RTS="+RTS -M22288m -N8 -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/insensitiveDom.valid.xml.bin/insensitiveDom.valid.xml RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/sensitiveDom.valid.xml.bin/sensitiveDom.valid.xml     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"
 time             make dist/build/misc.valid.xml.bin/misc.valid.xml                     RTS="+RTS -M22288m -RTS" PATTERN="-p '**/Properties/**'"

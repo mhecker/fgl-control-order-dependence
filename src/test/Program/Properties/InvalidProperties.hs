@@ -592,16 +592,6 @@ cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" 
 
 
 balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" [
-    testProperty  "classification loops in krinkeSCC graphs"      $
-      \(INTERCFG(g)) seed ->
-                     let  (folded, nodemap) = krinkeSCC g
-                          maxlength = 50
-                          k         = 1000
-                          paths     = samplePathsFor seed k maxlength folded
-                     in -- traceShow (length $ nodes g, length $ nodes folded) $
-                        (∀) paths (\path ->
-                          (∀) (loopsIn path) (\loop -> (sameLevelArbitrary loop) ∨ (not $ realizableArtbitrary loop))
-                        ),
     testProperty  "acyclic realizable scc paths for arbitrary graphs"      $
       \(INTER(g)) seed ->
                           let maxlength = 50
@@ -619,6 +609,18 @@ balancedParanthesesProps = testGroup "(concerning sccs, as well as general chops
   ]
 
 balancedParanthesesTests = testGroup "(concerning sccs, as well as general chops and balanced-parantheses-chops)" $
+  [ testCase ("classification loops in krinkeSCC graphs")  $  
+                     let  InterCFG _ g = (InterCFG 122 (mkGraph [(1,1),(15,41),(41,41),(42,83),(50,83),(61,83),(62,83),(79,83),(81,83),(83,83),(84,121),(121,121),(122,122),(123,122)] [(1,41,Just (Close (15,1))),(15,1,Just (Open (15,1))),(15,81,Just (Close (62,41))),(15,83,Just (Close (42,41))),(41,15,Nothing),(42,41,Just (Open (42,41))),(42,62,Just (Close (79,83))),(42,121,Just (Close (84,83))),(50,81,Nothing),(61,62,Nothing),(62,41,Just (Open (62,41))),(79,83,Just (Open (79,83))),(81,42,Nothing),(83,42,Nothing),(83,50,Nothing),(83,61,Nothing),(83,62,Nothing),(83,79,Nothing),(83,81,Nothing),(84,83,Just (Open (84,83))),(84,123,Just (Close (122,121))),(121,84,Nothing),(122,121,Just (Open (122,121)))])) :: InterCFG Node (Node, Node)
+                          seed = 0
+                          (folded, nodemap) = krinkeSCC g
+                          maxlength = 50
+                          k         = 1000
+                          paths     = samplePathsFor seed k maxlength folded
+                     in -- traceShow (length $ nodes g, length $ nodes folded) $
+                        (∀) paths (\path ->
+                          (∀) (loopsIn path) (\loop -> (sameLevelArbitrary loop) ∨ (not $ realizableArtbitrary loop))
+                        ) @? ""
+  ] ++
   []
 
 

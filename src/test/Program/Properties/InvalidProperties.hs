@@ -206,10 +206,6 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
-    testProperty   "mDF   ⊑ timDF"
-                $ \(ARBITRARY(g)) ->
-                       PDF.mDF    g ⊑
-                       TSCD.timDF  g,
     testProperty   "anyDFFromUpLocalDefViaAnydoms == anyDF"
                 $ \(ARBITRARY(g)) (UNCONNECTED(anydom0)) -> 
                    let anydomG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges anydom0, let n' = toG ! n, let m' = toG ! m, (n' == m') ∨ (∀) (n' : suc g n') (\x' -> m' `elem` reachable x' g) ] :: Gr ()()
@@ -267,6 +263,10 @@ timingDepProps = testGroup "(concerning timingDependence)" [
   ]
   
 timingDepTests = testGroup "(concerning timingDependence)" $
+  [ testCase ("mDF   ⊑ timDF ") $
+    let g = mkGraph [(-52,()),(-26,()),(25,()),(36,()),(39,()),(53,())] [(-52,25,()),(-26,-26,()),(25,-52,()),(36,-52,()),(36,25,()),(39,-26,()),(39,36,()),(53,-52,()),(53,-26,()),(53,25,()),(53,36,()),(53,39,())] :: Gr () ()
+    in PDF.mDF    g ⊑ TSCD.timDF  g  @? ""
+  ] ++
   [ testCase ("fmap (Set.map fst) $ timdomOfLfp is transitive for " ++ exampleName) $ 
                 let timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
                 in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x)))

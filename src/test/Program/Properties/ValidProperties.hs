@@ -248,6 +248,30 @@ unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhor
 
 
 longProps = testGroup "(long running)" [
+    testPropertySized 25 "nticdNTIODFastSlice  is sound"
+                $ \(ARBITRARY(generatedGraph)) seed->
+                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        [m1,m2]    = sampleFrom seed 2 (nodes g)
+                        s = SLICE.ODEP.nticdNTIODFastSlice g (Set.fromList [m1, m2])
+                        infinitelyDelays = InfiniteDelay.infinitelyDelays g s
+                        runInput         = InfiniteDelay.runInput         g
+                        observable       = InfiniteDelay.observable         s
+                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   isLowEquivalent = InfiniteDelay.isLowEquivalentFor infinitelyDelays runInput observable input
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        different = not $ isLowEquivalent input'
+                                     in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+                       (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
+                       not differentobservation,
     testPropertySized 15   "timingClassificationAtUses is at least as precise as resumptionBasedSecurity"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAsPartialGen`  (isSecureResumptionBasedSecurity ZeroOneBisimilarity),
     testPropertySized 25 "nticdNTIODSlice is termination sensitively sound for always-terminating graphs"
@@ -4302,30 +4326,6 @@ delayProps = testGroup "(concerning inifinte delay)" [
                          in    traceObs ∈ continuations
                             ∧ (∀) continuations ( \continuation -> traceObs `InfiniteDelay.isTracePrefixOf` continuation)
                        )),
-    testPropertySized 25 "nticdNTIODFastSlice  is sound"
-                $ \(ARBITRARY(generatedGraph)) seed->
-                    let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization
-                        n = toInteger $ length $ nodes g
-                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
-                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
-                        [m1,m2]    = sampleFrom seed 2 (nodes g)
-                        s = SLICE.ODEP.nticdNTIODFastSlice g (Set.fromList [m1, m2])
-                        infinitelyDelays = InfiniteDelay.infinitelyDelays g s
-                        runInput         = InfiniteDelay.runInput         g
-                        observable       = InfiniteDelay.observable         s
-                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
-                               let input = InfiniteDelay.Input startNode choice
-                                   isLowEquivalent = InfiniteDelay.isLowEquivalentFor infinitelyDelays runInput observable input
-                               in (∃) choices' (\choice' ->
-                                    let input' = InfiniteDelay.Input startNode choice'
-                                        different = not $ isLowEquivalent input'
-                                     in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
-                                        different
-                                  )
-                               ))
-                    in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
-                       (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
-                       not differentobservation,
     testPropertySized 25 "nticdNTIODFastSlice  is minimal"
                 $ \(ARBITRARY(generatedGraph)) seed->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization

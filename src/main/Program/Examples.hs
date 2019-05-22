@@ -2836,6 +2836,12 @@ notReallyUnsound27 = toProgramIntra $ IntraGeneratedProgram
                    ("thread2",Generated (If (Leq (Val 0) (Neg (Var (Global "a")))) (Seq (PrintToChannel (Var (Global "a")) "stdOut") (PrintToChannel (Plus (Var (Global "a")) (Var (Global "a"))) "stdOut")) (ForC 1 (Seq (Ass (Global "c") (Neg (Var (Global "a")))) (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut")))) undefined undefined undefined)
      ])
 
+{- http://i44pc16:8080/job/irlsod/3157/testReport/junit/(root)/soundness%20Properties%20(concerning%20soundness)/allSoundIntraMulti___timingClassificationAtUses__timingClassificationDomPaths__timingClassification__timingClassificationSimple___timingClassificationIdomBischof__minimalClassification__giffhornLSOD__simonClassification___/ -}
+notReallyUnsound28 :: Program Gr
+notReallyUnsound28 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2")])
+    (Map.fromList [("main",Generated (ForC 2 (Seq (ForC 1 (ReadFromChannel (Global "a") "lowIn1")) (Seq (SpawnThread 2) (ReadFromChannel (Global "z") "lowIn1")))) undefined undefined undefined),
+                   ("thread2",Generated (ForC 2 (Seq (Seq (PrintToChannel (Times (Var (Global "a")) (Var (Global "a"))) "stdOut") (Ass (Global "x") (Plus (Var (Global "a")) (Var (Global "a"))))) (ForV (Global "a") (Ass (Global "x") (Neg (Var (Global "a"))))))) undefined undefined undefined)])
 
 
 controlDepExample :: Program Gr
@@ -3492,6 +3498,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound25),
               $(withName 'notReallyUnsound26),
               $(withName 'notReallyUnsound27),
+              $(withName 'notReallyUnsound28),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

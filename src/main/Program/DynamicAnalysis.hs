@@ -88,7 +88,10 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
             let (id', nextId'') = case knownId' of { Nothing -> (nextId', nextId' + 1) ; Just id -> (id, nextId') }
             let state' = (n+1, nextId'', toId'', Map.insertWith (+) id 1 θs, Map.insertWith (+) id' 1 θ's)
 
-            state' `deepseq` newSamplePairs (k-1) state'
+            if (k `mod` 1024 == 0) then
+               state' `deepseq` newSamplePairs (k-1) state'
+            else
+                                newSamplePairs (k-1) state'
 
         useKnown  _ _ known = known
 

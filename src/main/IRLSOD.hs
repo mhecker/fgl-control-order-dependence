@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module IRLSOD where
 
 import Util
@@ -8,6 +9,8 @@ import Data.Graph.Inductive.Graph
 
 import Control.Exception.Base (assert)
 
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -17,7 +20,7 @@ import qualified Data.Set as Set
 import Data.List (partition,delete)
 import qualified Data.List as List
 
-data Var = Global String | ThreadLocal String deriving (Show, Eq, Ord)
+data Var = Global String | ThreadLocal String deriving (Show, Eq, Ord, Generic, NFData)
 type Val = Integer
 type InputChannel = String
 type OutputChannel = String
@@ -185,7 +188,7 @@ type Configuration = (ControlState,GlobalState,ThreadLocalStates,Input)
 data Event = PrintEvent Val OutputChannel
            | ReadEvent  Val InputChannel
            | Tau
-           deriving (Eq, Ord, Show)
+           deriving (Eq, Ord, Show, Generic, NFData)
 
 fromEdge :: CombinedState -> Input -> CFGEdge -> Event
 fromEdge σ i (Guard b bf)

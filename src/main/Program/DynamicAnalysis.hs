@@ -4,7 +4,9 @@
 module Program.DynamicAnalysis where
 
 
+
 import System.IO.Unsafe (unsafePerformIO)
+import Control.DeepSeq (deepseq)
 import Control.Exception.Base (assert)
 import Control.Monad.Random (evalRandIO, MonadRandom(..))
 import Debug.Trace (traceShow)
@@ -84,8 +86,9 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
 
             let (knownId', toId'') = Map.insertLookupWithKey useKnown t' nextId'  toId'
             let (id', nextId'') = case knownId' of { Nothing -> (nextId', nextId' + 1) ; Just id -> (id, nextId') }
+            let state' = (n+1, nextId'', toId'', Map.insertWith (+) id 1 θs, Map.insertWith (+) id' 1 θ's)
 
-            newSamplePairs (k-1) (n+1, nextId'', toId'', Map.insertWith (+) id 1 θs, Map.insertWith (+) id' 1 θ's)
+            state' `deepseq` newSamplePairs (k-1) state'
 
         useKnown  _ _ known = known
 

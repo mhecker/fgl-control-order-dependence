@@ -2,9 +2,7 @@
 shopt -s expand_aliases
 set -x
 timm() {
-  dotlockfile -l -r 100 ghc-lock
   /usr/bin/time -f '\t%E real,\t%U user,\t%S sys,\t%K amem,\t%M mmem' "$@"
-  dotlockfile -u        ghc-lock
 }
 export -f timm
 

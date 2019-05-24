@@ -17,6 +17,9 @@ PATTERN=
 COLOR=--color always
 RTS=
 
+LOCK=dotlockfile -l -r 100 ghc-lock
+UNLOCK=dotlockfile -u      ghc-lock
+
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that
 .PHONY: all  rofl .FORCE
 .PRECIOUS: dist/build/%.bin
@@ -28,7 +31,9 @@ all : all.test all.fail
 	./$< $(RTS) $(PATTERN) --xml $@
 
 dist/build/%.bin : fgl-control-order-dependence.cabal .FORCE
-	cabal configure $(CABAL_CONFIGURE) && cabal build $(@F)
+	$(LOCK)
+	-cabal configure $(CABAL_CONFIGURE) && cabal build $(@F)
+	$(UNLOCK)
 
 
 

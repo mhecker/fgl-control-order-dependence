@@ -548,7 +548,7 @@ insensitiveDomProps = testGroup "(concerning nontermination-insensitive control 
                     nticdslicer        = SLICE.NTICD.nticdSlice              g
                     nticdslicerCEdges  = CEDGE.nticdSliceViaCEdgesFast g
                 in (∀) mss (\ms -> nticdslicer ms == nticdslicerCEdges ms),
-    testProperty   "idfViaCEdgesFast properties"
+    testPropertySized 60 "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         sinkdom = PDOM.sinkdomOfLfp g
@@ -916,7 +916,7 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     imdom6 = PDOM.imdomOfTwoFinger6 g
                     imdom7 = PDOM.imdomOfTwoFinger7 g
                 in PDF.idomToDFFast g imdom6 == PDF.idomToDFFast g imdom7,
-    testProperty   "idfViaCEdgesFast properties"
+    testPropertySized 60 "idfViaCEdgesFast properties"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         mdom = PDOM.mdomOfLfp g

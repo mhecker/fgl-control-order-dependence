@@ -17,7 +17,7 @@ PATTERN=
 COLOR=--color always
 RTS=
 
-LOCK=dotlockfile -l -r 100 ghc-lock
+LOCK=dotlockfile -l -r 200 ghc-lock
 UNLOCK=dotlockfile -u      ghc-lock
 
 # all.test giffhorn.test cdom.test balanced.test timing.test soundness.test all should be .PHONY targets here, but the pattern rules below dont like that

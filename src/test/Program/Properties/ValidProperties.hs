@@ -63,7 +63,7 @@ import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensa
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode',)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode',)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
@@ -1490,10 +1490,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                 let msum = Map.fold (\ns s -> Set.size ns + s) 0
 
                     n0 = (abs size) `div` 2
-                    g0 = ladder n0  :: Gr () ()
-                    [entry]         = [ n | n <- nodes g0, pre g0 n == [] ]
-                    [exit1, exit2]  = [ n | n <- nodes g0, suc g0 n == [] ]
-                    g = insEdge (exit1, entry, ()) $  insEdge (exit2, entry, ()) $ g0
+                    g = fullLadder n0  :: Gr () ()
                     n = length $ nodes g
                     ntiod = assert (n == 2*n0 + 3) $
                             ODEP.ntiodFastPDomSimpleHeuristic g

@@ -335,6 +335,19 @@ ladder n = mkGraph [(i,()) | i <- [0..2*n+2]] (eds n)
   where eds 0 = [(0,1,()), (0,2,())]
         eds n = [(2*n, 2*n+1, ()), (2*n, 2*n+2, ()), (2*n-1, 2*n+1, ())] ++ eds (n-1)
 
+entryExitLadder :: DynGraph gr => Int -> gr () ()
+entryExitLadder n0 = insEdge (2*n0 + 1, 2 * n0 + 2, ()) $ g0
+  where g0 = ladder n0
+        [entry]         = [ n | n <- nodes g0, pre g0 n == [] ]
+        [exit1, exit2]  = [ n | n <- nodes g0, suc g0 n == [] ]
+
+
+
+fullLadder :: DynGraph gr => Int -> gr () ()
+fullLadder n0 = insEdge (exit1, entry, ()) $  insEdge (exit2, entry, ()) $ g0
+  where g0 = ladder n0
+        [entry]         = [ n | n <- nodes g0, pre g0 n == [] ]
+        [exit1, exit2]  = [ n | n <- nodes g0, suc g0 n == [] ]
 
 costFor g seed = Map.fromList $ zip (edges g) (fmap ((1+) . (`mod` 32) .  abs) $ more seed)
 

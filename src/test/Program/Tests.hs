@@ -6,7 +6,6 @@ import System.Process
 
 import Data.Graph.Inductive.Dot
 
-import Data.Array (array)
 import Data.List
 
 import Data.Maybe (fromJust)
@@ -14,8 +13,6 @@ import Data.Maybe (fromJust)
 import qualified Data.Dequeue as Dequeue
 import Data.Dequeue (pushBack, popFront)
 import Data.Dequeue.SimpleDequeue (SimpleDequeue)
-
-import qualified Data.PQueue.Prio.Max as Prio.Max
 
 import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random
@@ -81,6 +78,7 @@ import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Query.BalancedSCC
 import Data.Graph.Inductive.Arbitrary
 
+import Data.Graph.Inductive.Query.Util.GraphTransformations (sinkShrinkedGraph)
 
 import Data.Tree
 

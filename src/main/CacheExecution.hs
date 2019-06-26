@@ -25,7 +25,9 @@ import IRLSOD
 
 cacheSize = 4
 
+
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
+undefinedCacheValue = -1
 
 type ConcreteSemantic a = CFGEdge -> a -> Maybe a
 
@@ -51,12 +53,37 @@ cacheAwareReadLRU var σ@((globalσ,tlσ,i), cache) = case var of
             Nothing  -> let val = someσ ! var in (val, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache) )
             Just val ->                          (val, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache) )
 
+
+cacheOnlyReadLRU :: Var -> CacheState -> CacheState
+cacheOnlyReadLRU var cache = case var of
+    Global      _ -> lookup
+    ThreadLocal _ -> lookup
+  where lookup = 
+          case OMap.lookup var cache of
+            Nothing  -> OMap.fromList $ (var, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                   cache)
+            Just val -> assert (val == undefinedCacheValue) $
+                        OMap.fromList $ (var, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete var cache)
+
+
 cacheAwareReadLRUState :: Monad m => Var -> StateT FullState m Val
 cacheAwareReadLRUState var = do
     σ@((globalσ,tlσ,i), cache) <- get
     let (val, cache') = cacheAwareReadLRU var σ
     put ((globalσ,tlσ,i), cache')
     return val
+
+
+cacheOnlyReadLRUState :: Monad m => Var -> StateT CacheState m ()
+cacheOnlyReadLRUState var = do
+    cache <- get
+    let cache' = cacheOnlyReadLRU var cache
+    put cache'
+    return ()
+
+cacheOnlyWriteLRUState :: Monad m => Var -> StateT CacheState m ()
+cacheOnlyWriteLRUState = cacheOnlyReadLRUState
+
+
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
 cacheAwareWriteLRU var val σ@((globalσ,tlσ,i), cache) = case var of
@@ -76,7 +103,7 @@ cacheAwareWriteLRUState var val = do
     return ()
 
 initialCacheState :: CacheState
-initialCacheState = OMap.fromList [(Global undef, -1) | undef <- undefinedCache]
+initialCacheState = OMap.fromList [(Global undef, undefinedCacheValue) | undef <- undefinedCache]
 initialFullState = ((Map.empty, Map.empty, Map.empty), initialCacheState)
 
 exampleSurvey1 :: FullState
@@ -149,6 +176,75 @@ cacheStepFor ::  AbstractSemantic FullState
 cacheStepFor e σ = evalStateT (cacheStepForState e) σ
 
 
+
+
+
+
+
+cacheOnlyLRUEvalB :: Monad m => BoolFunction -> StateT CacheState m ()
+cacheOnlyLRUEvalB CTrue     = return ()
+cacheOnlyLRUEvalB CFalse    = return ()
+cacheOnlyLRUEvalB (Leq x y) = do
+  xVal <- cacheOnlyLRUEvalV x
+  yVal <- cacheOnlyLRUEvalV y
+  return ()
+cacheOnlyLRUEvalB (And b1 b2) = do
+  b1Val <- cacheOnlyLRUEvalB b1
+  b2Val <- cacheOnlyLRUEvalB b2
+  return ()
+cacheOnlyLRUEvalB (Or b1 b2) = do
+  b1Val <- cacheOnlyLRUEvalB b1
+  b2Val <- cacheOnlyLRUEvalB b2
+  return ()
+cacheOnlyLRUEvalB (Not b) = do
+  bVal <- cacheOnlyLRUEvalB b
+  return ()
+
+cacheOnlyLRUEvalV :: Monad m => VarFunction -> StateT CacheState m ()
+cacheOnlyLRUEvalV (Val  x) = return ()
+cacheOnlyLRUEvalV (Var  x) = cacheOnlyReadLRUState x
+cacheOnlyLRUEvalV (Plus  x y) = do
+  xVal <- cacheOnlyLRUEvalV x
+  yVal <- cacheOnlyLRUEvalV y
+  return ()
+cacheOnlyLRUEvalV (Times x y) = do
+  xVal <- cacheOnlyLRUEvalV x
+  yVal <- cacheOnlyLRUEvalV y
+  return ()
+cacheOnlyLRUEvalV (Neg x) = do
+  xVal <- cacheOnlyLRUEvalV x
+  return ()
+
+
+
+
+
+
+
+cacheOnlyStepForState :: CFGEdge -> StateT CacheState [] CacheState
+cacheOnlyStepForState (Guard b bf) = do
+        cacheOnlyLRUEvalB bf
+        σ' <- get
+        return σ'
+cacheOnlyStepForState (Assign x vf) = do
+        cacheOnlyLRUEvalV vf
+        cacheOnlyWriteLRUState x
+        σ' <- get
+        return σ'
+cacheOnlyStepForState NoOp = do
+        σ' <- get
+        return σ'
+cacheOnlyStepForState (Read  _ _) = undefined
+cacheOnlyStepForState (Print _ _) = undefined
+cacheOnlyStepForState (Spawn    ) = undefined
+cacheOnlyStepForState (Call     ) = undefined
+cacheOnlyStepForState (Return   ) = undefined
+
+cacheOnlyStepFor ::  AbstractSemantic CacheState
+cacheOnlyStepFor e σ = evalStateT (cacheOnlyStepForState e) σ
+
+
+
 stateSets :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
 stateSets step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList []) f
   where f (cs, es) = (cs ∪ Set.fromList [  (n', σ') | (n, σ, e, n', σ') <- next ],
@@ -164,3 +260,7 @@ stateGraph step g σ0 n0 = mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c'
 
 cacheExecutionGraph :: (Graph gr) => gr CFGNode CFGEdge -> FullState -> Node -> gr (Node, FullState) CFGEdge
 cacheExecutionGraph = stateGraph cacheStepFor
+
+
+cacheStateGraph :: (Graph gr) => gr CFGNode CFGEdge -> CacheState -> Node -> gr (Node, CacheState) CFGEdge
+cacheStateGraph = stateGraph cacheOnlyStepFor

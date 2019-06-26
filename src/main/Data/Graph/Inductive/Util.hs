@@ -462,3 +462,10 @@ prevRepresentantNodes graph start =
                              case pre graph n of
                                [n']    -> prevRepresentant (n:seen) n' n
                                _       -> Just n
+
+exchange :: DynGraph gr => gr a b -> Node -> Node -> gr a b
+exchange g old nw = id 
+    $ (flip delPredecessorEdges) old
+    $ foldr ins g lPreds
+  where lPreds = lpre g old
+        ins (n,label) =  insEdge (n,nw,label)

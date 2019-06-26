@@ -166,6 +166,24 @@ executable sas-tests.bin
   default-language:    Haskell2010
   
 
+
+executable firm-props.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Properties/FirmProperties.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.FirmProperties.props
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+  
+executable firm-tests.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Properties/FirmProperties.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.FirmProperties.tests
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+
+
 define(VALID,`
 executable $1.valid.bin
   hs-source-dirs: src/test/

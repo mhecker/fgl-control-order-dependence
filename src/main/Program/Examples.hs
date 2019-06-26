@@ -2065,6 +2065,7 @@ simple = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
+           Ass (Global "a") (Val 42)                                        `Seq`
            Ass (Global "x") (Var (Global "a"))                                                `Seq`
            If (Leq (Var (Global "x")) (Val 0))
               (Ass (Global "z") (Val 1))
@@ -2077,6 +2078,7 @@ simple2 = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
+           Ass (Global "a") (Val 42)                                        `Seq`
            Ass (Global "x") (Var (Global "a"))                                                `Seq`
            If (Leq (Var (Global "x")) (Val 0))
               (Skip)
@@ -2092,6 +2094,8 @@ simple3 = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList $ [
           (1,
            Skip                                                             `Seq`
+           Ass (Global "z") (Val 42)                                        `Seq`
+           Ass (Global "a") (Val 17)                                        `Seq`
            Ass (Global "tmp") ((Var (Global "z")) `Plus` (Val 1))                             `Seq`
            Ass (Global "x") (Var (Global "a"))                                                `Seq`
            If (Leq (Var (Global "x")) (Val 0))

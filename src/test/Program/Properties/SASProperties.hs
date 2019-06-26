@@ -176,6 +176,26 @@ observation1 = [
             sinkdom = PDOM.sinkdomOfGfp g
         in    (∀) (Map.assocs isinkdom) (\(n, ms) -> Set.size ms <= 1)  ∧  (toSuccMap $ trc $ (fromSuccMap $ isinkdom :: Gr () ())) ⊒ sinkdom
   ]
+observation1topsort = [
+    testProperty   "topsort sinkdom approximation"
+    $ \(ARBITRARY(generatedGraph)) ->
+        let g = generatedGraph
+            n = length $ nodes g
+            sinks = controlSinks g
+            sinkNodes = Set.fromList [ s | sink <- sinks, s <- sink]
+
+
+            forest = rdff [ s | (s:_) <- sinks ] g
+
+            forestEdges :: [Tree Node] -> [(Node, Node)]
+            forestEdges = concatMap f
+              where f (Tree.Node n ts) = [ (n, m) | (Tree.Node m _) <- ts ] ++ concatMap f ts
+
+            isinkdom =       Map.fromList [ (nj, Set.fromList [nj']) | sink <- sinks, (nj,nj') <- zip sink (tail sink ++ [head sink]) ]
+                     ⊔ (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | (n,m) <- forestEdges forest, not $ m ∈ sinkNodes]
+            sinkdom = PDOM.sinkdomOfGfp g
+        in    (∀) (Map.assocs isinkdom) (\(n, ms) -> Set.size ms <= 1)  ∧  (toSuccMap $ trc $ (fromSuccMap $ isinkdom :: Gr () ())) ⊒ sinkdom
+  ]
 observation2 = [
     testProperty   "sink boundedness is retained  by isinkdom step"
     $ \(ARBITRARY(generatedGraph)) ->

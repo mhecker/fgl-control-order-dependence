@@ -2120,6 +2120,19 @@ twoLoops = p { observability = defaultObservabilityMap (tcfg p) }
          ]
 
 
+twoLoopsWithAss :: Program Gr
+twoLoopsWithAss = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = code2Program code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ForC 5 (Ass (Global "x") (Val 42))                               `Seq`
+           ForC 5 Skip                                                      `Seq`
+           Skip
+          )
+
+         ]
+
 
 {-    1
       2<---

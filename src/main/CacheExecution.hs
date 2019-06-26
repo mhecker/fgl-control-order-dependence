@@ -149,9 +149,12 @@ cacheStepFor ::  AbstractSemantic FullState
 cacheStepFor e σ = evalStateT (cacheStepForState e) σ
 
 
-stateGraph :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> Set (Node, s)
-stateGraph step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)]) f
-  where f cs = cs ∪ Set.fromList [ (n', σ')  | (n,σ) <- Set.toList cs, (n',e) <- lsuc g n, σ' <- step e σ]
+stateGraph :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
+stateGraph step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList []) f
+  where f (cs, es) = (cs ∪ Set.fromList [  (n', σ') | (n, σ, e, n', σ') <- next ],
+                      es ∪ Set.fromList [ ((n,  σ ), e, (n', σ')) | (n, σ, e, n', σ') <- next ]
+                     )
+          where next = [ (n, σ, e, n', σ')  | (n,σ) <- Set.toList cs, (n',e) <- lsuc g n, σ' <- step e σ]
 
-cacheStateGraph :: (Graph gr) => gr CFGNode CFGEdge -> FullState -> Node -> Set (Node, FullState)
+cacheStateGraph :: (Graph gr) => gr CFGNode CFGEdge -> FullState -> Node -> (Set (Node, FullState), Set ((Node, FullState), CFGEdge, (Node, FullState)))
 cacheStateGraph = stateGraph cacheStepFor

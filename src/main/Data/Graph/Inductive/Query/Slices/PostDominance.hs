@@ -12,7 +12,14 @@ import Unicode
 import Util(fromSet)
 
 import Data.Graph.Inductive.Util (delSuccessorEdges, controlSinks)
-import Data.Graph.Inductive.Query.PostDominance (isinkdomOfTwoFinger8ForSinks, isinkdomOfTwoFinger8)
+import Data.Graph.Inductive.Query.PostDominance (isinkdomOfTwoFinger8ForSinks, isinkdomOfTwoFinger8, imdomOfTwoFinger7)
+
+
+ntscdNTSODSliceViaIMDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
+ntscdNTSODSliceViaIMDom graph msS =  Set.fromList [ n | n <- rdfs ms graph', imdom' ! n == Nothing]
+  where ms = Set.toList msS
+        graph' = foldr (flip delSuccessorEdges) graph ms
+        imdom' = fmap fromSet $ imdomOfTwoFinger7 graph'
 
 
 nticdNTIODSliceViaISinkDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node

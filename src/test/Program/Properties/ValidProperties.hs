@@ -109,7 +109,7 @@ import qualified Data.Graph.Inductive.Query.PostDominance.GraphTransformations a
 import qualified Data.Graph.Inductive.Query.Slices.GraphTransformations as SLICE.TRANS (
     nticdNTIODSliceViaCutAtRepresentatives, nticdNTIODSliceViaEscapeNodes, nticdNTIODSliceViaCutAtRepresentativesNoTrivial, nticdNTIODSliceViaChoiceAtRepresentatives
  )
-import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (nticdNTIODSliceViaISinkDom)
+import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (nticdNTIODSliceViaISinkDom, ntscdNTSODSliceViaIMDom)
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
     nticdNTIODSlice, nticdSlice,  ntscdSlice,
     ntscdNTSODSliceViaNtscd, wodTEILSliceViaNticd,
@@ -2459,6 +2459,36 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 dodProps = testGroup "(concerning decisive order dependence)" [
+    testProperty "ntscdNTIOD == ntscdNTSODViaNtscd properties"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                let g    = generatedGraph
+                    trcG = trc g
+                    m0S
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                     where n    = length $ nodes g
+                in
+                -- in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->  {- let m0S = Set.fromList [m1, m2] in  -- -} (∀) (nodes g) (\m3 -> (∀) (nodes g) (\m4 -> let m0S = Set.fromList [m1, m2, m3, m4] in
+                     let  m0s = Set.toList m0S
+                          toM0s = rdfs m0s g
+                          g' = foldr (flip delSuccessorEdges) g m0s
+                          ntscd' = NTICD.ntscdViaMDom g'
+                          nticd'slicer = SLICE.NTICD.ntscdSlice g'
+                          mdom' = PDOM.mdomOfLfp g'
+                     in (∀) m0S (\m -> (∀) (nticd'slicer (Set.fromList [m])) (\n -> 
+                          let ok = (mdom' ! n == Set.fromList [n])
+                          in (if ok then id else traceShow (g, m0S, n, m)) ok
+                        ))
+                   -- )))),
+                   ,
+  testProperty "ntscdNTSODSlice == ntscdNTSODSliceViaIMDom  for random slice-criteria of random size, and CFG-shaped graphs"
+    $ \(SIMPLECFG(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    n    = length $ nodes g
+                    ms  = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    slicer1  = SLICE.NTICD.ntscdNTSODSliceViaNtscd   g
+                    slicer2  = SLICE.PDOM.ntscdNTSODSliceViaIMDom    g
+                in   slicer1  ms == slicer2  ms,
     testPropertySized 40 "ntscdSlice == ntsndDef"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph

@@ -2106,6 +2106,86 @@ simple3 = p { observability = defaultObservabilityMap (tcfg p) }
 
          ]
 
+simple4 :: Program Gr
+simple4 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = code2Program code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass (Global "a") (Val 42)                                        `Seq`
+           Ass (Global "b") (Var (Global "a"))                                                `Seq`
+           Ass (Global "c") (Var (Global "a"))                                                `Seq`
+           Ass (Global "d") (Var (Global "a"))                                                `Seq`
+           Ass (Global "x") (Var (Global "a"))                                                `Seq`
+           If (Leq (Var (Global "x")) (Val 0))
+              (Ass (Global "x") (Var (Global "b")))
+              (Ass (Global "x") (Var (Global "d")))                                           `Seq`
+           Ass (Global "z") (Val 0)                                                           `Seq`
+           Ass (Global "a") (Val 42)                                                          `Seq`
+           If (Leq (Var (Global "a")) (Val 0))
+              (Skip)
+              (Skip)                                                                          `Seq`
+           Ass (Global "c") (Val 42)
+          )
+
+         ]
+
+simple4' :: Program Gr
+simple4' = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = code2Program code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass (Global "a") (Val 42)                                        `Seq`
+           Ass (Global "b") (Var (Global "a"))                                                `Seq`
+           Ass (Global "c") (Var (Global "a"))                                                `Seq`
+           Ass (Global "d") (Var (Global "a"))                                                `Seq`
+           Ass (Global "x") (Var (Global "a"))                                                `Seq`
+           If (Leq (Var (Global "x")) (Val 0))
+              (Ass (Global "x") (Var (Global "b")))
+              (Ass (Global "x") (Var (Global "d")))                                           `Seq`
+           Ass (Global "z") (Val 0)                                                           `Seq`
+           Ass (Global "a") (Val 42)                                                          `Seq`
+           If (Leq (Var (Global "b")) (Val 0))
+              (Skip)
+              (Skip)                                                                          `Seq`
+           Ass (Global "c") (Val 42)
+          )
+
+         ]
+
+
+
+simple4'' :: Program Gr
+simple4'' = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = code2Program code
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass (Global "a") (Val 42)                                        `Seq`
+           Ass (Global "b") (Var (Global "a"))                                                `Seq`
+           Ass (Global "d") (Var (Global "a"))                                                `Seq`
+           Ass (Global "c") (Var (Global "a"))                                                `Seq`
+           Ass (Global "x") (Var (Global "a"))                                                `Seq`
+           If (Leq (Var (Global "x")) (Val 0))
+              (Ass (Global "x") (Var (Global "b")))
+              (Ass (Global "x") (Var (Global "d")))                                           `Seq`
+           Ass (Global "a") (Val 42)                                                          `Seq`
+           If (Leq (Var (Global "b")) (Val 0))
+              (Skip)
+              (Skip)                                                                          `Seq`
+           If (Leq (Var (Global "d")) (Val 0))
+              (Skip)
+              (Skip)                                                                          `Seq`
+           Ass (Global "c") (Val 42)
+          )
+
+         ]
+
+
+
+
+
 twoLoops :: Program Gr
 twoLoops = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code

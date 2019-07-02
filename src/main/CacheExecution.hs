@@ -25,7 +25,7 @@ import Data.Graph.Inductive.Graph
 import Unicode
 import IRLSOD
 
-import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp)
+import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp)
 
 
 cacheSize = 4
@@ -273,13 +273,13 @@ cacheStateGraph = stateGraph cacheOnlyStepFor
 
 type CacheGraphNode = Node
 
-cscdOfLfp graph n0 = Map.fromList [ (n, Set.fromList [ csNodeToNode ! m' | csdom <- csdoms,  m' <- Set.toList csdom, let m = csNodeToNode ! m', let cs' = cacheState  m m',
-                                                                           (∃) csdoms (\csdom' -> (∃) (csdom') (\m'' -> csNodeToNode ! m'' == m ∧ cacheState m m'' /= cs')) ]) |
+cscdOfLfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ csNodeToNode ! m' | csdom <- csdoms,  m' <- Set.toList csdom, let m = csNodeToNode ! m', let cs' = cacheState  m m',
+                                                                           (∃) csdoms (\csdom' -> (∃) (csdom') (\m'' -> csNodeToNode ! m'' == m ∧ cacheState m m'' /= cs')) ]) ] |
                     n  <- nodes graph,
                     n' <- nodesToCsNodes ! n,
                     let csdoms = [ csdom ! x' | x' <- suc csGraph n']
                   ]
-  where csdom = mdomOfLfp csGraph
+  where csdom = sinkdomOfGfp csGraph
         csGraph = cacheStateGraph graph initialCacheState n0
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
         csNodeToNode   = Map.fromList [ (y, n)  | (y, (n,    _)) <- labNodes csGraph]

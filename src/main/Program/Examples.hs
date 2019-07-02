@@ -2207,7 +2207,7 @@ twoLoopsWithAss = p { observability = defaultObservabilityMap (tcfg p) }
           (1,
            Skip                                                             `Seq`
            ForC 5 (Ass (Global "x") (Val 42))                               `Seq`
-           ForC 5 Skip                                                      `Seq`
+           ForV (Global "x") Skip                                           `Seq`
            Skip
           )
 

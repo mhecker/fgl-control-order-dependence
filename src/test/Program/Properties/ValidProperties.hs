@@ -56,7 +56,8 @@ import Data.List (sortOn)
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
-import IRLSOD(CFGEdge(..))
+import IRLSOD(CFGEdge(..), Var(..), use, def)
+import CacheExecution(prependInitialization, initialCacheState, cacheExecution, csdOfLfp)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -64,11 +65,11 @@ import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode',)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge, newNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
-import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes)
+import Data.Graph.Inductive.Query.DataDependence (dataDependenceGraphP, dataDependenceGraphViaIndependenceP, withParameterNodes, dataDependence)
 import Data.Graph.Inductive.Query.ProgramDependence (programDependenceGraphP, addSummaryEdges, addSummaryEdgesLfp, addSummaryEdgesGfpLfp, addSummaryEdgesGfpLfpWorkList, summaryIndepsPropertyViolations, implicitSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdges, addImplicitAndTrivialSummaryEdgesLfp, addNonImplicitNonTrivialSummaryEdgesGfpLfp)
 
 import qualified Data.Graph.Inductive.Query.NTIODSlice as NTIODSlice
@@ -159,7 +160,7 @@ import qualified Data.Graph.Inductive.FA as FA
 import Data.Graph.Inductive.Arbitrary
 
 
-import Program (Program, tcfg)
+import Program (Program, tcfg, entryOf, procedureOf, mainThread)
 import Program.DynamicAnalysis (isSecureEmpirically)
 
 import Program.Properties.Analysis
@@ -173,7 +174,9 @@ import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
 import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity, isSecureResumptionBasedSecurityFor)
 import Program.CDom
-import Program.Generator (toProgram, toProgramIntra, GeneratedProgram, SimpleCFG(..))
+import Program.Generator (toProgram, toProgramIntra, toCodeSimple, GeneratedProgram, SimpleCFG(..))
+
+import Program.For (compileAllToProgram)
 
 main      = all
 
@@ -215,6 +218,10 @@ indepsX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "indeps"    [
 delay     = defaultMain                               $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
 delayX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
 
+cache     = defaultMain                               $ testGroup "cache"    [                      mkProp [cacheProps]]
+cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [                      mkProp [cacheProps]]
+
+
 long     = defaultMain                               $ testGroup "long"    [ mkTest [longTests], mkProp [longProps]]
 longX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "long"    [ mkTest [longTests], mkProp [longProps]]
 
@@ -240,7 +247,7 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps, indepsProps, simonClassificationProps, newcdProps, delayProps]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps, indepsProps, simonClassificationProps, newcdProps, delayProps, cacheProps]
   where missing = [longProps]
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, sensitiveDomTests, timingDepTests, dodTests, wodTests, colorTests                , indepsTests, simonClassificationTests, newcdTests, delayTests]
@@ -4460,6 +4467,110 @@ delayTests = testGroup "(concerning  inifinite delay)" $
   | (exampleName, g) <- interestingDodWod, exampleName /= "wodDodInteresting4"
   ] ++
   []
+
+
+
+cacheProps = testGroup "(concerning cache timing)" [
+    testPropertySized 25 "csd is sound"
+                $ \generated seed1 seed2 seed3 ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b
+                          where (a,b) = toCodeSimple generated
+                        g0 = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        vars = Set.fromList [ var | n <- nodes g0, var@(Global x) <- Set.toList $ use g0 n ∪ def g0 n]
+                        (newN0:new) = (newNodes ((Set.size vars) + 1) g0)
+                        varToNode = Map.fromList $ zip (Set.toList vars) new
+                        nodeToVar = Map.fromList $ zip new (Set.toList vars)
+
+                        prepend = prependInitialization g0 n0 newN0 varToNode
+
+                        initialGlobalState1 = Map.fromList $ zip (Set.toList vars) (fmap (`rem` 32) $ moreSeeds seed1 (Set.size vars))
+                        initialFullState   = ((Map.empty, Map.empty, ()), initialCacheState, 0)
+                        g1 = prepend initialGlobalState1
+
+                        -- nticd' =            isinkDFTwoFinger g1
+                        tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFast g1
+                        dd'    = invert'' $ dataDependence         g1 vars newN0
+                        csd'   = invert'' $ csdOfLfp               g1      newN0
+
+                        slicer = combinedBackwardSlice g1 (tscd' ⊔ dd' ⊔ csd') (Map.empty)
+                        
+                        execution1 = assert (length es == 1) $ head es
+                          where es = cacheExecution g1 initialFullState newN0
+
+                        ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 2]
+                    in (∀) ms (\m ->
+                         let s = slicer (Set.fromList [m])
+                             notInS = (Set.fromList $ Map.elems varToNode) ∖ s
+                             newValues = fmap (`rem` 32) $ moreSeeds (seed3 + m) (Set.size notInS)
+                             initialGlobalState2 = (Map.fromList $ zip (fmap (\n -> nodeToVar ! n) $ Set.toList notInS) newValues) `Map.union` initialGlobalState1
+                             g2 = prepend initialGlobalState2
+                             
+                             execution2 = assert (length es == 1) $ head es
+                               where es = cacheExecution g2 initialFullState newN0
+
+                             exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
+                             exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
+
+                             ok = exec1Obs == exec2Obs
+                          in if ok then ok else
+                               traceShow ("M:: ", m, "  S::", s) $
+                               traceShow ("G1 =====", g1) $
+                               traceShow ("G2 =====", g2) $
+                               traceShow (execution1, "=========", execution2) $
+                               traceShow (exec1Obs,   "=========", exec2Obs) $
+                               traceShow (List.span (\(a,b) -> a == b) (zip exec1Obs exec2Obs)) $
+                               ok
+                        )
+                    --      let observable   = InfiniteDelay.observable s
+                    --          differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                    --            let input = InfiniteDelay.Input startNode choice
+                    --                trace = runInput input
+                    --                obs   = observable trace
+                    --            in (∃) choices' (\choice' ->
+                    --                 let input' = InfiniteDelay.Input startNode choice'
+                    --                     trace' = runInput input'
+                    --                     obs'   = observable trace'
+                    --                     different = not $ obs == obs'
+                    --                  in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
+                    --                     different
+                    --               )
+                    --            ))
+                    --      in not differentobservation
+                    -- ),
+  ]
+  
+-- cacheTests = testGroup "(concerning  inifinite delay)" $
+--   [  testCase    ( "ntscdNTSODFastPDomSlice  is sound for " ++ exampleName) $ 
+--                let n = toInteger $ length $ nodes g
+--                    condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+--                    choices    = InfiniteDelay.allChoices g Map.empty condNodes
+--                    runInput   = InfiniteDelay.runInput         g
+--                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
+--                     let s = SLICE.ODEP.ntscdNTSODFastPDomSlice g (Set.fromList [m1, m2])
+--                         observable       = InfiniteDelay.observable         s
+--                         differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+--                                let input = InfiniteDelay.Input startNode choice
+--                                    trace = runInput input
+--                                    obs   = observable trace
+--                                in (∃) choices' (\choice' ->
+--                                     let input' = InfiniteDelay.Input startNode choice'
+--                                         trace' = runInput input'
+--                                         obs'   = observable trace'
+--                                         different = not $ obs == obs'
+--                                      in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
+--                                         different
+--                                   )
+--                                ))
+--                     in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
+--                        (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
+--                        not differentobservation
+--                   )) @? ""
+--   | (exampleName, g) <- interestingDodWod, exampleName /= "wodDodInteresting4"
+--   ] ++
+--   []
+
 
 
 

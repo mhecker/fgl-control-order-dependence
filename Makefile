@@ -1,6 +1,6 @@
 # uncomment for profiling builds
 # PROF=defined
-# DEBUG=defined
+DEBUG=defined
 
 fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.m4
 	m4 $< > $@

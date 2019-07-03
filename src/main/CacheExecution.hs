@@ -23,9 +23,12 @@ import Control.Monad.List
 import Data.Graph.Inductive.Graph
 
 import Unicode
-import IRLSOD
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState, ThreadLocalState, Var(..), Val, BoolFunction(..), VarFunction(..), useE)
+import qualified IRLSOD as IRLSOD (Input)
 
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp)
+import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
 
 cacheSize = 4
@@ -38,7 +41,7 @@ type ConcreteSemantic a = CFGEdge -> a -> Maybe a
 
 type AbstractSemantic a = CFGEdge -> a -> [a]
 
-type NormalState = (GlobalState,ThreadLocalState,Input)
+type NormalState = (GlobalState,ThreadLocalState, ())
 type CacheState = OMap Var Val
 type FullState = (NormalState, CacheState)
 
@@ -112,7 +115,7 @@ initialCacheState = OMap.fromList [(Global undef, undefinedCacheValue) | undef <
 initialFullState = ((Map.empty, Map.empty, Map.empty), initialCacheState)
 
 exampleSurvey1 :: FullState
-exampleSurvey1 = ((  Map.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4), (Global "x", 42)], Map.empty, Map.empty),
+exampleSurvey1 = ((  Map.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4), (Global "x", 42)], Map.empty, ()),
                     OMap.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4)]
                  )
 
@@ -269,6 +272,12 @@ cacheExecutionGraph = stateGraph cacheStepFor
 
 cacheStateGraph :: (Graph gr) => gr CFGNode CFGEdge -> CacheState -> Node -> gr (Node, CacheState) CFGEdge
 cacheStateGraph = stateGraph cacheOnlyStepFor
+
+
+
+
+
+
 
 
 type CacheGraphNode = Node

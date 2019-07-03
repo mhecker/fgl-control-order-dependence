@@ -31,7 +31,17 @@ import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
 
+
+
 cacheSize = 4
+
+type AccessTime = Integer
+
+cacheMissTime :: AccessTime
+cacheMissTime = 100
+
+cacheHitTime  :: AccessTime
+cacheHitTime  =   1
 
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
@@ -43,23 +53,29 @@ type AbstractSemantic a = CFGEdge -> a -> [a]
 
 type NormalState = (GlobalState,ThreadLocalState, ())
 type CacheState = OMap Var Val
-type FullState = (NormalState, CacheState)
+
+type TimeState = Integer
+
+
+type FullState = (NormalState, CacheState, TimeState)
+
+
 
 consistent :: FullState -> Bool
-consistent σ@((globalσ,tlσ,i), cache) = OMap.size cache == cacheSize && (∀) (OMap.assocs cache) cons
+consistent σ@((globalσ,tlσ,i), cache, _) = OMap.size cache == cacheSize && (∀) (OMap.assocs cache) cons
   where cons (var@(Global      x), val) = x `elem` undefinedCache ||  val == globalσ ! var
         cons (var@(ThreadLocal x), val) = x `elem` undefinedCache ||  val ==     tlσ ! var
 
 
-cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState)
-cacheAwareReadLRU var σ@((globalσ,tlσ,i), cache) = case var of
+cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
+cacheAwareReadLRU var σ@((globalσ,tlσ,i), cache, _) = case var of
     Global      _ -> lookup globalσ
     ThreadLocal _ -> lookup     tlσ
   where lookup someσ = 
           require (consistent σ) $
           case OMap.lookup var cache of
-            Nothing  -> let val = someσ ! var in (val, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache) )
-            Just val ->                          (val, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache) )
+            Nothing  -> let val = someσ ! var in (val, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache), cacheMissTime )
+            Just val ->                          (val, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache), cacheHitTime  )
 
 
 cacheOnlyReadLRU :: Var -> CacheState -> CacheState
@@ -75,9 +91,9 @@ cacheOnlyReadLRU var cache = case var of
 
 cacheAwareReadLRUState :: Monad m => Var -> StateT FullState m Val
 cacheAwareReadLRUState var = do
-    σ@((globalσ,tlσ,i), cache) <- get
-    let (val, cache') = cacheAwareReadLRU var σ
-    put ((globalσ,tlσ,i), cache')
+    σ@((globalσ,tlσ,i), cache, time) <- get
+    let (val, cache', accessTime) = cacheAwareReadLRU var σ
+    put ((globalσ,tlσ,i), cache', time + accessTime)
     return val
 
 
@@ -94,14 +110,14 @@ cacheOnlyWriteLRUState = cacheOnlyReadLRUState
 
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
-cacheAwareWriteLRU var val σ@((globalσ,tlσ,i), cache) = case var of
-    Global      _ -> let (globalσ', cache') = write globalσ in ((globalσ',tlσ ,i), cache')
-    ThreadLocal _ -> let (    tlσ', cache') = write     tlσ in ((globalσ ,tlσ',i), cache')
+cacheAwareWriteLRU var val σ@((globalσ,tlσ,i), cache, time ) = case var of
+    Global      _ -> let (globalσ', cache', accessTime) = write globalσ in ((globalσ',tlσ ,i), cache', time + accessTime)
+    ThreadLocal _ -> let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ ,tlσ',i), cache', time + accessTime)
   where write someσ = 
           require (consistent σ) $
           case OMap.lookup var cache of
-            Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache) )
-            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache) )
+            Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache), cacheMissTime )
+            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache), cacheHitTime  )
 
 
 cacheAwareWriteLRUState :: Monad m => Var -> Val -> StateT FullState m ()
@@ -114,11 +130,12 @@ initialCacheState :: CacheState
 initialCacheState = OMap.fromList [(Global undef, undefinedCacheValue) | undef <- undefinedCache]
 
 initialFullState :: FullState
-initialFullState = ((Map.empty, Map.empty, ()), initialCacheState)
+initialFullState = ((Map.empty, Map.empty, ()), initialCacheState, 0)
 
 exampleSurvey1 :: FullState
 exampleSurvey1 = ((  Map.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4), (Global "x", 42)], Map.empty, ()),
-                    OMap.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4)]
+                    OMap.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4)],
+                    0
                  )
 
 
@@ -278,6 +295,16 @@ cacheStateGraph = stateGraph cacheOnlyStepFor
 
 
 
+cacheExecution :: (Graph gr) => gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]
+cacheExecution g σ0 n0 = run σ0 n0
+  where run σ@(_,_,time) n = case try σ n of
+                    [] -> [[(n, time)]]
+                    ts -> ts
+        try σ n = do
+                    (n', e) <- lsuc g n
+                    σ'@(_,_,time) <- cacheStepFor e σ
+                    trace0 <- run σ' n'
+                    return $ (n, time) : trace0
 
 
 

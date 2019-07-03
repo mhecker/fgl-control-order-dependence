@@ -17,7 +17,6 @@ import Data.Dequeue.SimpleDequeue (SimpleDequeue)
 import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random
 import Control.Monad(forM_, when, forever, forM)
-import Control.Monad.State
 
 import Test.QuickCheck
 import Test.QuickCheck.Random (mkQCGen)

@@ -59,6 +59,7 @@ library
   hs-source-dirs: src/main/
   exposed-modules:
     IRLSOD
+    CacheExecution
     Unicode
     NNGraph
     Statistics

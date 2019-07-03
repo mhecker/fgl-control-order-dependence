@@ -163,7 +163,7 @@ instance Arbitrary SimpleProgram where
       inChannels       = Set.fromList []
       outChannels      = Set.fromList []
       vars             = Set.map Global $
-                         Set.fromList ["x", "y", "z", "h"]
+                         Set.fromList ["a", "b", "c", "d", "e", "x", "y", "z", "h"]
       varsForbidden    = Set.fromList []
       varsAvailable    = vars
 

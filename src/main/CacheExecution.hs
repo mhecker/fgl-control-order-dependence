@@ -5,6 +5,9 @@ module CacheExecution where
 import Data.Map.Ordered (OMap, (<|), (|<), (>|), (|>), (<>|), (|<>))
 import qualified Data.Map.Ordered as OMap
 
+import qualified Data.List as List
+
+
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 
@@ -21,11 +24,18 @@ import Control.Monad.List
 
 
 import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.PatriciaTree (Gr)
 
 import Unicode
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState, ThreadLocalState, Var(..), Val, BoolFunction(..), VarFunction(..), useE)
+import Util (moreSeeds)
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState, ThreadLocalState, Var(..), Val, BoolFunction(..), VarFunction(..), useE, use, def)
 import qualified IRLSOD as IRLSOD (Input)
 
+import Program (Program(..))
+import Program.Generator (toCodeSimple)
+import Program.For (compileAllToProgram)
+
+import Data.Graph.Inductive.Util (mergeTwoGraphs)
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp)
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
@@ -307,11 +317,32 @@ cacheExecution g σ0 n0 = run σ0 n0
                     return $ (n, time) : trace0
 
 
+-- run :: SimpleProgram -> Integer -> Integer -> [[(Node,TimeState)]]
+run generated seed1 seed2 = 
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b
+                          where (a,b) = toCodeSimple generated
+                        g0 = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        vars = Set.fromList [ var | n <- nodes g0, var@(Global x) <- Set.toList $ use g0 n ∪ def g0 n]
+                        (newN0:new) = (newNodes (Set.size vars) g0)
+                        varToNode = Map.fromList $ zip (Set.toList vars) new
+
+                        ms = [ (abs m) `mod` (length $ nodes g0) | m <- moreSeeds seed2 2]
+                        initialGlobalState = Map.fromList $ zip (Set.toList vars) (fmap (`rem` 32) $ moreSeeds seed1 (Set.size vars))
+                        initialFullState   = ((initialGlobalState, Map.empty, ()), initialCacheState, 0)
+                        g = g0 `mergeTwoGraphs` g1
+                          where g1 = mkGraph [(n,n) | n <- newN0 : Map.elems varToNode]
+                                             ([(newN0, if List.null new then n0 else snd $ head $ Map.assocs varToNode, NoOp)] ++ [ (n,n', Assign var (Val $ initialGlobalState ! var))  | ((var,n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ])
+                     in g
+
+
+
 
 
 type CacheGraphNode = Node
 
-cscdOfLfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ csNodeToNode ! m' | csdom <- csdoms,  m' <- Set.toList csdom, let m = csNodeToNode ! m', let cs' = cacheState  m m',
+csdOfLfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ csNodeToNode ! m' | csdom <- csdoms,  m' <- Set.toList csdom, let m = csNodeToNode ! m', let cs' = cacheState  m m',
                                                                            (∃) csdoms (\csdom' -> (∃) (csdom') (\m'' -> csNodeToNode ! m'' == m ∧ cacheState m m'' /= cs')) ]) ] |
                     n  <- nodes graph,
                     n' <- nodesToCsNodes ! n,

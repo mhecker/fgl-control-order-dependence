@@ -101,7 +101,7 @@ cacheAwareWriteLRU var val σ@((globalσ,tlσ,i), cache) = case var of
           require (consistent σ) $
           case OMap.lookup var cache of
             Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache) )
-            Just val ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache) )
+            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache) )
 
 
 cacheAwareWriteLRUState :: Monad m => Var -> Val -> StateT FullState m ()
@@ -112,7 +112,9 @@ cacheAwareWriteLRUState var val = do
 
 initialCacheState :: CacheState
 initialCacheState = OMap.fromList [(Global undef, undefinedCacheValue) | undef <- undefinedCache]
-initialFullState = ((Map.empty, Map.empty, Map.empty), initialCacheState)
+
+initialFullState :: FullState
+initialFullState = ((Map.empty, Map.empty, ()), initialCacheState)
 
 exampleSurvey1 :: FullState
 exampleSurvey1 = ((  Map.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4), (Global "x", 42)], Map.empty, ()),

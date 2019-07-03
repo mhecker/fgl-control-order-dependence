@@ -331,12 +331,16 @@ run generated seed1 seed2 =
                         ms = [ (abs m) `mod` (length $ nodes g0) | m <- moreSeeds seed2 2]
                         initialGlobalState = Map.fromList $ zip (Set.toList vars) (fmap (`rem` 32) $ moreSeeds seed1 (Set.size vars))
                         initialFullState   = ((initialGlobalState, Map.empty, ()), initialCacheState, 0)
-                        g = g0 `mergeTwoGraphs` g1
-                          where g1 = mkGraph [(n,n) | n <- newN0 : Map.elems varToNode]
-                                             ([(newN0, if List.null new then n0 else snd $ head $ Map.assocs varToNode, NoOp)] ++ [ (n,n', Assign var (Val $ initialGlobalState ! var))  | ((var,n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ])
-                     in g
+                     in prependInitialization g0 n0 newN0 varToNode initialGlobalState
 
-
+prependInitialization :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Node -> Map Var Node -> Map Var Val -> gr CFGNode CFGEdge
+prependInitialization g0 n0 newN0 varToNode state =
+    g0 `mergeTwoGraphs` g1
+  where g1 = mkGraph
+               [(n,n) | n <- newN0 : Map.elems varToNode]
+               (   [(newN0, if Map.null varToNode then n0 else snd $ head $ Map.assocs varToNode, NoOp)]
+                ++ [ (n,n', Assign var (Val $ state ! var))  | ((var,n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ]
+               )
 
 
 

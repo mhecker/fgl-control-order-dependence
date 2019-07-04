@@ -1,6 +1,6 @@
 # uncomment for profiling builds
 # PROF=defined
-DEBUG=defined
+# DEBUG=defined
 
 fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.m4
 	m4 $< > $@
@@ -31,9 +31,7 @@ all : all.test all.fail
 	./$< $(RTS) $(PATTERN) --xml $@
 
 dist/build/%.bin : fgl-control-order-dependence.cabal .FORCE
-	$(LOCK)
-	-cabal configure $(CABAL_CONFIGURE) && cabal build $(@F)
-	$(UNLOCK)
+	$(LOCK) ; cabal configure $(CABAL_CONFIGURE) && cabal build $(@F) ; EXIT_CODE=$$? ; $(UNLOCK) ; exit $$EXIT_CODE
 
 
 

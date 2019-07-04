@@ -57,7 +57,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), use, def)
-import CacheExecution(prependInitialization, initialCacheState, cacheExecution, csdOfLfp)
+import CacheExecution(prependInitialization, initialCacheState, cacheExecution, csdOfLfp, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4489,18 +4489,25 @@ cacheProps = testGroup "(concerning cache timing)" [
                         initialFullState   = ((Map.empty, Map.empty, ()), initialCacheState, 0)
                         g1 = prepend initialGlobalState1
 
+
+                        (ccg1, cost) = cacheCostDecisionGraph g1 newN0
+                        costF n m = cost ! (n,m)
+                        artificialNodes = Set.fromList (nodes ccg1) ∖ Set.fromList (nodes g1)
+                        
                         -- nticd' =            isinkDFTwoFinger g1
-                        tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFast g1
+                        tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFastCost ccg1 costF
                         dd'    = invert'' $ dataDependence         g1 vars newN0
                         csd'   = invert'' $ csdOfLfp               g1      newN0
 
-                        slicer = combinedBackwardSlice g1 (tscd' ⊔ dd' ⊔ csd') (Map.empty)
+                        slicer ms = s ∖ artificialNodes
+                          where s = combinedBackwardSlice g1 (tscd' ⊔ dd' ⊔ csd') (Map.empty) ms
                         
                         execution1 = assert (length es == 1) $ head es
                           where es = cacheExecution g1 initialFullState newN0
 
                         ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 2]
-                    in (∀) ms (\m ->
+                    in traceShow (length $ nodes g1, length $ nodes ccg1) $
+                       (∀) ms (\m ->
                          let s = slicer (Set.fromList [m])
                              notInS = (Set.fromList $ Map.elems varToNode) ∖ s
                              newValues = fmap (`rem` 32) $ moreSeeds (seed3 + m) (Set.size notInS)

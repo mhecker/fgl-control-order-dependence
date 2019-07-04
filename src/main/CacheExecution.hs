@@ -48,11 +48,13 @@ cacheSize = 4
 type AccessTime = Integer
 
 cacheMissTime :: AccessTime
-cacheMissTime = 100
+cacheMissTime = 10
 
 cacheHitTime  :: AccessTime
 cacheHitTime  =   1
 
+noOpTime  :: AccessTime
+noOpTime = 1 
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
 undefinedCacheValue = -1
@@ -202,7 +204,9 @@ cacheStepForState (Assign x vf) = do
         σ' <- get
         return σ'
 cacheStepForState NoOp = do
-        σ' <- get
+        σ@(normal,cache,time) <- get
+        let σ' = (normal,cache,time + noOpTime)
+        put σ'
         return σ'
 cacheStepForState (Read  _ _) = undefined
 cacheStepForState (Print _ _) = undefined
@@ -227,8 +231,9 @@ cacheTimeStepForState (Assign x vf) = do
         (_,cache,time) <- get
         return (cache,time)
 cacheTimeStepForState NoOp = do
-        (_,cache,time) <- get
-        return (cache,time)
+        (normal,cache,time) <- get
+        put (normal, cache, time + noOpTime)
+        return (cache,time + noOpTime)
 cacheTimeStepForState (Read  _ _) = undefined
 cacheTimeStepForState (Print _ _) = undefined
 cacheTimeStepForState (Spawn    ) = undefined
@@ -371,8 +376,8 @@ prependInitialization g0 n0 newN0 varToNode state =
                )
 
 
-costs :: DynGraph gr =>  gr (Node, CacheState) CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
-costs csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]  |
+costsFor :: DynGraph gr =>  gr (Node, CacheState) CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costsFor csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]  |
                                                  (n, (n0,cs)) <- labNodes csGraph,
                                                  (m, e) <- lsuc csGraph n,
                                                  let Just (m0,_) = lab csGraph m,
@@ -391,7 +396,30 @@ fakeFullState e (cs,time) = (
    where findWithDefault n x m = case OMap.lookup x m of
            Nothing -> n
            Just v  -> v
-  
+
+cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
+cacheCostDecisionGraph g n0 = traceShow nodesFor $ (
+      mkGraph
+        ((labNodes g) ++ ([(n,n) | n <- new]))
+        (irrelevant ++ [ (n,m',l)    | ((e@(n,m,l),time), m') <- Map.assocs nodesFor ]
+                    ++ [ (m',m,NoOp) | ((e@(n,m,l),time), m') <- Map.assocs nodesFor ]
+        ),
+      Map.empty
+    )
+  where csGraph = cacheStateGraph g initialCacheState n0
+        costs = costsFor csGraph
+
+        nrOfNewNodesFor e = Set.size (Set.delete 1 $ costs ! e)
+        
+        nodesFor =               (Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ Set.delete 1 $ costs ! e ] new)
+                    -- `Map.union`  (Map.fromList       [ ((e,time), | e@(n,m,l) <- irrelevant, let time = 1 ])
+        relevant   = [ e | e <- labEdges g, nrOfNewNodesFor e >  0]
+        irrelevant = [ e | e <- labEdges g, nrOfNewNodesFor e == 0]
+        totalnew = sum $ fmap nrOfNewNodesFor relevant
+        new = newNodes totalnew g
+
+
+
 type CacheGraphNode = Node
 
 csdOfLfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ csNodeToNode ! m' | csdom <- csdoms,  m' <- Set.toList csdom, let m = csNodeToNode ! m', let cs' = cacheState  m m',

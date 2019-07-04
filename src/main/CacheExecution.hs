@@ -347,12 +347,11 @@ cacheExecution g σ0 n0 = run σ0 n0
   where run σ@(_,_,time) n = case try σ n of
                     [] -> [[(n, time)]]
                     ts -> ts
-        try σ n = do
+        try σ@(_,_,time) n = do
                     (n', e) <- lsuc g n
-                    σ'@(_,_,time) <- cacheStepFor e σ
+                    σ' <- cacheStepFor e σ
                     trace0 <- run σ' n'
                     return $ (n, time) : trace0
-
 
 -- run :: SimpleProgram -> Integer -> Integer -> [[(Node,TimeState)]]
 run generated seed1 seed2 = 

@@ -51,7 +51,7 @@ cacheMissTime :: AccessTime
 cacheMissTime = 10
 
 cacheHitTime  :: AccessTime
-cacheHitTime  =   1
+cacheHitTime  =  2
 
 noOpTime  :: AccessTime
 noOpTime = 1 
@@ -398,24 +398,27 @@ fakeFullState e (cs,time) = (
            Just v  -> v
 
 cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
-cacheCostDecisionGraph g n0 = traceShow nodesFor $ (
+cacheCostDecisionGraph g n0 = (
       mkGraph
         ((labNodes g) ++ ([(n,n) | n <- new]))
-        (irrelevant ++ [ (n,m',l)    | ((e@(n,m,l),time), m') <- Map.assocs nodesFor ]
-                    ++ [ (m',m,NoOp) | ((e@(n,m,l),time), m') <- Map.assocs nodesFor ]
+        (irrelevant ++ [ (n,m',l)    | ((e@(n,_,l),_), m') <- Map.assocs nodesFor ]
+                    ++ [ (m',m,NoOp) | ((e@(_,m,_),_), m') <- Map.assocs nodesFor ]
         ),
-      Map.empty
+                  Map.fromList [ ((n ,m),  cost    ) | e@(n,m,l) <- irrelevant, let [cost] = Set.toList $ costs ! e ]
+      `Map.union` Map.fromList [ ((n ,m'), cost - 1) | ((e@(n,_,_),cost), m') <- Map.assocs nodesFor, assert (cost > 1) True   ]
+      `Map.union` Map.fromList [ ((m',m ),        1) | ((e@(_,m,_),   _), m') <- Map.assocs nodesFor ]
     )
   where csGraph = cacheStateGraph g initialCacheState n0
         costs = costsFor csGraph
 
-        nrOfNewNodesFor e = Set.size (Set.delete 1 $ costs ! e)
+        isRelevant e = nrSuc e > 1
+        nrSuc e = Set.size $ costs ! e
         
-        nodesFor =               (Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ Set.delete 1 $ costs ! e ] new)
+        nodesFor =               (Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ costs ! e ] new)
                     -- `Map.union`  (Map.fromList       [ ((e,time), | e@(n,m,l) <- irrelevant, let time = 1 ])
-        relevant   = [ e | e <- labEdges g, nrOfNewNodesFor e >  0]
-        irrelevant = [ e | e <- labEdges g, nrOfNewNodesFor e == 0]
-        totalnew = sum $ fmap nrOfNewNodesFor relevant
+        relevant   = [ e | e <- labEdges g,       isRelevant e]
+        irrelevant = [ e | e <- labEdges g, not $ isRelevant e]
+        totalnew = sum $ fmap nrSuc relevant
         new = newNodes totalnew g
 
 

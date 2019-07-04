@@ -67,6 +67,7 @@ type CacheState = OMap Var Val
 type TimeState = Integer
 
 
+type CacheTimeState = (CacheState, TimeState)
 type FullState = (NormalState, CacheState, TimeState)
 
 
@@ -215,6 +216,33 @@ cacheStepFor e σ = evalStateT (cacheStepForState e) σ
 
 
 
+cacheTimeStepForState :: CFGEdge -> StateT FullState [] CacheTimeState
+cacheTimeStepForState (Guard b bf) = do
+        bVal <- cacheAwareLRUEvalB bf
+        (_,cache,time) <- get
+        return (cache,time)
+cacheTimeStepForState (Assign x vf) = do
+        xVal <- cacheAwareLRUEvalV vf
+        cacheAwareWriteLRUState x xVal
+        (_,cache,time) <- get
+        return (cache,time)
+cacheTimeStepForState NoOp = do
+        (_,cache,time) <- get
+        return (cache,time)
+cacheTimeStepForState (Read  _ _) = undefined
+cacheTimeStepForState (Print _ _) = undefined
+cacheTimeStepForState (Spawn    ) = undefined
+cacheTimeStepForState (Call     ) = undefined
+cacheTimeStepForState (Return   ) = undefined
+
+cacheTimeStepFor ::  AbstractSemantic CacheTimeState
+cacheTimeStepFor e σ = evalStateT (cacheTimeStepForState e) fullState
+  where fullState = fakeFullState e σ
+
+
+
+
+
 
 
 
@@ -343,7 +371,27 @@ prependInitialization g0 n0 newN0 varToNode state =
                )
 
 
+costs :: DynGraph gr =>  gr (Node, CacheState) CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costs csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]  |
+                                                 (n, (n0,cs)) <- labNodes csGraph,
+                                                 (m, e) <- lsuc csGraph n,
+                                                 let Just (m0,_) = lab csGraph m,
+                                                 fullState'@(_,time) <- cacheTimeStepFor e (cs, 0)
+                      ]
 
+fakeFullState :: CFGEdge -> CacheTimeState -> FullState
+fakeFullState e (cs,time) = (
+      ((Map.fromList $ OMap.assocs cs) `Map.union` Map.fromList [(var, 0) | var@(Global      _) <- Set.toList $ useE e],
+       (Map.fromList $ OMap.assocs cs) `Map.union` Map.fromList [(var, 0) | var@(ThreadLocal _) <- Set.toList $ useE e],
+       ()
+      ),
+      cs,
+      time
+     )
+   where findWithDefault n x m = case OMap.lookup x m of
+           Nothing -> n
+           Just v  -> v
+  
 type CacheGraphNode = Node
 
 csdOfLfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ csNodeToNode ! m' | csdom <- csdoms,  m' <- Set.toList csdom, let m = csNodeToNode ! m', let cs' = cacheState  m m',

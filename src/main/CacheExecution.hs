@@ -53,6 +53,10 @@ cacheMissTime = 10
 cacheHitTime  :: AccessTime
 cacheHitTime  =  2
 
+-- My cache model assumes a "asynchronous" write-throuh cache, i.e.: writes update the cache, and the main memory update executes "asynchronously" in the background, without stalling the cpu
+cacheWriteTime :: AccessTime 
+cacheWriteTime = 2
+
 noOpTime  :: AccessTime
 noOpTime = 1 
 
@@ -129,8 +133,8 @@ cacheAwareWriteLRU var val σ@((globalσ,tlσ,i), cache, time ) = case var of
   where write someσ = 
           require (consistent σ) $
           case OMap.lookup var cache of
-            Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache), cacheMissTime )
-            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache), cacheHitTime  )
+            Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache), cacheWriteTime )
+            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache), cacheWriteTime  )
 
 
 cacheAwareWriteLRUState :: Monad m => Var -> Val -> StateT FullState m ()

@@ -356,6 +356,19 @@ cacheExecution g σ0 n0 = run σ0 n0
                     trace0 <- run σ' n'
                     return $ (n, time) : trace0
 
+
+cacheExecutionLimit :: (Graph gr) => Int -> gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]
+cacheExecutionLimit limit g σ0 n0 = run σ0 n0 0
+  where run σ@(_,_,time) n i = if i >= limit then [] else case try σ n i of
+                    [] -> [[(n, time)]]
+                    ts -> ts
+        try σ@(_,_,time) n i = do
+                    (n', e) <- lsuc g n
+                    σ' <- cacheStepFor e σ
+                    trace0 <- run σ' n' (i+1)
+                    return $ (n, time) : trace0
+
+
 -- run :: SimpleProgram -> Integer -> Integer -> [[(Node,TimeState)]]
 run generated seed1 seed2 = 
                     let pr :: Program Gr

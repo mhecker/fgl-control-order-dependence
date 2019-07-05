@@ -57,7 +57,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), use, def)
-import CacheExecution(prependInitialization, initialCacheState, cacheExecution, csdOfLfp, csd'Of, cacheCostDecisionGraph)
+import CacheExecution(prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4502,12 +4502,13 @@ cacheProps = testGroup "(concerning cache timing)" [
 
                         slicer ms = s ∖ artificialNodes
                           where s = combinedBackwardSlice g1 (tscd' ⊔ dd' ⊔ csd') (Map.empty) ms
-                        
-                        execution1 = assert (length es == 1) $ head es
-                          where es = cacheExecution g1 initialFullState newN0
+
+                        limit = 9000
+                        (execution1, limited1) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
+                          where es = cacheExecutionLimit limit g1 initialFullState newN0
 
                         ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 2]
-                    in traceShow (length $ nodes g1, length $ nodes ccg1) $
+                    in traceShow ("|g1|", length $ nodes g1, "|ccg1|", length $ nodes ccg1, "|csd'", sum $ fmap Set.size $ Map.elems csd') $
                        (∀) ms (\m ->
                          let s = slicer (Set.fromList [m])
                              notInS = (Set.fromList $ Map.elems varToNode) ∖ s
@@ -4515,13 +4516,14 @@ cacheProps = testGroup "(concerning cache timing)" [
                              initialGlobalState2 = (Map.fromList $ zip (fmap (\n -> nodeToVar ! n) $ Set.toList notInS) newValues) `Map.union` initialGlobalState1
                              g2 = prepend initialGlobalState2
                              
-                             execution2 = assert (length es == 1) $ head es
-                               where es = cacheExecution g2 initialFullState newN0
+                             (execution2, limited2) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
+                               where es = cacheExecutionLimit limit g2 initialFullState newN0
 
                              exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
                              exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
 
-                             ok = exec1Obs == exec2Obs
+                             ok = traceShow ("Limited: ", limited1 ∨ limited2, "   |execution1|: ", length execution1, "   |execution2|: ", length execution2) $
+                                  limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
                           in if ok then ok else
                                traceShow ("M:: ", m, "  S::", s) $
                                traceShow ("G1 =====", g1) $

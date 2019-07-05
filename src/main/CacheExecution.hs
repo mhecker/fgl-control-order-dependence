@@ -528,7 +528,8 @@ cacheDepNodesGfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ m | csdom 
 fCacheDomNaive' :: Graph gr => gr CFGNode CFGEdge -> gr (Node, CacheState) CFGEdge -> Map Node [CacheGraphNode] -> (CacheGraphNode -> [CacheGraphNode]) -> Map CacheGraphNode (Set CacheGraphNode) -> Set Node -> (Map CacheGraphNode (Set Node) ->  Map CacheGraphNode (Set Node))
 fCacheDomNaive' graph csGraph nodeToCsNodes reachable dom all = f 
   where f cachedomOf = -- traceShow (restrict cachedomOf (Set.fromList [10, 11, 12, 17, 33])) $ 
-                      Map.fromList [ (y, Set.fromList [n])                                                                     | (y, (n, csy)) <- labNodes csGraph]
+                      -- Map.fromList [ (y, Set.fromList [n])                                                                     | (y, (n, csy)) <- labNodes csGraph]
+                      Map.empty
                     ⊔ Map.fromList [ (y, Set.fromList [ n | n <- Set.toList $ (∏) [ cachedomOf ! x | x <- suc csGraph y ],
                                                             let relevant0 = Set.fromList (nodeToCsNodes ! n)  ∩  Set.fromList (reachable y),
                                                             let relevant  = Set.filter (\y' -> dom ! y' ∩ relevant0 == Set.fromList [y']) relevant0,

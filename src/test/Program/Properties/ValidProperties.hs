@@ -57,7 +57,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), use, def)
-import CacheExecution(prependInitialization, initialCacheState, cacheExecution, csdOfLfp, cacheCostDecisionGraph)
+import CacheExecution(prependInitialization, initialCacheState, cacheExecution, csdOfLfp, csd'Of, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4497,7 +4497,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                         -- nticd' =            isinkDFTwoFinger g1
                         tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFastCost ccg1 costF
                         dd'    = invert'' $ dataDependence         g1 vars newN0
-                        csd'   = invert'' $ csdOfLfp               g1      newN0
+                        csd'   = invert'' $ csd'Of                 g1      newN0
+
 
                         slicer ms = s ∖ artificialNodes
                           where s = combinedBackwardSlice g1 (tscd' ⊔ dd' ⊔ csd') (Map.empty) ms

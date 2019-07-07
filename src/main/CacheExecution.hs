@@ -38,7 +38,7 @@ import Program (Program(..))
 import Program.Generator (toCodeSimple)
 import Program.For (compileAllToProgram)
 
-import Data.Graph.Inductive.Util (mergeTwoGraphs)
+import Data.Graph.Inductive.Util (mergeTwoGraphs, isTransitive, fromSuccMap)
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp)
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
@@ -585,3 +585,12 @@ cacheDomNodes'Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) 
 csd'Of graph n0 = Map.fromList [ (n, Set.fromList [ m | csdom' <- [ csdom ! x | x <- suc graph n] , m <- Set.toList csdom', not $ m ∈ csdom ! n ]) | n <- nodes graph]
   where
         csdom = cacheDomNodes'Gfp graph n0
+
+
+
+csd'OfReach graph n0 = assert (isTransitive $ (fromSuccMap csdom :: Gr () ())) $ 
+    Map.fromList [ (n, Set.fromList [ m | m <- Set.toList $ csdom ! n, (∃) [ csdom ! x | x <- suc graph n, m `elem` suc reach x] (\csdom' -> not $ m ∈ csdom') ] ) | n <- nodes graph]
+  where
+        csdom = Map.fromList [(n, (all ∖ ms) ∩ (Set.fromList $ suc reach n) ) | (n,ms) <- Map.assocs $ cacheDomNodes'Gfp graph n0]
+        reach = trc graph
+        all   = Set.fromList $ nodes   graph

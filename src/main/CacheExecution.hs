@@ -538,17 +538,14 @@ cacheDepNodesGfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ m | csdom 
 
         
 
-fCacheDomNaive' :: Graph gr => gr CFGNode CFGEdge -> gr (Node, CacheState) CFGEdge -> Map Node [CacheGraphNode] -> (CacheGraphNode -> [CacheGraphNode]) -> Map CacheGraphNode (Set CacheGraphNode) -> Set Node -> (Map CacheGraphNode (Set Node) ->  Map CacheGraphNode (Set Node))
-fCacheDomNaive' graph csGraph nodeToCsNodes reachable dom all = f 
+fCacheDomNaive' :: Graph gr => gr CFGNode CFGEdge -> gr (Node, CacheState) CFGEdge -> Map Node [CacheGraphNode] -> Map CacheGraphNode (Map Node (Set CacheGraphNode)) -> Set Node -> (Map CacheGraphNode (Set Node) ->  Map CacheGraphNode (Set Node))
+fCacheDomNaive' graph csGraph nodeToCsNodes nextReach all = f 
   where f cachedomOf = -- traceShow (restrict cachedomOf (Set.fromList [10, 11, 12, 17, 33])) $ 
-                      -- Map.fromList [ (y, Set.fromList [n])                                                                     | (y, (n, csy)) <- labNodes csGraph]
-                      Map.empty
+                      Map.fromList [ (y, Set.fromList [n])                                                                     | (y, (n, csy)) <- labNodes csGraph]
                     ⊔ Map.fromList [ (y, Set.fromList [ n | n <- Set.toList $ (∏) [ cachedomOf ! x | x <- suc csGraph y ],
-                                                            let relevant0 = Set.fromList (nodeToCsNodes ! n)  ∩  Set.fromList (reachable y),
-                                                            let relevant  = Set.filter (\y' -> dom ! y' ∩ relevant0 == Set.fromList [y']) relevant0,
+                                                            let relevant  = Map.findWithDefault Set.empty n (nextReach ! y),
                                                             let canonical           = Set.findMin relevant,
                                                             let canonicalCacheState = cacheState n canonical,
-                                                            -- (if (y == 10) then traceShow (y, n, relevant) else id) $
                                                             -- traceShow (n, canonical) $
                                                             -- traceShow canonicalCacheState $
                                                             (∀) relevant (\y' -> cacheState n y' == canonicalCacheState)
@@ -558,23 +555,26 @@ fCacheDomNaive' graph csGraph nodeToCsNodes reachable dom all = f
            where cs = assert (n == n') $ cs'
                  Just (n', cs') = lab csGraph y'
 
+
 cacheDomNaive'Gfp :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Map CacheGraphNode (Set Node)
 cacheDomNaive'Gfp graph n0 = (𝝂) init f
   where init = Map.fromList [ (y, Set.empty) | y <- nodes csGraph]
              -- ⊔ Map.fromList [ (y, (∐) [ Set.fromList [n] | y' <- reachable y, let Just (n,_) = lab csGraph y' ]) | y <- nodes csGraph]
               ⊔ Map.fromList [ (y, all ) | y <- nodes csGraph]
-        f = fCacheDomNaive' graph csGraph nodesToCsNodes reachable dom all
+        f = fCacheDomNaive' graph csGraph nodesToCsNodes nextReach all
         csGraph = cacheStateGraph graph initialCacheState n0
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
-        
-        reachable x = suc trncl x
-        trncl = trc csGraph
 
-        dom = sinkdomOfGfp (grev csGraph)
+        nextReach = nextReachable csGraph
         
         allCs = Set.fromList $ nodes csGraph
         all   = Set.fromList $ nodes   graph
 
+nextReachable ::  Graph gr => gr (Node, CacheState) CFGEdge  -> Map CacheGraphNode (Map Node (Set CacheGraphNode))
+nextReachable csGraph = (㎲⊒) init f
+  where f nextReach = Map.fromList [ (y, Map.fromList [ (n, Set.fromList [y]) ])                    | (y,(n,_)) <- labNodes csGraph ]
+                    ⊔ Map.fromList [ (y, Map.delete n $ (∐) [ nextReach ! x | x <- suc csGraph y] ) | (y,(n,_)) <- labNodes csGraph ]
+        init = Map.fromList [ (y, Map.empty) | y <- nodes csGraph ]
 
 cacheDomNodes'Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) ∩ (∏) [ cachedomOf ! y| y <-nodesToCsNodes ! n ]) | n <- nodes graph]
   where cachedomOf = cacheDomNaive'Gfp graph n0
@@ -585,12 +585,3 @@ cacheDomNodes'Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) 
 csd'Of graph n0 = Map.fromList [ (n, Set.fromList [ m | csdom' <- [ csdom ! x | x <- suc graph n] , m <- Set.toList csdom', not $ m ∈ csdom ! n ]) | n <- nodes graph]
   where
         csdom = cacheDomNodes'Gfp graph n0
-        -- csGraph = cacheStateGraph graph initialCacheState n0
-        -- nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
-        -- csNodeToNode   = Map.fromList [ (y, n)  | (y, (n,    _)) <- labNodes csGraph]
-        
-        -- cacheState n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e ]
-        --    where cs = assert (n == n') $ cs'
-        --          Just (n', cs') = lab csGraph y'
-
-

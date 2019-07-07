@@ -9,8 +9,10 @@ import Unicode
 
 import Data.Graph.Inductive
 
-
+defaultInput :: Map String [Val]
 defaultInput  = Map.fromList [ (stdIn, cycle [ 2, 1]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
+
+defaultInput' :: Map String [Val]
 defaultInput' = Map.fromList [ (stdIn, cycle [-1, 0]), (lowIn1, cycle [1,2,3,4]), (lowIn2, cycle [4,3,2,1]) ]
 
 

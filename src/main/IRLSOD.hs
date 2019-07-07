@@ -21,7 +21,7 @@ import Data.List (partition,delete)
 import qualified Data.List as List
 
 data Var = Global String | ThreadLocal String deriving (Show, Eq, Ord, Generic, NFData)
-type Val = Integer
+type Val = Int
 type InputChannel = String
 type OutputChannel = String
 type Channel = String

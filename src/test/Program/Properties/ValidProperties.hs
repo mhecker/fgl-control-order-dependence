@@ -4509,6 +4509,7 @@ cacheProps = testGroup "(concerning cache timing)" [
 
                         ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 2]
                     in traceShow ("|g1|", length $ nodes g1, "|ccg1|", length $ nodes ccg1, "|csd'", sum $ fmap Set.size $ Map.elems csd') $
+                       traceShow ("g1: ", g1) $
                        (∀) ms (\m ->
                          let s = slicer (Set.fromList [m])
                              notInS = (Set.fromList $ Map.elems varToNode) ∖ s
@@ -4523,6 +4524,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                              exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
 
                              ok = traceShow ("Limited: ", limited1 ∨ limited2, "   |execution1|: ", length execution1, "   |execution2|: ", length execution2) $
+                                  traceShow ("g2: ", g2) $
                                   limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
                           in if ok then ok else
                                traceShow ("M:: ", m, "  S::", s) $

@@ -812,7 +812,7 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
                                                       let nodesToCsNodes' = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph],
                                                assert (not $ List.null $ nodes csGraph') True,
                                                assert (nodesToCsNodes ! m == nodesToCsNodes' ! m) True,
-                                                      y' <- nodesToCsNodes' ! m,
+                                                      y' <- nodesToCsNodes ! m,
                                                assert ((∃) (lsuc csGraph y') (\(_,e) -> useE e == vars)) True,
                                                       n <- nodes graph,
                                                       y  <- nodesToCsNodes' ! n,
@@ -822,7 +822,7 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
                                                       not $ y' ∈ isinkdoms ! y,
                                                       let Just (m,_) = lab csGraph y',
                                                       let canonicalCacheState = cacheState y',
-                                                      not $ (∀) (nodesToCsNodes' ! m) (\y'' -> cacheState y'' == canonicalCacheState),
+                                                      not $ (∀) (nodesToCsNodes ! m) (\y'' -> cacheState y'' == canonicalCacheState),
                                                       traceShow ((n,y), "->", x, "->*", (y',m)) True
                                   ]
   where

@@ -822,7 +822,7 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
                                                       not $ y' ∈ isinkdoms ! y,
                                                       let Just (m,_) = lab csGraph y',
                                                       let canonicalCacheState = cacheState y',
-                                                      not $ (∀) (nodesToCsNodes ! m) (\y'' -> cacheState y'' == canonicalCacheState),
+                                                      not $ (∀) ((Set.fromList $ nodesToCsNodes ! m) ∩ (Set.fromList $ dfs [y] csGraph')) (\y'' -> cacheState y'' == canonicalCacheState),
                                                       -- traceShow ((n,y), "->", x, "->*", (y',m)) True,
                                                       True
                                   ]

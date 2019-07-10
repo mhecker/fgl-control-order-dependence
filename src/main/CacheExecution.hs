@@ -41,6 +41,8 @@ import Program.For (compileAllToProgram)
 import Data.Graph.Inductive.Util (mergeTwoGraphs, isTransitive, fromSuccMap, delSuccessorEdges)
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp, sinkdomsOf, isinkdomOfTwoFinger8)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger)
+import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
+
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
@@ -842,8 +844,20 @@ csd''''Of2 :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csd''''Of2 graph n0 = invert'' $ Map.fromList [ (m, reachableBeforeSome2 vars graph n0 m) | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = useE e] ]
 
 
-
-
+csd''''Of3 :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csd''''Of3 graph n0 =  invert'' $
+  Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys, let Just (n, _) = lab csGraph y])
+    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = useE e],
+      let csGraph = cacheStateGraphForVars vars graph initialCacheState n0,
+      let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph],
+      let y's  = Set.fromList $ nodesToCsNodes ! m,
+      let canonical = Set.findMin y's,
+      let canonicalCacheState = cacheState csGraph canonical,
+      not $ (∀) y's (\y' -> cacheState csGraph y' == canonicalCacheState),
+      let ys = wodTEILSliceViaISinkDom csGraph y's
+   ]
+  where cacheState csGraph y' = filter (/= Nothing) $ fmap fst $ cs
+          where Just (_,cs) = lab csGraph y'
 
 -- cacheDomNodes''Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) ∩ (∏) [ cachedomOf ! y| y <-nodesToCsNodes ! n ]) | n <- nodes graph]
 --   where cachedomOf = cacheDomNaive'Gfp graph n0

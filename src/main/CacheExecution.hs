@@ -823,7 +823,8 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
                                                       let Just (m,_) = lab csGraph y',
                                                       let canonicalCacheState = cacheState y',
                                                       not $ (∀) (nodesToCsNodes ! m) (\y'' -> cacheState y'' == canonicalCacheState),
-                                                      traceShow ((n,y), "->", x, "->*", (y',m)) True
+                                                      -- traceShow ((n,y), "->", x, "->*", (y',m)) True,
+                                                      True
                                   ]
   where
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]

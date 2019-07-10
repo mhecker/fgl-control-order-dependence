@@ -831,7 +831,7 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
           where Just (_,cs) = lab csGraph y'
         csGraph = cacheStateGraphForVars vars graph initialCacheState n0
 
-        fromtoNode m = Set.fold (flip delSuccessorEdges) g' (Set.fromList (nodesToCsNodes ! m) ∩ (Set.fromList $ nodes g'))
+        fromtoNode m = foldr (flip delSuccessorEdges) g' (nodesToCsNodes ! m)
           where  g = csGraph
                  toM   = rdfs (nodesToCsNodes ! m) csGraph
                  g' = subgraph toM csGraph

@@ -819,7 +819,7 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
                                                       -- traceShow (n,m,y,y', nodes csGraph', sinkdoms ! y, nodesToCsNodes ! m) True,
                                                       x <- suc csGraph y,
                                                       y' `elem` dfs [x] (foldr (flip delSuccessorEdges) csGraph' (Set.toList $ isinkdoms ! y)),
-                                                      not $ y' ∈ sinkdoms ! y,
+                                                      not $ y' ∈ isinkdoms ! y,
                                                       let Just (m,_) = lab csGraph y',
                                                       let canonicalCacheState = cacheState y',
                                                       not $ (∀) (nodesToCsNodes' ! m) (\y'' -> cacheState y'' == canonicalCacheState),
@@ -835,8 +835,6 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
           where  g = csGraph
                  toM   = rdfs (nodesToCsNodes ! m) csGraph
                  g' = subgraph toM csGraph
-
-        sinkdoms = sinkdomsOf csGraph 
 
 
 csd''''Of2 :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)

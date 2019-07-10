@@ -57,7 +57,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), use, def)
-import CacheExecution(prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, cacheCostDecisionGraph)
+import CacheExecution(prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, csd''''Of2, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4497,7 +4497,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                         -- nticd' =            isinkDFTwoFinger g1
                         tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFastCost ccg1 costF
                         dd'    = invert'' $ dataDependence         g1 vars newN0
-                        csd'   = invert'' $ csd'Of                 g1      newN0
+                        -- csd'   = invert'' $ csd'Of                 g1      newN0
+                        csd'   = invert'' $ csd''''Of2             g1      newN0
 
 
                         slicer ms = s ∖ artificialNodes
@@ -4507,9 +4508,9 @@ cacheProps = testGroup "(concerning cache timing)" [
                         (execution1, limited1) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
                           where es = cacheExecutionLimit limit g1 initialFullState newN0
 
-                        ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 2]
+                        ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 100]
                     in traceShow ("|g1|", length $ nodes g1, "|ccg1|", length $ nodes ccg1, "|csd'", sum $ fmap Set.size $ Map.elems csd') $
-                       traceShow ("g1: ", g1) $
+                       -- traceShow ("g1: ", g1) $
                        (∀) ms (\m ->
                          let s = slicer (Set.fromList [m])
                              notInS = (Set.fromList $ Map.elems varToNode) ∖ s
@@ -4523,8 +4524,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                              exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
                              exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
 
-                             ok = traceShow ("Limited: ", limited1 ∨ limited2, "   |execution1|: ", length execution1, "   |execution2|: ", length execution2) $
-                                  traceShow ("g2: ", g2) $
+                             ok = traceShow ("|notInS|:", Set.size notInS, "Limited: ", limited1 ∨ limited2, "   |execution1|: ", length execution1, "   |execution2|: ", length execution2) $
+                                  -- traceShow ("g2: ", g2) $
                                   limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
                           in if ok then ok else
                                traceShow ("M:: ", m, "  S::", s) $

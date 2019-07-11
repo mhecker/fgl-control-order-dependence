@@ -349,12 +349,27 @@ stateGraphFor α step g σ0 n0 = mkGraph nodes [(toNode ! c, toNode ! c', e) | (
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
 type AbstractCacheState = ([(Var, OMap.Index)], Set Var)
+
 cacheStateGraphForVars :: (Graph gr) => Set Var -> gr CFGNode CFGEdge -> CacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
-  where α cache = (
+  where α = αFor vars
+
+αFor vars cache = (
             [ (v,i) | (i,(v,s)) <- zip [0..] (OMap.assocs cache), v ∈ vars],
             Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars]
            )
+
+cacheStateGraphForVarsAndCacheStates :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraphForVarsAndCacheStates vars (cs, es) =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
+  where cs' =  Set.map f cs
+          where f (n, s) = (n, α s)
+        es' =  Set.map f es
+          where f ((n, sn), e, (m,sm)) = ((n,α sn), e, (m, α sm))
+        nodes = zip [0..] (Set.toList cs')
+        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+        α = αFor vars
+
 
 
 
@@ -860,7 +875,7 @@ csd''''Of3 graph n0 =  invert'' $
                      ]
                  )
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = useE e],
-      let csGraph = cacheStateGraphForVars vars graph initialCacheState n0,
+      let csGraph = cacheStateGraphForVarsAndCacheStates vars (cs,es) :: Gr (Node, AbstractCacheState) CFGEdge,
       let nextReach = nextReachable csGraph,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph],
       let y's  = Set.fromList $ nodesToCsNodes ! m,
@@ -877,6 +892,7 @@ csd''''Of3 graph n0 =  invert'' $
    ]
   where cacheState csGraph y' = fmap fst $ fst $ cs
           where Just (_,cs) = lab csGraph y'
+        (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
 
 -- cacheDomNodes''Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) ∩ (∏) [ cachedomOf ! y| y <-nodesToCsNodes ! n ]) | n <- nodes graph]
 --   where cachedomOf = cacheDomNaive'Gfp graph n0

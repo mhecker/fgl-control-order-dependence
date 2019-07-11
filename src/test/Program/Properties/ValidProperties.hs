@@ -57,7 +57,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), use, def)
-import CacheExecution(prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, csd''''Of2, cacheCostDecisionGraph)
+import CacheExecution(prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, csd''''Of3, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4498,7 +4498,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFastCost ccg1 costF
                         dd'    = invert'' $ dataDependence         g1 vars newN0
                         -- csd'   = invert'' $ csd'Of                 g1      newN0
-                        csd'   = invert'' $ csd''''Of2             g1      newN0
+                        csd'   = invert'' $ csd''''Of3             g1      newN0
 
 
                         slicer ms = s ∖ artificialNodes
@@ -4524,7 +4524,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                              exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
                              exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
 
-                             ok = traceShow ("|notInS|:", Set.size notInS, "Limited: ", limited1 ∨ limited2, "   |execution1|: ", length execution1, "   |execution2|: ", length execution2) $
+                             ok = -- traceShow ("|notInS|:", Set.size notInS, "Limited: ", limited1 ∨ limited2, "   |execution1|: ", length execution1, "   |execution2|: ", length execution2) $
                                   -- traceShow ("g2: ", g2) $
                                   limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
                           in if ok then ok else

@@ -851,8 +851,9 @@ csd''''Of3 :: (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr 
 csd''''Of3 graph n0 =  invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
                                         let Just (n, _) = lab csGraph y,
-                                        (if (n == 16 ∧ m == 21) then traceShow (vars,y,y's,  g'', "KKKKKK", csGraph) else id) True,
+                                        -- (if (n == 17 ∧ m == 21) then traceShow (vars,y,y's,  g'', "KKKKKK", csGraph) else id) True,
                                         let relevant  = Map.findWithDefault Set.empty m (nextReach ! y),
+                                        -- (if (n == 17 ∧ m == 21) then traceShow (vars,y,y's,  relevant) else id) True,
                                         let canonical           = Set.findMin relevant,
                                         let canonicalCacheState = cacheState csGraph canonical,
                                         not $ (∀) relevant (\y' -> cacheState csGraph y' == canonicalCacheState)

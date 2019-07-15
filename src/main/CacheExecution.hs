@@ -431,6 +431,15 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
             Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars, v ∈ reach]
            )
 
+αForReach2 vars mm reach n cache
+  | n == mm = (
+            [ (v,0) | (v,s) <- OMap.assocs cache, v ∈ vars],
+            Set.empty
+           )
+  | otherwise = αForReach vars reach cache
+
+
+
 
 cacheStateGraphForVarsAndCacheStates :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStates vars (cs, es) =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
@@ -453,6 +462,18 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mk
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
         α = αForReach vars
+
+
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
+  where cs' =  Set.map f cs
+          where f (n, s) = (n, α (reach ! n) n s)
+        es' =  Set.map f es
+          where f ((n, sn), e, (m,sm)) = ((n,α (reach ! n) n sn), e, (m, α (reach ! m) m sm))
+        nodes = zip [0..] (Set.toList cs')
+        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+        α = αForReach2 vars mm 
 
 
 
@@ -938,7 +959,7 @@ csd''''Of3 graph n0 =  invert'' $
                                         let Just (n, _) = lab csGraph y,
                                         -- (if (n == 17 ∧ m == 21) then traceShow (vars,y,y's,  g'', "KKKKKK", csGraph) else id) True,
                                         let relevant  = Map.findWithDefault Set.empty m (nextReach ! y),
-                                        -- (if (n == 17 ∧ m == 21) then traceShow (vars,y,y's,  relevant) else id) True,
+                                        -- (if (n == 23 ∧ m == 22) then traceShow (vars,y,y's,  relevant) else id) True,
                                         let canonical           = Set.findMin relevant,
                                         let canonicalCacheState = cacheState csGraph canonical,
                                         not $ (∀) relevant (\y' -> cacheState csGraph y' == canonicalCacheState)
@@ -949,6 +970,38 @@ csd''''Of3 graph n0 =  invert'' $
       let graph' = delSuccessorEdges graph m, -- TODO: use toM instead
       let reach = accessReachableFrom graph',
       let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs,es) reach :: Gr (Node, AbstractCacheState) CFGEdge,
+      let nextReach = nextReachable csGraph,
+      let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph],
+      let y's  = Set.fromList $ nodesToCsNodes ! m,
+      let canonical = Set.findMin y's,
+      let canonicalCacheState = cacheState csGraph canonical,
+      not $ (∀) y's (\y' -> cacheState csGraph y' == canonicalCacheState),
+      let ys = wodTEILSliceViaISinkDom csGraph y's
+   ]
+  where cacheState csGraph y' = fmap fst $ fst $ cs
+          where Just (_,cs) = lab csGraph y'
+        (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
+
+
+csd''''Of4 :: (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csd''''Of4 graph n0 =  invert'' $
+  Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
+                                        let Just (n, _) = lab csGraph y,
+                                        n /= m,
+                                        -- (if (n == 17 ∧ m == 21) then traceShow (vars,y,y's,  g'', "KKKKKK", csGraph) else id) True,
+                                        let relevant  = Map.findWithDefault Set.empty m (nextReach ! y),
+                                        -- (if (n == 23 ∧ m == 22) then traceShow (vars,y,y's,  relevant) else id) True,
+                                        let canonical           = Set.findMin relevant,
+                                        let canonicalCacheState = cacheState csGraph canonical,
+                                        if (∀) relevant (\y' -> cacheState csGraph y' == canonicalCacheState) then traceShow (n,m,y,vars,relevant) True else True,
+                               assert  (not $ (∀) relevant (\y' -> cacheState csGraph y' == canonicalCacheState)) True
+                     ]
+                 )
+    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
+      -- let toM = let { toMs   = rdfs [m] graph ;  graph' = subgraph toMs graph } in delSuccessorEdges graph' m,
+      let graph' = delSuccessorEdges graph m, -- TODO: use toM instead
+      let reach = accessReachableFrom graph',
+      let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: Gr (Node, AbstractCacheState) CFGEdge,
       let nextReach = nextReachable csGraph,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph],
       let y's  = Set.fromList $ nodesToCsNodes ! m,

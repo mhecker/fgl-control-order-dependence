@@ -31,7 +31,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'')
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState, ThreadLocalState, Var(..), Val, BoolFunction(..), VarFunction(..), useE, use, def)
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState, ThreadLocalState, Var(..), Val, BoolFunction(..), VarFunction(..), useE, defE, use, def)
 import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
@@ -359,6 +359,12 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
             Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars]
            )
 
+αForReach vars reach cache = (
+            [ (v,i) | (i,(v,s)) <- zip [0..] (OMap.assocs cache), v ∈ vars],
+            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars, v ∈ reach]
+           )
+
+
 cacheStateGraphForVarsAndCacheStates :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStates vars (cs, es) =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
@@ -369,6 +375,19 @@ cacheStateGraphForVarsAndCacheStates vars (cs, es) =  mkGraph nodes [(toNode ! c
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
         α = αFor vars
+
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
+  where cs' =  Set.map f cs
+          where f (n, s) = (n, α (reach ! n) s)
+        es' =  Set.map f es
+          where f ((n, sn), e, (m,sm)) = ((n,α (reach ! n) sn), e, (m, α (reach ! m) sm))
+        nodes = zip [0..] (Set.toList cs')
+        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+        α = αForReach vars
+
+
 
 
 
@@ -875,24 +894,29 @@ csd''''Of3 graph n0 =  invert'' $
                      ]
                  )
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = useE e],
-      let csGraph = cacheStateGraphForVarsAndCacheStates vars (cs,es) :: Gr (Node, AbstractCacheState) CFGEdge,
+      -- let toM = let { toMs   = rdfs [m] graph ;  graph' = subgraph toMs graph } in delSuccessorEdges graph' m,
+      let graph' = delSuccessorEdges graph m, -- TODO: use toM instead
+      let reach = accessReachableFrom graph',
+      let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs,es) reach :: Gr (Node, AbstractCacheState) CFGEdge,
       let nextReach = nextReachable csGraph,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph],
       let y's  = Set.fromList $ nodesToCsNodes ! m,
       let canonical = Set.findMin y's,
       let canonicalCacheState = cacheState csGraph canonical,
       not $ (∀) y's (\y' -> cacheState csGraph y' == canonicalCacheState),
-      let g'' = let { ms = y's ;
-                        g = csGraph ;
-                        toMs   = rdfs (Set.toList ms) g ;
-                        g' = subgraph toMs g ;
-                    }
-                in foldr (flip delSuccessorEdges) g' ms,
       let ys = wodTEILSliceViaISinkDom csGraph y's
    ]
   where cacheState csGraph y' = fmap fst $ fst $ cs
           where Just (_,cs) = lab csGraph y'
         (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
+
+
+accessReachableFrom :: Graph gr => gr CFGNode CFGEdge -> Map Node (Set Var)
+accessReachableFrom graph = (㎲⊒) init f
+  where f reach = Map.fromList [ (n, (∐) [ useE e ∪ defE e | (_,e) <- lsuc graph n ]) | n <- nodes graph ]
+                ⊔ Map.fromList [ (n, (∐) [ reach ! x | x <- suc graph n] ) | n <- nodes graph ]
+        init    = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+
 
 -- cacheDomNodes''Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) ∩ (∏) [ cachedomOf ! y| y <-nodesToCsNodes ! n ]) | n <- nodes graph]
 --   where cachedomOf = cacheDomNaive'Gfp graph n0

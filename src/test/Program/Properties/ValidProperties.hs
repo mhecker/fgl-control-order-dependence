@@ -57,7 +57,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), use, def)
-import CacheExecution(prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, csd''''Of3, cacheCostDecisionGraph)
+import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, csd''''Of3, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4474,8 +4474,9 @@ cacheProps = testGroup "(concerning cache timing)" [
     testPropertySized 25 "csd is sound"
                 $ \generated seed1 seed2 seed3 ->
                     let pr :: Program Gr
-                        pr = compileAllToProgram a b
+                        pr = compileAllToProgram a b'
                           where (a,b) = toCodeSimple generated
+                                b' = fmap twoAddressCode b
                         g0 = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         vars = Set.fromList [ var | n <- nodes g0, var@(Global x) <- Set.toList $ use g0 n ∪ def g0 n]
@@ -4510,7 +4511,7 @@ cacheProps = testGroup "(concerning cache timing)" [
 
                         ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 100]
                     in traceShow ("|g1|", length $ nodes g1, "|ccg1|", length $ nodes ccg1, "|csd'", sum $ fmap Set.size $ Map.elems csd') $
-                       -- traceShow ("g1: ", g1) $
+                       traceShow ("g1: ", g1) $
                        (∀) ms (\m ->
                          let s = slicer (Set.fromList [m])
                              notInS = (Set.fromList $ Map.elems varToNode) ∖ s

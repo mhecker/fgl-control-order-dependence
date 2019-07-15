@@ -32,7 +32,7 @@ data For = If   BoolFunction For For
          | PrintToChannel  VarFunction OutputChannel
          | SpawnThread StaticThread
          | CallProcedure StaticProcedure
-  deriving Show
+  deriving (Show, Eq)
 
 
 subCommands :: For -> [For]

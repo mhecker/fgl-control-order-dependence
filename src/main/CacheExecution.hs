@@ -36,7 +36,7 @@ import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
 import Program.Generator (toCodeSimple)
-import Program.For (compileAllToProgram)
+import Program.For (compileAllToProgram, For(..))
 
 import Data.Graph.Inductive.Util (mergeTwoGraphs, isTransitive, fromSuccMap, delSuccessorEdges)
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp, sinkdomsOf, isinkdomOfTwoFinger8)
@@ -63,6 +63,9 @@ cacheHitTime  =  2
 cacheWriteTime :: AccessTime 
 cacheWriteTime = 2
 
+registerAccessTime :: AccessTime
+registerAccessTime = 1
+
 noOpTime  :: AccessTime
 noOpTime = 1 
 
@@ -83,6 +86,67 @@ type CacheTimeState = (CacheState, TimeState)
 type FullState = (NormalState, CacheState, TimeState)
 
 
+isCachable (Global _) = True
+isCachable (ThreadLocal _) = True -- maybe we dont want this?
+isCachable (Register _) = False
+
+
+twoAddressCode :: For -> For
+twoAddressCode (If bf c1 c2) =
+  let (loads, bf', _) = twoAddressCodeB 0 bf in case loads of
+    Nothing ->          (If bf' (twoAddressCode c1) (twoAddressCode c2))
+    Just ls -> ls `Seq` (If bf' (twoAddressCode c1) (twoAddressCode c2))
+twoAddressCode (Ass var vf)  =
+  let (loads, vf', _) = twoAddressCodeV 0 vf in case loads of
+    Nothing ->          (Ass var vf')
+    Just ls -> ls `Seq` (Ass var vf')
+twoAddressCode (ForC val c) = ForC val (twoAddressCode c)
+twoAddressCode (ForV var c) = ForV var (twoAddressCode c)
+twoAddressCode (Seq c1 c2 ) = Seq (twoAddressCode c1) (twoAddressCode c2)
+twoAddressCode c = c
+
+
+twoAddressCodeB :: Int -> BoolFunction -> (Maybe For, BoolFunction, Int)
+twoAddressCodeB r bf@CTrue =  (Nothing, bf, r)
+twoAddressCodeB r bf@CFalse = (Nothing, bf, r)
+twoAddressCodeB r bf@(Leq x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Leq x' y', r'')
+twoAddressCodeB r bf@(And x y) =
+    let (loadsX, x', r' ) = twoAddressCodeB r  x
+        (loadsY, y', r'') = twoAddressCodeB r' y
+    in (loadsX `sseq` loadsY, And x' y', r'')
+twoAddressCodeB r bf@(Or x y) =
+    let (loadsX, x', r' ) = twoAddressCodeB r  x
+        (loadsY, y', r'') = twoAddressCodeB r' y
+    in (loadsX `sseq` loadsY, And x' y', r'')
+twoAddressCodeB r bf@(Not x) =
+    let (loadsX, x', r' ) = twoAddressCodeB r  x
+    in (loadsX, Not x', r')
+
+
+sseq Nothing r = r
+sseq l Nothing = l
+sseq (Just l) (Just r) = Just (l `Seq` r)
+
+
+twoAddressCodeV :: Int -> VarFunction -> (Maybe For, VarFunction, Int)
+twoAddressCodeV r vf@(Val _) = (Nothing, vf, r)
+twoAddressCodeV r    (Var (Register _)) = undefined
+twoAddressCodeV r vf@(Var x) = (Just $ Ass (Register r) vf, Var (Register r), r + 1)
+twoAddressCodeV r vf@(Plus x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Plus x' y', r'')
+twoAddressCodeV r vf@(Times x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Times x' y', r'')
+twoAddressCodeV r bf@(Neg x) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+    in (loadsX, Neg x', r')
+
 
 consistent :: FullState -> Bool
 consistent σ@((globalσ,tlσ,i), cache, _) = OMap.size cache == cacheSize && (∀) (OMap.assocs cache) cons
@@ -94,6 +158,7 @@ cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
 cacheAwareReadLRU var σ@((globalσ,tlσ,i), cache, _) = case var of
     Global      _ -> lookup globalσ
     ThreadLocal _ -> lookup     tlσ
+    Register    _ -> (tlσ ! var, cache, registerAccessTime)
   where lookup someσ = 
           require (consistent σ) $
           case OMap.lookup var cache of
@@ -105,6 +170,7 @@ cacheOnlyReadLRU :: Var -> CacheState -> CacheState
 cacheOnlyReadLRU var cache = case var of
     Global      _ -> lookup
     ThreadLocal _ -> lookup
+    Register    _ -> cache
   where lookup = 
           case OMap.lookup var cache of
             Nothing  -> OMap.fromList $ (var, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                   cache)
@@ -136,6 +202,7 @@ cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
 cacheAwareWriteLRU var val σ@((globalσ,tlσ,i), cache, time ) = case var of
     Global      _ -> let (globalσ', cache', accessTime) = write globalσ in ((globalσ',tlσ ,i), cache', time + accessTime)
     ThreadLocal _ -> let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ ,tlσ',i), cache', time + accessTime)
+    Register    _ -> let tlσ' = Map.insert var val tlσ in  ((globalσ,tlσ',i), cache, time + registerAccessTime )
   where write someσ = 
           require (consistent σ) $
           case OMap.lookup var cache of
@@ -426,22 +493,6 @@ cacheExecutionLimit limit g σ0 n0 = run σ0 n0 0
                     return $ (n, time) : trace0
 
 
--- run :: SimpleProgram -> Integer -> Integer -> [[(Node,TimeState)]]
-run generated seed1 seed2 = 
-                    let pr :: Program Gr
-                        pr = compileAllToProgram a b
-                          where (a,b) = toCodeSimple generated
-                        g0 = tcfg pr
-                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        vars = Set.fromList [ var | n <- nodes g0, var@(Global x) <- Set.toList $ use g0 n ∪ def g0 n]
-                        (newN0:new) = (newNodes (Set.size vars) g0)
-                        varToNode = Map.fromList $ zip (Set.toList vars) new
-
-                        ms = [ (abs m) `mod` (length $ nodes g0) | m <- moreSeeds seed2 2]
-                        initialGlobalState = Map.fromList $ zip (Set.toList vars) (fmap (`rem` 32) $ moreSeeds seed1 (Set.size vars))
-                        initialFullState   = ((initialGlobalState, Map.empty, ()), initialCacheState, 0)
-                     in prependInitialization g0 n0 newN0 varToNode initialGlobalState
-
 prependInitialization :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Node -> Map Var Node -> Map Var Val -> gr CFGNode CFGEdge
 prependInitialization g0 n0 newN0 varToNode state =
     g0 `mergeTwoGraphs` g1
@@ -463,7 +514,7 @@ costsFor csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]
 fakeFullState :: CFGEdge -> CacheTimeState -> FullState
 fakeFullState e (cs,time) = (
       ((Map.fromList $ OMap.assocs cs) `Map.union` Map.fromList [(var, 0) | var@(Global      _) <- Set.toList $ useE e],
-       (Map.fromList $ OMap.assocs cs) `Map.union` Map.fromList [(var, 0) | var@(ThreadLocal _) <- Set.toList $ useE e],
+       (Map.fromList $ OMap.assocs cs) `Map.union` Map.fromList [(var, 0) | var@(ThreadLocal _) <- Set.toList $ useE e] `Map.union` Map.fromList [(var, 0) | var@(Register _) <- Set.toList $ useE e],
        ()
       ),
       cs,
@@ -512,7 +563,7 @@ csdOfLfp graph n0 = (∐) [ Map.fromList [ (n, Set.fromList [ csNodeToNode ! m' 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
         csNodeToNode   = Map.fromList [ (y, n)  | (y, (n,    _)) <- labNodes csGraph]
         
-        cacheState n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e ]
+        cacheState n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
            where cs = assert (n == n') $ cs'
                  Just (n', cs') = lab csGraph y'
 
@@ -528,7 +579,7 @@ fCacheDomNaive graph csGraph nodeToCsNodes  = f
                                                             -- traceShow canonicalCacheState $
                                                             (∀) (nodeToCsNodes ! n) (\y' ->cacheState n y' == canonicalCacheState)
                                                                                                                             ]) | (y, (n, csy)) <- labNodes csGraph, suc csGraph y /= []]
-        cacheState n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e ]
+        cacheState n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
            where cs = assert (n == n') $ cs'
                  Just (n', cs') = lab csGraph y'
 
@@ -610,7 +661,7 @@ fCacheDomNaive' graph csGraph nodeToCsNodes nextReach all = f
                     ⊔ Map.fromList [ (y, all)                                                                                  | (y, (_, csy)) <- labNodes csGraph, suc csGraph y == []]
         cacheState = cacheStateFor graph csGraph
 
-cacheStateFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e ]
+cacheStateFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
            where cs = assert (n == n') $ cs'
                  Just (n', cs') = lab csGraph y'
 
@@ -619,7 +670,7 @@ cacheStateOnFor csGraph vars y' = Map.fromList [(var, fmap (const ()) $ OMap.loo
 
 
 
-cacheStateUnsafeFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e ]
+cacheStateUnsafeFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
            where cs = cs'
                  Just (_, cs') = lab csGraph y'
 
@@ -734,7 +785,7 @@ cacheDomNaive''Gfp graph n0 = (𝝂) init f
 
         nextReach = nextReachable csGraph
 
-        relevant =  [ useE e | (n,m,e) <- labEdges graph ] 
+        relevant =  [ Set.filter isCachable $ useE e | (n,m,e) <- labEdges graph ] 
         
         allCs = Set.fromList $ nodes csGraph
         all   = Set.fromList $ nodes   graph
@@ -760,7 +811,7 @@ reachableBefore ::  DynGraph gr => Set Var -> gr CFGNode CFGEdge -> Node -> Cach
 reachableBefore vars graph n0 y = Set.fromList [ y' | x <- suc csGraph y,
                                                       y' <- dfs [x] (foldr (flip delSuccessorEdges) csGraph (Set.toList $ sinkdoms ! y)),
                                                       not $ y' ∈ sinkdoms ! y,
-                                                      (∃) (lsuc csGraph y') (\(_,e) -> useE e == vars),
+                                                      (∃) (lsuc csGraph y') (\(_,e) -> (Set.filter isCachable $ useE e) == vars),
                                                       let Just (m,_) = lab csGraph y',
                                                       let canonicalCacheState = cacheState y',
                                                       not $ (∀) (nodesToCsNodes ! m) (\y'' -> cacheState y'' == canonicalCacheState)
@@ -803,7 +854,7 @@ reachableBeforeSome vars graph n0 n m = not $ Set.null $ Set.fromList [ () |
                                                       not $ List.null $ nodes csGraph',
                                                       y  <- nodesToCsNodes' ! n,
                                                       y' <- nodesToCsNodes' ! m,
-                                                      (∃) (lsuc csGraph y') (\(_,e) -> useE e == vars),
+                                                      (∃) (lsuc csGraph y') (\(_,e) -> (Set.filter isCachable $ useE e) == vars),
                                                       -- traceShow (n,m,y,y', nodes csGraph', sinkdoms ! y, nodesToCsNodes ! m) True,
                                                       x <- suc csGraph y,
                                                       y' `elem` dfs [x] (foldr (flip delSuccessorEdges) csGraph' (Set.toList $ sinkdoms ! y)),
@@ -836,7 +887,7 @@ reachableBeforeSome vars graph n0 n m = not $ Set.null $ Set.fromList [ () |
         sinkdoms = sinkdomsOf csGraph 
 
 csd''''Of :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csd''''Of graph n0 = Map.fromList [ (n, Set.fromList [ m | m <- nodes graph, (_,e) <- lsuc graph m, let vars = useE e, reachableBeforeSome vars graph n0 n m ]) | n <- nodes graph]
+csd''''Of graph n0 = Map.fromList [ (n, Set.fromList [ m | m <- nodes graph, (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, reachableBeforeSome vars graph n0 n m ]) | n <- nodes graph]
   -- where fromto n m = sinkdomOfGfp $ g''
   --         where  toM   = rdfs [m] graph
   --                g' = subgraph toM graph
@@ -857,7 +908,7 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
                                                       x <- suc csGraph y,
                                                       y' <- dfs [x] (foldr (flip delSuccessorEdges) csGraph' (Set.toList $ isinkdoms ! y)),
                                                       y' `elem` nodesToCsNodes ! m,
-                                               assert ((∃) (lsuc csGraph y') (\(_,e) -> useE e == vars)) True,
+                                               assert ((∃) (lsuc csGraph y') (\(_,e) -> (Set.filter isCachable $ useE e) == vars)) True,
                                                       not $ y' ∈ isinkdoms ! y,
                                                       let Just (mm,_) = lab csGraph y', assert (mm == m) True,
                                                       let canonicalCacheState = cacheState y',
@@ -878,7 +929,7 @@ reachableBeforeSome2 vars graph n0 m = Set.fromList [ n |
 
 
 csd''''Of2 :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csd''''Of2 graph n0 = invert'' $ Map.fromList [ (m, reachableBeforeSome2 vars graph n0 m) | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = useE e] ]
+csd''''Of2 graph n0 = invert'' $ Map.fromList [ (m, reachableBeforeSome2 vars graph n0 m) | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e] ]
 
 
 csd''''Of3 :: (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
@@ -893,7 +944,7 @@ csd''''Of3 graph n0 =  invert'' $
                                         not $ (∀) relevant (\y' -> cacheState csGraph y' == canonicalCacheState)
                      ]
                  )
-    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = useE e],
+    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
       -- let toM = let { toMs   = rdfs [m] graph ;  graph' = subgraph toMs graph } in delSuccessorEdges graph' m,
       let graph' = delSuccessorEdges graph m, -- TODO: use toM instead
       let reach = accessReachableFrom graph',
@@ -913,7 +964,7 @@ csd''''Of3 graph n0 =  invert'' $
 
 accessReachableFrom :: Graph gr => gr CFGNode CFGEdge -> Map Node (Set Var)
 accessReachableFrom graph = (㎲⊒) init f
-  where f reach = Map.fromList [ (n, (∐) [ useE e ∪ defE e | (_,e) <- lsuc graph n ]) | n <- nodes graph ]
+  where f reach = Map.fromList [ (n, (∐) [ Set.filter isCachable $ useE e ∪ defE e | (_,e) <- lsuc graph n ]) | n <- nodes graph ]
                 ⊔ Map.fromList [ (n, (∐) [ reach ! x | x <- suc graph n] ) | n <- nodes graph ]
         init    = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
 

@@ -20,7 +20,7 @@ import qualified Data.Set as Set
 import Data.List (partition,delete)
 import qualified Data.List as List
 
-data Var = Global String | ThreadLocal String deriving (Show, Eq, Ord, Generic, NFData)
+data Var = Global String | ThreadLocal String | Register Int deriving (Show, Eq, Ord, Generic, NFData)
 type Val = Int
 type InputChannel = String
 type OutputChannel = String

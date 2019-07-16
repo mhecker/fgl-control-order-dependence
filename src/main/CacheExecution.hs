@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 #define require assert
@@ -1062,6 +1063,35 @@ mergeFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
           csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's
           idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
           roots = Set.fromList y's
+
+csdMergeOf :: forall gr. (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdMergeOf graph n0 =  invert'' $
+  Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
+                                        let Just (n, _) = lab csGraph'' y,
+                                        -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
+                                        n /= m
+                     ]
+                 )
+    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
+      let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
+      let reach = accessReachableFrom graph',
+      let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: gr (Node, AbstractCacheState) CFGEdge,
+      let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph'],
+      let y's  = nodesToCsNodes ! m,
+      let csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's,
+      let idom' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph',
+      let roots' = Set.fromList y's,
+      let equivs = mergeFrom graph' csGraph' idom' roots',
+      let csGraph'' = merged csGraph' equivs,
+      let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'',
+      let ys = Set.fromList [ y | y <- nodes csGraph'', idom'' ! y == Nothing]
+   ]
+  where cacheState csGraph y' = fmap fst $ fst $ cs
+          where Just (_,cs) = lab csGraph y'
+        (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
+
+
+
 
 mergeFrom ::  (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, AbstractCacheState) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
 mergeFrom graph csGraph idom roots  =  (㎲⊒) init f 

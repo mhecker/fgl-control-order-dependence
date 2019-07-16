@@ -455,25 +455,29 @@ cacheStateGraphForVarsAndCacheStates vars (cs, es) =  mkGraph nodes [(toNode ! c
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
-          where f (n, s) = (n, α (reach ! n) s)
+          where f (n, s) = (n, α (reach !! n) s)
         es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α (reach ! n) sn), e, (m, α (reach ! m) sm))
+          where f ((n, sn), e, (m,sm)) = ((n,α (reach !! n) sn), e, (m, α (reach !! m) sm))
         nodes = zip [0..] (Set.toList cs')
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
         α = αForReach vars
+        
+        (!!) m x = Map.findWithDefault Set.empty x m
 
 
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
-          where f (n, s) = (n, α (reach ! n) n s)
+          where f (n, s) = (n, α (reach !! n) n s)
         es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α (reach ! n) n sn), e, (m, α (reach ! m) m sm))
+          where f ((n, sn), e, (m,sm)) = ((n,α (reach !! n) n sn), e, (m, α (reach !! m) m sm))
         nodes = zip [0..] (Set.toList cs')
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
-        α = αForReach2 vars mm 
+        α = αForReach2 vars mm
+
+        (!!) m x = Map.findWithDefault Set.empty x m
 
 
 
@@ -966,8 +970,7 @@ csd''''Of3 graph n0 =  invert'' $
                      ]
                  )
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
-      -- let toM = let { toMs   = rdfs [m] graph ;  graph' = subgraph toMs graph } in delSuccessorEdges graph' m,
-      let graph' = delSuccessorEdges graph m, -- TODO: use toM instead
+      let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom graph',
       let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs,es) reach :: Gr (Node, AbstractCacheState) CFGEdge,
       let nextReach = nextReachable csGraph,
@@ -998,8 +1001,7 @@ csd''''Of4 graph n0 =  invert'' $
                      ]
                  )
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
-      -- let toM = let { toMs   = rdfs [m] graph ;  graph' = subgraph toMs graph } in delSuccessorEdges graph' m,
-      let graph' = delSuccessorEdges graph m, -- TODO: use toM instead
+      let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom graph',
       let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: Gr (Node, AbstractCacheState) CFGEdge,
       let nextReach = nextReachable csGraph,

@@ -996,7 +996,7 @@ csd''''Of4 graph n0 =  invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
                                         let Just (n, _) = lab csGraph y,
                                         n /= m,
-                                        (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
+                                        -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
                                         let relevant  = Map.findWithDefault Set.empty m (nextReach ! y),
                                         -- (if (n == 23 ∧ m == 22) then traceShow (vars,y,y's,  relevant) else id) True,
                                         let canonical           = Set.findMin relevant,

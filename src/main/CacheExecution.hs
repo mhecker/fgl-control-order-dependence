@@ -1091,8 +1091,8 @@ mergeFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
 -- mergeFrom graph csGraph idom roots  = traceShow (csGraph, roots, idom) $  fix init f
 --   where fix x f = let x' = f x in if x == x' then x else fix x' f
 mergeFrom ::  (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, AbstractCacheState) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots  = fix init f
-  where fix x f = let x' = f x in if x == x' then x else fix x' f
+mergeFrom graph csGraph idom roots  =  (㎲⊒) init f 
+  where 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
         -- f :: (Map Node (Set (Set CacheGraphNode)), Map CacheGraphNode CacheGraphNode)
         --   -> (Map Node (Set (Set CacheGraphNode)), Map CacheGraphNode CacheGraphNode)

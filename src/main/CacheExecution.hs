@@ -32,7 +32,7 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
-import Util (moreSeeds, restrict, invert'')
+import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet)
 import           IRLSOD (CFGNode, CFGEdge(..), GlobalState, ThreadLocalState, Var(..), Val, BoolFunction(..), VarFunction(..), useE, defE, use, def)
 import qualified IRLSOD as IRLSOD (Input)
 
@@ -489,9 +489,6 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =
         α = αForReach2 vars mm
 
         (!!) m x = Map.findWithDefault Map.empty x m
-
-
-
 
 
 
@@ -1014,7 +1011,7 @@ csd''''Of4 graph n0 =  invert'' $
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom2 graph',
-      let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: Gr (Node, AbstractCacheState) CFGEdge,
+      let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs,es) reach :: Gr (Node, AbstractCacheState) CFGEdge,
       let nextReach = nextReachable csGraph,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph],
       let y's  = Set.fromList $ nodesToCsNodes ! m,
@@ -1041,21 +1038,107 @@ accessReachableFrom graph = (㎲⊒) init f
 
 
 
-newtype MaxInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
-instance JoinSemiLattice MaxInteger where
-  join = max
+newtype MinInteger = MyInteger Integer deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
+instance JoinSemiLattice MinInteger where
+  join = min
 
-instance BoundedJoinSemiLattice MaxInteger where
-  bottom = 0
+-- instance BoundedJoinSemiLattice MaxInteger where
+--   bottom = 0
 
 
-accessReachableFrom2 :: Graph gr => gr CFGNode CFGEdge -> Map Node (Map Var Integer)
-accessReachableFrom2 graph = fmap (fmap toInteger) $ (㎲⊒) init f
-  where f reach = Map.fromList [ (n, (∐) [ Map.fromList [ (var, 1 :: MaxInteger) ]  | (_,e) <- lsuc graph n, var <- Set.toList $ Set.filter isCachable $ useE e ∪ defE e ]) | n <- nodes graph ]
-                ⊔ Map.fromList [ (n, (∐) [ fmap (+1) $ reach ! x | x <- suc graph n] ) | n <- nodes graph ]
-        init    = Map.fromList [ (n, Map.empty) | n <- nodes graph ]
+-- accessReachableFrom2 :: Graph gr => gr CFGNode CFGEdge -> Map Node (Map Var Integer)
+-- accessReachableFrom2 graph = fmap (fmap toInteger) $ (㎲⊒) init f
+--   where f reach = Map.fromList [ (n, (∐) [ Map.fromList [ (var, 1 :: MinInteger) ]  | (_,e) <- lsuc graph n, var <- Set.toList $ Set.filter isCachable $ useE e ∪ defE e ]) | n <- nodes graph ]
+--                 ⊔ Map.fromList [ (n, (∐) [ fmap (+1) $ reach ! x | x <- suc graph n] ) | n <- nodes graph ]
+--         init    = Map.fromList [ (n, Map.empty) | n <- nodes graph ]
 
-        
+
+accessReachableFrom2 graph = (㎲⊒) init f
+  where f reach = Map.fromList [ (n, (∏) [ Set.filter isCachable $ useE e ∪ defE e | (_,e) <- lsuc graph n ]) | n <- nodes graph, lsuc graph n /= [] ]
+                ⊔ Map.fromList [ (n, (∏) [ reach ! x | x <- suc graph n] ) | n <- nodes graph, lsuc graph n /= [] ]
+        init    = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
+
+
+merged :: (Graph gr) => gr (Node, AbstractCacheState) CFGEdge ->  Map Node (Set (Set CacheGraphNode)) -> gr (Node, Set CacheGraphNode) CFGEdge
+merged csGraph' equivs =  mkGraph nodes edges
+  where edges =  List.nub $ fmap f $ (labEdges csGraph')
+          where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
+                  where Just (n,_)  = lab csGraph' y
+                        Just (n',_) = lab csGraph' y'
+                        equiv  = head $ [ equiv | equiv <- Set.toList $ equivs ! n,  y  ∈ equiv ]
+                        equiv' = head $ [ equiv | equiv <- Set.toList $ equivs ! n', y' ∈ equiv ]
+        nodes = zip [0..] [ (n, equiv) | (n, equivN) <- Map.assocs equivs, equiv <- Set.toList equivN, not $ Set.null equiv ]
+        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+csGraphFromMergeFor graph n0 m = merged csGraph' equivs
+    where (equivs, csGraph') = mergeFromFor graph n0 m
+
+mergeFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
+    where (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
+
+          vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars]
+          graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
+          reach = accessReachableFrom graph'
+          csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs,es) reach :: Gr (Node, AbstractCacheState) CFGEdge
+          nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph']
+          y's  = nodesToCsNodes ! m
+          
+          csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's
+          idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
+          roots = Set.fromList y's
+
+-- mergeFrom ::  (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, AbstractCacheState) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> (Map Node (Set (Set CacheGraphNode)), Map CacheGraphNode CacheGraphNode)
+-- mergeFrom graph csGraph idom roots  = traceShow (csGraph, roots, idom) $  fix init f
+--   where fix x f = let x' = f x in if x == x' then x else fix x' f
+mergeFrom ::  (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, AbstractCacheState) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Set (Set CacheGraphNode))
+mergeFrom graph csGraph idom roots  = fix init f
+  where fix x f = let x' = f x in if x == x' then x else fix x' f
+        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
+        -- f :: (Map Node (Set (Set CacheGraphNode)), Map CacheGraphNode CacheGraphNode)
+        --   -> (Map Node (Set (Set CacheGraphNode)), Map CacheGraphNode CacheGraphNode)
+        f :: Map Node (Set (Set CacheGraphNode))
+          -> Map Node (Set (Set CacheGraphNode))
+        f equivs = -- traceShow (Map.filter (\equivs -> (∃) equivs (not . Set.null)) $ equivs, rootOf) $
+          (
+              Map.fromList [ (n, Set.fromList [ Set.fromList [ y | y <- ys, Map.lookup y rootOf == Just r ] |  r <- Set.toList roots])
+                           | (n,ys) <- Map.assocs nodesToCsNodes
+              ]
+            ⊔ Map.fromList [ (n, Set.fromList [ Set.fromList [ y' | y  <- ys, let es = lsuc csGraph y,
+                                                                    not $ y ∈ roots,
+                                                                    y' <- ys,
+                                                                   (∀) es (\(_,e) ->
+                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e then True else
+                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e then True else
+                                                                       let Just (m, _) = lab csGraph x
+                                                                           Just (m',_) = lab csGraph x'
+                                                                       in assert (m == m') $ 
+                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
+                                                                     ))
+                                                                   )
+                                                ]
+                                  ])
+                           | (n,ys) <- Map.assocs nodesToCsNodes,
+                             assert ((∀) ys (\y -> (∀) ys (\y' -> (Set.fromList $ fmap snd $ lsuc csGraph y) == (Set.fromList $ fmap snd $ lsuc csGraph y')))) True
+              ]
+              -- Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
+              -- `Map.union`
+              -- Map.fromList [ (y, r) | (y, (n,_)) <- labNodes csGraph,
+              --                         equiv <- Set.toList $ equivs ! n,
+              --                         not $ Set.null equiv,
+              --                         -- traceShow equiv True,
+              --                  assert ((∀) equiv (\y' -> (∀) equiv (\y'' -> rootOf ! y' == rootOf ! y''))) True,
+              --                         let r = rootOf ! (Set.findMin equiv)
+              --              ]
+           )
+        init = (Map.fromList [ (n, Set.empty) | n <- nodes graph ])
+        rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
+
+-- relevantAt :: Graph gr => gr (Node, CacheState) -> Set CacheStateNode -> Set Var -> Map CacheStateNode (Set Var)
+-- relevantAt csGraph y's vars = (㎲⊒) init f
+--   where f reach = Map.fromList [ (y', Set.fromList [ y' ] ) | y' <- Set.toList y's ]
+--                 ⊔ Map.fromList [ (y, (∐) [ Map.fromList [ (var, 1 :: MaxInteger) ]  | (_,e) <- lsuc csGraph y, var <- Set.toList $ Set.filter isCachable $ useE e ∪ defE e ]) | y <- nodes graph ]
+--                 ⊔ Map.fromList [ (n, (∐) [ fmap (+1) $ reach ! x | x <- suc graph n] ) | n <- nodes graph ]
+--         init    = Map.fromList [ (n, Map.empty) | y <- nodes csGraph ]
 
 -- cacheDomNodes''Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) ∩ (∏) [ cachedomOf ! y| y <-nodesToCsNodes ! n ]) | n <- nodes graph]
 --   where cachedomOf = cacheDomNaive'Gfp graph n0

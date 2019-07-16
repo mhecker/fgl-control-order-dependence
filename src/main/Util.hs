@@ -153,6 +153,14 @@ reachableFromM m xs seen
   where new = Set.fromList [ x' | x <- Set.toList xs, not $ x ∈ seen, Just x' <- [ Map.findWithDefault Nothing x m ] ]
 
 
+
+maxFromTreeM :: Ord α => Map α (Maybe α) -> α -> α
+maxFromTreeM m x = reachFrom x
+  where reachFrom x = assert (x `Map.member` m) $ case m ! x of
+          Nothing -> x
+          Just x' -> reachFrom x'
+
+
 reachableFromTree :: Ord α => Map α (Set α) -> α -> Set α
 reachableFromTree m x = reachFrom (Set.fromList [x]) Set.empty
   where reachFrom xs seen 

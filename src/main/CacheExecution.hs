@@ -434,20 +434,13 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
            )
 
 
-αForReach2 :: Set Var -> Node -> Map Var Integer -> Node -> OMap Var OMap.Index -> AbstractCacheState
--- αForReach2 = undefined
+αForReach2 :: Set Var -> Node -> Set Var -> Node -> OMap Var OMap.Index -> AbstractCacheState
 αForReach2 vars mm reach n cache
   | n == mm = (
             [ (v,0) | (v,s) <- OMap.assocs cache, v ∈ vars],
             Set.empty
            )
-  | otherwise = let varsState = [ (v,i) | (i,(v,s)) <- zip [0..] (OMap.assocs cache), v ∈ vars]
-                    maxIndex = if List.null varsState then 0 else toInteger $ last $ fmap snd $ varsState
-                in
-           (
-            varsState ,
-            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars, Just i <- [ Map.lookup v reach ], i < maxIndex]
-           )
+  | otherwise = αForReach vars reach cache
 
 
 
@@ -477,7 +470,7 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mk
         (!!) m x = Map.findWithDefault Set.empty x m
 
 
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Map Var Integer) -> Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
           where f (n, s) = (n, α (reach !! n) n s)
@@ -488,7 +481,10 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =
 
         α = αForReach2 vars mm
 
-        (!!) m x = Map.findWithDefault Map.empty x m
+        (!!) m x = Map.findWithDefault Set.empty x m
+
+
+
 
 
 
@@ -1011,7 +1007,7 @@ csd''''Of4 graph n0 =  invert'' $
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom graph',
-      let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs,es) reach :: Gr (Node, AbstractCacheState) CFGEdge,
+      let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: Gr (Node, AbstractCacheState) CFGEdge,
       let nextReach = nextReachable csGraph,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph],
       let y's  = Set.fromList $ nodesToCsNodes ! m,

@@ -57,7 +57,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), use, def)
-import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, csd''''Of3, csd''''Of4, csdMergeOf, cacheCostDecisionGraph)
+import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csdOfLfp, csd'Of, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4482,6 +4482,17 @@ cacheProps = testGroup "(concerning cache timing)" [
                         csd'3 = csd''''Of3 g n0
                         csd'4 = csd''''Of4 g n0
                     in  csd'3 == csd'4,
+    testPropertySized 25 "csdMergeOf == csdMergeDirectOf"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimple generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM       = csdMergeOf g n0
+                        csdMDirect = csdMergeDirectOf g n0
+                    in  csdM == csdMDirect,
     testPropertySized 25 "csdMergeOf ⊑ csd''''Of4"
                 $ \generated ->
                     let pr :: Program Gr

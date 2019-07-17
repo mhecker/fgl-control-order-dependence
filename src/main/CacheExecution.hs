@@ -1210,8 +1210,13 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                                                                      (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e then True else
                                                                        let Just (m, _) = lab csGraph x
                                                                            Just (m',_) = lab csGraph x'
-                                                                       in assert (m == m') $ 
-                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
+                                                                       in assert (m == m') $
+                                                                          assert ( x  ∈ equivs ! m  ! x  ) $
+                                                                          assert ( x' ∈ equivs ! m' ! x' ) $
+                                                                          assert ((x  ∈ equivs ! m' ! x') ↔
+                                                                                  (x' ∈ equivs ! m  ! x )) $
+                                                                          assert ((x  ∈ equivs ! m' ! x') ↔ (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)) $
+                                                                          (x  ∈ equivs ! m' ! x')
                                                                      ))
                                                                    )
                                                 ]

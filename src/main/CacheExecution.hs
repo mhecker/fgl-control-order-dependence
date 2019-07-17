@@ -1104,7 +1104,7 @@ csdMergeOf graph n0 =  invert'' $
           where Just (_,cs) = lab csGraph y'
         (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
 
-csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set CacheGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf graph n0 =  invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
                                         let Just (n, _) = lab csGraph'' y,
@@ -1133,8 +1133,8 @@ csdMergeDirectOf graph n0 =  invert'' $
 
 
 
-mergeFrom ::  (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots  =  (㎲⊒) init f 
+mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
+mergeFrom graph csGraph idom roots  =  (㎲⊒) init f
   where 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
         f :: Map Node (Map CacheGraphNode (Set CacheGraphNode))

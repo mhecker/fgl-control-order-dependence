@@ -759,12 +759,12 @@ isinkdomOftwoFinger8Up ::  forall gr a b. (DynGraph gr) => gr a b -> Map Node [N
 isinkdomOftwoFinger8Up graph nonSinkCondNodes  worklist processed imdomRev imdom =
       require (Map.filter (not . Set.null) imdomRev == invert''' imdom)
     $ twoFinger worklist processed imdom imdomRev
-  where solution = sinkdomOfGfp graph
+  where -- solution = sinkdomOfGfp graph
         twoFinger worklist processed imdom imdomRev
             | Dequeue.null worklist   = -- traceShow ("x", "mz", "zs", "influenced", worklist, imdom) $
                                     -- traceShow (Set.size worklist0, i) $
-                                    assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
-                                            ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ()))) $
+                                    {- assert (  (Set.fromList $ edges $ trc $ (fromSuccMap $ fmap toSet imdom :: gr ()()))
+                                            ⊇ (Set.fromList $ edges $ trc $ (fromSuccMap $ solution :: gr () ()))) $ this one is true, but too expensive :O -}
                                     imdom
             | otherwise           = -- traceShow (x, worklist', mz, processed', new, imdom) $
                                     assert (imdom ! x == Nothing) $

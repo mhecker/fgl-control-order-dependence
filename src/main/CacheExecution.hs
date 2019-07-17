@@ -1131,6 +1131,21 @@ csdMergeDirectOf graph n0 =  invert'' $
         (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
 
 
+csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
+    where (equivs, csGraph') = mergeDirectFromFor graph n0 m
+
+mergeDirectFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
+    where (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
+
+          vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars]
+          graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
+          csGraph = cacheStateGraphForVarsAtM vars (cs,es) m :: Gr (Node, CacheState) CFGEdge
+          nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph']
+          y's  = nodesToCsNodes ! m
+          
+          csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's
+          idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
+          roots = Set.fromList y's
 
 
 mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))

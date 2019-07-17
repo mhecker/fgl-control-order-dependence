@@ -1147,8 +1147,8 @@ mergeDirectFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
           roots = Set.fromList y's
 
 
-mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots  =  (𝝂) init f 
+mergeFromSlow ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
+mergeFromSlow graph csGraph idom roots  =  (𝝂) init f 
   where 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
         f :: Map Node (Map CacheGraphNode (Set CacheGraphNode))
@@ -1180,6 +1180,42 @@ mergeFrom graph csGraph idom roots  =  (𝝂) init f
            )
         init = Map.fromList [ (n, Map.fromList [ (y, Set.fromList ys ) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes  ]
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
+
+
+mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
+mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph csGraph idom roots) -} result
+  where result = go (Set.fromList $ nodes graph) init
+        go workset equivs
+           | Set.null workset  = equivs
+           | otherwise         =
+               if changed then
+                 go (workset' ∪ influenced) (Map.insert n equivsN' equivs)
+               else
+                 go  workset'                                      equivs
+          where (n, workset') = Set.deleteFindMin workset
+                ys = nodesToCsNodes ! n
+                equivsN' = (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) ] | y <- ys, Just r <- [Map.lookup y rootOf ]]
+                         ⊔ (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys, not $ y ∈ roots ]
+                         ⊔ (∐) [ Map.fromList [ (y, Set.fromList [ y' |
+                                                                   y' <- ys,
+                                                                   (∀) es (\(_,e) ->
+                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e then True else
+                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e then True else
+                                                                       let Just (m, _) = lab csGraph x
+                                                                           Just (m',_) = lab csGraph x'
+                                                                       in assert (m == m') $ 
+                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
+                                                                     ))
+                                                                   )
+                                                ]
+                                  )] | y <- ys, not $ y ∈ roots, let es = lsuc csGraph y ]
+                changed = equivsN' /= equivs ! n
+                influenced = Set.fromList $ pre graph n
+
+        init = Map.fromList [ (n, Map.fromList [ (y, Set.fromList ys ) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes  ]
+        rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
+
+        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
 
         

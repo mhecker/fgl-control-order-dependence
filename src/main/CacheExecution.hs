@@ -1219,7 +1219,7 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                 changed = equivsN' /= equivs ! n
                 influenced = Set.fromList $ pre graph n
 
-        init = Map.fromList [ (n, Map.fromList [ (y, Set.fromList ys ) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes  ]
+        init = Map.fromList [ (n, Map.fromList [ (y, ysS) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes, let ysS = Set.fromList ys]
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]

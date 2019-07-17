@@ -1149,7 +1149,7 @@ mergeDirectFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
 
 
 mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots  =  (㎲⊒) init f
+mergeFrom graph csGraph idom roots  =  (𝝂) init f 
   where 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
         f :: Map Node (Map CacheGraphNode (Set CacheGraphNode))
@@ -1179,9 +1179,11 @@ mergeFrom graph csGraph idom roots  =  (㎲⊒) init f
                              assert ((∀) ys (\y -> (∀) ys (\y' -> (Set.fromList $ fmap snd $ lsuc csGraph y) == (Set.fromList $ fmap snd $ lsuc csGraph y')))) True
               ]
            )
-        init = (Map.fromList [ (n, Map.empty) | n <- nodes graph ])
+        init = Map.fromList [ (n, Map.fromList [ (y, Set.fromList ys ) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes  ]
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
+
+        
 -- cacheDomNodes''Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) ∩ (∏) [ cachedomOf ! y| y <-nodesToCsNodes ! n ]) | n <- nodes graph]
 --   where cachedomOf = cacheDomNaive'Gfp graph n0
 --         csGraph = cacheStateGraph graph initialCacheState n0

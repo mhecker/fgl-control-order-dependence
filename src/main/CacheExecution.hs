@@ -1104,6 +1104,9 @@ mergeFrom graph csGraph idom roots  =  (㎲⊒) init f
               Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) ] | y <- ys, Just r <- [Map.lookup y rootOf ]])
                            | (n,ys) <- Map.assocs nodesToCsNodes
               ]
+            ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys, not $ y ∈ roots ])
+                           | (n,ys) <- Map.assocs nodesToCsNodes
+              ]
             ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' |
                                                                    y' <- ys,
                                                                    (∀) es (\(_,e) ->

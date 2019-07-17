@@ -1178,7 +1178,7 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
                              assert ((∀) ys (\y -> (∀) ys (\y' -> (Set.fromList $ fmap snd $ lsuc csGraph y) == (Set.fromList $ fmap snd $ lsuc csGraph y')))) True
               ]
            )
-        init = Map.fromList [ (n, Map.fromList [ (y, Set.fromList ys ) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes  ]
+        init = Map.fromList [ (n, Map.fromList [ (y, ysS) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes, let ysS = Set.fromList ys]
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
 

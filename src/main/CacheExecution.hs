@@ -1114,7 +1114,6 @@ csdMergeDirectOf graph n0 =  invert'' $
                  )
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
-      let reach = accessReachableFrom graph',
       let csGraph = cacheStateGraphForVarsAtM vars (cs,es) m :: gr (Node, CacheState) CFGEdge,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph'],
       let y's  = nodesToCsNodes ! m,

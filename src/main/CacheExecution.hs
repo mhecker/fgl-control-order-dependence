@@ -1196,7 +1196,14 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                 ys = nodesToCsNodes ! n
                 equivsN' = (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) ] | y <- ys, Just r <- [Map.lookup y rootOf ]]
                          ⊔ (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys, not $ y ∈ roots ]
-                         ⊔ (∐) [ Map.fromList [ (y, Set.fromList [ y' |
+                         ⊔ fromSuccessors
+                fromSuccessors = goSuccessors (Set.fromList [ y | y <- ys, not $ y ∈ roots ]) Map.empty
+                  where goSuccessors ysLeft fromsucc
+                           | Set.null ysLeft = fromsucc
+                           | otherwise = assert (y ∈ y's) $ goSuccessors (ysLeft ∖ y's) (Map.fromList [ (y',y's) | y' <- Set.toList y's ]) `Map.union` fromsucc
+                          where y = Set.findMin ysLeft
+                                es = lsuc csGraph y
+                                y's = Set.fromList [ y' |
                                                                    y' <- ys,
                                                                    (∀) es (\(_,e) ->
                                                                      (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e then True else
@@ -1208,7 +1215,7 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                                                                      ))
                                                                    )
                                                 ]
-                                  )] | y <- ys, not $ y ∈ roots, let es = lsuc csGraph y ]
+
                 changed = equivsN' /= equivs ! n
                 influenced = Set.fromList $ pre graph n
 

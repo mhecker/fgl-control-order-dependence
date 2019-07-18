@@ -152,9 +152,9 @@ twoAddressCodeV r bf@(Neg x) =
 
 
 consistent :: FullState -> Bool
-consistent σ@((globalσ,tlσ,i), cache, _) = OMap.size cache == cacheSize && (∀) (OMap.assocs cache) cons
-  where cons (var@(Global      x), val) = x `elem` undefinedCache ||  val == globalσ ! var
-        cons (var@(ThreadLocal x), val) = x `elem` undefinedCache ||  val ==     tlσ ! var
+consistent σ@((globalσ,tlσ,i), cache, _) = OMap.size cache <= cacheSize && (∀) (OMap.assocs cache) cons
+  where cons (var@(Global      x), val) = val == globalσ ! var
+        cons (var@(ThreadLocal x), val) = val ==     tlσ ! var
 
 
 cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
@@ -220,7 +220,7 @@ cacheAwareWriteLRUState var val = do
     return ()
 
 initialCacheState :: CacheState
-initialCacheState = OMap.fromList [(Global undef, undefinedCacheValue) | undef <- undefinedCache]
+initialCacheState = OMap.empty
 
 initialFullState :: FullState
 initialFullState = ((Map.empty, Map.empty, ()), initialCacheState, 0)

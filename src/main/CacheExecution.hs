@@ -499,14 +499,33 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =
         (!!) m x = Map.findWithDefault Set.empty x m
 
 
-cacheStateGraphForVarsAtM :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, CacheState) CFGEdge
-cacheStateGraphForVarsAtM vars (cs, es) mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
+cacheStateGraphForVarsAtMSlow :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, CacheState) CFGEdge
+cacheStateGraphForVarsAtMSlow vars (cs, es) mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
           where f (n, s) = (n, α n s)
         es' =  Set.map f es
           where f ((n, sn), e, (m,sm)) = ((n,α n sn), e, (m, α m sm))
         nodes = zip [0..] (Set.toList cs')
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+        α n cache
+          | n == mm   = OMap.fromList [ (v,undefinedCacheValue) | (v,s) <- OMap.assocs cache, v ∈ vars]
+          | otherwise = cache
+
+
+cacheStateGraphForVarsAtM :: forall gr. (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, CacheState) CFGEdge
+cacheStateGraphForVarsAtM vars (cs, es) mm = {- assert ((nodes result == nodes resultSlow) ∧ (edges result == edges resultSlow)) $ -} result
+  where result = mkGraph nodess [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
+        {- resultSlow = cacheStateGraphForVarsAtMSlow vars (cs, es) mm :: gr (Node, CacheState) CFGEdge -}
+        cs' =  (Set.map f csMM) ∪ csNs
+          where (csMM, csNs) = Set.partition (\(n,_) -> n == mm) cs
+                f (n, s) = (n, α n s)
+        es' =  (Set.map f esMM) ∪ esNs
+          where (esMM, esNs) = Set.partition (\((n, sn), e, (m,sm)) -> n == mm ∨ m == mm) es
+                f ((n, sn), e, (m,sm)) = ((n,α n sn), e, (m, α m sm))
+
+        nodess = zip [0..] (Set.toList cs')
+        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodess
 
         α n cache
           | n == mm   = OMap.fromList [ (v,undefinedCacheValue) | (v,s) <- OMap.assocs cache, v ∈ vars]

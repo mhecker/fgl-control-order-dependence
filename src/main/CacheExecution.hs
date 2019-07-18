@@ -1194,8 +1194,7 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                  go  workset'                                      equivs
           where (n, workset') = Set.deleteFindMin workset
                 ys = nodesToCsNodes ! n
-                equivsN' = Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) | y <- ys, Just r <- [Map.lookup y rootOf ]]
-                         ⊔ Map.fromList [ (y, Set.fromList [ y ] )                                            |  y <- ys, not $ y ∈ roots ]
+                equivsN' = equivsNBase ! n
                          ⊔ fromSuccessors
                 fromSuccessors = goSuccessors (Set.fromList [ y | y <- ys, not $ y ∈ roots ]) Map.empty
                   where goSuccessors ysLeft fromsucc
@@ -1227,6 +1226,10 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
         edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
+        equivsNBase = Map.fromList [ (n, 
+              Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) | y <- ys, Just r <- [Map.lookup y rootOf ]]
+            ⊔ Map.fromList [ (y, Set.fromList [ y ] )                                            | y <- ys, not $ y ∈ roots ]
+          ) | (n,ys) <- Map.assocs nodesToCsNodes ]
 
 
         

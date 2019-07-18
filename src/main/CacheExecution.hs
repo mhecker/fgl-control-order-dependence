@@ -1194,8 +1194,8 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                  go  workset'                                      equivs
           where (n, workset') = Set.deleteFindMin workset
                 ys = nodesToCsNodes ! n
-                equivsN' = (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) ] | y <- ys, Just r <- [Map.lookup y rootOf ]]
-                         ⊔ (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys, not $ y ∈ roots ]
+                equivsN' = Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) | y <- ys, Just r <- [Map.lookup y rootOf ]]
+                         ⊔ Map.fromList [ (y, Set.fromList [ y ] )                                            |  y <- ys, not $ y ∈ roots ]
                          ⊔ fromSuccessors
                 fromSuccessors = goSuccessors (Set.fromList [ y | y <- ys, not $ y ∈ roots ]) Map.empty
                   where goSuccessors ysLeft fromsucc

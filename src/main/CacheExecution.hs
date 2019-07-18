@@ -1206,18 +1206,15 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                                 y's = Set.fromList [ y' |
                                                                    y' <- ys,
                                                                    (∀) es (\(_,e) ->
-                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e then True else
-                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e then True else
-                                                                       let Just (m, _) = lab csGraph x
-                                                                           Just (m',_) = lab csGraph x'
-                                                                       in assert (m == m') $ {- 
+                                                                     let (x,  m ) = edgeToSuccessor ! (y,  e)
+                                                                         (x', m') = edgeToSuccessor ! (y', e)
+                                                                     in assert (m == m') $ {- 
                                                                           assert ( x  ∈ equivs ! m  ! x  ) $
                                                                           assert ( x' ∈ equivs ! m' ! x' ) $
                                                                           assert ((x  ∈ equivs ! m' ! x') ↔
                                                                                   (x' ∈ equivs ! m  ! x )) $
                                                                           assert ((x  ∈ equivs ! m' ! x') ↔ (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)) $ -}
                                                                           (x  ∈ equivs ! m' ! x')
-                                                                     ))
                                                                    )
                                                 ]
 
@@ -1228,6 +1225,8 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
+
+        edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
 
 
         

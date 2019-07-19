@@ -1249,7 +1249,10 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                                                                )
                                                                ysLeft
 
-                changed = fromSuccessorsN' /= fromSuccessors ! n
+                changed = {- assert (diffSize == (fromSuccessorsN' /= fromSuccessorsN)) $ -} diffSize
+                  where fromSuccessorsN = fromSuccessors ! n
+                        diffSize = Map.size fromSuccessorsN /= Map.size fromSuccessorsN'
+                                 ∨ (∃) (zip (Map.toAscList fromSuccessorsN) (Map.toAscList fromSuccessorsN')) (\((y,ys), (y', y's)) -> assert (y == y') $ Set.size ys /= Set.size y's)
                 influenced = Map.fromList [ (nodesToOrder ! m, m) | m <- pre graph n]
 
         init = Map.mapWithKey (\n ys -> fromRoots ! n `Map.union` Map.fromSet (const ys) ys) nodesToCsNodes

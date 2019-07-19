@@ -1084,15 +1084,20 @@ accessReachableFrom graph = (㎲⊒) init f
 
 
 merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> gr (Node, Set CacheGraphNode) CFGEdge
-merged csGraph' equivs =  mkGraph nodes edges
+merged csGraph' equivs =  mkGraph nodes' edges
   where edges =  List.nub $ fmap f $ (labEdges csGraph')
           where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
                   where Just (n,_)  = lab csGraph' y
                         Just (n',_) = lab csGraph' y'
-                        equiv  = equivs ! n  ! y
-                        equiv' = equivs ! n' ! y'
-        nodes = zip [0..] [ (n, equiv) | (n, equivN) <- Map.assocs equivs, equiv <- Set.toList $ Set.fromList $ Map.elems equivN ]
+                        equiv  = representative $ equivs ! n  ! y
+                        equiv' = representative $ equivs ! n' ! y'
+        nodes = zip [0..] (Set.toList $ Set.fromList $ [ (n, representative equiv) | (n, equivN) <- Map.assocs equivs, equiv <- Map.elems equivN ])
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+        representative = Set.findMin -- use the first node in a equivalence class as representative
+
+        nodes' = fmap fromRep nodes
+          where fromRep (i,(n,y)) = (i, (n, equivs ! n ! y))
 
 csGraphFromMergeFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeFromFor graph n0 m

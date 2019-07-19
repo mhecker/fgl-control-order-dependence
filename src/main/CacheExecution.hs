@@ -1222,19 +1222,17 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
 
 mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
 mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph csGraph idom roots) -} result
-  where result = go orderToNodes init
-        go workset equivs
-           | Map.null workset  = equivs
+  where result = (go orderToNodes init) ⊔ equivsNBase
+        go workset fromSuccessors
+           | Map.null workset  = fromSuccessors
            | otherwise         =
                if changed then
-                 go (workset' `Map.union` influenced) (Map.insert n equivsN' equivs)
+                 go (workset' `Map.union` influenced) (Map.insert n fromSuccessorsN' fromSuccessors)
                else
-                 go  workset'                                                equivs
+                 go  workset'                                                        fromSuccessors
           where ((_,n), workset') = Map.deleteFindMin workset
                 ys = nodesToCsNodes ! n
-                equivsN' = equivsNBase ! n
-                         ⊔ fromSuccessors
-                fromSuccessors = goSuccessors (ys ∖ roots) Map.empty
+                fromSuccessorsN' = goSuccessors (ys ∖ roots) Map.empty
                   where goSuccessors ysLeft fromsucc
                            | Set.null ysLeft = fromsucc
                            | otherwise = assert (y ∈ y's) $ goSuccessors ysLeft' ((Map.fromSet (const y's) y's) `Map.union` fromsucc)
@@ -1250,12 +1248,12 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                                                                           assert ((x  ∈ equivs ! m' ! x') ↔
                                                                                   (x' ∈ equivs ! m  ! x )) $
                                                                           assert ((x  ∈ equivs ! m' ! x') ↔ (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)) $ -}
-                                                                          (x  ∈ equivs ! m' ! x')
+                                                                          (x  ∈ Map.findWithDefault Set.empty x' (fromSuccessors ! m')  ∨  x ∈ equivsNBase ! m' ! x')
                                                                    )
                                                                )
                                                                ysLeft
 
-                changed = equivsN' /= equivs ! n
+                changed = fromSuccessorsN' /= fromSuccessors ! n
                 influenced = Map.fromList [ (nodesToOrder ! m, m) | m <- pre graph n]
 
         init = Map.mapWithKey (\n ys -> fromRoots ! n `Map.union` Map.fromSet (const ys) ys) nodesToCsNodes

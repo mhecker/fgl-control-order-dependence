@@ -29,7 +29,7 @@ import Control.Monad.List
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Basic (grev)
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.Graph.Inductive.Query.DFS (dfs, rdfs)
+import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
@@ -1217,26 +1217,25 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
 
 mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
 mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph csGraph idom roots) -} result
-  where result = go (Set.fromList $ nodes graph) init
+  where result = go orderToNodes init
         go workset equivs
-           | Set.null workset  = equivs
+           | Map.null workset  = equivs
            | otherwise         =
                if changed then
-                 go (workset' ∪ influenced) (Map.insert n equivsN' equivs)
+                 go (workset' `Map.union` influenced) (Map.insert n equivsN' equivs)
                else
-                 go  workset'                                      equivs
-          where (n, workset') = Set.deleteFindMin workset
+                 go  workset'                                                equivs
+          where ((_,n), workset') = Map.deleteFindMin workset
                 ys = nodesToCsNodes ! n
                 equivsN' = equivsNBase ! n
                          ⊔ fromSuccessors
-                fromSuccessors = goSuccessors (Set.fromList [ y | y <- ys, not $ y ∈ roots ]) Map.empty
+                fromSuccessors = goSuccessors (ys ∖ roots) Map.empty
                   where goSuccessors ysLeft fromsucc
                            | Set.null ysLeft = fromsucc
-                           | otherwise = assert (y ∈ y's) $ goSuccessors (ysLeft ∖ y's) (Map.fromList [ (y',y's) | y' <- Set.toList y's ]) `Map.union` fromsucc
+                           | otherwise = assert (y ∈ y's) $ goSuccessors ysLeft' ((Map.fromSet (const y's) y's) `Map.union` fromsucc)
                           where y = Set.findMin ysLeft
                                 es = lsuc csGraph y
-                                y's = Set.fromList [ y' |
-                                                                   y' <- ys,
+                                (y's, ysLeft') = Set.partition (\y' -> 
                                                                    (∀) es (\(_,e) ->
                                                                      let (x,  m ) = edgeToSuccessor ! (y,  e)
                                                                          (x', m') = edgeToSuccessor ! (y', e)
@@ -1248,22 +1247,34 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                                                                           assert ((x  ∈ equivs ! m' ! x') ↔ (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)) $ -}
                                                                           (x  ∈ equivs ! m' ! x')
                                                                    )
-                                                ]
+                                                               )
+                                                               ysLeft
 
                 changed = equivsN' /= equivs ! n
-                influenced = Set.fromList $ pre graph n
+                influenced = Map.fromList [ (nodesToOrder ! m, m) | m <- pre graph n]
 
-        init = Map.fromList [ (n, Map.fromList [ (y, ysS) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes, let ysS = Set.fromList ys]
+        init = Map.mapWithKey (\n ys -> fromRoots ! n `Map.union` Map.fromSet (const ys) ys) nodesToCsNodes
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
-        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
+        nodesToCsNodes = Map.fromList [ (n, Set.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
         edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
-        equivsNBase = Map.fromList [ (n, 
-              Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) | y <- ys, Just r <- [Map.lookup y rootOf ]]
-            ⊔ Map.fromList [ (y, Set.fromList [ y ] )                                            | y <- ys, not $ y ∈ roots ]
-          ) | (n,ys) <- Map.assocs nodesToCsNodes ]
 
+        fromRoots = Map.mapWithKey (\n ys -> go ys Map.empty) nodesToCsNodes
+          where go ysLeft fromroots
+                  | Set.null ysLeft = fromroots
+                  | otherwise = let mr = Map.lookup y rootOf in case mr of
+                        Nothing -> go ysLeft0                                          fromroots
+                        Just r  -> let (y's, ysLeft') = Set.partition (\y' -> Map.lookup y' rootOf == mr) ysLeft in
+                                   go ysLeft' (Map.fromSet (const y's) y's `Map.union` fromroots)
+                      where (y, ysLeft0) = Set.deleteFindMin ysLeft
+
+        equivsNBase = Map.mapWithKey (\n ys -> fromRoots ! n ⊔ (Map.fromSet Set.singleton $ ys ∖ roots)) nodesToCsNodes
+
+        order = List.reverse $ topsort graph
+        nodesToOrder = Map.fromList $ zip order [0..]
+        orderToNodes = Map.fromList $ zip [0..] order
+       
 
         
 -- cacheDomNodes''Gfp graph n0 = Map.fromList [ (n, (Set.fromList $ dfs [n] graph ) ∩ (∏) [ cachedomOf ! y| y <-nodesToCsNodes ! n ]) | n <- nodes graph]

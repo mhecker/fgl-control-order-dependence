@@ -43,6 +43,7 @@ import Program.For (compileAllToProgram, For(..))
 
 import Data.Graph.Inductive.Util (mergeTwoGraphs, isTransitive, fromSuccMap, delSuccessorEdges)
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp, sinkdomsOf, isinkdomOfTwoFinger8)
+import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger)
 import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
 
@@ -1131,7 +1132,7 @@ csdMergeOf graph n0 =  invert'' $
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph'],
       let y's  = nodesToCsNodes ! m,
       let csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's,
-      let idom' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph',
+      let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
       let equivs = mergeFrom graph' csGraph' idom' roots',
       let csGraph'' = merged csGraph' equivs,
@@ -1156,7 +1157,7 @@ csdMergeDirectOf graph n0 =  invert'' $
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph'],
       let y's  = nodesToCsNodes ! m,
       let csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's,
-      let idom' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph',
+      let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
       let equivs = mergeFrom graph' csGraph' idom' roots',
       let csGraph'' = merged csGraph' equivs,

@@ -1242,12 +1242,7 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
                                                                    (∀) es (\(_,e) ->
                                                                      let (x,  m ) = edgeToSuccessor ! (y,  e)
                                                                          (x', m') = edgeToSuccessor ! (y', e)
-                                                                     in assert (m == m') $ {- 
-                                                                          assert ( x  ∈ equivs ! m  ! x  ) $
-                                                                          assert ( x' ∈ equivs ! m' ! x' ) $
-                                                                          assert ((x  ∈ equivs ! m' ! x') ↔
-                                                                                  (x' ∈ equivs ! m  ! x )) $
-                                                                          assert ((x  ∈ equivs ! m' ! x') ↔ (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)) $ -}
+                                                                     in assert (m == m') $
                                                                           (x  ∈ Map.findWithDefault Set.empty x' (fromSuccessors ! m')  ∨  x ∈ equivsNBase ! m' ! x')
                                                                    )
                                                                )

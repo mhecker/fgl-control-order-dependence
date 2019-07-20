@@ -533,6 +533,29 @@ cacheStateGraphForVarsAtM vars (cs, es) mm = {- assert ((nodes result == nodes r
           | otherwise = cache
 
 
+cacheStateGraph'ForVarsAtMForGraph :: forall gr. (DynGraph gr) => Set Var ->  gr (Node, CacheState) CFGEdge  ->  Node -> gr (Node, CacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph vars g0 mm = result
+  where result = subgraph (rdfs (fmap fst $ withNewIds) merged) merged
+        merged :: gr (Node, CacheState) CFGEdge
+        merged = insEdges [ (id, oldMNodesToNew ! id', e) | edge@(id,id',e) <- mEdgesIncoming]
+               $ insNodes withNewIds
+               $ delNodes (fmap fst mNodes)
+               $ g0
+        mNodes = [ node | node@(id, (m, cache)) <- labNodes g0, m == mm ]
+        mNodeS = Set.fromList $ fmap fst $ mNodes
+        mEdgesIncoming = [ edge | edge@(id,id',e) <- labEdges g0, id' ∈ mNodeS, not $ id ∈ mNodeS ]
+
+        oldMNodesToNew = Map.fromList $ [ (id, newId) | node@(id, (m, cache)) <- mNodes, let αcache = (m, α m cache), let Just (newId,_) = List.find (\(_,αcache') -> αcache == αcache') withNewIds ]
+        new = newNodes (length abstract) g0
+        abstract   = Set.toList $ Set.fromList [ (m, α m cache)  | node@(id, (m, cache)) <- mNodes ]
+        withNewIds = zip new abstract
+
+
+        α n cache
+          | n == mm   = OMap.fromList [ (v,undefinedCacheValue) | (v,s) <- OMap.assocs cache, v ∈ vars]
+          | otherwise = cache
+
+
 
 
 
@@ -1153,10 +1176,9 @@ csdMergeDirectOf graph n0 =  invert'' $
                  )
     | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
-      let csGraph = cacheStateGraphForVarsAtM vars (cs,es) m :: gr (Node, CacheState) CFGEdge,
-      let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph'],
+      let csGraph' = cacheStateGraph'ForVarsAtMForGraph vars csGraph m :: gr (Node, CacheState) CFGEdge,
+      let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph'],
       let y's  = nodesToCsNodes ! m,
-      let csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's,
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
       let equivs = mergeFrom graph' csGraph' idom' roots',
@@ -1164,24 +1186,20 @@ csdMergeDirectOf graph n0 =  invert'' $
       let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'',
       let ys = Set.fromList [ y | y <- nodes csGraph'', idom'' ! y == Nothing]
    ]
-  where cacheState csGraph y' = fmap fst $ fst $ cs
-          where Just (_,cs) = lab csGraph y'
-        (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
+  where csGraph = cacheStateGraph graph initialCacheState n0
 
 
 csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeDirectFromFor graph n0 m
 
 mergeDirectFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
-    where (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
-
+  where   csGraph = cacheStateGraph graph initialCacheState n0
           vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars]
           graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
-          csGraph = cacheStateGraphForVarsAtM vars (cs,es) m :: Gr (Node, CacheState) CFGEdge
-          nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph']
+          csGraph' = cacheStateGraph'ForVarsAtMForGraph vars csGraph m
+          nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph']
           y's  = nodesToCsNodes ! m
           
-          csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's
           idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
           roots = Set.fromList y's
 

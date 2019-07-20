@@ -1224,6 +1224,10 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
 mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
 mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph csGraph idom roots) -} result
   where result = (go orderToNodes init) ⊔ equivsNBase
+          where (⊔) :: Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
+                (⊔) left right =  Map.unionWithKey f left right
+                f n fromSuccessorsN  fromBaseN = Map.unionWithKey g fromSuccessorsN fromBaseN
+                g y fromSuccessorsYs fromBaseYs = {- assert (fromBaseYs ⊆ fromSuccessorsYs) $ -} fromSuccessorsYs
         go workset fromSuccessors
            | Map.null workset  = fromSuccessors
            | otherwise         =

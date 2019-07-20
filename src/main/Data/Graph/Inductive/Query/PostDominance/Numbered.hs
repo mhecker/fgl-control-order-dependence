@@ -6,6 +6,7 @@ module Data.Graph.Inductive.Query.PostDominance.Numbered where
 -- Author: Bertram Felgenhauer <int-e@gmx.de>
 -- Author: Martin Hecker <martin.hecker@kit.edu>
 
+import           Data.Foldable                  (toList)
 
 import           Data.Array
 import           Data.Graph.Inductive.Graph
@@ -14,6 +15,10 @@ import           Data.IntMap                    (IntMap)
 import qualified Data.IntMap                    as I
 import           Data.Tree                      (Tree (..))
 import qualified Data.Tree                      as T
+
+import           Data.Sequence                  (Seq (..), (><))
+import qualified Data.Sequence                  as Seq
+
 
 import Debug.Trace
 
@@ -76,7 +81,7 @@ idomWork g sinks = let
     -- sink nodes must be given a fixed idom s.t. node from the same sink form a cycle
     sinkSuccs = [ (s1, s2) | sink@(_:_:_) <- sinks, let (s:sorted) = sort $ fmap (fromNode I.!) sink, (s1,s2) <- zip (s:sorted) (sorted ++ [s]) ]
     -- the approximation iPDom0 just maps each node to its parent
-    iPD0 = array (1, s-1) [(i,0) | i <- [1..s-1]] // (fmap (\(a,b) -> (b,a)) $ forestEdges nforest) // sinkSuccs
+    iPD0 = array (1, s-1) [(i,0) | i <- [1..s-1]] // (fmap (\(a,b) -> (b,a)) $ toList $ forestEdges nforest) // sinkSuccs
     -- in order to preserve sink-cycles in idom, chose a canonical representative for each sink
     toCanonical = array (1, s-1)  [(i,i) | i <- [1..s-1]] // [ (fromNode I.! s', fromNode I.! s ) | (s:sink) <- sinks, s' <- (s:sink) ]
     -- fromNode translates graph nodes to relabeled (internal) nodes
@@ -138,11 +143,11 @@ numberForest n (t:ts) = let (n', t')   = numberTree n t
                             (n'', ts') = numberForest n' ts
                         in  (n'', t':ts')
 
-treeEdges :: Tree a -> [(a,a)]
-treeEdges (Node a ts) = [(a, b) | b <- fmap rootLabel ts] ++ forestEdges ts
+treeEdges :: Tree a -> Seq (a,a)
+treeEdges (Node a ts) = Seq.fromList [(a, b) | b <- fmap rootLabel ts] >< forestEdges ts
 
-forestEdges [] = []
-forestEdges (t:ts) = treeEdges t ++ forestEdges ts
+forestEdges [] = Seq.empty
+forestEdges (t:ts) = treeEdges t >< forestEdges ts
 
 -- find a fixed point of f, iteratively
 fixEq :: (Eq a) => (a -> a) -> a -> a

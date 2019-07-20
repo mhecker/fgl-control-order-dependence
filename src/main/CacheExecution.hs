@@ -1181,19 +1181,23 @@ csdMergeDirectOf graph n0 =  invert'' $
       let y's  = nodesToCsNodes ! m,
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
-      let equivs = mergeFrom graph' csGraph' idom' roots',
+      let equivs = mergeFromForEdgeToSuccessor edgeToSuccessor0 graph' csGraph'  idom' roots',
       let csGraph'' = merged csGraph' equivs,
       let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'',
       let ys = Set.fromList [ y | y <- nodes csGraph'', idom'' ! y == Nothing]
    ]
   where csGraph = cacheStateGraph graph initialCacheState n0
+        edgeToSuccessor0 = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
 
 
 csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeDirectFromFor graph n0 m
 
-mergeDirectFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
+
+mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor edgeToSuccessor0 graph' csGraph'  idom roots, csGraph')
   where   csGraph = cacheStateGraph graph initialCacheState n0
+          edgeToSuccessor0 = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
+          
           vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = Set.filter isCachable $ useE e, not $ Set.null vars]
           graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
           csGraph' = cacheStateGraph'ForVarsAtMForGraph vars csGraph m
@@ -1239,8 +1243,24 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
 
-mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph csGraph idom roots) -} result
+mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge)) =>
+  gr CFGNode CFGEdge ->
+  gr (Node, s) CFGEdge ->
+  Map CacheGraphNode (Maybe CacheGraphNode) ->
+  Set CacheGraphNode ->
+  Map Node (Map CacheGraphNode (Set CacheGraphNode))
+mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor edgeToSuccessor graph csGraph  idom roots
+  where edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
+
+
+mergeFromForEdgeToSuccessor ::  (DynGraph gr, Show (gr (Node, s) CFGEdge)) =>
+  Map (CacheGraphNode, CFGEdge) (CacheGraphNode, Node) ->
+  gr CFGNode CFGEdge ->
+  gr (Node, s) CFGEdge ->
+  Map CacheGraphNode (Maybe CacheGraphNode) ->
+  Set CacheGraphNode ->
+  Map Node (Map CacheGraphNode (Set CacheGraphNode))
+mergeFromForEdgeToSuccessor edgeToSuccessor0 graph csGraph idom roots = {- assert (result == mergeFromSlow graph csGraph idom roots) -} result
   where result = (go orderToNodes init) ⊔ equivsNBase
           where (⊔) :: Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
                 (⊔) left right =  Map.unionWithKey f left right
@@ -1282,7 +1302,7 @@ mergeFrom graph csGraph idom roots = {- assert (result == mergeFromSlow graph cs
 
         nodesToCsNodes = Map.fromList [ (n, Set.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
-        edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
+        edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | x <- Set.toList $ roots, let Just (m,_) = lab csGraph x, (y,e) <- lpre csGraph x] `Map.union` edgeToSuccessor0
 
         fromRoots = Map.mapWithKey (\n ys -> go ys Map.empty) nodesToCsNodes
           where go ysLeft fromroots

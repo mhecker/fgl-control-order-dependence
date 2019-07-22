@@ -1219,7 +1219,7 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
               Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) ] | y <- ys, Just r <- [Map.lookup y rootOf ]])
                            | (n,ys) <- Map.assocs nodesToCsNodes
               ]
-            ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys, not $ y ∈ roots ])
+            ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys])
                            | (n,ys) <- Map.assocs nodesToCsNodes
               ]
             ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' |

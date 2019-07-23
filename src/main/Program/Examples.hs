@@ -2230,6 +2230,33 @@ simple4''2 = p { observability = defaultObservabilityMap (tcfg p) }
 
          ]
 
+simple4''3 :: Program Gr
+simple4''3 = p { observability = defaultObservabilityMap (tcfg p) }
+  where p = code2Program code
+        code = Map.fromList $ [
+          (1,
+           Ass (Global "a") (Val 1)                                        `Seq`
+           Ass (Global "b") (Val 2)                                        `Seq`
+           Ass (Global "c") (Val 3)                                        `Seq`
+           Ass (Global "d") (Val 4)                                        `Seq`
+           Ass (Global "x") (Val 24)                                       `Seq`
+           If (Leq (Var (Global "x")) (Val 0))
+              (Ass (Global "y") (Var (Global "b") `Plus` (Var (Global "c"))))
+              (Ass (Global "y") (Var (Global "d")))                                           `Seq`
+           -- Ass (Register 0) (Var (Global "a"))                                                `Seq`
+           Ass (Register 1) (Var (Global "b"))                                                `Seq`
+           Ass (Register 2) (Var (Global "y"))                                                `Seq`
+           If (Leq (Var (Register 2)) (Val 3))
+              (Ass (Register 3) (Var (Global "a")))
+              (Ass (Register 3) (Var (Global "b")))                                           `Seq`
+           Ass (Register 5) (Var (Global "e"))               `Seq`
+           Ass (Register 6) (Var (Global "f"))               `Seq`
+           Ass (Register 7) (Var (Global "g"))               `Seq`
+           Ass (Register 4) (Var (Global "c"))               
+          )
+
+         ]
+
 
 
 

@@ -1167,7 +1167,7 @@ csdMergeOf graph n0 =  invert'' $
         (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
 
 csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set CacheGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdMergeDirectOf graph n0 =  invert'' $
+csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
                                         let Just (n, _) = lab csGraph'' y,
                                         -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,

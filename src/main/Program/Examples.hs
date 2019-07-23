@@ -2211,7 +2211,6 @@ simple4''2 = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code
         code = Map.fromList $ [
           (1,
-           Skip                                                            `Seq`
            Ass (Global "a") (Val 1)                                        `Seq`
            Ass (Global "b") (Val 2)                                        `Seq`
            Ass (Global "c") (Val 3)                                        `Seq`
@@ -2223,11 +2222,10 @@ simple4''2 = p { observability = defaultObservabilityMap (tcfg p) }
            -- Ass (Register 0) (Var (Global "a"))                                                `Seq`
            Ass (Register 1) (Var (Global "b"))                                                `Seq`
            Ass (Register 2) (Var (Global "y"))                                                `Seq`
-           If (Leq (Var (Register 3)) (Val 3))
+           If (Leq (Var (Register 2)) (Val 3))
               (Ass (Register 3) (Var (Global "a")))
               (Ass (Register 3) (Var (Global "b")))                                           `Seq`
-           Ass (Register 4) (Var (Global "c"))                 `Seq`
-           Skip
+           Ass (Register 4) (Var (Global "c"))               
           )
 
          ]

@@ -10,11 +10,14 @@ import Data.List
 
 import Data.Maybe (fromJust)
 
+import qualified Data.Map.Ordered as OMap
+
 import qualified Data.Dequeue as Dequeue
 import Data.Dequeue (pushBack, popFront)
 import Data.Dequeue.SimpleDequeue (SimpleDequeue)
 
 import System.IO.Unsafe(unsafePerformIO)
+import GHC.IO.Handle.Types (Handle)
 import Control.Monad.Random
 import Control.Monad(forM_, when, forever, forM)
 
@@ -98,9 +101,12 @@ main = let { p = toProgramIntra someGen11' :: Program Gr } in  do { putStrLn $ s
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
 
-
-showGraph g = do
-  let dot = showDot (fglToDot g)
+showGraph :: (Graph gr, Show a, Show b)  => gr a b -> IO (GHC.IO.Handle.Types.Handle, GHC.IO.Handle.Types.Handle, GHC.IO.Handle.Types.Handle, ProcessHandle)
+showGraph = showGraphWith show show
+-- IO (Handle, Handle, Handle, ProcessHandle)
+showGraphWith :: Graph gr => (a -> String) -> (b -> String) -> (gr a b) -> IO (GHC.IO.Handle.Types.Handle, GHC.IO.Handle.Types.Handle, GHC.IO.Handle.Types.Handle, ProcessHandle)
+showGraphWith showN showE g = do
+  let dot = showDot (fglToDotGeneric g showN showE id)
   randomInt <- getStdRandom (randomR (1,65536)) :: IO Int
   let file = "file" ++ (show randomInt) ++ ".dot"
   writeFile file dot

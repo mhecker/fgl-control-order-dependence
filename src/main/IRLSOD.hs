@@ -21,6 +21,15 @@ import Data.List (partition,delete)
 import qualified Data.List as List
 
 data Var = Global String | ThreadLocal String | Register Int deriving (Show, Eq, Ord, Generic, NFData)
+
+class SimpleShow a where
+  simpleShow :: a -> String
+
+instance SimpleShow Var where
+  simpleShow (Global x) = x
+  simpleShow (ThreadLocal x) = x ++ " (thread local)"
+  simpleShow (Register i) = "[r" ++ (show i) ++ "]"
+
 type Val = Int
 type InputChannel = String
 type OutputChannel = String
@@ -47,6 +56,22 @@ type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
 data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction deriving (Show, Eq, Ord)
+
+instance SimpleShow BoolFunction where
+  simpleShow CTrue  = "true"
+  simpleShow CFalse = "false"
+  simpleShow (Leq a b) = "(" ++ simpleShow a ++ " ≤ " ++ simpleShow b ++ ")"
+  simpleShow (Or  a b) = "(" ++ simpleShow a ++ " ∨ " ++ simpleShow b ++ ")"
+  simpleShow (And a b) =        simpleShow a ++ " ∧ " ++ simpleShow b
+  simpleShow (Not a  ) = "¬" ++ simpleShow a
+
+instance SimpleShow VarFunction where
+  simpleShow (Val x) = show x
+  simpleShow (Var x) = simpleShow x
+  simpleShow (Plus  a b) = "(" ++ simpleShow a ++ " + " ++ simpleShow b ++ ")"
+  simpleShow (Times a b) =        simpleShow a ++ " · " ++ simpleShow b
+  simpleShow (Neg   a  ) = "-" ++ simpleShow a
+
 
 evalB :: CombinedState -> BoolFunction -> Bool
 evalB _ CTrue     = True
@@ -93,6 +118,13 @@ data CFGEdge = Guard  Bool BoolFunction
              | NoOp
              | Spawn
              deriving (Show, Eq, Ord)
+
+instance SimpleShow CFGEdge where
+  simpleShow (Guard True  bf) =         simpleShow bf
+  simpleShow (Guard False bf) = "¬ " ++ simpleShow bf
+  simpleShow (Assign x vf)    = simpleShow x ++ " := " ++ simpleShow vf
+  simpleShow (NoOp) = ""
+  simpleShow e = show e
 
 
 isIntraCFGEdge :: CFGEdge -> Bool

@@ -64,6 +64,13 @@ labnfilter p gr = delNodes (map fst . filter (not . p) $ labNodes gr) gr
 labefilter :: (Eq b, DynGraph gr) => (LEdge b -> Bool) -> gr a b -> gr a b
 labefilter p gr = foldr delAllLEdge gr (filter (not . p) $ labEdges gr)
 
+
+labemap :: (DynGraph gr) => (Node -> Node -> b -> c) -> gr a b -> gr a c
+labemap f = gmap (\(p,n,l,s)->(fmap (fPre n) p, n, l, fmap (fSuc n) s))
+  where
+    fPre n (b, m) = (f m n b, m)
+    fSuc n (b, m) = (f n m b, m)
+
 isInCycle :: Graph gr => gr a b -> Node -> Bool
 isInCycle graph node = length component > 1
   where component = the (node ∊) $ scc graph

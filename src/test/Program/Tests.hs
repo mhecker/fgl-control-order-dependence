@@ -11,6 +11,7 @@ import Data.List
 import Data.Maybe (fromJust)
 
 import qualified Data.Map.Ordered as OMap
+import Data.Foldable (toList)
 
 import qualified Data.Dequeue as Dequeue
 import Data.Dequeue (pushBack, popFront)
@@ -82,6 +83,7 @@ import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Query.BalancedSCC
 import Data.Graph.Inductive.Arbitrary
+import Data.Graph.Inductive.Query.TSCD
 
 import Data.Graph.Inductive.Query.Util.GraphTransformations (sinkShrinkedGraph)
 

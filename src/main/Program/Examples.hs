@@ -2218,7 +2218,7 @@ simple4''2 = p { observability = defaultObservabilityMap (tcfg p) }
            Ass (Global "x") (Val 24)                                       `Seq`
            If (Leq (Var (Global "x")) (Val 0))
               (Ass (Global "y") (Var (Global "b") `Plus` (Var (Global "c"))))
-              (Ass (Global "y") (Var (Global "d")))                                           `Seq`
+              (Ass (Global "y") (Var (Global "d") `Plus` (Var (Global "d"))))                 `Seq`
            -- Ass (Register 0) (Var (Global "a"))                                                `Seq`
            Ass (Register 1) (Var (Global "b"))                                                `Seq`
            Ass (Register 2) (Var (Global "y"))                                                `Seq`

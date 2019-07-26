@@ -3969,6 +3969,18 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
 
 
 cdomCdomTests = testGroup "(concerning cdoms)" $
+  [ testCase ("isCdom idomChef                for " ++ exampleName) $  isCdom p idomChef @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("isCdom idomMohrEtAl            for " ++ exampleName) $  isCdom p idomMohrEtAl @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("isCdom idomMohrEtAlNoCycleTest for " ++ exampleName) $  isCdom p idomMohrEtAlNoCycleTest @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("isCdom idomBischof             for " ++ exampleName) $  isCdom p idomBischof @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [ testCase ("cdomIsCdom idomChef for " ++ exampleName) $                 (cdomIsCdomViolations  p execs idomChef) == [] @? ""
   | (exampleName, p) <- testsuite, let execs = fmap fst $ unsafePerformIO $ evalRandIO $ someFinishedAnnotatedExecutionTraces 100 p defaultInput
   ] ++

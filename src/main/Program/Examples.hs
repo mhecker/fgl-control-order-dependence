@@ -1599,6 +1599,136 @@ figure1leftCode = code where
           )
          ]
 
+
+figure2midIrlsod16 = code2Program figure2midIrlsod16Code
+  
+figure2midIrlsod16Code = code where
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass (Global "l") (Val 0)                                         `Seq`
+           Ass (Global "h") (Val 0)                                         `Seq`
+           SpawnThread 2                                                    `Seq`
+           SpawnThread 3                                                    `Seq`
+           Skip
+          ),
+          (2,
+           Skip                                                             `Seq`
+           -- PrintToChannel (Val 17) stdOut                                   `Seq`
+           Ass (Global "l") (Val 42)                                        `Seq`
+           ReadFromChannel (Global "h") stdIn                               `Seq`
+           Skip
+          ),
+          (3,
+           Skip                                                             `Seq`
+           PrintToChannel (Var (Global "l")) stdOut                         `Seq`
+           Ass (Global "l") (Var (Global "h"))                              `Seq`
+           Skip
+          )
+         ]
+
+
+figure1midIrlsod18 = code2Program figure1midIrlsod18Code
+  
+figure1midIrlsod18Code = code where
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           Ass (Global "l") (Val 0)                                         `Seq`
+           Ass (Global "h") (Val 0)                                         `Seq`
+           SpawnThread 2                                                    `Seq`
+           SpawnThread 3                                                    `Seq`
+           Skip
+          ),
+          (2,
+           Skip                                                             `Seq`
+           ReadFromChannel (Global "l") lowIn1                              `Seq`
+           PrintToChannel  (Var (Global "l")) stdOut                        `Seq`
+           Skip
+          ),
+          (3,
+           Skip                                                             `Seq`
+           ReadFromChannel (Global "h") stdIn                               `Seq`
+           Ass (Global "l") (Var (Global "h"))                              `Seq`
+           Skip
+          )
+         ]
+
+
+
+figureDissLSOD1 = code2Program figureDissLSOD1Code
+figureDissLSOD1Code = code where
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           SpawnThread 2                                                    `Seq`
+           SpawnThread 3                                                    `Seq`
+           Skip
+          ),
+          (2,
+           Skip                                                             `Seq`
+           PrintToChannel (Val 17) stdOut                                   
+          ),
+          (3,
+           Skip                                                             `Seq`
+           PrintToChannel (Val 42) stdOut                                   
+          )
+         ]
+
+
+figureDissLSOD2 = code2Program figureDissLSOD2Code
+figureDissLSOD2Code = code where
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel (Global "l") lowIn1                              `Seq`
+           SpawnThread 2                                                    `Seq`
+           SpawnThread 3                                                    `Seq`
+           Skip
+          ),
+          (2,
+           Skip                                                             `Seq`
+           If ((Var (Global "l") `Leq` (Val 1)))
+             (Skip `Seq` Skip)
+             (Skip)                                                         `Seq`
+           PrintToChannel (Val 17) stdOut                                   
+          ),
+          (3,
+           Skip                                                             `Seq`
+           (Skip `Seq` Skip)                                                `Seq`
+           PrintToChannel (Val 42) stdOut                                   
+          )
+         ]
+
+figureDissLSOD2High = code2Program figureDissLSOD2HighCode
+figureDissLSOD2HighCode = code where
+        code = Map.fromList $ [
+          (1,
+           Skip                                                             `Seq`
+           ReadFromChannel (Global "l") stdIn                               `Seq`
+           SpawnThread 2                                                    `Seq`
+           SpawnThread 3                                                    `Seq`
+           Skip
+          ),
+          (2,
+           Skip                                                             `Seq`
+           If ((Val 1) `Leq` (Var (Global "l")))
+             (Skip `Seq` Skip `Seq` Skip `Seq` Skip)
+             (Skip)                                                         `Seq`
+           PrintToChannel (Val 17) stdOut                                   
+          ),
+          (3,
+           Skip                                                             `Seq`
+           If ((Val 1) `Leq` (Var (Global "l")))
+             (Skip)
+             (Skip `Seq` Skip `Seq` Skip `Seq` Skip)                        `Seq`
+           PrintToChannel (Val 42) stdOut                                   
+          )
+         ]
+
+
+
+
 figure5left = code2Program figure5leftCode
   
 figure5leftCode = code where

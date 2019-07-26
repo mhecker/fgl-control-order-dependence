@@ -163,3 +163,19 @@ showSomeFinishedExecutionTraces program input n = do
         putStrLn $ ""
        )
     )
+
+showSomeFinishedExecutionTracesObs program input n = do
+  traces <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program input
+  forM_ traces (\(trace,q) -> do
+     putStrLn "==========================================================================="
+     let traceObs = observable (tcfg program) (observability program) Low (toTrace trace)
+     forM_ traceObs (\(σ,(n,e),σ') -> do
+        putStrLn $ show σ
+        putStr   $ "---"
+        putStr   $ show (n,e)
+        putStrLn $ "-->"
+        putStrLn $ ""
+       )
+    )
+
+

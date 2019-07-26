@@ -41,31 +41,6 @@ type MhpInformation = Set (Node,Node)
 
 
 
-simonMhpSetFor :: DynGraph gr => Program gr -> Set (Node,Node)
-simonMhpSetFor p@(Program { tcfg }) =
-     Set.fromList [ (n1,n2) | n1 <- nodes tcfg, n2 <- nodes tcfg, sameThread n1 n2, isInMulti ! n1 ]
-   ⊔ Set.filter (\(n1,n2) -> not $ sameThread n1 n2) mhpDiff
-  where sameThread n1 n2 = (threads1 == threads2) ∧ (Set.size threads1 == 1)
-          where threads1 = threadsOfMap ! n1 
-                threads2 = threadsOfMap ! n2
-        isInMulti = isInMultiThread p
-        mhpDiff   = mhpDifferentSimon p
-        threadsOfMap = threadsOf p
-
-
-
-simonMhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
-simonMhpFor p@(Program { tcfg }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
-  where mhp n1 n2
-           | (threads1 == threads2) ∧ (Set.size threads1 == 1) = isInMulti ! n1  -- == isInMulti ! n2
-           | otherwise                                         = (n1,n2) ∈ mhpDiff
-          where threads1 = threadsOfMap ! n1 
-                threads2 = threadsOfMap ! n2
-        isInMulti = isInMultiThread p
-        mhpDiff   = mhpDifferentSimon p
-        threadsOfMap = threadsOf p
-
-
 mhpSetFor :: DynGraph gr => Program gr -> Set (Node,Node)
 mhpSetFor p@(Program { tcfg }) =
      Set.fromList [ (n1,n2) | n1 <- nodes tcfg, n2 <- nodes tcfg, sameThread n1 n2, isInMulti ! n1 ]
@@ -76,6 +51,7 @@ mhpSetFor p@(Program { tcfg }) =
         isInMulti = isInMultiThread p
         mhpDiff   = mhpDifferent p
         threadsOfMap = threadsOf p
+
 
 
 mhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
@@ -91,7 +67,8 @@ mhpFor p@(Program { tcfg }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes 
 
 
 
-mhpDifferent p@(Program { tcfg }) =
+
+mhpDifferentOld p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ [(a,b),(b,a)] | a <- nodes tcfg, (b,Spawn) <- lsuc tcfg a ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
                                                                    a' <- DFS.reachable a tcfg,
@@ -104,7 +81,7 @@ mhpDifferent p@(Program { tcfg }) =
        threadsOfMap = threadsOf p
 
 
-mhpDifferentSimon p@(Program { tcfg }) =
+mhpDifferent p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ if (e /= NoOp) then (error $ "invalid spawn-node successor " ++ show (b,e)) else
                                     [(a,b),(b,a)] | n <- nodes tcfg, (a,Spawn) <- lsuc tcfg n, (b,e) <- lsuc tcfg n, e /= Spawn ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,

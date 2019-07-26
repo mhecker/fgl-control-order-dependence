@@ -121,7 +121,7 @@ simonClassificationUsing
     )
   where
     mhps = Map.fromList [ (n, Set.fromList [ m | ((n',m), True) <- Map.assocs mhp, n' == n]) | n <- nodes tcfg ]
-    mhp = simonMhpFor p
+    mhp = mhpFor p
 
     
 timingClassification p = timingClassificationLevels pc p

@@ -48,6 +48,23 @@ import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Query.TimingDependence
 import Data.Graph.Inductive.Query.DFS (scc)
 
+isCdom ::  DynGraph gr => Program gr -> (Program gr ->  Map (Node,Node) Node) -> Bool
+isCdom p@(Program {tcfg, entryOf, procedureOf, mainThread}) cd =
+    (∀) (Map.assocs cdom) (\((n,m),c) ->
+      let ok = isReachableFromTreeM dom c m ∧ isReachableFromTreeM dom c n ∧ (not $ c ∈ mhps ! m) ∧ (not $ c ∈ mhps ! n)
+      in if ok then ok else traceShow (n,m,c) ok
+    )
+
+  where dom :: Map Node (Maybe Node)
+        dom = Map.insert n0 Nothing $ fmap Just $ Map.fromList $ iDom tcfg n0
+
+        n0 = (entryOf $ procedureOf $ mainThread)
+
+        mhp = mhpSetFor p
+        mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes tcfg ]
+
+        cdom = cd p
+
 
 
 cdomIsDomViolations :: DynGraph gr => Program gr -> [ExecutionTrace] -> (Program gr ->  Map (Node,Node) Node) -> [(Node,Node,Trace)]

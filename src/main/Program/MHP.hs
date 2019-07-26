@@ -41,6 +41,18 @@ type MhpInformation = Set (Node,Node)
 
 
 
+simonMhpSetFor :: DynGraph gr => Program gr -> Set (Node,Node)
+simonMhpSetFor p@(Program { tcfg }) =
+     Set.fromList [ (n1,n2) | n1 <- nodes tcfg, n2 <- nodes tcfg, sameThread n1 n2, isInMulti ! n1 ]
+   ⊔ Set.filter (\(n1,n2) -> not $ sameThread n1 n2) mhpDiff
+  where sameThread n1 n2 = (threads1 == threads2) ∧ (Set.size threads1 == 1)
+          where threads1 = threadsOfMap ! n1 
+                threads2 = threadsOfMap ! n2
+        isInMulti = isInMultiThread p
+        mhpDiff   = mhpDifferentSimon p
+        threadsOfMap = threadsOf p
+
+
 
 simonMhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
 simonMhpFor p@(Program { tcfg }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]

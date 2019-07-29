@@ -240,8 +240,8 @@ chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, pro
 
 
 
-idomIsTree ::  forall gr. DynGraph gr => Program gr -> Map (Node,Node) Node -> Bool
-idomIsTree p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) idom =
+idomIsTreeGraph ::  forall gr. DynGraph gr => gr CFGNode CFGEdge -> Node -> Map (Node,Node) Node -> Bool
+idomIsTreeGraph tcfg entry idom =
     (∀) (scc tree)               (\scc -> length scc == 1)
  ∧  (isTransitive tree)
  ∧  (∀) (nodes tree  \\ [entry]) (\n   -> (hasEdge tree' (entry,n)) ∧ (length (pre tree0 n) == 1))
@@ -249,9 +249,12 @@ idomIsTree p@(Program { tcfg, observability, entryOf, procedureOf, mainThread })
          tree =  mkGraph (labNodes tcfg)
                          (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, (c,m)  <- [ (c,n) , (c,n') ]])
          tree' = trc tree
-         entry = entryOf $ procedureOf $ mainThread
          tree0 = trr tree
 
+
+idomIsTree ::  forall gr. DynGraph gr => Program gr -> Map (Node,Node) Node -> Bool
+idomIsTree p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) idom = idomIsTreeGraph tcfg entry idom
+   where entry = entryOf $ procedureOf $ mainThread
 
 idomIsTreeProgram :: (Program Gr -> Map (Node,Node) Node) -> Program Gr -> Bool
 idomIsTreeProgram cdomComputation p = idomIsTree p idom

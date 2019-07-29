@@ -3938,7 +3938,7 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
   ] ++
   [ testPropertySized 10 ("isCdom  idomBischof")
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated
-                                in isCdom p idomMohrEtAlNoCycleTest
+                                in isCdom p idomBischof
   ] ++
   [ testPropertySized 10 ("cdomIsCdom idomChef")
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated

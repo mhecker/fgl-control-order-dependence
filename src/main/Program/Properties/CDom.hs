@@ -261,7 +261,7 @@ idomIsTreeGraph tcfg entry idom =
  ∧  (∀) (nodes tree  \\ [entry]) (\n   -> (hasEdge tree' (entry,n)) ∧ (length (pre tree0 n) == 1))
    where tree :: gr CFGNode ()
          tree =  mkGraph (labNodes tcfg)
-                         (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, (c,m)  <- [ (c,n) , (c,n') ]])
+                         (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, m  <- [ n, n']])
          tree' = trc tree
          tree0 = trr tree
 

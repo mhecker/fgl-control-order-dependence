@@ -169,7 +169,7 @@ idomToTree idom = trrAcyclic tree
    where nodes = nub [ (n,n) | ((a,b),c) <- Map.assocs idom,  n <- [ a, b, c] ]
          tree :: Gr Int ()
          tree =  mkGraph nodes
-                         (nub [ (c,n,()) | ((a,b),c) <- Map.assocs idom, n  <- [ a,b]])
+                         (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, m  <- [ n, n']])
 
 
 chop graph =

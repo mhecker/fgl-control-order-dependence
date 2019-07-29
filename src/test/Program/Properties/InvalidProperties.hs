@@ -582,6 +582,12 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
 
 
 cdomCdomTests = testGroup "(concerning cdoms)" $
+  [ testCase ("isCdom idomChef                for " ++ exampleName) $  isCdom p idomChef @? ""
+  | (exampleName, p) <- [("example6", example6)]
+  ] ++
+  [ testCase ("isCdom idomMohrEtAlNoCycleTest for " ++ exampleName) $  isCdom p idomMohrEtAlNoCycleTest @? ""
+  | (exampleName, p) <- [("example6", example6)]
+  ] ++
   []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [

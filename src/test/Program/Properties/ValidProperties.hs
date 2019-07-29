@@ -3924,6 +3924,21 @@ timingDepTests = testGroup "(concerning timingDependence)" $
 
 
 cdomCdomProps = testGroup "(concerning cdoms)" $
+  [ testPropertySized 20 ("idomChef                isMorePreciceThan idomMohrEtAlNoCycleTest")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
+                                     mpThan = isMorePreciceThan p
+                                in idomChef `mpThan` idomMohrEtAlNoCycleTest
+  ] ++
+  [ testPropertySized 20 ("idomMohrEtAlNoCycleTest isMorePreciceThan idomBischof")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
+                                     mpThan = isMorePreciceThan p
+                                in idomMohrEtAlNoCycleTest `mpThan` idomBischof
+  ] ++
+  [ testPropertySized 20 ("idomBischof             isMorePreciceThan idomMohrEtAl")
+                $ \generated -> let  p :: Program Gr = toProgramIntra generated
+                                     mpThan = isMorePreciceThan p
+                                in idomBischof `mpThan` idomMohrEtAl
+  ] ++
   [ testPropertySized 10 ("isCdom idomChef")
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated
                                 in isCdom p idomChef
@@ -3969,6 +3984,22 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
 
 
 cdomCdomTests = testGroup "(concerning cdoms)" $
+  [ testCase ("idomChef                isMorePreciceThan idomMohrEtAlNoCycleTest  for "  ++ exampleName)
+                $ 
+                                let mpThan = isMorePreciceThan p
+                                in idomChef `mpThan` idomMohrEtAlNoCycleTest @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("idomMohrEtAlNoCycleTest isMorePreciceThan idomBischof              for "  ++ exampleName)
+                $               let mpThan = isMorePreciceThan p
+                                in idomMohrEtAlNoCycleTest `mpThan` idomBischof @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [ testCase ("idomBischof             isMorePreciceThan idomMohrEtAl             for "  ++ exampleName)
+                $               let mpThan = isMorePreciceThan p
+                                in idomBischof `mpThan` idomMohrEtAl @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [ testCase ("isCdom idomMohrEtAl            for " ++ exampleName) $  isCdom p idomMohrEtAl @? ""
   | (exampleName, p) <- testsuite
   ] ++

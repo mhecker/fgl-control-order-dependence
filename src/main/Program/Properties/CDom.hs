@@ -48,6 +48,20 @@ import Data.Graph.Inductive.Query.TransClos
 import Data.Graph.Inductive.Query.TimingDependence
 import Data.Graph.Inductive.Query.DFS (scc)
 
+
+
+
+isMorePreciceThan :: DynGraph gr => Program gr ->  (Program gr ->  Map (Node,Node) Node) ->  (Program gr ->  Map (Node,Node) Node)  -> Bool
+isMorePreciceThan p@(Program {tcfg, entryOf, procedureOf, mainThread} ) cdc cdc' =
+    (∀) (Map.assocs cdom) (\((n,m),c) -> let c' = cdom' ! (n,m) in isReachableFromTreeM dom c' c)
+  where dom :: Map Node (Maybe Node)
+        dom = Map.insert n0 Nothing $ fmap Just $ Map.fromList $ iDom tcfg n0
+        n0 = (entryOf $ procedureOf $ mainThread)
+        
+        cdom  = cdc  p
+        cdom' = cdc' p
+
+
 isCdom ::  DynGraph gr => Program gr -> (Program gr ->  Map (Node,Node) Node) -> Bool
 isCdom p@(Program {tcfg, entryOf, procedureOf, mainThread}) cd =
     (∀) (Map.assocs cdom) (\((n,m),c) ->

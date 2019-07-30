@@ -4024,8 +4024,9 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
   []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
+    testPropertySized 40  "domMhpProperty"                               $ (\generated ->  let p = toProgramIntra generated :: Program Gr in domMhpProperty p),
     testPropertySized 40  "idomIsTreeProgram idomChef"                   $ idomIsTreeProgram idomChef,
-    testPropertySized 20  "idomIsTreeProgram idomBischof"                $ idomIsTreeProgram idomBischof,
+    testPropertySized 40  "idomIsTreeProgram idomBischof"                $ (\generated ->  let p = toProgramIntra generated :: Program Gr in idomIsTreeProgram idomBischof p),
     testPropertySized 80  "idomIsTreeProgram idomMohrEtAl"                $ idomIsTreeProgram idomMohrEtAl,
     testPropertySized 80  "idomIsTreeProgram idomMohrEtAlNoCycleTest"     $ idomIsTreeProgram idomMohrEtAlNoCycleTest,
     testPropertySized 10  "chopsCdomArePrefixes idomChef"                 $ chopsCdomArePrefixes idomChef,

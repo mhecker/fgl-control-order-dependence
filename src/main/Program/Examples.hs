@@ -2045,6 +2045,12 @@ aSecureGeneratedProgram = p { observability = defaultObservabilityMap (tcfg p) }
         code = Map.fromList [(1,ForC 1 (If CTrue (Seq (SpawnThread 3) (SpawnThread 2)) (Seq (PrintToChannel (Val 42) "stdOut") (Ass (Global "z") (Val 1))))),(2,Seq (Seq (ForC 2 (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel (Global "a") "lowIn1") Skip)) (Seq (Seq Skip Skip) (ForV (Global "a") (ReadFromChannel (Global "y") "lowIn1")))),(3,If CFalse (Seq (Seq (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "b") "stdIn")) (If (Leq (Val 0) (Times (Var (Global "b")) (Var (Global "b")))) Skip Skip)) (If CFalse (If CFalse (ReadFromChannel (Global "c") "stdIn") (Ass (Global "y") (Val 0))) (If CFalse (Ass (Global "a") (Val (-1))) (ReadFromChannel (Global "y") "lowIn1"))))]
 
 
+
+idomIsTreeProgramIdomBischofExample :: Program Gr
+idomIsTreeProgramIdomBischofExample = toProgram generated
+  where generated = GeneratedProgram (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")]) (Map.fromList [("bar",Generated (Seq (Ass (Global "c") (Val 1)) (CallProcedure "foo")) undefined undefined undefined),("baz",Generated (ForC 1 (ForC 1 (CallProcedure "bar"))) undefined undefined undefined),("foo",Generated (Seq (PrintToChannel (Val 4) "stdOut") (PrintToChannel (Val (-1)) "stdOut")) undefined undefined undefined),("main",Generated (Seq (If CTrue (Seq (CallProcedure "foo") (SpawnThread 2)) (Seq (CallProcedure "foo") (Ass (Global "c") (Val 0)))) (If CTrue (Seq (Ass (Global "y") (Val 0)) Skip) (Seq (Ass (Global "b") (Val 0)) (ReadFromChannel (Global "b") "stdIn")))) undefined undefined undefined),("thread2",Generated (If CTrue (ForC 1 (Seq (Seq (CallProcedure "baz") (PrintToChannel (Val 9) "stdOut")) (Seq (ReadFromChannel (Global "x") "stdIn") (ReadFromChannel (Global "y") "lowIn1")))) (Seq (If CFalse (ReadFromChannel (Global "a") "lowIn1") (PrintToChannel (Val 0) "stdOut")) (Seq (ReadFromChannel (Global "x") "lowIn1") (SpawnThread 3)))) undefined undefined undefined),("thread3",Generated (Seq (Seq Skip (PrintToChannel (Neg (Var (Global "x"))) "stdOut")) (If (Leq (Val 0) (Times (Var (Global "x")) (Var (Global "x")))) (ReadFromChannel (Global "c") "lowIn1") (CallProcedure "foo"))) undefined undefined undefined)])
+
+
 clientServerKeyExampleSimple ::  Program Gr
 clientServerKeyExampleSimple = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code

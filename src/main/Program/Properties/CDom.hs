@@ -50,6 +50,19 @@ import Data.Graph.Inductive.Query.DFS (scc)
 
 
 
+domMhpProperty :: DynGraph gr => Program gr -> Bool
+domMhpProperty p@(Program {tcfg, entryOf, procedureOf, mainThread}) =
+    (∀) (nodes tcfg) (\n ->
+      (∀) (reachableFromTree dom n) (\n' -> if n' ∈ mhps ! n then True else
+        (∀) (reachableFromTree dom n') (\n'' -> not $ n'' ∈ mhps ! n)
+      )
+    )
+  where dom :: Map Node (Set Node)
+        dom = fmap toSet $ Map.insert n0 Nothing $ fmap Just $ Map.fromList $ iDom tcfg n0
+        n0 = (entryOf $ procedureOf $ mainThread)
+
+        mhp = mhpSetFor p
+        mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes tcfg ]
 
 isMorePreciceThan :: DynGraph gr => Program gr ->  (Program gr ->  Map (Node,Node) Node) ->  (Program gr ->  Map (Node,Node) Node)  -> Bool
 isMorePreciceThan p@(Program {tcfg, entryOf, procedureOf, mainThread} ) cdc cdc' =

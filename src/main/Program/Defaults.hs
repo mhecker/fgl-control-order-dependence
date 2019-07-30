@@ -33,8 +33,8 @@ defaultObservabilityMap gr = \n -> Map.lookup n obsmap where
  defaultObservability gr n
    | levels == [] = Nothing
    | otherwise    = Just $ (∐) levels
-  where levels = [ level | (n',e) <- lsuc gr n, Just level <- [obs (n',e)]]
-        obs (n',Print _ channel) = Just $ defaultChannelObservability channel
-        obs (n',Read  _ channel) = Just $ defaultChannelObservability channel
-        obs _                    = Nothing
+  where levels = [ level | (_,e) <- lsuc gr n, Just level <- [obs e]]
+        obs (Print _ channel) = Just $ defaultChannelObservability channel
+        obs (Read  _ channel) = Just $ defaultChannelObservability channel
+        obs _                 = Nothing
 

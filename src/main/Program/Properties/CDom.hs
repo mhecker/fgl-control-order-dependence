@@ -65,7 +65,7 @@ domMhpProperty p@(Program {tcfg, entryOf, procedureOf, mainThread}) =
         mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes tcfg ]
 
 isMorePreciceThan :: DynGraph gr => Program gr ->  (Program gr ->  Map (Node,Node) Node) ->  (Program gr ->  Map (Node,Node) Node)  -> Bool
-isMorePreciceThan p@(Program {tcfg, entryOf, procedureOf, mainThread} ) cdc cdc' =
+isMorePreciceThan p@(Program {tcfg, entryOf, procedureOf, mainThread}) cdc cdc' =
     (∀) (Map.assocs cdom) (\((n,m),c) -> let c' = cdom' ! (n,m) in isReachableFromTreeM dom c' c)
   where dom :: Map Node (Maybe Node)
         dom = Map.insert n0 Nothing $ fmap Just $ Map.fromList $ iDom tcfg n0

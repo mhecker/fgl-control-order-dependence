@@ -3168,6 +3168,15 @@ notReallyUnsound30 = toProgramIntra $ IntraGeneratedProgram
                    ("thread2",Generated (Seq (ForC 1 (If CTrue (PrintToChannel (Val 9) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))) (If CTrue (ReadFromChannel (Global "b") "lowIn1") (ReadFromChannel (Global "c") "stdIn"))) undefined undefined undefined),
                    ("thread3",Generated (If CTrue (PrintToChannel (Val (-1)) "stdOut") (ReadFromChannel (Global "x") "stdIn")) undefined undefined undefined)])
 
+
+
+notReallyUnsound31 :: Program Gr
+notReallyUnsound31 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (Seq (SpawnThread 2) (Ass (Global "b") (Val 4))) (If (Leq (Val 0) (Val (-1))) (ReadFromChannel (Global "a") "lowIn1") (Ass (Global "b") (Times (Var (Global "b")) (Var (Global "b")))))) undefined undefined undefined),
+                   ("thread2",Generated (Seq (Seq (Ass (Global "y") (Val 0)) (SpawnThread 3)) (If (Leq (Val 0) (Val 4)) (PrintToChannel (Plus (Var (Global "y")) (Var (Global "y"))) "stdOut") (PrintToChannel (Neg (Var (Global "y"))) "stdOut"))) undefined undefined undefined),
+                   ("thread3",Generated (Seq (PrintToChannel (Var (Global "y")) "stdOut") (PrintToChannel (Neg (Var (Global "y"))) "stdOut")) undefined undefined undefined)])
+
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code

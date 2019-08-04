@@ -395,7 +395,7 @@ timingDepTests = testGroup "(concerning timingDependence)" $
 
 
 
-timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $
+timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
   [ testCase ("isSecureSimonClassification is at least as precise as isSecureFlexibleSchedulerIndependentChannel for " ++ exampleName)
     $   isSecureFlexibleSchedulerIndependentChannelFor forProgram ⊑ isSecureSimonClassification program   @? ""
   | (exampleName, program, forProgram) <- [("minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD", minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD, minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor) ]
@@ -414,7 +414,7 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
   ] ++
   []
 
-timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
+timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $
   []
 
 

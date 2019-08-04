@@ -71,7 +71,7 @@ import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTrac
 import Program.Examples
 import Program.Analysis hiding (timing)
 import Program.CDom
-import Program.Generator (toProgram, GeneratedProgram, SimpleCFG(..))
+import Program.Generator (toProgram, GeneratedProgram, SimpleCFG(..), toProgramIntra)
 import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive (Node, subgraph)
@@ -412,9 +412,16 @@ timingClassificationDomPathsTests = testGroup "(concerning timingClassificationD
   [ testCase ("isSecureTimingCombinedTimingClassification is at least as precise as isSecureTimingClassification for " ++ exampleName)  $   isSecureTimingCombinedTimingClassification p ⊒ isSecureTimingClassification p @? ""
   | (exampleName, p) <- [("timingSecureButNotCombinedTimingSecure", timingSecureButNotCombinedTimingSecure) ]
   ] ++
+  [ testCase ("isSecureSimonClassification is at least as precise as isSecureGiffhornClassification for " ++ exampleName) $
+     isSecureGiffhornClassification p ⊑ isSecureSimonClassification p @? ""
+  | (exampleName, p) <- [("simonIsNotAsPreciseAsGiffornExample", simonIsNotAsPreciseAsGiffornExample)]
+  ] ++
   []
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $
+  -- [ testPropertySized 20 ("isSecureSimonClassification is at least as precise as isSecureGiffhornClassification")
+  --   $ \generated -> let p :: Program Gr = toProgramIntra generated  in traceShow (length $ nodes $ tcfg p) $ isSecureGiffhornClassification p ⊑ isSecureSimonClassification p
+  -- ] ++
   []
 
 

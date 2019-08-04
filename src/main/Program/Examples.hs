@@ -3177,6 +3177,20 @@ notReallyUnsound31 = toProgramIntra $ IntraGeneratedProgram
                    ("thread2",Generated (Seq (Seq (Ass (Global "y") (Val 0)) (SpawnThread 3)) (If (Leq (Val 0) (Val 4)) (PrintToChannel (Plus (Var (Global "y")) (Var (Global "y"))) "stdOut") (PrintToChannel (Neg (Var (Global "y"))) "stdOut"))) undefined undefined undefined),
                    ("thread3",Generated (Seq (PrintToChannel (Var (Global "y")) "stdOut") (PrintToChannel (Neg (Var (Global "y"))) "stdOut")) undefined undefined undefined)])
 
+notReallyUnsound32:: Program Gr
+notReallyUnsound32 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(3,"thread3")])
+    (Map.fromList [("main",Generated (ForC 2 (Seq (Seq (Ass (Global "c") (Val 4)) (SpawnThread 3)) (Seq (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (ReadFromChannel (Global "z") "lowIn1")))) undefined undefined undefined),("thread3",Generated (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (ForC 2 (ForC 1 (PrintToChannel (Val 1) "stdOut"))) (Seq (PrintToChannel (Var (Global "c")) "stdOut") (PrintToChannel (Val 9) "stdOut"))) undefined undefined undefined)])
+
+
+-- took about 1 min to findB
+simonIsNotAsPreciseAsGiffornExample :: Program Gr
+simonIsNotAsPreciseAsGiffornExample = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (Seq (If CTrue (PrintToChannel (Val 0) "stdOut") Skip) (If CFalse (Ass (Global "x") (Val 4)) (ReadFromChannel (Global "z") "lowIn1"))) (Seq (ForC 1 (ForC 2 (Ass (Global "x") (Val 1)))) (Seq (SpawnThread 3) (Ass (Global "c") (Plus (Var (Global "x")) (Var (Global "x"))))))) undefined undefined undefined),
+                   ("thread3",Generated (If (Leq (Val 0) (Val (-1))) (ForC 1 (Seq (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (PrintToChannel (Plus (Var (Global "x")) (Var (Global "x"))) "stdOut")) (Seq Skip (ReadFromChannel (Global "c") "stdIn")))) (Seq (If (Leq (Val 0) (Neg (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "x")) (Var (Global "x")))) Skip) (Seq (PrintToChannel (Val 9) "stdOut") Skip))) undefined undefined undefined)])
+
+
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code
@@ -3834,6 +3848,8 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound28),
               $(withName 'notReallyUnsound29),
               $(withName 'notReallyUnsound30),
+              $(withName 'notReallyUnsound31),
+              $(withName 'notReallyUnsound32),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

@@ -106,10 +106,6 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
 
           let vLeft  = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θs  θ's
           let vRight = assert (nextId == Map.size toId) $ Vector.generate (Map.size toId) $ gen θ's θs 
-          let ok (x,y0) = let y = round y0 in  (x >= 3 ∨ y >= 3 ∨ x == y)
-          let allGt5 = (∀) vLeft ok
-          let gt5CounterExamples = List.sortBy (comparing (\(x,y) -> max (fromIntegral x) y)) $ Vector.toList $ Vector.filter (not . ok) vLeft
-          let tsCounterExamples = if n < nMin then id else let { l1 = length gt5CounterExamples ; l2 =  Vector.length vLeft } in traceShow (l1, l2, fromIntegral l1 / fromIntegral l2 :: Double, take 10 gt5CounterExamples)
           let evidenceThatObservationsAreDifferent = assert (left == right) $ left
                 where left  = plunketttest α vLeft
                       right = plunketttest α vRight

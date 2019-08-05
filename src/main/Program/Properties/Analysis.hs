@@ -3,11 +3,12 @@
 module Program.Properties.Analysis where
 
 import Debug.Trace (traceShow)
+import Control.Exception.Base (assert)
 
 import Algebra.Lattice
 import Unicode
 
-import IRLSOD(SecurityLattice(..))
+import IRLSOD(SecurityLattice(..), CFGEdge(..), stdIn, stdOut)
 
 import Program
 import Program.MHP
@@ -17,6 +18,7 @@ import qualified Program.Typing.ResumptionBasedSecurity as Res
 
 import Program.Examples
 import Program.Generator
+import Program.Defaults (defaultChannelObservability)
 
 import Program.CDom
 
@@ -69,16 +71,29 @@ isSoundPartialGen isSecurePartial gen =
      in checkEmpirically ==> isSecureEmpirically p
 
 
+hasStdInStdOut :: Program Gr -> Bool
+hasStdInStdOut (Program { tcfg }) =
+      assert (defaultChannelObservability stdIn  == High) $
+      assert (defaultChannelObservability stdOut == Low) $
+      (∃) (labEdges tcfg) (\(_,_,l) -> isHighIn l)
+    ∧ (∃) (labEdges tcfg) (\(_,_,l) -> isLowOut l)
+  where isHighIn (Read  _ ch) = ch == stdIn
+        isHighIn _            = False
+        isLowOut (Print _ ch) = ch == stdOut
+        isLowOut  _           = False
+
+
+
 allSoundIntra ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
 allSoundIntra as generated = any ($ p) as  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecureEmpirically p
   where p = toProgramIntra generated
 
 allSoundIntraMulti ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
-allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecureEmpirically p
+allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ∧  hasStdInStdOut p  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecureEmpirically p
   where p = toProgramIntra generated
 
 allSoundIntraMultiRelativeTo ::  (Program Gr -> Bool) -> [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
-allSoundIntraMultiRelativeTo  isSecure as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecure p
+allSoundIntraMultiRelativeTo  isSecure as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ∧  hasStdInStdOut p  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecure p
   where p = toProgramIntra generated
 
 

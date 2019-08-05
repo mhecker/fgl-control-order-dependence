@@ -593,7 +593,7 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
   | (exampleName, p) <- [("example6", example6)]
   ] ++
   [ testCase ("isCdom idomMohrEtAlNoCycleTest for " ++ exampleName) $  isCdom p idomMohrEtAlNoCycleTest @? ""
-  | (exampleName, p) <- [("example6", example6)]
+  | (exampleName, p) <- [("example6", example6), ("isCdomIdomMohrEtAlNoCycleTestCounterExample", isCdomIdomMohrEtAlNoCycleTestCounterExample)]
   ] ++
   []
 

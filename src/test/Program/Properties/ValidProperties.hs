@@ -3939,17 +3939,9 @@ cdomCdomProps = testGroup "(concerning cdoms)" $
                                      mpThan = isMorePreciceThan p
                                 in idomBischof `mpThan` idomMohrEtAl
   ] ++
-  [ testPropertySized 10 ("isCdom idomChef")
-                $ \generated -> let  p :: Program Gr = toProgramIntra generated
-                                in isCdom p idomChef
-  ] ++
   [ testPropertySized 10 ("isCdom idomMohrEtAl")
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated
                                 in isCdom p idomMohrEtAl
-  ] ++
-  [ testPropertySized 10 ("isCdom idomChefidomMohrEtAlNoCycleTest")
-                $ \generated -> let  p :: Program Gr = toProgramIntra generated
-                                in isCdom p idomMohrEtAlNoCycleTest
   ] ++
   [ testPropertySized 10 ("isCdom  idomBischof")
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated

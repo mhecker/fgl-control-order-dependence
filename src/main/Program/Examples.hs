@@ -3191,6 +3191,12 @@ simonIsNotAsPreciseAsGiffornExample = toProgramIntra $ IntraGeneratedProgram
                    ("thread3",Generated (If (Leq (Val 0) (Val (-1))) (ForC 1 (Seq (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (PrintToChannel (Plus (Var (Global "x")) (Var (Global "x"))) "stdOut")) (Seq Skip (ReadFromChannel (Global "c") "stdIn")))) (Seq (If (Leq (Val 0) (Neg (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "x")) (Var (Global "x")))) Skip) (Seq (PrintToChannel (Val 9) "stdOut") Skip))) undefined undefined undefined)])
 
 
+
+isCdomIdomMohrEtAlNoCycleTestCounterExample ::  Program Gr
+isCdomIdomMohrEtAlNoCycleTestCounterExample = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(3,"thread3")])
+    (Map.fromList [("main",Generated (ForC 1 (Seq (If CFalse (ReadFromChannel (Global "x") "lowIn1") (SpawnThread 3)) (Seq (ReadFromChannel (Global "z") "stdIn") Skip))) undefined undefined undefined),("thread3",Generated (Seq (ForC 1 (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 0) "stdOut"))) (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 1) "stdOut"))) undefined undefined undefined)])
+
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code

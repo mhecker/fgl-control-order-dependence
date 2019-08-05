@@ -11,7 +11,7 @@ import Algebra.Lattice
 import Unicode
 
 import Program
-import Program.CDom hiding (chop)
+import Program.CDom (idomBischof, idomChef, domPathBetween)
 import Program.MHP
 -- import IRLSOD
 
@@ -83,11 +83,10 @@ clInitFrom observability n
 minimalClassification p@(Program { tcfg, observability }) =
     minimalClassificationUsing pc p clInit
   where clInit = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomChef p
-minimalClassificationNodes p@(Program { tcfg, observability }) =
+        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomBischof p
+minimalClassificationNodes pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
     minimalClassificationUsing pc p clInit
   where clInit = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomChef p
 minimalClassificationUsing
     (PrecomputedResults { cpdg, idom, mhps, chop})
     (Program { tcfg })
@@ -104,11 +103,10 @@ minimalClassificationUsing
 simonClassification p@(Program { tcfg, observability }) =
     simonClassificationUsing pc p clInit
   where clInit = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomChef p
-simonClassificationNodes p@(Program { tcfg, observability }) =
+        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomBischof p
+simonClassificationNodes pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
     simonClassificationUsing pc p clInit
   where clInit = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomChef p
 simonClassificationUsing
     (PrecomputedResults { cpdg, idom, chop})
     p@(Program { tcfg })
@@ -125,16 +123,15 @@ simonClassificationUsing
 
     
 timingClassification p = timingClassificationLevels pc p
-  where pc = precomputedUsing idomMohrEtAl p
+  where pc = precomputedUsing idomBischof p
 timingClassificationLevels pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
     timingClassificationUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
-timingClassificationNodes pc p@(Program { tcfg, observability }) =
+timingClassificationNodes  pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
     timingClassificationUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomMohrEtAl p
 timingClassificationUsing
     (PrecomputedResults { cpdg, idom, mhp, chop, timingdg, dataConflictGraph})
     (Program { tcfg })
@@ -157,12 +154,11 @@ timingClassificationAtUses p@(Program { tcfg, observability }) =
     timingClassificationAtUsesUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomMohrEtAl p
--- timingClassificationAtUsesNodes p@(Program { tcfg, observability }) =
+        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomBischof p
+-- timingClassificationAtUsesNodes pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
 --     timingClassificationAtUsesUsing pc p clInit cltInit
 --   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
 --         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
---         pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomMohrEtAl p
 timingClassificationAtUsesUsing
     (PrecomputedResults { cpdg, idom, mhp, chop, timingdg })
     (Program { tcfg })
@@ -202,7 +198,7 @@ timingClassificationDomPaths p@(Program { tcfg, observability }) =
                                                  (a,b) <- if (n `Map.member` dom) then [ (n,n), (dom ! n, n) ]
                                                                                   else [ (n,n) ]
                                ]
-        pc@(PrecomputedResults { mhp, dom, cpdg }) = precomputedUsing idomMohrEtAl p
+        pc@(PrecomputedResults { mhp, dom, cpdg }) = precomputedUsing idomBischof p
 timingClassificationDomPathsNodes p@(Program { tcfg, observability }) =
     timingClassificationDomPathsUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
@@ -210,7 +206,7 @@ timingClassificationDomPathsNodes p@(Program { tcfg, observability }) =
                                                  (a,b) <- if (n `Map.member` dom) then [ (n,n), (dom ! n, n) ]
                                                                                   else [ (n,n) ]
                                ]
-        pc@(PrecomputedResults { mhp, dom, cpdg }) = precomputedUsing idomMohrEtAl p
+        pc@(PrecomputedResults { mhp, dom, cpdg }) = precomputedUsing idomBischof p
 timingClassificationDomPathsUsing
     (PrecomputedResults { cpdg, dom, idom, chop, timingdg, dataConflictGraph})
     (Program { tcfg })
@@ -241,12 +237,12 @@ timingClassificationSimple p@(Program { tcfg, observability }) =
     timingClassificationSimpleUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
         cltInit = Map.fromList [ (n, (⊥))                       | n <- nodes tcfg ]
-        pc@(PrecomputedResults { cpdg }) = precomputedUsing idomChef p
+        pc@(PrecomputedResults { cpdg }) = precomputedUsing idomBischof p
 timingClassificationSimpleNodes p@(Program { tcfg, observability }) =
     timingClassificationSimpleUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, Set.fromList [n])           | n <- nodes cpdg ]
         cltInit = Map.fromList [ (n, (⊥))                       | n <- nodes tcfg ]
-        pc@(PrecomputedResults { cpdg }) = precomputedUsing idomChef p
+        pc@(PrecomputedResults { cpdg }) = precomputedUsing idomBischof p
 timingClassificationSimpleUsing
     (PrecomputedResults { cpdg, timingdg, dataConflictGraph})
     (Program { tcfg })
@@ -310,7 +306,7 @@ isSecureTimingClassificationDomPaths p = isSecureTimingClassificationFor cl clt 
           where dom :: Map Node Node
                 dom = Map.fromList $ iDom (tcfg p) (entryOf p $ procedureOf p $ mainThread p)
 
-                idom = idomMohrEtAl p
+                idom = idomBischof p
                 mhp = mhpFor p
 
 isSecureTimingClassificationFor ::  Map Node SecurityLattice -> Map (Node, Node) SecurityLattice  -> SecurityAnalysis gr
@@ -346,7 +342,7 @@ isSecureTimingClassificationSimple p@(Program{ tcfg, observability }) =
 
  -- TODO: via ⊑ formulieren
 isSecureTimingCombinedTimingClassification :: SecurityAnalysis gr
-isSecureTimingCombinedTimingClassification p = isSecureTimingCombinedTimingClassificationUsing  (precomputedUsing idomChef p) p
+isSecureTimingCombinedTimingClassification p = isSecureTimingCombinedTimingClassificationUsing  (precomputedUsing idomBischof p) p
 isSecureTimingCombinedTimingClassificationUsing
     pc@(PrecomputedResults { timingdg, chop, idom, mhp, cpdg})
     p@(Program { tcfg, observability }) =
@@ -485,7 +481,7 @@ unsoundIRLSODAttempt p@(Program{ tcfg, observability }) =
        bs = trc cpdg -- TODO: name :)
        trnsclos = bs
        mhp = mhpSetFor p
-       idom = idomMohrEtAl p
+       idom = idomBischof p
        chop s t =    (Set.fromList $ suc trnsclos s)
                   ∩ (Set.fromList $ pre trnsclos t)  -- TODO: Performance
 

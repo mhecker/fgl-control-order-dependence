@@ -3197,6 +3197,28 @@ isCdomIdomMohrEtAlNoCycleTestCounterExample = toProgramIntra $ IntraGeneratedPro
     (Map.fromList [(1,"main"),(3,"thread3")])
     (Map.fromList [("main",Generated (ForC 1 (Seq (If CFalse (ReadFromChannel (Global "x") "lowIn1") (SpawnThread 3)) (Seq (ReadFromChannel (Global "z") "stdIn") Skip))) undefined undefined undefined),("thread3",Generated (Seq (ForC 1 (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 0) "stdOut"))) (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 1) "stdOut"))) undefined undefined undefined)])
 
+ruleCDAIsNecessaryExample  ::  Program Gr
+ruleCDAIsNecessaryExample = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (Seq (Seq Skip
+                           (ReadFromChannel (Global "z") "stdIn"))
+                      (Seq (ReadFromChannel (Global "y") "lowIn1")
+                           (Ass (Global "a") (Val 0)))) (Seq (Seq
+                           (SpawnThread 2) (Ass (Global "z") (Var (Global "z"))))
+                      (Seq (ReadFromChannel (Global "a") "stdIn")
+                           (ReadFromChannel (Global "z") "lowIn1")))) undefined undefined undefined),
+                   ("thread2",Generated (Seq (Seq
+                           (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "y")))) Skip Skip)
+                           (ForV (Global "z") (Ass (Global "b") (Times (Var (Global "y")) (Var (Global "a"))))))
+                 (Seq (Seq (ReadFromChannel (Global "y") "stdIn")
+                           (SpawnThread 3))
+                      (Seq (ReadFromChannel (Global "y") "stdIn")
+                           (ReadFromChannel (Global "b") "lowIn1")))) undefined undefined undefined),
+                   ("thread3",Generated (Seq
+                           (ForC 2 (PrintToChannel (Val 1) "stdOut"))
+                      (Seq (Ass (Global "x") (Neg (Var (Global "z"))))
+                           (Ass (Global "x") (Times (Var (Global "y")) (Var (Global "z")))))) undefined undefined undefined)])
+
 controlDepExample :: Program Gr
 controlDepExample = p { observability = defaultObservabilityMap (tcfg p) }
   where p = code2Program code

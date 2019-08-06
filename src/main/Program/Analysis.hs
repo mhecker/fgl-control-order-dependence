@@ -155,10 +155,10 @@ timingClassificationAtUses p@(Program { tcfg, observability }) =
   where clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
         pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomBischof p
--- timingClassificationAtUsesNodes pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
---     timingClassificationAtUsesUsing pc p clInit cltInit
---   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
---         cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
+timingClassificationAtUsesNodes pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
+    timingClassificationAtUsesUsing pc p clInit cltInit
+  where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
+        cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
 timingClassificationAtUsesUsing
     (PrecomputedResults { cpdg, idom, mhp, chop, timingdg })
     (Program { tcfg })

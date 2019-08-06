@@ -3204,12 +3204,14 @@ ruleCDAIsNecessaryExample = toProgramIntra $ IntraGeneratedProgram
                            (ReadFromChannel (Global "z") "stdIn"))
                       (Seq (ReadFromChannel (Global "y") "lowIn1")
                            (Ass (Global "a") (Val 0)))) (Seq (Seq
-                           (SpawnThread 2) (Ass (Global "z") (Var (Global "z"))))
+                           (SpawnThread 2)
+                           (Ass (Global "z") (Var (Global "z"))))
                       (Seq (ReadFromChannel (Global "a") "stdIn")
                            (ReadFromChannel (Global "z") "lowIn1")))) undefined undefined undefined),
                    ("thread2",Generated (Seq (Seq
                            (If (Leq (Val 0) (Times (Var (Global "z")) (Var (Global "y")))) Skip Skip)
-                           (ForV (Global "z") (Ass (Global "b") (Times (Var (Global "y")) (Var (Global "a"))))))
+                           (ForV (Global "z")
+                               (Ass (Global "b") (Times (Var (Global "y")) (Var (Global "a"))))))
                  (Seq (Seq (ReadFromChannel (Global "y") "stdIn")
                            (SpawnThread 3))
                       (Seq (ReadFromChannel (Global "y") "stdIn")

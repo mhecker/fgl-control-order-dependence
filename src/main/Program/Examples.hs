@@ -3246,15 +3246,13 @@ ruleCDAIsNecessaryExampleEssential = toProgramIntra $ IntraGeneratedProgram
     (Map.fromList [(1,"main"),(2,"thread2")])
     (Map.fromList [("main",Generated (Seq (Seq Skip
                            (ReadFromChannel (Global "z") "stdIn"))
-                      (Seq (ReadFromChannel (Global "y") "lowIn1")
-                           (Seq
-                           (SpawnThread 2)
-                           (ReadFromChannel (Global "z") "lowIn1")))) undefined undefined undefined),
+                      (Seq (SpawnThread 2)
+                           (ReadFromChannel (Global "z") "lowIn1")
+                           )) undefined undefined undefined),
                    ("thread2",Generated (Seq
                            (ForV (Global "z")
                                (Ass (Global "b") (Var (Global "y")) ))
-                      (Seq (ReadFromChannel (Global "y") "stdIn")
-                           (ReadFromChannel (Global "b") "lowIn2"))) undefined undefined undefined)
+                           (ReadFromChannel (Global "b") "lowIn2")) undefined undefined undefined)
                    ])
 
 

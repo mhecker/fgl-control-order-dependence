@@ -663,7 +663,10 @@ timingDependenceFromTimdom :: DynGraph gr => gr a b ->  Map Node (Set Node)
 timingDependenceFromTimdom = xDFcd f
   where f g =
           Map.fromList [ (m, Set.fromList [ n | n <- nodes g',
-                                                not $ (∃) (suc g' n) (\x -> (∃) (timdom ! x) (\(n', steps) -> (∀) (suc g' n) (\x' -> (n', steps) ∈ timdom ! x' ))),
+                                     let dep  = not $ (∃) (suc g' n) (\x -> (∃) (timdom ! x) (\(n', steps) -> (∀) (suc g' n) (\x' -> (n', steps) ∈ timdom ! x' ))),
+                                     let dep' = Set.null $ Set.filter (\(n',_) -> n' /= n) $ timdom ! n,
+                                       assert ( dep ↔ dep') True,
+                                                dep,
                                        assert ( (m ∈ (Set.map fst $ timdom ! n)) → (m == n)) True
                              ]
                          )

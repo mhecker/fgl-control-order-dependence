@@ -3197,6 +3197,12 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timingDependenceFromTimdom  == timingDependenceViaTwoFinger"
+                $ \(ARBITRARY(g)) ->
+                       -- let tdep           = PTDEP.timingSolvedF3dependence g
+                       let tdepfromTwoFinger = Map.mapWithKey Set.delete $ PTDEP.timingDependenceViaTwoFinger g
+                           tdepfromTimdom    = Map.mapWithKey Set.delete $ PTDEP.timingDependenceFromTimdom g
+                       in  tdepfromTimdom == tdepfromTwoFinger,
     testProperty  "timingDependenceFromTimdom  == timingSolvedF3dependence for n /= m"
                 $ \(ARBITRARY(g)) ->
                        -- let tdep           = PTDEP.timingSolvedF3dependence g

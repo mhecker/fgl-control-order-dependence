@@ -152,7 +152,7 @@ import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, tim
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
     timdomOfNaiveLfp, timdomMultipleOfNaiveLfp,
     timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, tscdSliceFast, tscdSliceViaTimDF)
-import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice)
+import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice, ptd, timingDependenceFromTimdom)
 
 import qualified Data.Graph.Inductive.FA as FA
 
@@ -3197,6 +3197,12 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "timingDependenceFromTimdom  == timingSolvedF3dependence for n /= m"
+                $ \(ARBITRARY(g)) ->
+                       -- let tdep           = PTDEP.timingSolvedF3dependence g
+                       let tdep           = Map.mapWithKey Set.delete $ PTDEP.timingSolvedF3dependence g
+                           tdepfromTimdom = Map.mapWithKey Set.delete $ PTDEP.timingDependenceFromTimdom g
+                       in  tdepfromTimdom == tdep,
     testProperty "some prop"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

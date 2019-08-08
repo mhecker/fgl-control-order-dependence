@@ -659,6 +659,22 @@ alternativeTimingSolvedF3dependence :: DynGraph gr => gr a b -> Map Node (Set No
 alternativeTimingSolvedF3dependence = alternativeTimingXdependence snmTimingSolvedF3
 
 
+timingDependenceFromTimdom :: DynGraph gr => gr a b ->  Map Node (Set Node)
+timingDependenceFromTimdom = xDFcd f
+  where f g =
+          Map.fromList [ (m, Set.fromList [ n | n <- nodes g',
+                                                not $ (∃) (suc g' n) (\x -> (∃) (timdom ! x) (\(n', steps) -> (∀) (suc g' n) (\x' -> (n', steps) ∈ timdom ! x' ))),
+                                       assert ( (m ∈ (Set.map fst $ timdom ! n)) → (m == n)) True
+                             ]
+                         )
+                                       | m <- nodes g,
+                                         let toM  = rdfs [m] g,
+                                         let toMS = Set.fromList toM,
+                                         let g' = (flip delSuccessorEdges m) $ subgraph toM $ g,
+                                         let timdom = timdomOfLfp g'
+          ]
+
+
 timingDependenceViaTwoFinger g =
       invert'' $
       Map.fromList [ (m, Set.fromList [ n | (n, Nothing) <- Map.assocs itimdom ])         | m <- nodes g,

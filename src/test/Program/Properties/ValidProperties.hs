@@ -3702,7 +3702,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                     (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
                        (z, steps+steps') ∈ timdom ! x
                 ))),
-    testProperty "ntscdTimingSlice == ntscdTimingSlice == tscdSlice == tscdSliceFast "
+    testProperty "nticdTimingSlice == ntscdTimingSlice == tscdSlice == tscdSliceFast "
     $ \(ARBITRARY(generatedGraph)) ->
                 let g    = generatedGraph
                     ntscdtimingslicer  = PTDEP.ntscdTimingSlice g
@@ -3717,6 +3717,22 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                          s4 = tscdslicerfast    ms
                      in s1 == s2  ∧  s2 == s3  ∧  s3 == s4
                    ),
+    testProperty "nticdTimingSlice == ntscdTimingSlice == tscdSlice == tscdSliceFast for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph))  seed1 seed2 ->
+                let g    = generatedGraph
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    ntscdtimingslicer  = PTDEP.ntscdTimingSlice g
+                    nticdtimingslicer  = PTDEP.nticdTimingSlice g
+                    tscdslicer         = TSCD.tscdSlice        g
+                    tscdslicerfast     = TSCD.tscdSliceFast    g
+                    s1 = nticdtimingslicer ms
+                    s2 = ntscdtimingslicer ms
+                    s3 = tscdslicer        ms
+                    s4 = tscdslicerfast    ms
+                in s1 == s2  ∧  s2 == s3  ∧  s3 == s4,
     testPropertySized 35 "tscdSlice is minimal wrt. timed traces and termination"
                 $ \(ARBITRARY(generatedGraph)) seed seed2 ->
                     let g = removeDuplicateEdges generatedGraph -- removal is only a runtime optimization

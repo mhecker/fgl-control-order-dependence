@@ -114,7 +114,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
   )
 import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, ntiodFromMay, nticdIndus, joiniSinkDomAround, withPossibleIntermediateNodesFromiXdom)
 import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
-import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice)
+import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice, ptd)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 main      = all
@@ -206,6 +206,11 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty  "ptd  ==  timingSolvedF3sparseDependence" --  ∪ {(n,n) | n ∈ nodes}
+                $ \(ARBITRARY(g)) ->
+                       let ptd              = PTDEP.ptd g
+                           tdepsolvedsparse = PTDEP.timingSolvedF3sparseDependence g
+                       in  ptd == tdepsolvedsparse  {- ⊔ Map.fromList [(n, Set.fromList [n]) | n <- nodes g ] -},
     testProperty   "anyDFFromUpLocalDefViaAnydoms == anyDF"
                 $ \(ARBITRARY(g)) (UNCONNECTED(anydom0)) -> 
                    let anydomG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges anydom0, let n' = toG ! n, let m' = toG ! m, (n' == m') ∨ (∀) (n' : suc g n') (\x' -> m' `elem` reachable x' g) ] :: Gr ()()

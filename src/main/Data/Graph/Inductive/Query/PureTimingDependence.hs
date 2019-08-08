@@ -23,12 +23,47 @@ import Unicode
 import Util(fromSet, without, invert'', invert''', restrict, reachableFrom)
 
 import Data.Graph.Inductive.Util (isCond, fromSuccMap, delSuccessorEdges, nextCondNode, toNextCondNode, prevCondNodes, prevCondsWithSuccNode)
-import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger)
+import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger, dfFor, xDFcd)
+
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import Data.Graph.Inductive.Query.NTICD (ntscdViaMDom, nticdViaSinkDom)
 import Data.Graph.Inductive.Query.Slices.NTICD (nticdSlice)
-import Data.Graph.Inductive.Query.TSCD (itimdomMultipleOfTwoFingerFor, itimdomMultipleOfTwoFinger)
+import Data.Graph.Inductive.Query.TSCD (itimdomMultipleOfTwoFingerFor, itimdomMultipleOfTwoFinger, timDF, timdomOfLfp)
 
+fPureTimeDomNaive graph all allStepsNr nr reachable = f 
+  where f timeDomOf = -- traceShow (timeDomOf) $
+                      fmap (fmap (Set.filter (<= nr))) $
+                      Map.fromList [ (y, Map.fromList [(y, Set.fromList [0]    )]) | y <- nodes graph]
+                    ⊔ Map.fromList [ (y, Map.fromList [(z, allStepsNr)  | z <- Set.toList $ all ∖ (Set.fromList $ reachable y) ] ) | y <- nodes graph]
+                    ⊔ Map.fromList [ (y,
+                                         fmap (Set.map (\s -> s + 1)) $
+                                         Map.delete y $ 
+                                         (∏) [ timeDomOf ! x | x <- suc graph y ]
+                                     )
+                                     | y <- nodes graph, suc graph y /= []
+                                   ]
+
+ptdomOfLfpFor graph f = fmap (\m -> Set.fromList [ (n, steps) | (n, ss) <- Map.assocs m, steps <- Set.toList ss ]) $
+        -- (㎲⊒) init (f graph all allStepsNr reachable)
+        fix (f graph all allStepsNr nr reachable) init
+  where init = Map.fromList [ (y, Map.empty) | y <- nodes graph]
+        reachable x = suc trncl x
+          where trncl = trc graph
+        all = Set.fromList $ nodes graph
+        allStepsNr = Set.fromList [0..nr]
+        nr = toInteger $ noNodes graph
+        fix f x = if x == x' then x else fix f x'
+          where x' = f x 
+
+ptdomOfNaiveLfp graph = ptdomOfLfpFor graph fPureTimeDomNaive
+
+
+
+ptDF graph = dfFor graph ptdom
+   where ptdom = fmap (Set.map fst) $ ptdomOfNaiveLfp graph
+
+ptd :: DynGraph gr => gr a b ->  Map Node (Set Node)
+ptd = xDFcd ptDF
 
 data Reachability  = Unreachable | Unknown | FixedSteps Integer | FixedStepsPlusOther Integer Node | UndeterminedSteps deriving (Show, Eq)
 instance JoinSemiLattice Reachability where

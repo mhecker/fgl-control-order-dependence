@@ -62,7 +62,7 @@ import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
 import Data.Graph.Inductive.Query.Dominators (iDom)
-import Data.Graph.Inductive.Query.TimingDependence (timingDependence)
+import Data.Graph.Inductive.Query.TimingDependence (timingDependence, timingDependenceOld)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode',)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge, newNodes)
@@ -3924,11 +3924,16 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 $ \(ARBITRARY(g)) ->
                        PTDEP.timingSolvedF3dependence g ⊑
                        PTDEP.timingF3dependence       g,
-    testProperty  "timingF3dependence       ⊑ timingDependence"
+    testProperty  "timingF3dependence       ⊑ timingDependenceOld"
                 $ \(ARBITRARY(g)) ->
                        let gCfg = emap (\() -> NoOp) g in
                        PTDEP.timingF3dependence       g ⊑
-                             timingDependence         gCfg
+                             timingDependenceOld      gCfg,
+    testPropertySized 40 "timingDependence         ⊑ timingDependenceOld"
+                $ \generated -> let p :: Program Gr = toProgramIntra generated
+                                    g = tcfg p
+                                    ok = timingDependence g ⊑ timingDependenceOld g
+                                in if ok then ok else traceShow g $ ok
   ]
 
 timingDepTests = testGroup "(concerning timingDependence)" $

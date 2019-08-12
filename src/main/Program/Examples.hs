@@ -3183,6 +3183,12 @@ notReallyUnsound32 = toProgramIntra $ IntraGeneratedProgram
     (Map.fromList [("main",Generated (ForC 2 (Seq (Seq (Ass (Global "c") (Val 4)) (SpawnThread 3)) (Seq (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (ReadFromChannel (Global "z") "lowIn1")))) undefined undefined undefined),("thread3",Generated (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (ForC 2 (ForC 1 (PrintToChannel (Val 1) "stdOut"))) (Seq (PrintToChannel (Var (Global "c")) "stdOut") (PrintToChannel (Val 9) "stdOut"))) undefined undefined undefined)])
 
 
+notReallyUnsound33:: Program Gr
+notReallyUnsound33 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (If CTrue (Seq (Ass (Global "c") (Val 9)) (SpawnThread 2)) (If CTrue (PrintToChannel (Val 0) "stdOut") (Ass (Global "x") (Val 9)))) (ForC 2 (Seq (PrintToChannel (Val 4) "stdOut") (ReadFromChannel (Global "z") "stdIn")))) undefined undefined undefined),("thread2",Generated (If (Leq (Val 0) (Neg (Var (Global "c")))) (If (Leq (Val 0) (Plus (Var (Global "c")) (Var (Global "c")))) (Seq (SpawnThread 3) (PrintToChannel (Var (Global "c")) "stdOut")) (Seq (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut") (Ass (Global "a") (Times (Var (Global "c")) (Var (Global "c")))))) (Seq (Seq (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "a") "stdIn")) (ForV (Global "a") (Ass (Global "c") (Times (Var (Global "c")) (Var (Global "c"))))))) undefined undefined undefined),("thread3",Generated (Seq (If (Leq (Val 0) (Var (Global "c"))) (PrintToChannel (Neg (Var (Global "c"))) "stdOut") (PrintToChannel (Plus (Var (Global "c")) (Var (Global "c"))) "stdOut")) (ForC 1 (Ass (Global "b") (Times (Var (Global "c")) (Var (Global "c")))))) undefined undefined undefined)])
+
+
 -- took about 1 min to findB
 simonIsNotAsPreciseAsGiffornExample :: Program Gr
 simonIsNotAsPreciseAsGiffornExample = toProgramIntra $ IntraGeneratedProgram

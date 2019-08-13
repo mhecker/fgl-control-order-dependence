@@ -16,7 +16,6 @@ import Program.Analysis
 
 import qualified Program.Typing.ResumptionBasedSecurity as Res
 
-import Program.Examples
 import Program.Generator
 import Program.Defaults (defaultChannelObservability)
 

@@ -321,14 +321,14 @@ soundnessProps =  testGroup "(concerning soundness)" [
     testPropertySized 3
      ("isSound  isSecureResumptionBasedSecurity")
      (isSoundPartialGen $ isSecureResumptionBasedSecurity ZeroOneBisimilarity),
-    testPropertySized 10
-     ("allSoundIntraMulti [ timingClassificationAtUses, timingClassificationDomPaths, timingClassification, timingClassificationSimple,  timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] ")
-     ( allSoundIntraMulti [ isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] )
+    testPropertySized 15
+         ("allSoundIntraMulti [isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification, isSecureGiffhornClassification2] ")
+         ( allSoundIntraMulti [isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification, isSecureGiffhornClassification2] )
   ]
 
 soundnessTests =  testGroup "(concerning soundness)" $
-  [ testCase      ("allSoundP [ timingClassificationDomPaths, timingClassification, timingClassificationSimple, timingClassificationIdomBischof, minimalClassification, giffhornLSOD, simonClassification ] for " ++ exampleName)
-                  ( allSoundP [ isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification ] example @? "")
+  [ testCase      ("allSoundP [isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification, isSecureGiffhornClassification2] for " ++ exampleName)
+                  ( allSoundP [isSecureTimingClassificationAtUses, isSecureTimingClassificationDomPaths, isSecureTimingClassification, isSecureTimingClassificationSimple, isSecureTimingClassificationIdomBischof, isSecureMinimalClassification, giffhornLSOD, isSecureSimonClassification, isSecureGiffhornClassification2] example @? "")
   | (exampleName, example) <- testsuite
   ] ++
   [ testCase      ("insecure example programs are  identified as such by the empiric test for " ++ exampleName)

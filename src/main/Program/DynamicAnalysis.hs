@@ -126,15 +126,15 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
                 where left  = wellektest ε α vLeft
                       right = wellektest ε α vRight
 
-          let ts b = traceShow ("Finished:  ", n, b, θs, θ's) b
+          let ts b = traceShow ("Finished:  ", n, b, take 8 $ Map.assocs $ θs, take 8 $ Map.assocs $ θ's) b
 
           if (n < nMin) ∨ (evidenceThatObservationsAreDifferent == NotSignificant  ∧   evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then do
             state' <- newSamplePairs (max nMin n) state
             test state'
           else if (evidenceThatObservationsAreDifferent ==    Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == NotSignificant) then
-            return $ ts $ False
+            return $ False
           else if (evidenceThatObservationsAreDifferent == NotSignificant  ∧  evidenceThatObservationsAreWithinEpsilonDistance ==    Significant) then
-            return $ ts $ True
+            return $ True
           else 
             return
               $ assert ( evidenceThatObservationsAreDifferent == Significant  ∧  evidenceThatObservationsAreWithinEpsilonDistance == Significant)

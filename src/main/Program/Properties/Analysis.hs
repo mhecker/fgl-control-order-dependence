@@ -84,16 +84,19 @@ hasStdInStdOut (Program { tcfg }) =
 
 
 allSoundIntra ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
-allSoundIntra as generated = any ($ p) as  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecureEmpirically p
+allSoundIntra as generated = any ($ p) as  ==>  isSecureEmpirically p
   where p = toProgramIntra generated
+        ts = traceShow ("New Program: ", (length $ nodes $ tcfg p, generated))
 
 allSoundIntraMulti ::  [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
-allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ∧  hasStdInStdOut p  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecureEmpirically p
+allSoundIntraMulti as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ∧  hasStdInStdOut p  ==>  isSecureEmpirically p
   where p = toProgramIntra generated
+        ts = traceShow ("New Program: ", (length $ nodes $ tcfg p,  Set.size $ staticThreads p))
 
 allSoundIntraMultiRelativeTo ::  (Program Gr -> Bool) -> [(Program Gr -> Bool)] -> IntraGeneratedProgram -> Property
-allSoundIntraMultiRelativeTo  isSecure as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ∧  hasStdInStdOut p  ==> {- traceShow ("New Program: ", (length $ nodes $ tcfg p, generated)) $ -} isSecure p
+allSoundIntraMultiRelativeTo  isSecure as generated = ((Set.size $ staticThreads p) >= 2)  ∧  (any ($ p) as)  ∧  hasStdInStdOut p  ==> isSecure p
   where p = toProgramIntra generated
+        ts = traceShow ("New Program: ", (length $ nodes $ tcfg p, generated))
 
 
 

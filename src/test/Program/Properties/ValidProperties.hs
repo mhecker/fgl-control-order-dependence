@@ -3972,8 +3972,11 @@ timingDepProps = testGroup "(concerning timingDependence)" [
     testPropertySized 40 "timingDependence         ⊑ timingDependenceOld"
                 $ \generated -> let p :: Program Gr = toProgramIntra generated
                                     g = tcfg p
-                                    ok = timingDependence g ⊑ timingDependenceOld g
-                                in if ok then ok else traceShow g $ ok
+                                    td    = timingDependence g
+                                    tdOld = timingDependenceOld g
+                                    count = Map.fold (\s k -> Set.size s + k) 0
+                                    ts ok = traceShow (count td, count tdOld) $ if ok then ok else traceShow g $ ok
+                                in td ⊑ tdOld
   ]
 
 timingDepTests = testGroup "(concerning timingDependence)" $

@@ -38,7 +38,7 @@ import Program.MultiThread
 import Program.MHP
 import Program.CDom
 import Program.Analysis
-import Program.DynamicAnalysis (isSecureEmpirically, isSecureEmpiricallyCombinedTest)
+import Program.DynamicAnalysis (isSecureEmpirically, isSecureEmpiricallyCombinedTest, isLSODEmpirically)
 import Program.Generator (GeneratedProgram(..), toCode, toProgram,
                           IntraGeneratedProgram(..), toCodeIntra, toProgramIntra,
                           SimpleProgram(..), toCodeSimple, toProgramSimple,

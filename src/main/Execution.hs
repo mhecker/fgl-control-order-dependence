@@ -14,6 +14,8 @@ import Control.Monad (liftM)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import qualified Data.List as List(null)
 
 import Control.Monad(forM_)
@@ -148,6 +150,30 @@ someFinishedReversedAnnotatedExecutionTraces n program@(Program { tcfg }) input 
 
 someFinishedAnnotatedExecutionTraces :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m [AnnotatedExecutionTrace]
 someFinishedAnnotatedExecutionTraces n p i = liftM (fmap (\(t,p) -> (reverse t,p))) $  someFinishedReversedAnnotatedExecutionTraces n p i
+
+
+someFinishedReversedObservations :: (MonadRandom m, Graph gr) => Integer -> Program gr -> Input -> m (Set Trace)
+someFinishedReversedObservations n program@(Program { tcfg, observability }) input = sampleSome Set.empty 0
+  where initialTraces  =  [ [(initialConfiguration program input, e, c')] | (e,c') <- initialSteps ]
+        initialSteps   = eventStep tcfg $ initialConfiguration program input
+        sampleSome sampled i
+          | i >= n            = return $ sampled
+          | otherwise         = do
+              t0 <- sample initialTraces
+              newTrace <- sampleTrace t0
+              sampleSome (Set.insert newTrace sampled) (i+1)
+        sampleTrace t0@((c,e,c'):cs)
+          | finished  = return $ observable tcfg observability Low $ toTrace $ t0
+          | otherwise = do
+               index0 <- getRandomR (1, length ns)
+               let (event,c'') = eventStepAt (index0 - 1) tcfg c'
+               sampleTrace ((c',event,c''):t0)
+         where finished = List.null ns
+               (ns,_,_,_) = c'
+
+
+
+
 
 showSomeFinishedExecutionTraces program input n = do
   traces <- evalRandIO $ someFinishedAnnotatedExecutionTraces n program input

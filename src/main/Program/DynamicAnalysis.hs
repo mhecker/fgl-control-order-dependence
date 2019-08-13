@@ -16,6 +16,10 @@ import Data.Ord (comparing)
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import Data.Set (Set)
+import qualified Data.Set as Set
+
+
 import qualified Data.List as List
 
 
@@ -30,7 +34,7 @@ import Statistics (wellektest, plunketttest)
 
 import Unicode
 import IRLSOD(Trace, ExecutionTrace, Input, eventStep, eventStepAt, toTrace, SecurityLattice (..), observable)
-import Execution (someFinishedReversedAnnotatedExecutionTraces, sample, initialConfiguration)
+import Execution (someFinishedReversedAnnotatedExecutionTraces, sample, initialConfiguration, someFinishedReversedObservations)
 import PNI (counterExamplesWithRegardToEquivAnnotatedIf)
 
 import Program.Defaults
@@ -44,6 +48,15 @@ isSecureEmpiricallyMyOwnSuckyOldTest program@(Program { tcfg, observability }) =
   return $ length counterExamples == 0
  where areDifferent p p' =   abs(p-p') > 2/100
        n = 7500
+
+isLSODEmpirically program@(Program { tcfg, observability }) = unsafePerformIO $ do
+  θobs  <- evalRandIO $ someFinishedReversedObservations n program defaultInput
+  θ'obs <- evalRandIO $ someFinishedReversedObservations n program defaultInput'
+  return $
+       (Set.size θobs ) == 1
+     ∧ (Set.size θ'obs) == 1
+     ∧ θobs == θ'obs
+ where n = 2048
 
 
 type ID = Int
@@ -129,4 +142,3 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
 
 isSecureEmpirically :: Graph gr => Program gr -> Bool
 isSecureEmpirically = isSecureEmpiricallyCombinedTest
-

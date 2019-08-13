@@ -4,6 +4,7 @@
 module Program.Analysis where
 
 import Debug.Trace
+import Control.Exception.Base (assert)
 
 
 import Algebra.Lattice
@@ -385,10 +386,9 @@ giffhornClassificationUsing pc@(PrecomputedResults { mhp, cpdg }) p@(Program { t
                     (\clData -> clData  ⊔ (Map.fromList [ (n,(∐) [ clData ! m  | m <- pre cpdg n])
                                                                                | n <- nodes cpdg])
                     )
+               
         def_ = def tcfg
         use_ = use tcfg
-
-
 
 isSecureGiffhornClassification :: SecurityAnalysis gr
 isSecureGiffhornClassification p = isSecureGiffhornClassificationUsing (precomputedUsing undefined p) p
@@ -411,6 +411,44 @@ isSecureGiffhornClassificationUsing  pc@(PrecomputedResults { mhp }) p@(Program{
          (\(n,m) -> False)
     )
   where (cl, inf) = giffhornClassificationUsing pc p
+
+
+giffhornClassification2 p = giffhornClassification2Using  (precomputedUsing undefined p) p
+giffhornClassification2Using pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) = (cl, clo)
+  where cl  = (㎲⊒)                    (Map.fromList [ (m, Low)  | m <- nodes cpdg])
+                        (\cl ->        (Map.fromList [ (m, clInitFrom observability m)      | m <- nodes cpdg])
+                                 ⊔     (Map.fromList [ (m,(∐) [ cl ! n  | n <- pre cpdg m]) | m <- nodes cpdg])
+                        )
+        clo  = (㎲⊒)                   (Map.fromList [ (m, False)  | m <- nodes cpdg])
+                        (\clo ->       (Map.fromList [ (m, True )  | (n,m, InterThreadDependence) <- labEdges cpdg ])
+                                 ⊔ (∐) [Map.fromList [ (m, True )] | (n,m) <- Set.toList mhp, not $ Set.null $ (def_ m) ∩ (def_ n)]
+                                 ⊔     (Map.fromList [ (m,(∐) [ clo ! n  | n <- pre cpdg m]) | m <- nodes cpdg])
+                        )
+        def_ = def tcfg
+        use_ = use tcfg
+
+isSecureGiffhornClassification2 :: SecurityAnalysis gr
+isSecureGiffhornClassification2 p = isSecureGiffhornClassification2Using (precomputedUsing undefined p) p
+
+isSecureGiffhornClassification2Using :: PrecomputedResults gr -> SecurityAnalysis gr
+isSecureGiffhornClassification2Using  pc@(PrecomputedResults { mhp }) p@(Program{ tcfg, observability }) =
+    ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> cl  ! n == Low)
+    )
+    ∧
+    ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
+            (\n -> clo ! n == False)
+    )
+    ∧
+    ((∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
+                                m <- nodes tcfg, observability m == Just Low,
+                                (n,m) ∈ mhp
+                          ]
+         )
+         (\(n,m) -> False)
+    )
+  where (cl, clo) = giffhornClassification2Using pc p
+
 
 
 

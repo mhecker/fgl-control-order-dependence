@@ -161,7 +161,7 @@ import Data.Graph.Inductive.Arbitrary
 
 
 import Program (Program, tcfg, entryOf, procedureOf, mainThread)
-import Program.DynamicAnalysis (isSecureEmpirically)
+import Program.DynamicAnalysis (isSecureEmpirically, isLSODEmpirically)
 
 import Program.Properties.Analysis
 import Program.Properties.CDom
@@ -411,7 +411,39 @@ simonClassificationTests = testGroup "(concerning simonClassification)" $
   []
 
 giffhornProps = testGroup "(concerning Giffhorns LSOD)" [
-    testPropertySized 45  "giffhornLSOD == isSecureGiffhornClassification for procedure-less programs"
+    testPropertySized 20  "isSecureGiffhornClassification2 isAtLeastAsPreciceAs isSecureGiffhornClassification for procedure-less programs"
+                $ \generated ->
+                    let  p :: Program Gr = toProgramIntra generated
+                         pc = precomputedUsing undefined p
+                    in isSecureGiffhornClassificationUsing pc p ⊑ isSecureGiffhornClassification2Using pc p,
+    testPropertySized 10  "isSecureGiffhornClassification2 isAtLeastAsPreciceAs isSecureGiffhornClassification"
+                $ \generated ->
+                    let  p :: Program Gr = toProgram      generated
+                         pc = precomputedUsing undefined p
+                    in isSecureGiffhornClassificationUsing pc p ⊑ isSecureGiffhornClassification2Using pc p,
+    testPropertySized 25  "isSecureGiffhornClassification2 is sound for procedure-less programs"
+                $ \generated ->
+                    let  p :: Program Gr = toProgramIntra generated
+                         pc = precomputedUsing undefined p
+                    in isSecureGiffhornClassification2Using pc p ==>  isLSODEmpirically p,
+    -- cannot use isLSODEmpirically, since such programs may contain nonterminating recursion
+    testPropertySized 10  "isSecureGiffhornClassification2 isAtMostAsPreciceAs isSecureTimingClassificationAtUses"
+                $ \generated ->
+                    let  p :: Program Gr = toProgram      generated
+                         pc = precomputedUsing undefined p
+                    in isSecureGiffhornClassification2Using pc p ⊑ isSecureTimingClassificationAtUses p,
+    testPropertySized 25  "isSecureGiffhornClassification is sound for procedure-less programs"
+                $ \generated ->
+                    let  p :: Program Gr = toProgramIntra generated
+                         pc = precomputedUsing undefined p
+                    in isSecureGiffhornClassificationUsing pc p ==>  isLSODEmpirically p,
+    -- cannot use isLSODEmpirically, since such programs may contain nonterminating recursion
+    testPropertySized 10  "isSecureGiffhornClassification  isAtMostAsPreciceAs isSecureTimingClassificationAtUses"
+                $ \generated ->
+                    let  p :: Program Gr = toProgram      generated
+                         pc = precomputedUsing undefined p
+                    in isSecureGiffhornClassificationUsing  pc p ⊑ isSecureTimingClassificationAtUses p,
+    testPropertySized 25  "giffhornLSOD == isSecureGiffhornClassification for procedure-less programs"
                 $ \generated ->
                     let  p :: Program Gr = toProgramIntra generated
                          pc = precomputedUsing undefined p
@@ -423,6 +455,14 @@ giffhornProps = testGroup "(concerning Giffhorns LSOD)" [
                     in giffhornLSODUsing pc p == isSecureGiffhornClassificationUsing pc p
   ]
 giffhornTests = testGroup "(concerning Giffhorns LSOD)" $
+  [  testCase    ("isSecureGiffhornClassification2 is sound for " ++ exampleName)
+                $ isSecureGiffhornClassification2 p → isLSODEmpirically p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
+  [  testCase    ("isSecureGiffhornClassification is sound for " ++ exampleName)
+                $ isSecureGiffhornClassification p → isLSODEmpirically p @? ""
+  | (exampleName, p) <- testsuite
+  ] ++
   [  testCase    ("giffhornLSOD == isSecureGiffhornClassification for " ++ exampleName)
                 $ giffhornLSOD p == isSecureGiffhornClassification p @? ""
   | (exampleName, p) <- testsuite

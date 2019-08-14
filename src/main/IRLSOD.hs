@@ -89,14 +89,15 @@ useB (And b1 b2) = useB b1 ∪ useB b2
 useB (Or  b1 b2) = useB b1 ∪ useB b2
 useB (Not b)     = useB b
 
-evalV :: CombinedState -> VarFunction -> Val
-evalV σ (Val  x)    = x
-evalV σ (Var  x)
+evalV σ vf = (evalVM σ vf) `rem` 16 -- lets keep values small :O
+evalVM :: CombinedState -> VarFunction -> Val
+evalVM σ (Val  x)    = x
+evalVM σ (Var  x)
  | Map.member x σ   = σ ! x
  | otherwise        = error $ show σ ++ "does not contain:    " ++ (show x)
-evalV σ (Plus  x y) = evalV σ x + evalV σ y
-evalV σ (Times x y) = evalV σ x * evalV σ y
-evalV σ (Neg x)     = - evalV σ x
+evalVM σ (Plus  x y) = evalVM σ x + evalVM σ y
+evalVM σ (Times x y) = evalVM σ x * evalVM σ y
+evalVM σ (Neg x)     = - evalVM σ x
 
 useV :: VarFunction -> Set Var
 useV (Val  x)    = Set.empty

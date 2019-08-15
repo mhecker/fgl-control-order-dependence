@@ -3194,6 +3194,12 @@ notReallyUnsound34 = toProgramIntra $ IntraGeneratedProgram
     (Map.fromList [("main",Generated (Seq (Seq (If CTrue (ReadFromChannel (Global "z") "stdIn") (SpawnThread 2)) (If CFalse (PrintToChannel (Val (-1)) "stdOut") (SpawnThread 3))) (If CFalse (Seq (ReadFromChannel (Global "x") "lowIn1") (ReadFromChannel (Global "b") "lowIn1")) (ForC 1 (PrintToChannel (Val 9) "stdOut")))) undefined undefined undefined),("thread2",Generated (Seq (Seq (Seq (PrintToChannel (Val 0) "stdOut") Skip) (If CTrue (PrintToChannel (Val 1) "stdOut") (Ass (Global "c") (Val 1)))) (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") (Ass (Global "z") (Val 1))) (ForC 1 (ReadFromChannel (Global "c") "lowIn1")))) undefined undefined undefined),("thread3",Generated (Seq (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val 0) "stdOut")) (Seq (Ass (Global "y") (Val 4)) (PrintToChannel (Plus (Var (Global "y")) (Var (Global "y"))) "stdOut"))) undefined undefined undefined)])
 
 
+-- fifth 
+notReallyUnsound35:: Program Gr
+notReallyUnsound35 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("main",Generated (ForC 1 (Seq (Seq (Seq (PrintToChannel (Val 0) "stdOut") (SpawnThread 3)) (ForC 2 (Ass (Global "x") (Val 9)))) (ForC 2 (Seq (ReadFromChannel (Global "y") "stdIn") Skip)))) undefined undefined undefined),("thread2",Generated (Seq (Seq (Ass (Global "c") (Val 9)) (Ass (Global "x") (Var (Global "c")))) (If (Leq (Val 0) (Times (Var (Global "c")) (Var (Global "x")))) (ReadFromChannel (Global "y") "lowIn1") (ReadFromChannel (Global "b") "lowIn1"))) undefined undefined undefined),("thread3",Generated (ForC 1 (Seq (ForC 1 (Seq (ReadFromChannel (Global "z") "lowIn1") (SpawnThread 2))) (If (Leq (Val 0) (Plus (Var (Global "z")) (Var (Global "z")))) (Seq (ReadFromChannel (Global "a") "lowIn1") (PrintToChannel (Neg (Var (Global "a"))) "stdOut")) (ForC 2 Skip)))) undefined undefined undefined)])
+
 -- took about 1 min to findB
 simonIsNotAsPreciseAsGiffornExample :: Program Gr
 simonIsNotAsPreciseAsGiffornExample = toProgramIntra $ IntraGeneratedProgram
@@ -3928,6 +3934,7 @@ testsuite = [ $(withName 'example1),
               $(withName 'notReallyUnsound32),
               $(withName 'notReallyUnsound33),
               $(withName 'notReallyUnsound34),
+              $(withName 'notReallyUnsound35),
               $(withName 'forIf)
             ] ++
             precisionCounterExamples ++

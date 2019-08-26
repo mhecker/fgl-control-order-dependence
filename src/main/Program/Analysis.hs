@@ -154,12 +154,12 @@ timingClassificationUsing
 timingClassificationAtUses p@(Program { tcfg, observability }) =
     timingClassificationAtUsesUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
-        cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
+        cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp, (not $ Set.null $ def tcfg n ∩ def tcfg m) ∨ (observability n == Just Low ∧ observability m == Just Low)]
         pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomBischof p
 timingClassificationAtUsesNodes pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
     timingClassificationAtUsesUsing pc p clInit cltInit
   where clInit  = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
-        cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp ]
+        cltInit = Map.fromList [ ((n,m), (⊥))  | (n,m) <- Set.toList mhp, (not $ Set.null $ def tcfg n ∩ def tcfg m) ∨ (observability n == Just Low ∧ observability m == Just Low)]
 timingClassificationAtUsesUsing
     (PrecomputedResults { cpdg, idom, mhp, chop, timingdg })
     (Program { tcfg })
@@ -170,13 +170,15 @@ timingClassificationAtUsesUsing
                                        | n <- nodes cpdg])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
                                                                     m' <- ideps n x,
-                                                                   (m,m') ∈ mhp
+                                                                   (m,m') ∈ mhp,
+                                                            assert (not $ Set.null $ def_ m ∩ def_ m') True
                                                  ]
                                          )
                                        | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])
                        ⊔ (Map.fromList [ (n,(∐) [ (clt ! (m,m')) | m  <- ideps n x,
                                                                     m' <- ddeps n x,
-                                                                   (m,m') ∈ mhp
+                                                                   (m,m') ∈ mhp,
+                                                            assert (not $ Set.null $ def_ m ∩ def_ m') True
                                                  ]
                                          )
                                        | n <- nodes tcfg, x <- Set.toList (use tcfg n)   ])
@@ -185,11 +187,13 @@ timingClassificationAtUsesUsing
                                                                   c' <- Set.toList $ ((chop c n) ∩ (Set.fromList (pre timingdg n)))
                                                                                    ∪ ((chop c m) ∩ (Set.fromList (pre timingdg m)))
                                                      ])
-                                       |  (n,m) <- Set.toList mhp])
+                                       |  (n,m) <- Map.keys clt])
                   )
     )
  where ddeps n x = [ m | (m,DataDependence)        <- lpre cpdg n, x `Set.member` def tcfg m ]
        ideps n x = [ m | (m,InterThreadDependence) <- lpre cpdg n, x `Set.member` def tcfg m ]
+       def_ = def tcfg
+       use_ = use tcfg
 
 
 timingClassificationDomPaths p@(Program { tcfg, observability }) =

@@ -3435,6 +3435,11 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 let g = generatedGraph
                     timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
                 in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x ))),
+    testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive in unique exit node cfg"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let (_, g) = withUniqueEndNode () () generatedGraph
+                    timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x ))),
     testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp via validTimdom"
     $ \(ARBITRARY(generatedGraph)) ->
                 let g = generatedGraph

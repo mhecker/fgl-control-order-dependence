@@ -64,7 +64,7 @@ import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensa
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence, timingDependenceOld)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode',)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode', toSuccMap)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge, newNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
@@ -151,7 +151,7 @@ import qualified Data.Graph.Inductive.Query.TSCD         as TSCD (timdomsOf, tim
     itimdomMultipleOfTwoFingerCost, cost1, cost1F,
     itimdomMultipleTwoFingercd, timDFFromFromItimdomMultipleOf,
     timdomOfNaiveLfp, timdomMultipleOfNaiveLfp,
-    timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, tscdSliceFast, tscdSliceViaTimDF)
+    timDFFromFromItimdomMultipleOfFast, timDFFromFromItimdomMultipleOfFastCost, itimdomMultipleOfTwoFinger, timdomOfTwoFinger, tscdSliceFast, tscdSliceViaTimDF, timMultipleDFTwoFinger)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (alternativeTimingSolvedF3dependence, timingSolvedF3dependence, timingF3dependence, timingF3EquationSystem', timingF3EquationSystem, snmTimingEquationSystem, timingSolvedF3sparseDependence, timingSnSolvedDependence, timingSnSolvedDependenceWorklist, timingSnSolvedDependenceWorklist2, enumerateTimingDependence, solveTimingEquationSystem, Reachability(..), timmaydomOfLfp, timingDependenceViaTwoFinger, nticdTimingSlice, ntscdTimingSlice, ptd, timingDependenceFromTimdom)
 
 import qualified Data.Graph.Inductive.FA as FA
@@ -3655,6 +3655,21 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                 $ \(ARBITRARY(g)) ->
                        (Map.mapWithKey (\n s -> Set.delete n s) $ TSCD.tscdOfLfp g) ==
                        (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ TSCD.timDF    g)),
+    testProperty "timdomMultipleOfNaiveLfp == timdom in unique exit node cfg"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let (_, g) = withUniqueEndNode () () generatedGraph
+                        timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp              g
+                        timdomMult = fmap (Set.map fst) $ TSCD.timdomMultipleOfNaiveLfp g
+                    in timdom == timdomMult,
+    testProperty "timdom is cycle free in unique exit node cfg"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let (_, g) = withUniqueEndNode () () generatedGraph
+                        timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                    in (∀) (Map.assocs timdom) (\(n,ms) -> (∀) ms (\m -> (n ∈ timdom ! m) → (n == m))),
+    testProperty   "timMultipleDFTwoFinger == timDF in unique exit node cfg"
+                $ \(ARBITRARY(generatedGraph)) ->
+                       let (_, g) = withUniqueEndNode () () generatedGraph
+                       in TSCD.timMultipleDFTwoFinger g == TSCD.timDF g,
     testPropertySized 40   "tscdOfNaiveCostLfp  == timDFFromFromItimdomMultipleOfFastCost"
                 $ \(ARBITRARY(g)) seed ->
                        let cost = costFor g seed
@@ -3674,6 +3689,20 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                            costF n m = cost ! (n,m)
                        in (Map.mapWithKey (\n s -> Set.delete n s) $ TSCD.tscdOfNaiveCostfLfp g costF) ==
                           (Map.mapWithKey (\n s -> Set.delete n s) $ (Map.fromList [ (n, Set.empty) | n <- nodes g]) ⊔ (invert'' $ TSCD.timDFCost g costF)),
+    testPropertySized 40 "timdoms* == timdom in reducible cfg"
+    $ \(REDUCIBLE(generatedGraph)) ->
+                    let g = generatedGraph
+                        timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                        timdoms    =                      TSCD.timdomsOf   g
+                        timdomsTrc = toSuccMap $ trc $ (fromSuccMap timdoms :: Gr () ())
+                    in timdom == timdomsTrc,
+    testPropertySized 40 "timdoms* == timdom in unique exit node cfg"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let (_, g) = withUniqueEndNode () () generatedGraph
+                        timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                        timdoms    =                      TSCD.timdomsOf   g
+                        timdomsTrc = toSuccMap $ trc $ (fromSuccMap timdoms :: Gr () ())
+                    in timdom == timdomsTrc,
     testPropertySized 40 "stepsCL timdomOfLfp"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph

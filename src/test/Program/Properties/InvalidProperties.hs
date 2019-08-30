@@ -51,6 +51,7 @@ import Data.Map ( Map, (!) )
 
 import Util(restrict, sampleFrom, moreSeeds,minimalPath,reachableFromIn, findCyclesM, fromSet, sublists)
 
+import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, removeDuplicateEdges, delSuccessorEdges, toSuccMap)
 import Data.Graph.Inductive (mkGraph, edges, suc, delEdges, grev, nodes, efilter, pre, insEdge, labNodes)
@@ -113,7 +114,7 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     wodTEIL', 
   )
 import qualified Data.Graph.Inductive.Query.NTICDUnused as NTICDUnused (rofldomOfTwoFinger7, myCD, myCDFromMyDom, ntiodFromMay, nticdIndus, joiniSinkDomAround, withPossibleIntermediateNodesFromiXdom)
-import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp)
+import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrection, tscdCostSlice, timDF, timdomOfLfp, timdomsOf,cost1, cost1F, validTimdomFor, tscdSliceForTrivialSinks, itimdomMultipleOfTwoFinger, timdomOfPrevNaiveLfp, timMultipleDFTwoFinger)
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice, ptd)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
@@ -206,6 +207,14 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty   "timMultipleDFTwoFinger == timDF in reducible cfg"
+                $ \(REDUCIBLE(g)) ->
+                       TSCD.timMultipleDFTwoFinger g == TSCD.timDF g,
+    testProperty "timdom is cycle free in reducible cfg"
+    $ \(REDUCIBLE(generatedGraph)) ->
+                    let g = generatedGraph
+                        timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                    in (∀) (Map.assocs timdom) (\(n,ms) -> (∀) ms (\m -> (n ∈ timdom ! m) → (n == m))),
     testProperty  "ptd  ==  timingSolvedF3sparseDependence" --  ∪ {(n,n) | n ∈ nodes}
                 $ \(ARBITRARY(g)) ->
                        let ptd              = PTDEP.ptd g

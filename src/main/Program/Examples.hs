@@ -3253,6 +3253,31 @@ notReallyUnsound43 = toProgramIntra $ IntraGeneratedProgram
 
 
 
+example42 :: Program Gr
+example42 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Ass (Global "a") (Val 1)
+               `Seq`  Ass (Global "b") (Val 2)
+               `Seq`  Ass (Global "c") (Val 3)
+               `Seq`  Ass (Global "d") (Val 4)
+               `Seq`  Ass (Global "x") (Val 24)
+               `Seq`  If ((Var (Global "x")) `Leq` (Val 0))
+                          (Ass (Global "y") ((Var (Global "b")) `Plus` (Var (Global "c"))))
+                       {-else-}
+                          (Ass (Global "y") ((Var (Global "d")) `Plus` (Var (Global "d"))))
+               `Seq`  Ass (Register 1) (Var (Global "b"))
+               `Seq`  Ass (Register 2) (Var (Global "y"))
+               `Seq`  If ((Var (Register 2)) `Leq` (Val 3))
+                          (Ass (Register 3) (Var (Global "a")))
+                       {-else-}
+                          (Ass (Register 3) (Var (Global "b")))
+               `Seq`  Ass (Register 4) (Var (Global "c"))
+                     ) undefined undefined undefined)])
+
+
+
+
 
 
 

@@ -410,6 +410,10 @@ timingDepTests = testGroup "(concerning timingDependence)" $
 
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
+  [  testCase     ("timingClassificationDomPaths == timingClassification for " ++ exampleName)
+                 (timingDDomPathsIsTiming example @? "")
+  | (exampleName, example) <- [("minimalClassificationVstimingClassificationDomPathsCounterExample2",minimalClassificationVstimingClassificationDomPathsCounterExample2)]
+  ] ++
   [ testCase ("isSecureSimonClassification is at least as precise as isSecureFlexibleSchedulerIndependentChannel for " ++ exampleName)
     $   isSecureFlexibleSchedulerIndependentChannelFor forProgram ⊑ isSecureSimonClassification program   @? ""
   | (exampleName, program, forProgram) <- [("minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD", minimalClassificationIsLessPreciseThanGiffhornLSODandRLSOD, minimalClassificationIsLessPreciseThanGiffhornLSODandRLSODFor) ]
@@ -433,6 +437,7 @@ timingClassificationDomPathsTests = testGroup "(concerning timingClassificationD
   []
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" $
+  -- [ testPropertySized 30  "timingClassificationDomPaths == timingClassification" timingDDomPathsIsTimingG ] ++
   -- [ testPropertySized 20 ("isSecureSimonClassification is at least as precise as isSecureGiffhornClassification")
   --   $ \generated -> let p :: Program Gr = toProgramIntra generated  in traceShow (length $ nodes $ tcfg p) $ isSecureGiffhornClassification p ⊑ isSecureSimonClassification p
   -- ] ++

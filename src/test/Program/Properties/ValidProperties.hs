@@ -360,8 +360,6 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
     testPropertySized 30  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated in
                 isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,
-    testPropertySized 30  "timingClassificationDomPaths == timingClassification"
-                  timingDDomPathsIsTimingG,
     testPropertySized 30  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
     testPropertySized 30  "timingClassificationAtUses is at least as precise as minimalClassification"
@@ -373,10 +371,6 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
   ]
 
 timingClassificationDomPathsTests = testGroup "(concerning timingClassificationDomPaths)" $
-  [  testCase     ("timingClassificationDomPaths == timingClassification for " ++ exampleName)
-                 (timingDDomPathsIsTiming example @? "")
-  | (exampleName, example) <- testsuite
-  ] ++
   [ testCase     ("timingClassificationDomPaths is at least as precise as timingClassificationSimple for " ++ exampleName)
                 ((isSecureTimingClassificationDomPaths example ⊒ isSecureTimingClassificationSimple example) @? "")
   | (exampleName, example) <- testsuite

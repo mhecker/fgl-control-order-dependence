@@ -3296,6 +3296,11 @@ simonIsNotAsPreciseAsGiffornExample = toProgramIntra $ IntraGeneratedProgram
                    ("thread3",Generated (If (Leq (Val 0) (Val (-1))) (ForC 1 (Seq (Seq (PrintToChannel (Times (Var (Global "x")) (Var (Global "x"))) "stdOut") (PrintToChannel (Plus (Var (Global "x")) (Var (Global "x"))) "stdOut")) (Seq Skip (ReadFromChannel (Global "c") "stdIn")))) (Seq (If (Leq (Val 0) (Neg (Var (Global "x")))) (Ass (Global "x") (Times (Var (Global "x")) (Var (Global "x")))) Skip) (Seq (PrintToChannel (Val 9) "stdOut") Skip))) undefined undefined undefined)])
 
 
+idomIsTreeProgramProceduralCounterExample :: Program Gr
+idomIsTreeProgramProceduralCounterExample = toProgram $ GeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("bar",Generated (If CTrue (CallProcedure "procH") (Ass (Global "z") (Val 4))) undefined undefined undefined),("main",Generated (Seq (Seq (ForC 1 (Seq (CallProcedure "procF") (PrintToChannel (Val 1) "stdOut"))) (Seq (PrintToChannel (Val (-1)) "stdOut") (PrintToChannel (Val (-1)) "stdOut"))) (Seq (Seq (SpawnThread 2) (CallProcedure "bar")) (Seq (Ass (Global "b") (Val 1)) Skip))) undefined undefined undefined),("procF",Generated (If CTrue (PrintToChannel (Val 1) "stdOut") (CallProcedure "procF")) undefined undefined undefined),("procH",Generated (Seq (ReadFromChannel (Global "c") "lowIn1") (PrintToChannel (Var (Global "c")) "stdOut")) undefined undefined undefined),("thread2",Generated (Seq (Seq (Seq (SpawnThread 3) (Ass (Global "x") (Val 1))) (ForC 2 (Seq Skip (Ass (Global "y") (Times (Var (Global "x")) (Var (Global "x"))))))) (ForC 1 (If (Leq (Val 0) (Neg (Var (Global "x")))) (ForV (Global "y") (CallProcedure "procH")) (Seq (CallProcedure "procH") (PrintToChannel (Plus (Var (Global "x")) (Var (Global "y"))) "stdOut"))))) undefined undefined undefined),("thread3",Generated (If CFalse (Seq (Ass (Global "b") (Val (-1))) (PrintToChannel (Plus (Var (Global "b")) (Var (Global "b"))) "stdOut")) (ForC 1 (If CTrue (ReadFromChannel (Global "x") "stdIn") (CallProcedure "procF")))) undefined undefined undefined)])
+
 
 isCdomIdomMohrEtAlNoCycleTestCounterExample ::  Program Gr
 isCdomIdomMohrEtAlNoCycleTestCounterExample = toProgramIntra $ IntraGeneratedProgram

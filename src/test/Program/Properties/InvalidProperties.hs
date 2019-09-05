@@ -617,11 +617,14 @@ cdomCdomTests = testGroup "(concerning cdoms)" $
   []
 
 cdomProps = testGroup "(concerning Chops between cdoms and the nodes involved)" [
-    testPropertySized 20  "domMhpProperty"                               $ (\p -> let pp = p :: Program Gr in domMhpProperty p),
-    testPropertySized 20  "idomIsTreeProgram idomBischof"                $ (\p -> let pp = p :: Program Gr in idomIsTreeProgram idomBischof p)
+    testPropertySized 20  "domMhpProperty"                               $ (\p -> let pp = p :: Program Gr in domMhpProperty p)
+    -- testPropertySized 20  "idomIsTreeProgram idomBischof"                $ (\p -> let pp = p :: Program Gr in idomIsTreeProgram idomBischof p)
   ]
 
 cdomTests = testGroup "(concerning Chops between cdoms and the nodes involved)" $
+  [ testCase ("idomIsTreeProgram idomBischof for " ++ exampleName ) $ idomIsTreeProgram idomBischof p @? ""
+  | (exampleName, p) <- [("idomIsTreeProgramProceduralCounterExample", idomIsTreeProgramProceduralCounterExample)]
+  ] ++
   []
 
 

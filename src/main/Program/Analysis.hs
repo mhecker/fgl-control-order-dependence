@@ -87,10 +87,10 @@ clInitFrom observability n
   | Nothing <- observability n = (⊥)
   | Just l  <- observability n = l
 
-minimalClassification p@(Program { tcfg, observability }) =
+minimalClassificationFor pc@(PrecomputedResults { cpdg }) p@(Program { tcfg, observability }) =
     minimalClassificationUsing pc p clInit
   where clInit = Map.fromList [ (n, clInitFrom observability n) | n <- nodes cpdg ]
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomDefaultFor p
+
 minimalClassificationNodes pc@(PrecomputedResults { mhp, cpdg }) p@(Program { tcfg, observability }) =
     minimalClassificationUsing pc p clInit
   where clInit = Map.fromList [ (n, Set.fromList [n]) | n <- nodes cpdg ]
@@ -266,12 +266,17 @@ timingClassificationSimpleUsing
     )
 
 
-isSecureMinimalClassification :: SecurityAnalysis gr
-isSecureMinimalClassification  p@(Program{ tcfg, observability }) =
+isSecureMinimalClassificationFor :: PrecomputedResults gr -> SecurityAnalysis gr
+isSecureMinimalClassificationFor pc  p@(Program{ tcfg, observability }) =
        ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl ! n == Low)
        )
-  where cl = minimalClassification p
+  where cl = minimalClassificationFor pc p
+
+isSecureMinimalClassification :: SecurityAnalysis gr
+isSecureMinimalClassification p = isSecureMinimalClassificationFor pc p
+  where pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomDefaultFor p
+
 
 
 isSecureSimonClassification :: SecurityAnalysis gr
@@ -285,39 +290,46 @@ isSecureSimonClassification  p@(Program{ tcfg, observability }) =
 -- TODO: via ⊑ formulieren
 
 
-isSecureTimingClassificationAtUses :: SecurityAnalysis gr
-isSecureTimingClassificationAtUses p = isSecureTimingClassificationFor pc cl clt p
+isSecureTimingClassificationAtUsesFor :: PrecomputedResults gr -> SecurityAnalysis gr
+isSecureTimingClassificationAtUsesFor pc p = isSecureTimingClassificationUsing pc cl clt p
   where (cl,clt) = timingClassificationAtUses pc p
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomDefaultFor p
 
+isSecureTimingClassificationAtUses :: SecurityAnalysis gr
+isSecureTimingClassificationAtUses p = isSecureTimingClassificationFor pc p
+  where pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomDefaultFor p
+
+
+isSecureTimingClassificationFor :: PrecomputedResults gr -> SecurityAnalysis gr
+isSecureTimingClassificationFor pc p = isSecureTimingClassificationUsing pc cl clt p
+  where (cl,clt) = timingClassificationLevels pc p
 
 isSecureTimingClassification :: SecurityAnalysis gr
-isSecureTimingClassification p         = isSecureTimingClassificationFor pc cl clt p
-  where (cl,clt) = timingClassificationLevels pc p
-        pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomDefaultFor p
+isSecureTimingClassification p         = isSecureTimingClassificationFor pc p
+  where pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomDefaultFor p
+
 
 isSecureTimingClassificationIdomChef :: SecurityAnalysis gr
-isSecureTimingClassificationIdomChef p = isSecureTimingClassificationFor pc cl clt p
+isSecureTimingClassificationIdomChef p = isSecureTimingClassificationUsing pc cl clt p
   where (cl,clt) = timingClassificationLevels pc p
         pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomChefFor p
 
 isSecureTimingClassificationIdomBischof :: SecurityAnalysis gr
-isSecureTimingClassificationIdomBischof p = isSecureTimingClassificationFor pc cl clt p
+isSecureTimingClassificationIdomBischof p = isSecureTimingClassificationUsing pc cl clt p
   where (cl,clt) = timingClassificationLevels pc p
         pc@(PrecomputedResults { mhp, cpdg }) = precomputedUsing idomBischofFor p
 
 
 
 isSecureTimingClassificationDomPaths :: SecurityAnalysis gr
-isSecureTimingClassificationDomPaths p = isSecureTimingClassificationFor pc cl clt p
+isSecureTimingClassificationDomPaths p = isSecureTimingClassificationUsing pc cl clt p
   where (cl,cle) = timingClassificationDomPaths p
         pc@(PrecomputedResults { mhp, cpdg, dom, idom }) = precomputedUsing idomDefaultFor p
         clt      = Map.fromList [((n,m), cltFromCle dom idom cle (n,m)) | n <- nodes $ tcfg p,
                                                                           m <- nodes $ tcfg p,
                                                                           (n,m) ∈ mhp ]
 
-isSecureTimingClassificationFor ::  PrecomputedResults gr -> Map Node SecurityLattice -> Map (Node, Node) SecurityLattice  -> SecurityAnalysis gr
-isSecureTimingClassificationFor pc@(PrecomputedResults { mhp }) cl clt  p@(Program{ tcfg, observability }) =
+isSecureTimingClassificationUsing ::  PrecomputedResults gr -> Map Node SecurityLattice -> Map (Node, Node) SecurityLattice  -> SecurityAnalysis gr
+isSecureTimingClassificationUsing pc@(PrecomputedResults { mhp }) cl clt  p@(Program{ tcfg, observability }) =
        ((∀) (Set.fromList [ n    | n <- nodes tcfg, observability n == Just Low])
             (\n -> cl ! n == Low)
        )

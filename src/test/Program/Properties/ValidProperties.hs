@@ -363,7 +363,7 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
     testPropertySized 30  "timingClassificationDomPaths is at least as precise as timingClassificationSimple"
                 $ isSecureTimingClassificationDomPaths `isAtLeastAsPreciseAs` isSecureTimingClassificationSimple,
     testPropertySized 30  "timingClassificationAtUses is at least as precise as minimalClassification"
-                $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureMinimalClassification,
+                $ \generated -> let isAtLeastAsPreciseAs = isAtLeastAsPreciseAsPC generated in isSecureTimingClassificationAtUsesFor `isAtLeastAsPreciseAs` isSecureMinimalClassificationFor,
     testPropertySized 30  "timingClassificationAtUses is at least as precise as timingClassificationDomPaths"
                 $ isSecureTimingClassificationAtUses `isAtLeastAsPreciseAs` isSecureTimingClassificationDomPaths,
     testPropertySized 30  "timingClassificationDomPaths is at least as precise as giffhornLSOD"

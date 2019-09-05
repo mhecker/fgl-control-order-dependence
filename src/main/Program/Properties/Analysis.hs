@@ -48,6 +48,13 @@ isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
   where p = toProgramIntra generated
 
 
+isAtLeastAsPreciseAsPC :: IntraGeneratedProgram -> (PrecomputedResults Gr -> Program Gr -> Bool) -> (PrecomputedResults Gr -> Program Gr -> Bool) -> Bool
+isAtLeastAsPreciseAsPC generated = \a1 a2 -> a2 pc p ⊑ a1 pc p
+  where p = toProgramIntra generated
+        pc = precomputedUsing idomDefaultFor p
+
+
+
 
 
 isAtLeastAsPreciseAsPartialGen :: (Program Gr -> Bool) -> (IntraGeneratedProgram -> Maybe Bool) -> IntraGeneratedProgram -> Property

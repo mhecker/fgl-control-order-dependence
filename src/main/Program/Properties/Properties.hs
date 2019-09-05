@@ -39,7 +39,7 @@ instance Show (Program gr) where
 -- p     = cdomIsBroken'
 p     = cdomIsBroken2
 -- p     = directFlowThread
-cdom  = idomChef
+cdom  = idomDefault
 θ     = allFinishedExecutionTraces p defaultInput
 trees = fmap fst $
         allFinalTreeStates         p defaultInput

@@ -39,12 +39,6 @@ import Data.Graph.Inductive.PatriciaTree
 
 
 
--- mhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
-
--- domTree ::   Map Node Node
--- domTree  = Map.fromList $ 
-
-
 idomChef  :: DynGraph gr => Program gr ->  Map (Node,Node) Node
 idomChef p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
     [ ((n,n'), lca n n')   | n <- nodes tcfg, n' <- nodes tcfg ]
@@ -59,7 +53,7 @@ idomChef p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
                   | node `Map.member` dom = pathToRoot (dom ! node) ++ [node]
                   | otherwise             = [node]
 
-
+idomChefFor _ p = idomChef p
 
 
 -- -- chopTreeChef p = \n n' ->  {c | c <- cs}:
@@ -127,20 +121,17 @@ idomMohrEtAlNoCycleTest p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = 
                   | otherwise             = [node]
 
 
-idomBischof :: DynGraph gr => Program gr ->  Map (Node,Node) Node
-idomBischof p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
+idomBischofFor :: DynGraph gr => Map Node (Set Node) -> Program gr -> Map (Node,Node) Node
+idomBischofFor mhps p@(Program {tcfg, entryOf, procedureOf, mainThread}) = Map.fromList
     [ ((n,n'), leastValidFrom n n' $ lca n n')   | n <- nodes tcfg, n' <- nodes tcfg ]
   where dom :: Map Node Node
         dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
-        mhp = mhpSetFor p
-        mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes tcfg ]
 
         leastValidFrom :: Node -> Node -> Node -> Node
         leastValidFrom n n' c
           | (n ∈ mhps ! c) ∨ (n' ∈ mhps ! c) = leastValidFrom n n' (dom ! c)
           | otherwise                   = c
-
 
         lca :: Node -> Node -> Node
         lca n n' = c
@@ -149,6 +140,12 @@ idomBischof p@(Program {tcfg, entryOf, procedureOf, mainThread} ) = Map.fromList
                 pathToRoot node
                   | node `Map.member` dom = pathToRoot (dom ! node) ++ [node]
                   | otherwise             = [node]
+
+idomBischof :: DynGraph gr => Program gr -> Map (Node,Node) Node
+idomBischof p = idomBischofFor mhps p
+  where mhp = mhpSetFor p
+        mhps = Map.fromList [ (n, Set.fromList [ m | (n',m) <- Set.toList mhp, n' == n]) | n <- nodes (tcfg p)]
+
 
 
 domPathBetween dom dominated dominator

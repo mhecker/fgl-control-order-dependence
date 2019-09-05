@@ -113,7 +113,7 @@ timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread, procedureOf }) =
             (cl   == cl')
           ∧ (clt  == Map.fromList [((n,m), clt' (n,m)) | n <- nodes tcfg,
                                                          m <- nodes tcfg,
-                                                         mhp ! (n,m) ])
+                                                         (n,m) ∈ mhp ])
   where (cl , clt) = timingClassification p
         (cl', cle) = timingClassificationDomPaths p
         clt' = cltFromCle dom idom cle
@@ -121,14 +121,14 @@ timingDDomPathsIsTiming p@(Program{ tcfg, entryOf, mainThread, procedureOf }) =
         dom :: Map Node Node
         dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
-        idom = idomBischof p
-        mhp = mhpFor p
+        idom = idomDefault p
+        mhp = mhpSetFor p
 
 
 jürgenConjecture p@(Program{ tcfg, observability }) =
         (∀) (Set.fromList [(n,m) | n <- nodes tcfg, observability n == Just Low,
                                    m <- nodes tcfg, observability m == Just Low,
-                                   mhp ! (n,m)
+                                   (n,m) ∈ mhp
                           ]
             )
             (\(n,m) -> (((clt ! n == Low) ∧ (clt ! m == High))
@@ -141,8 +141,8 @@ jürgenConjecture p@(Program{ tcfg, observability }) =
                        )
             )
   where (cl,clt) = timingClassificationSimple p
-        idom = idomChef p
-        mhp = mhpFor p
+        idom = idomDefault p
+        mhp = mhpSetFor p
         trnsclos = trc tcfg
         dataConflictGraph = dataConflictGraphP p
         timing = timingDependenceGraphP p

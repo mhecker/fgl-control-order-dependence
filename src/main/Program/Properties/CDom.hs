@@ -205,7 +205,7 @@ cdomIsTreeDomViolations p@(Program {tcfg}) θ cd =
 
 chopPathsAreDomPaths :: DynGraph gr => (Program gr ->  Map (Node,Node) Node) -> Program gr -> Bool
 chopPathsAreDomPaths cd p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) =
-    (∀) [ (n,m) | ((n,m),True) <- Map.assocs mhp]
+    (∀) [ (n,m) | (n,m) <- Set.toList mhp]
         (\(n,m) -> let c = idom ! (n,m) in
                                                                                                           (chop c n) ∩ (Set.fromList (pre timing n)) ==
                    (Set.unions [ chop a b |  (a,b) <- consecutive $ [ y |  x <- domPathBetween n c , y <- [x,x] ] ]) ∩ (Set.fromList (pre timing n))
@@ -219,7 +219,7 @@ chopPathsAreDomPaths cd p@(Program { tcfg, observability, entryOf, procedureOf, 
           where Just dominated' = Map.lookup dominated dom
 
        idom = cd p
-       mhp = mhpFor p
+       mhp = mhpSetFor p
        trnsclos = trc tcfg
        timing = timingDependenceGraphP p
        chop :: Node -> Node -> Set Node
@@ -229,7 +229,7 @@ chopPathsAreDomPaths cd p@(Program { tcfg, observability, entryOf, procedureOf, 
 
 chopPathsAreDomPaths2 :: DynGraph gr => (Program gr ->  Map (Node,Node) Node) -> Program gr -> Bool
 chopPathsAreDomPaths2 cd p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) =
-    (∀) [ (n,m) | ((n,m),True) <- Map.assocs mhp]
+    (∀) [ (n,m) | (n,m) <- Set.toList mhp]
         (\(n,m) -> let c = idom ! (n,m) in
                                                                                                           (chop c n) ∩ (Set.fromList (pre timing n)) ==
                    (Set.unions [ chop a b ∩ (Set.fromList (pre timing b)) |  (a,b) <- consecutive $ [ y |  x <- domPathBetween dom n c , y <- [x,x] ] ])
@@ -237,7 +237,7 @@ chopPathsAreDomPaths2 cd p@(Program { tcfg, observability, entryOf, procedureOf,
  where dom :: Map Node Node
        dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
        idom = cd p
-       mhp = mhpFor p
+       mhp = mhpSetFor p
        trnsclos = trc tcfg
        timing = timingDependenceGraphP p
        chop :: Node -> Node -> Set Node
@@ -246,7 +246,7 @@ chopPathsAreDomPaths2 cd p@(Program { tcfg, observability, entryOf, procedureOf,
 
 -- chopPathsAreDomPathsViolations :: DynGraph gr => Program gr -> (Program gr ->  Map (Node,Node) Node) -> [(Node,Node)]
 chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, procedureOf, mainThread }) =
-    [ (n,m,c,chop1, chop2, path) | ((n,m),True) <- Map.assocs mhp,
+    [ (n,m,c,chop1, chop2, path) | (n,m) <- Set.toList mhp,
               let c = idom ! (n,m),
               let chop1 = (chop c n) ∩ (Set.fromList (pre timing n)),
               let path = domPathBetween dom n c,
@@ -257,7 +257,7 @@ chopPathsAreDomPathsViolations cd p@(Program { tcfg, observability, entryOf, pro
        dom = Map.fromList $ iDom tcfg (entryOf $ procedureOf $ mainThread)
 
        idom = cd p
-       mhp = mhpFor p
+       mhp = mhpSetFor p
        trnsclos = trc tcfg
        timing = timingDependenceGraphP p
        chop :: Node -> Node -> Set Node

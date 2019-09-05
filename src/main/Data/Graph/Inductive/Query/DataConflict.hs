@@ -36,12 +36,12 @@ dataConflicts :: DynGraph gr => Program gr -> Map Node (Set Node)
 dataConflicts p@(Program {tcfg}) = Map.fromList $
     [ (n, Set.fromList [ m | x <- Set.toList $ def tcfg n,  -- TODO: performance
                              m <- nodes tcfg,
-                             mhp ! (n,m),
+                             (n,m) ∈ mhp,
                              x ∈ (use tcfg m) ∪ (def tcfg m)
                         ]
        )
      | n <- nodes tcfg ]
-  where mhp = mhpFor p
+  where mhp = mhpSetFor p
 
 dataConflictGraphP :: DynGraph gr => Program gr -> gr CFGNode ()
 dataConflictGraphP p@(Program { tcfg }) = mkGraph (labNodes tcfg) [ (n,n',()) | (n,n's) <- Map.toList conflicts, n' <- Set.toList n's]

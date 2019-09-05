@@ -101,7 +101,8 @@ import qualified Data.Set as Set
 
 main = let { p = toProgramIntra someGen11' :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; putStrLn $ show $ isSecureEmpiricallyCombinedTest p }
 
-showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, mhpFor p ! (n,n') == True]
+showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, (n,n') ∈ mhp]
+  where mhp = mhpSetFor p
 
 showGraph :: (Graph gr, Show a, Show b)  => gr a b -> IO (GHC.IO.Handle.Types.Handle, GHC.IO.Handle.Types.Handle, GHC.IO.Handle.Types.Handle, ProcessHandle)
 showGraph = showGraphWith show show

@@ -53,21 +53,6 @@ mhpSetFor p@(Program { tcfg }) =
         threadsOfMap = threadsOf p
 
 
-
-mhpFor :: DynGraph gr => Program gr -> Map (Node,Node) Bool
-mhpFor p@(Program { tcfg }) = Map.fromList [ ((n1,n2), mhp n1 n2) | n1 <- nodes tcfg, n2 <- nodes tcfg ]
-  where mhp n1 n2
-           | (threads1 == threads2) ∧ (Set.size threads1 == 1) = isInMulti ! n1  -- == isInMulti ! n2
-           | otherwise                                         = (n1,n2) ∈ mhpDiff
-          where threads1 = threadsOfMap ! n1 
-                threads2 = threadsOfMap ! n2
-        isInMulti = isInMultiThread p
-        mhpDiff   = mhpDifferent p
-        threadsOfMap = threadsOf p
-
-
-
-
 mhpDifferentOld p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ [(a,b),(b,a)] | a <- nodes tcfg, (b,Spawn) <- lsuc tcfg a ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,

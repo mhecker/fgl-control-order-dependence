@@ -4042,6 +4042,24 @@ testsuite = [ $(withName 'example1),
             insecure ++
             []
 
+within20000 = [
+              $(withName 'notReallyUnsound31),
+              $(withName 'notReallyUnsound32),
+              $(withName 'notReallyUnsound33),
+              $(withName 'notReallyUnsound34),
+              $(withName 'notReallyUnsound35),
+              $(withName 'notReallyUnsound36),
+              $(withName 'notReallyUnsound37),
+              $(withName 'notReallyUnsound38),
+              $(withName 'notReallyUnsound39),
+              $(withName 'notReallyUnsound40),
+              $(withName 'notReallyUnsound41),
+              $(withName 'notReallyUnsound42),
+              $(withName 'notReallyUnsound43)
+            ]
+
+
+
 -- These are counter-Examples to the claim that timingClassification (i.e.: the old version, not the "atUses" version)
 -- is strictly more precise than minimalClassification.
 precisionCounterExamples = [

@@ -171,6 +171,7 @@ idomToTree idom = trrAcyclic tree
          tree =  mkGraph nodes
                          (nub [ (c,m,()) | ((n,n'),c) <- Map.assocs idom, m  <- [ n, n']])
 
+idomToTreeM idom = fmap Set.findMin $ Map.filter (not . Set.null) $ toSuccMap $ grev $ idomToTree idom
 
 chop graph =
   let trnsclos = trc graph in \s t ->

@@ -3277,6 +3277,13 @@ example42 = toProgramIntra $ IntraGeneratedProgram
 
 
 
+exampleDomPaths :: Program Gr
+exampleDomPaths = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (Seq (Seq (PrintToChannel (Val 0) "stdOut") (Ass (Global "b") (Val 9))) (ForC 1 (ReadFromChannel (Global "z") "lowIn1"))) (Seq (If (Leq (Val 0) (Val 4)) (Ass (Global "y") (Plus (Var (Global "z")) (Var (Global "z")))) (SpawnThread 2)) (ForC 2 (ReadFromChannel (Global "a") "lowIn1")))) undefined undefined undefined),("thread2",Generated (Seq (ForC 1 (Seq (ForV (Global "b") (ReadFromChannel (Global "z") "lowIn1")) (Seq (SpawnThread 3) (ReadFromChannel (Global "b") "stdIn")))) (If (Leq (Val 0) (Var (Global "b"))) (Seq (ReadFromChannel (Global "c") "stdIn") (PrintToChannel (Val 0) "stdOut")) (Seq Skip (Ass (Global "a") (Val 1))))) undefined undefined undefined),("thread3",Generated (Seq (Seq (PrintToChannel (Var (Global "z")) "stdOut") (Ass (Global "z") (Var (Global "z")))) (If (Leq (Val 0) (Plus (Var (Global "b")) (Var (Global "b")))) (PrintToChannel (Var (Global "z")) "stdOut") (ReadFromChannel (Global "z") "stdIn"))) undefined undefined undefined)])
+
+
+
 
 
 

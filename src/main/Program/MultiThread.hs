@@ -50,27 +50,69 @@ threadsOfAnalysis p@(Program {  mainThread, staticThreads, entryOf, procedureOf 
  where
   initial = Set.fromList [mainThread]
   transfer (n1,n2,Spawn) threads = Set.fromList [ thread | thread <- Set.toList $ staticThreads, entryOf (procedureOf thread) == n2]
+  transfer (n1,n2,Return)threads = Set.empty
   transfer e             threads = threads
 
 threadsOf :: Graph gr => Program gr -> Map Node (Set StaticThread)
 threadsOf p@(Program { tcfg, entryOf, procedureOf, mainThread}) = analysis (threadsOfAnalysis p) tcfg (entryOf (procedureOf mainThread))
 
-isInCycleAnalysis:: DynGraph gr => Program gr -> DataflowAnalysis Bool CFGEdge
+--              InCycle
+-- FromIntraCycle     FromCall
+--            NotInCycle
+data CycleReason = NotInCycle | FromIntraCycle | FromCall | InCycle  deriving (Show, Eq)
+instance JoinSemiLattice CycleReason where
+  NotInCycle     `join` x                = x
+  x              `join` NotInCycle       = x
+
+  FromIntraCycle `join` FromIntraCycle   = FromIntraCycle
+  FromIntraCycle `join` x                = InCycle
+  x              `join` FromIntraCycle   = InCycle
+
+  FromCall       `join` FromCall   = FromCall
+  FromCall       `join` x          = InCycle
+  x              `join` FromCall   = InCycle
+
+  InCycle        `join` InCycle           = InCycle
+
+instance BoundedJoinSemiLattice CycleReason  where
+  bottom = NotInCycle
+
+
+instance MeetSemiLattice CycleReason where
+  InCycle       `meet` x                = x
+  x              `meet` InCycle         = x
+
+  FromIntraCycle `meet` FromIntraCycle   = FromIntraCycle
+  FromIntraCycle `meet` x                = NotInCycle
+  x              `meet` FromIntraCycle   = NotInCycle
+
+  FromCall       `meet` FromCall   = FromCall
+  FromCall       `meet` x          = NotInCycle
+  x              `meet` FromCall   = NotInCycle
+
+  NotInCycle     `meet` NotInCycle       = NotInCycle
+
+
+isInCycleAnalysis:: DynGraph gr => Program gr -> DataflowAnalysis CycleReason CFGEdge
 isInCycleAnalysis p@(Program {  mainThread, staticProcedureOf, staticProcedures, entryOf, procedureOf }) = DataflowAnalysis {
     transfer = transfer,
     initial = initial
   }
  where
-  initial = False
+  initial = NotInCycle
   transfer (n1, n2, Spawn)  inCycle =            (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
-  transfer (n1, n2, Call)   inCycle = inCycle ⊔  (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
+  transfer (n1, n2, Call)   inCycle
+    | inCycle == FromIntraCycle     = FromCall ⊔  (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
+    | otherwise                     = inCycle  ⊔  (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
   transfer (n1, n2, Return) inCycle =            (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
-  transfer (n1, n2, e)      inCycle =            (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
+  transfer (n1, n2, e)      inCycle = (inCycle ⊓ FromCall) ⊔  (isInProcedureCycleMap ! (staticProcedureOf n2)) ! n2
   
-  isInProcedureCycleMap  = Map.fromList [ (procedure, isInCycleMap (cfgOfProcedure p procedure)) | procedure <- Set.toList $ staticProcedures ]
+  isInProcedureCycleMap  = Map.fromList [ (procedure, fmap toReason $ isInCycleMap (cfgOfProcedure p procedure)) | procedure <- Set.toList $ staticProcedures ]
+    where toReason True  = FromIntraCycle
+          toReason False = NotInCycle
 
 isInCycle :: DynGraph gr => Program gr -> Map Node Bool
-isInCycle p@(Program { tcfg, entryOf, procedureOf, mainThread}) = analysis (isInCycleAnalysis p) tcfg (entryOf (procedureOf mainThread))
+isInCycle p@(Program { tcfg, entryOf, procedureOf, mainThread}) = fmap (/= NotInCycle) $ analysis (isInCycleAnalysis p) tcfg (entryOf (procedureOf mainThread))
 
 
 multiThreadAnalysis :: DynGraph gr => Program gr -> DataflowAnalysis Bool CFGEdge

@@ -65,6 +65,7 @@ import Data.Graph.Inductive.Util
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.PatriciaTree
+import Data.Graph.Inductive.Query.Dataflow
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ProgramDependence
 import Data.Graph.Inductive.Query.ControlDependence

@@ -163,6 +163,7 @@ import Data.Graph.Inductive.Arbitrary
 import Program (Program, tcfg, entryOf, procedureOf, mainThread)
 import Program.DynamicAnalysis (isSecureEmpirically, isLSODEmpirically)
 
+import Program.MHP (mhpSetFor, mhpDifferent, mhpDifferentSlow)
 import Program.Properties.Analysis
 import Program.Properties.CDom
 import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into 2 seperate modules
@@ -357,6 +358,12 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
+    testPropertySized 30  "mhpDifferent == mhpDifferentSlow in non-procedural programs"
+                $ \generated -> let p :: Program Gr = toProgramIntra generated in mhpDifferent p == mhpDifferentSlow p,
+    testPropertySized 12  "mhpDifferent == mhpDifferentSlow in     procedural programs"
+                $ \generated -> let p :: Program Gr = toProgram      generated in mhpDifferent p == mhpDifferentSlow p,
+    testPropertySized 30  "mhpSetFor    == mhpDifferent     in non-procedural programs"
+                $ \generated -> let p :: Program Gr = toProgramIntra generated in mhpSetFor p == mhpDifferent p,
     testPropertySized 30  "timingClassificationAtUses is at least as precise as FlexibleSchedulerIndependence"
                 $ \generated -> let  p :: Program Gr = toProgramIntra generated in
                 isSecureTimingClassificationAtUses p ⊒ isSecureFlexibleSchedulerIndependentChannel generated,

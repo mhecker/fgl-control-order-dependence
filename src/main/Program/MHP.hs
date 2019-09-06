@@ -66,7 +66,7 @@ mhpDifferentOld p@(Program { tcfg }) =
        threadsOfMap = threadsOf p
 
 
-mhpDifferent p@(Program { tcfg }) =
+mhpDifferentSlow p@(Program { tcfg }) =
   (㎲⊒)  (Set.fromList $ concat $ [ if (e /= NoOp) then (error $ "invalid spawn-node successor " ++ show (b,e)) else
                                     [(a,b),(b,a)] | n <- nodes tcfg, (a,Spawn) <- lsuc tcfg n, (b,e) <- lsuc tcfg n, e /= Spawn ])
        (\mhp -> mhp ⊔ (Set.fromList $ concat [ [(a',b), (b,a')]  | a  <- nodes tcfg,
@@ -78,3 +78,7 @@ mhpDifferent p@(Program { tcfg }) =
 
  where
        threadsOfMap = threadsOf p
+
+mhpDifferent p@(Program { tcfg }) = left ∪ right
+  where left  = Set.fromList [ (a',b') | (n,a,Spawn) <- labEdges tcfg, (b,e) <- lsuc tcfg n, e /= Spawn, a' <- DFS.reachable a tcfg, b' <- DFS.reachable b tcfg ]
+        right = Set.map (\(n,m) -> (m,n)) left

@@ -160,7 +160,7 @@ import qualified Data.Graph.Inductive.FA as FA
 import Data.Graph.Inductive.Arbitrary
 
 
-import Program (Program, tcfg, entryOf, procedureOf, mainThread)
+import Program (Program, tcfg, entryOf, procedureOf, mainThread, observability)
 import Program.DynamicAnalysis (isSecureEmpirically, isLSODEmpirically)
 
 import Program.MHP (mhpSetFor, mhpDifferent, mhpDifferentSlow)
@@ -358,6 +358,20 @@ precisionCounterExampleTests = testGroup "(counterxamples to: timingClassificati
 
 
 timingClassificationDomPathsProps = testGroup "(concerning timingClassificationDomPaths)" [
+    testPropertySized 30  "cl timing ⊑ cl minimal"
+                $ \generated -> let p :: Program Gr = toProgramIntra generated
+                                    pc = precomputedUsing idomDefaultFor p
+                                    clMinimal            = minimalClassificationFor   pc p
+                                    (clTiming,clTiming2) = timingClassificationAtUses pc p
+                                in   (clTiming ⊑ clMinimal)
+                                   ∧ (∀) (Map.assocs clTiming2) (\((m1,m2), clTiming2) -> (clTiming2 ⊑ (clMinimal ! m1))  ∨  (clTiming2 ⊑ (clMinimal ! m2))),
+    testPropertySized 30  "cl timing ⊑ cl minimal w.r.t. node sets"
+                $ \generated -> let p :: Program Gr = toProgramIntra generated
+                                    pc = precomputedUsing idomDefaultFor p
+                                    clMinimal            = minimalClassificationNodes   pc p
+                                    (clTiming,clTiming2) = timingClassificationAtUsesNodes pc p
+                                in   (clTiming ⊑ clMinimal)
+                                   ∧ (∀) (Map.assocs clTiming2) (\((m1,m2), clTiming2) ->  clTiming2  ⊆  clMinimal ! m1 ∪ clMinimal ! m2),
     testPropertySized 30  "mhpDifferent == mhpDifferentSlow in non-procedural programs"
                 $ \generated -> let p :: Program Gr = toProgramIntra generated in mhpDifferent p == mhpDifferentSlow p,
     testPropertySized 12  "mhpDifferent == mhpDifferentSlow in     procedural programs"

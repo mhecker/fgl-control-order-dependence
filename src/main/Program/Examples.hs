@@ -3283,6 +3283,18 @@ exampleMhp4 = toProgram $ GeneratedProgram
 
 
 
+exampleCLT :: Program Gr
+exampleCLT = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (Seq (Seq (Seq (ReadFromChannel (Global "z") "stdIn") (SpawnThread 3)) (Seq (Ass (Global "z") (Val 0)) (PrintToChannel (Val 0) "stdOut"))) (Seq (Seq (Ass (Global "b") (Var (Global "z"))) Skip) (Seq (Ass (Global "y") (Val 0)) (ReadFromChannel (Global "b") "lowIn1")))) (ForV (Global "b") (ForC 1 (Seq (Seq (PrintToChannel (Neg (Var (Global "b"))) "stdOut") Skip) (If (Leq (Val 0) (Plus (Var (Global "b")) (Var (Global "b")))) (ReadFromChannel (Global "a") "stdIn") (ReadFromChannel (Global "x") "stdIn")))))) undefined undefined undefined),("thread3",Generated (ForC 1 (Seq (If (Leq (Val 0) (Var (Global "z"))) (ForC 2 (ForC 1 (Ass (Global "y") (Times (Var (Global "z")) (Var (Global "z")))))) (Seq Skip (Ass (Global "z") (Plus (Var (Global "z")) (Var (Global "z")))))) (Seq (Seq (Ass (Global "b") (Plus (Var (Global "z")) (Var (Global "z")))) (Ass (Global "a") (Val 4))) (Seq (ReadFromChannel (Global "z") "lowIn1") (ReadFromChannel (Global "y") "stdIn"))))) undefined undefined undefined)])
+
+
+exampleCLTNodeSets :: Program Gr
+exampleCLTNodeSets = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (ForC 1 (Seq (Seq (Seq Skip (SpawnThread 2)) (If CTrue (SpawnThread 3) (PrintToChannel (Val 1) "stdOut"))) (Seq (If CTrue (ReadFromChannel (Global "z") "lowIn1") (PrintToChannel (Val 4) "stdOut")) (Seq (Ass (Global "c") (Val 4)) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut"))))) (ForC 1 (Seq (Seq (Seq (Ass (Global "c") (Neg (Var (Global "c")))) (PrintToChannel (Times (Var (Global "c")) (Var (Global "c"))) "stdOut")) (Seq (PrintToChannel (Plus (Var (Global "c")) (Var (Global "c"))) "stdOut") Skip)) (Seq (ForC 2 Skip) (ForC 1 (Ass (Global "b") (Val 4))))))) undefined undefined undefined),("thread2",Generated (If CTrue (Seq (Seq (Seq (Ass (Global "x") (Val 1)) (PrintToChannel (Var (Global "x")) "stdOut")) (Seq (PrintToChannel (Neg (Var (Global "x"))) "stdOut") (ReadFromChannel (Global "x") "lowIn1"))) (If (Leq (Val 0) (Val 1)) (Seq (PrintToChannel (Neg (Var (Global "x"))) "stdOut") (ReadFromChannel (Global "x") "stdIn")) (If (Leq (Val 0) (Var (Global "x"))) (ReadFromChannel (Global "c") "stdIn") (ReadFromChannel (Global "a") "stdIn")))) (If CTrue (If CTrue (Seq (Ass (Global "x") (Val 1)) (PrintToChannel (Plus (Var (Global "x")) (Var (Global "x"))) "stdOut")) (Seq (ReadFromChannel (Global "x") "stdIn") (ReadFromChannel (Global "x") "stdIn"))) (Seq (Seq (PrintToChannel (Val 1) "stdOut") Skip) (Seq (PrintToChannel (Val 4) "stdOut") (Ass (Global "z") (Val 4)))))) undefined undefined undefined),("thread3",Generated (Seq (ForC 1 (Seq Skip (PrintToChannel (Val 4) "stdOut"))) (Seq (ForC 1 (PrintToChannel (Val 9) "stdOut")) (Seq (PrintToChannel (Val 4) "stdOut") (Ass (Global "a") (Val (-1)))))) undefined undefined undefined)])
+
+
 example42 :: Program Gr
 example42 = toProgramIntra $ IntraGeneratedProgram
     (Map.fromList [(1,"main")])

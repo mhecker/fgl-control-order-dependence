@@ -365,7 +365,7 @@ timingClassificationDomPathsProps = testGroup "(concerning timingClassificationD
                                     (clTiming,clTiming2) = timingClassificationAtUses pc p
                                 in   (clTiming ⊑ clMinimal)
                                    ∧ (∀) (Map.assocs clTiming2) (\((m1,m2), clTiming2) -> (clTiming2 ⊑ (clMinimal ! m1))  ∨  (clTiming2 ⊑ (clMinimal ! m2))),
-    testPropertySized 30  "cl timing ⊑ cl minimal w.r.t. node sets"
+    testPropertySized 20  "cl timing ⊑ cl minimal w.r.t. node sets"
                 $ \generated -> let p :: Program Gr = toProgramIntra generated
                                     pc = precomputedUsing idomDefaultFor p
                                     clMinimal            = minimalClassificationNodes   pc p

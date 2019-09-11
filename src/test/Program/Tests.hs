@@ -133,10 +133,6 @@ showInterIDomGraph gr s = showGraph $ withNodes $ trrAcyclic $ ( fromPredMap (in
 showInterIDomGraphGeneral gr s = showGraph $ withNodes $ trrAcyclic $ ( fromPredMap (interDomGeneral summary gr s) :: Gr () ())
   where summary = sameLevelSummaryGraph'WithBs gr
 
-withNodes :: (Graph gr) => gr a b -> gr (Node,a) b
-withNodes g =  mkGraph [(n,(n,l)) | (n,l) <- labNodes g]
-                       (labEdges g)
-
 investigate s gr = do
   showGraph $ withNodes $ gr
   showInterIDomGraph gr s

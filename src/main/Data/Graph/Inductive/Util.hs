@@ -476,3 +476,8 @@ exchange g old nw = id
     $ foldr ins g lPreds
   where lPreds = lpre g old
         ins (n,label) =  insEdge (n,nw,label)
+
+withNodes :: (Graph gr) => gr a b -> gr (Node,a) b
+withNodes g =  mkGraph [(n,(n,l)) | (n,l) <- labNodes g]
+                       (labEdges g)
+

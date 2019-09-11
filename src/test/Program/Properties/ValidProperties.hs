@@ -19,6 +19,9 @@ module Program.Properties.ValidProperties where
 
 import Prelude hiding (all)
 
+import Data.Graph.Inductive.Dot (showDot, fglToDotGeneric)
+import Control.Monad.Random (randomR, getStdRandom)
+
 import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random(evalRandIO)
 import Control.Exception.Base (assert)
@@ -64,7 +67,7 @@ import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensa
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence, timingDependenceOld)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode', toSuccMap)
+import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode', toSuccMap, withNodes, fromSuccMapWithEdgeAnnotation)
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge, newNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
@@ -3252,6 +3255,35 @@ ntscdTests = testGroup "(concerning ntscd)" $
 
 
 timingDepProps = testGroup "(concerning timingDependence)" [
+    testProperty "generate testCases in .dot file format"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    itimdomMultiple = TSCD.itimdomMultipleOfTwoFinger g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
+                    writeDot = do
+                          let valid = TSCD.validTimdomFor g (TSCD.cost1F g) itimdomMultiple (Set.fromList $ nodes g)
+                          
+                          let dotG       = showDot (fglToDotGeneric (withNodes        g) show show id)
+                          let dotItimdom = showDot (fglToDotGeneric (withNodes itimdomG) show show id)
+                                where itimdomG = fromSuccMapWithEdgeAnnotation itimdomMultiple :: Gr () Integer
+                          let dotValid   = showDot (fglToDotGeneric (withNodes   validG) show show id)
+                                where validG   = mkGraph (labNodes g) [ (n,n, valid ! n) | n <- nodes g] :: Gr () Integer
+                          let dotTSCD    = showDot (fglToDotGeneric (withNodes    tscdG) show show id)
+                                where tscdG    = fromSuccMap $ (Map.fromList [(n, Set.empty) | n <- nodes g ]) ⊔ (invert'' $ TSCD.timDFFromFromItimdomMultipleOfFast g) :: Gr () ()
+                          let dotTDEP    = showDot (fglToDotGeneric (withNodes    tdepG) show show id)
+                                where tdepG    = fromSuccMap $ PTDEP.timingDependenceViaTwoFinger g :: Gr () ()
+                          randomInt <- getStdRandom (randomR (1,65536)) :: IO Int
+                          let fileG       = (show randomInt) ++ "-cfg.dot"
+                          let fileItimdom = (show randomInt) ++ "-itimdom.dot"
+                          let fileValid   = (show randomInt) ++ "-valid.dot"
+                          let fileTSCD    = (show randomInt) ++ "-tscd.dot"
+                          let fileTDEP    = (show randomInt) ++ "-tdep.dot"
+                          writeFile fileG       dotG
+                          writeFile fileItimdom dotItimdom
+                          writeFile fileValid   dotValid
+                          writeFile fileTSCD    dotTSCD
+                          writeFile fileTDEP    dotTDEP
+                in seq (unsafePerformIO writeDot) $ True,
     testProperty  "timingDependenceFromTimdom  == timingDependenceViaTwoFinger"
                 $ \(ARBITRARY(g)) ->
                        -- let tdep           = PTDEP.timingSolvedF3dependence g

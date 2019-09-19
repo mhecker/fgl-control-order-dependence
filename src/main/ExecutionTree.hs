@@ -43,7 +43,7 @@ treeStep graph (Node  (n,e0,tlσ) ts,σ,i) =  [ (Node (n,e0,tlσ) (fmap (\(t,_,_
 
 
 initialConfigurationTree :: Graph gr => Program gr -> Input ->  ConfigurationTree
-initialConfigurationTree (Program { mainThread, entryOf, procedureOf }) input = (Node (entryOf (procedureOf mainThread), Spawn, Map.empty) [], Map.empty, input)
+initialConfigurationTree (Program { mainThread, entryOf, procedureOf }) input = (Node (entryOf (procedureOf mainThread), Spawn, Map.empty) [], GlobalState Map.empty Map.empty, input)
 
 
 showAllFinalTreeStates program input = do

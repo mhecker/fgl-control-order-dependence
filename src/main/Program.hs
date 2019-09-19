@@ -37,7 +37,11 @@ genLNodes :: (Enum a) => a -> Int -> [LNode a]
 genLNodes q i = take i (zip [1..] [q..])
 
 vars :: Graph gr => Program gr -> Set Var
-vars (Program { tcfg }) = Set.unions [ def tcfg n ∪ use tcfg n | n <- nodes tcfg]
+vars (Program { tcfg }) = Set.fromList [ v | n <- nodes tcfg, VarName v <- Set.toList $ def tcfg n ∪ use tcfg n ]
+
+names :: Graph gr => Program gr -> Set Name
+names (Program { tcfg }) = Set.unions [ def tcfg n ∪ use tcfg n | n <- nodes tcfg]
+
 
 cfgOfThread :: DynGraph gr => Program gr -> StaticThread -> gr CFGNode CFGEdge
 cfgOfThread (Program { tcfg, entryOf, procedureOf }) thread = subgraph reachable inThreadOnly

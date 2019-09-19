@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module IRLSOD where
 
@@ -22,6 +23,16 @@ import qualified Data.List as List
 
 data Var = Global String | ThreadLocal String | Register Int deriving (Show, Eq, Ord, Generic, NFData)
 
+isGlobal (Global _) = True
+isGlobal _          = False
+
+arrayMaxIndex :: Int
+arrayMaxIndex = 255
+
+arrayEmpty = Map.fromList [(i,0) | i <- [0..arrayMaxIndex] ]
+
+data Array = Array String deriving (Show, Eq, Ord, Generic, NFData)
+
 class SimpleShow a where
   simpleShow :: a -> String
 
@@ -29,6 +40,9 @@ instance SimpleShow Var where
   simpleShow (Global x) = x
   simpleShow (ThreadLocal x) = x ++ " (thread local)"
   simpleShow (Register i) = "[r" ++ (show i) ++ "]"
+
+instance SimpleShow Array where
+  simpleShow (Array x) = x ++ "[]"
 
 type Val = Int
 type InputChannel = String
@@ -50,12 +64,19 @@ lowIn2 = "lowIn2"
 highOut1 = "highOut1"
 highOut2 = "highOut2"
 
-type GlobalState = Map Var Val
+data GlobalState = GlobalState {
+    σv :: (Map Var Val),
+    σa :: (Map Array (Map Int Val))
+  } deriving (Show, Eq, Ord, Generic, NFData)
+
+globalEmpty :: GlobalState
+globalEmpty = GlobalState { σv = Map.empty, σa = Map.empty }
+
 type ThreadLocalState = Map Var Val
-type CombinedState = Map Var Val
+-- type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
-data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction deriving (Show, Eq, Ord)
+data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction deriving (Show, Eq, Ord)
 
 instance SimpleShow BoolFunction where
   simpleShow CTrue  = "true"
@@ -71,15 +92,16 @@ instance SimpleShow VarFunction where
   simpleShow (Plus  a b) = "(" ++ simpleShow a ++ " + " ++ simpleShow b ++ ")"
   simpleShow (Times a b) =        simpleShow a ++ " · " ++ simpleShow b
   simpleShow (Neg   a  ) = "-" ++ simpleShow a
+  simpleShow (ArrayRead a b) = simpleShow a ++ "[" ++ simpleShow b ++ "]"
 
 
-evalB :: CombinedState -> BoolFunction -> Bool
-evalB _ CTrue     = True
-evalB _ CFalse    = False
-evalB σ (Leq x y) = evalV σ x <= evalV σ y
-evalB σ (And b1 b2) = evalB σ b1 && evalB σ b2
-evalB σ (Or  b1 b2) = evalB σ b1 || evalB σ b2
-evalB σ (Not b)     = not $ evalB σ b
+evalB :: GlobalState -> ThreadLocalState -> BoolFunction -> Bool
+evalB _  _ CTrue     = True
+evalB _  _ CFalse    = False
+evalB σg σl (Leq x y) = evalV σg σl  x <= evalV σg σl  y
+evalB σg σl (And b1 b2) = evalB σg σl  b1 && evalB σg σl  b2
+evalB σg σl (Or  b1 b2) = evalB σg σl  b1 || evalB σg σl  b2
+evalB σg σl (Not b)     = not $ evalB σg σl  b
 
 
 useB CTrue       = Set.empty
@@ -89,19 +111,33 @@ useB (And b1 b2) = useB b1 ∪ useB b2
 useB (Or  b1 b2) = useB b1 ∪ useB b2
 useB (Not b)     = useB b
 
-evalV σ vf = (evalVM σ vf) `rem` 16 -- lets keep values small :O
-evalVM :: CombinedState -> VarFunction -> Val
-evalVM σ (Val  x)    = x
-evalVM σ (Var  x)
- | Map.member x σ   = σ ! x
- | otherwise        = error $ show σ ++ "does not contain:    " ++ (show x)
-evalVM σ (Plus  x y) = evalVM σ x + evalVM σ y
-evalVM σ (Times x y) = evalVM σ x * evalVM σ y
-evalVM σ (Neg x)     = - evalVM σ x
+evalV :: GlobalState -> ThreadLocalState -> VarFunction -> Val
+evalV σg σl vf = (evalVM σg σl vf) `rem` 16 -- lets keep values small :O
+evalVM :: GlobalState -> ThreadLocalState -> VarFunction -> Val
+evalVM _  _  (Val  x)    = x
+evalVM σg@(GlobalState { σv }) σl (Var  x) = case Map.lookup x σl of
+  Nothing -> case Map.lookup x σv of
+    Nothing -> error $ show (σg, σl) ++ "does not contain:    " ++ (show x)
+    Just val -> val
+  Just val -> val
+evalVM σg@(GlobalState { σa }) σl (ArrayRead a x) =
+  let index = evalVM σg σl x in case Map.lookup a σa of
+    Nothing -> error $ show (σg) ++ "does not contain array:    " ++ (show a)
+    Just array -> case Map.lookup index array of
+      Nothing -> error $ "array index out of bounds:    " ++ (show a) ++ ", " ++ (show index) ++ ", " ++ (show array)
+      Just val -> val
 
-useV :: VarFunction -> Set Var
+evalVM σg σl (Plus  x y) = evalVM σg σl  x + evalVM σg σl  y
+evalVM σg σl (Times x y) = evalVM σg σl  x * evalVM σg σl  y
+evalVM σg σl (Neg x)     = - evalVM σg σl  x
+
+
+data Name = VarName Var | ArrayName Array deriving (Eq, Show, Ord)
+
+useV :: VarFunction -> Set Name
+useV (ArrayRead a i) = Set.insert (ArrayName a) $ useV i
 useV (Val  x)    = Set.empty
-useV (Var  x)    = Set.fromList [x]
+useV (Var  x)    = Set.fromList [VarName x]
 useV (Plus  x y) = useV x ∪ useV y
 useV (Times x y) = useV x ∪ useV y
 useV (Neg x)     = useV x
@@ -109,6 +145,7 @@ useV (Neg x)     = useV x
 
 data CFGEdge = Guard  Bool BoolFunction
              | Assign Var  VarFunction
+             | AssignArray Array VarFunction VarFunction
              | Read   Var          InputChannel
              | Print  VarFunction  OutputChannel
              | Call
@@ -124,6 +161,7 @@ instance SimpleShow CFGEdge where
   simpleShow (Guard True  bf) =         simpleShow bf
   simpleShow (Guard False bf) = "¬ " ++ simpleShow bf
   simpleShow (Assign x vf)    = simpleShow x ++ " := " ++ simpleShow vf
+  simpleShow (AssignArray (Array x) i vf) = x ++ "[" ++ simpleShow i ++ "] := " ++ simpleShow vf
   simpleShow (NoOp) = ""
   simpleShow e = show e
 
@@ -134,37 +172,39 @@ isIntraCFGEdge Return  = False
 isIntraCFGEdge Spawn   = False
 isIntraCFGEdge _       = True
 
-useE :: CFGEdge -> Set Var
+useE :: CFGEdge -> Set Name
 useE (Guard   _ bf) = useB bf
+useE (AssignArray a i vf) = useV i ∪ useV vf
 useE (Assign  _ vf) = useV vf
 useE (Read    _ _)  = Set.empty
 useE Spawn          = Set.empty
 useE (Print vf _)   = useV vf
 useE NoOp           = Set.empty
 useE (Def _)        = Set.empty
-useE (Use x)        = Set.fromList [ x]
+useE (Use x)        = Set.fromList [ VarName x]
 useE CallSummary    = Set.empty
 useE Call           = Set.empty
 useE Return         = Set.empty
 
-defE :: CFGEdge -> Set Var
+defE :: CFGEdge -> Set Name
 defE (Guard   _ _) = Set.empty
-defE (Assign  x _) = Set.singleton x
-defE (Read    x _) = Set.singleton x
+defE (Assign  x _) = Set.singleton $ VarName x
+defE (AssignArray a _ _) = Set.singleton $ ArrayName a
+defE (Read    x _) = Set.singleton $ VarName x
 defE Spawn         = Set.empty
 defE (Print   _ _) = Set.empty
 defE NoOp          = Set.empty
-defE (Def x)       = Set.fromList [ x]
+defE (Def x)       = Set.fromList [ VarName x]
 defE (Use _)       = Set.empty
 defE CallSummary   = Set.empty
 defE Call          = Set.empty
 defE Return        = Set.empty
 
 
-use :: Graph gr => gr a CFGEdge -> CFGNode -> Set Var
+use :: Graph gr => gr a CFGEdge -> CFGNode -> Set Name
 use gr n = Set.unions [ useE e | (n',e) <- lsuc gr n ]
 
-def :: Graph gr => gr a CFGEdge -> CFGNode -> Set Var
+def :: Graph gr => gr a CFGEdge -> CFGNode -> Set Name
 def gr n = Set.unions [ defE e | (n',e) <- lsuc gr n ]
 
 -- varsInCfg :: Graph gr => gr CFGNode CFGEdge -> Set Var
@@ -223,17 +263,17 @@ data Event = PrintEvent Val OutputChannel
            | Tau
            deriving (Eq, Ord, Show, Generic, NFData)
 
-fromEdge :: CombinedState -> Input -> CFGEdge -> Event
-fromEdge σ i (Guard b bf)
-  | b == evalB σ bf = Tau
-  | otherwise       = undefined
-fromEdge σ i (Assign x  vf) = Tau
-fromEdge σ i (Read   x  ch) = ReadEvent  (head $ i ! ch)   ch
-fromEdge σ i (Print  vf ch) = PrintEvent (evalV σ vf) ch
-fromEdge σ i (Spawn      ) = Tau
-fromEdge σ i (NoOp       ) = Tau
-fromEdge σ i (Call       ) = Tau
-fromEdge σ i (CallSummary) = error "control flow cannot pass CallSummary"
+fromEdge :: GlobalState -> ThreadLocalState -> Input -> CFGEdge -> Event
+fromEdge σg σl i (Guard b bf)
+  | b == evalB σg σl  bf = Tau
+  | otherwise            = undefined
+fromEdge σg σl i (Assign x  vf) = Tau
+fromEdge σg σl i (Read   x  ch) = ReadEvent  (head $ i ! ch)   ch
+fromEdge σg σl i (Print  vf ch) = PrintEvent (evalV σg σl vf) ch
+fromEdge σg σl i (Spawn      ) = Tau
+fromEdge σg σl i (NoOp       ) = Tau
+fromEdge σg σl i (Call       ) = Tau
+fromEdge σg σl i (CallSummary) = error "control flow cannot pass CallSummary"
 
 
 data SecurityLattice = Low | High deriving (Show, Ord, Eq, Bounded, Enum)
@@ -254,16 +294,15 @@ instance BoundedJoinSemiLattice SecurityLattice where
 type ObservationalSpecification = Node -> Maybe SecurityLattice
 
 type ExecutionTrace = [(Configuration, (Node,Event,Int), Configuration)]
-type Trace          = [(CombinedState, (Node,Event), CombinedState)]
+type Trace          = [((GlobalState, ThreadLocalState), (Node,Event), (GlobalState, ThreadLocalState))]
 
 eventStep :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [((Node,Event,Int),Configuration)]
 eventStep icfg config@(control,globalσ,tlσs,i) = do
        ((n,callString),tlσ,index) <- zip3 control tlσs [0..]
-       let σ = globalσ `Map.union` tlσ
        let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $ [ (n',e) | (n', e) <- lsuc icfg n, e /= CallSummary ]
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
-       let configs' = [ ((n,fromEdge σ i cfgEdge), (control',globalσ', tlσ', i'))  | (n', cfgEdge) <- normal,
+       let configs' = [ ((n,fromEdge globalσ tlσ i cfgEdge), (control',globalσ', tlσ', i'))  | (n', cfgEdge) <- normal,
                                                                                          (globalσ',tlσ', i') <- stepFor cfgEdge (globalσ,tlσ,i),
                                                                                          control' <- controlStateFor (n', cfgEdge) (n, callString)
                       ]
@@ -288,7 +327,6 @@ eventStepAt :: Graph gr => Int ->  gr CFGNode CFGEdge -> Configuration -> ((Node
 eventStepAt index icfg config@(control,globalσ,tlσs,i) =
        let (nCs@(n,callString),tlσ) = (zip control tlσs) !! index
            c = (globalσ,tlσ,i)
-           σ = globalσ `Map.union` tlσ
            succs = lsuc icfg n
            spawn = filter (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False}) succs
 
@@ -304,7 +342,7 @@ eventStepAt index icfg config@(control,globalσ,tlσs,i) =
                      CallSummary -> go es
                      _           -> case stepFor cfgEdge c of
                                       [(globalσ', tlσ', i')] -> case controlStateFor e nCs of
-                                        [control'] -> let event = fromEdge σ i cfgEdge in
+                                        [control'] -> let event = fromEdge globalσ tlσ i cfgEdge in
                                                                                 ((n,event,index),(control' : ([(spawned,[])   | (spawned, _) <- spawn] ++ (deleteAt index control)),
                                                                                                   globalσ',
                                                                                                   tlσ'     : ([Map.empty      | (spawned, _) <- spawn] ++ (deleteAt index tlσs   )),
@@ -319,7 +357,6 @@ eventStepAt index icfg config@(control,globalσ,tlσs,i) =
 step :: Graph gr => gr CFGNode CFGEdge -> Configuration -> [Configuration]
 step icfg config@(control,globalσ,tlσs,i) = do
        ((n, callString),tlσ,index) <- zip3 control tlσs [0..]
-       let σ = globalσ `Map.union` tlσ
        let (spawn,normal) = partition (\(n', cfgEdge) -> case cfgEdge of { Spawn -> True ; _ -> False }) $  [ (n',e) | (n', e) <- lsuc icfg n, e /= CallSummary ]
 
        -- Falls es normale normale nachfolger gibt, dann genau genau einen der passierbar ist
@@ -353,16 +390,26 @@ controlStateFor (m, CallSummary) _ = error "cannot pass CallSummary"
 controlStateFor (m, _)      (n, stack) = [(m, stack)]
 
 stepFor :: CFGEdge -> (GlobalState,ThreadLocalState,Input) -> [(GlobalState,ThreadLocalState,Input)]
-stepFor e c@(globalσ,tlσ,i)  = step e where
-      σ = globalσ `Map.union` tlσ
+stepFor e c@(globalσ@(GlobalState {σv, σa}), tlσ, i)  = step e where
       step :: CFGEdge ->  [(GlobalState,ThreadLocalState,Input)]
       step (Guard b bf)
-        | b == evalB σ bf                = [c]
+        | b == evalB globalσ tlσ bf      = [c]
         | otherwise                      = []
-      step (Assign x@(Global _)      vf) = [(Map.insert x (evalV σ vf)    globalσ,                              tlσ,                    i)]
-      step (Assign x@(ThreadLocal _) vf) = [(                             globalσ, Map.insert x (evalV σ vf)    tlσ,                    i)]
-      step (Read   x@(Global _)      ch) = [(Map.insert x (head $ i ! ch) globalσ,                              tlσ, Map.adjust tail ch i)]
-      step (Read   x@(ThreadLocal _) ch) = [(                             globalσ, Map.insert x (head $ i ! ch) tlσ, Map.adjust tail ch i)]
+      step (Assign x@(Global _)      vf) = [( globalσ{σv = Map.insert x val σv},                              tlσ,                    i)]
+        where val = evalV globalσ tlσ vf
+      step (Assign x                 vf) = [( globalσ                          , Map.insert x val             tlσ,                    i)]
+        where val = evalV globalσ tlσ vf
+      step (Read   x@(Global _)      ch) = [( globalσ{σv = Map.insert x val σv},                              tlσ, Map.adjust tail ch i)]
+        where val = head $ i ! ch
+      step (Read   x                 ch) = [( globalσ                          , Map.insert x (head $ i ! ch) tlσ, Map.adjust tail ch i)]
+      step (AssignArray a ix         vf) = [( globalσ{σa = insert a index val },                              tlσ,                    i)]
+        where val   = evalV globalσ tlσ vf
+              index = evalV globalσ tlσ ix
+              insert a i val = Map.alter f a σa
+                where f (Nothing) = Just $ Map.insert i val $ arrayEmpty
+                      f ( Just a) = Just $ Map.insert i val $ a
+      step (Assign x                 vf) = [(                             globalσ, Map.insert x val             tlσ,                    i)]
+        where val = evalV globalσ tlσ vf
       step (Print  x ch)                 = [c]
       step (Spawn      )                 = undefined
       step (NoOp       )                 = [c]
@@ -372,13 +419,19 @@ stepFor e c@(globalσ,tlσ,i)  = step e where
 hide (a,b,c,d) = (a,b,c)
 
 toTrace :: ExecutionTrace -> Trace
-toTrace eTrace = [ (globalσ `Map.union` (tlσs !! index) , (n,e), globalσ' `Map.union` (if not $ List.null tlσs' then tlσs' !! 0 else Map.empty)) | ((_,globalσ,tlσs,_), (n,e,index), (_,globalσ',tlσs',_)) <- eTrace ]
+toTrace eTrace = [ ((globalσ, tlσs !! index), (n,e), (globalσ', if not $ List.null tlσs' then tlσs' !! 0 else Map.empty)) | ((_,globalσ,tlσs,_), (n,e,index), (_,globalσ',tlσs',_)) <- eTrace ]
 
 
 
 
 observable :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> SecurityLattice -> Trace -> Trace
-observable icfg obs l trace = [ (restrict σ (use icfg n), (n,e), restrict σ' (def icfg n)) | (σ, (n,e), σ') <- trace, Just l' <- [obs n], l' ⊑ l ]
+observable icfg obs l trace = [ (restr σ (use icfg n), (n,e), restr σ' (def icfg n)) | (σ, (n,e), σ') <- trace, Just l' <- [obs n], l' ⊑ l ]
+  where restr :: (GlobalState, ThreadLocalState) -> (Set Name) -> (GlobalState, ThreadLocalState)
+        restr (GlobalState {σv, σa}, tlσ) use =
+          ( GlobalState (Map.filterWithKey (\var _ -> VarName   var ∈ use) σv )
+                        (Map.filterWithKey (\arr _ -> ArrayName arr ∈ use) σa ),
+                        (Map.filterWithKey (\var _ -> VarName   var ∈ use) tlσ)
+          )
 
 (≈) :: Graph gr => gr CFGNode CFGEdge -> ObservationalSpecification -> SecurityLattice -> Trace -> Trace -> Bool
 (≈) icfg obs l t t' = (observable icfg obs l t) == (observable icfg obs l t')

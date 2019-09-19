@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -34,7 +35,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet)
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState, ThreadLocalState, Var(..), Val, BoolFunction(..), VarFunction(..), useE, defE, use, def)
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayMaxIndex, arrayEmpty, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, use, def)
 import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
@@ -50,6 +51,12 @@ import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
+
+
+
+cacheLineSize :: Int
+cacheLineSize = assert ((arrayMaxIndex + 1) `mod` n == 0) n
+  where n = 64
 
 
 
@@ -74,14 +81,25 @@ noOpTime  :: AccessTime
 noOpTime = 1 
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
-undefinedCacheValue = -1
+undefinedCacheValue = CachedVal (-1)
 
 type ConcreteSemantic a = CFGEdge -> a -> Maybe a
 
 type AbstractSemantic a = CFGEdge -> a -> [a]
 
 type NormalState = (GlobalState,ThreadLocalState, ())
-type CacheState = OMap Var Val
+
+
+type ArrayBound = Int
+
+data CachedObject
+    = CachedVar Var 
+    | CachedArrayRange Array ArrayBound -- contents of Array from [ArrayBound ..to.. ArrayBound+cacheLineSize]
+  deriving (Show, Eq, Ord)
+data CacheValue = CachedVal Val | CachedArraySlice [Val] deriving (Show, Eq, Ord)
+
+type CacheState = OMap CachedObject CacheValue
+type AbstractCacheState = ([(CachedObject, OMap.Index)], Set CachedObject)
 
 type TimeState = Integer
 
@@ -90,9 +108,11 @@ type CacheTimeState = (CacheState, TimeState)
 type FullState = (NormalState, CacheState, TimeState)
 
 
-isCachable (Global _) = True
-isCachable (ThreadLocal _) = True -- maybe we dont want this?
-isCachable (Register _) = False
+isCachable :: Name -> Bool
+isCachable (VarName (Global _)) = True
+isCachable (VarName (ThreadLocal _)) = True -- maybe we dont want this?
+isCachable (VarName (Register _)) = False
+isCachable (ArrayName _) = True
 
 
 twoAddressCode :: For -> For
@@ -153,21 +173,32 @@ twoAddressCodeV r bf@(Neg x) =
 
 
 consistent :: FullState -> Bool
-consistent σ@((globalσ,tlσ,i), cache, _) = OMap.size cache <= cacheSize && (∀) (OMap.assocs cache) cons
-  where cons (var@(Global      x), val) = val == globalσ ! var
-        cons (var@(ThreadLocal x), val) = val ==     tlσ ! var
+consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = OMap.size cache <= cacheSize && (∀) (OMap.assocs cache) cons
+  where cons (CachedVar        var@(Global      x)      , CachedVal        val ) = val ==      σv ! var
+        cons (CachedVar        var@(ThreadLocal x)      , CachedVal        val ) = val ==     tlσ ! var
+        cons (CachedArrayRange arr@(Array       a) index, CachedArraySlice vals) = 
+            (length vals == cacheLineSize) ∧ (index >= 0) ∧ (index `mod` cacheLineSize == 0) ∧ (index <= arrayMaxIndex)
+          ∧ (∀) (zipWith (==) vals (Map.elems $ between (index - 1) (index + cacheLineSize))) id
+          where between n m = 
+                  let (_, right) = Map.split n (σa ! arr)
+                      (mid, _)   = Map.split m right
+                  in assert (Map.size mid == cacheLineSize) mid
 
 
 cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
-cacheAwareReadLRU var σ@((globalσ,tlσ,i), cache, _) = case var of
-    Global      _ -> lookup globalσ
+cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var of
+    Global      _ -> lookup     σv
     ThreadLocal _ -> lookup     tlσ
     Register    _ -> (tlσ ! var, cache, registerAccessTime)
-  where lookup someσ = 
+  where cvar = CachedVar var
+
+        lookup :: Map Var Val -> (Val, CacheState, AccessTime )
+        lookup someσ = 
           require (consistent σ) $
-          case OMap.lookup var cache of
-            Nothing  -> let val = someσ ! var in (val, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache), cacheMissTime )
-            Just val ->                          (val, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache), cacheHitTime  )
+          case OMap.lookup cvar cache of
+            Nothing                   -> let { cval = CachedVal val ; val = someσ ! var } in
+                                         (val, OMap.fromList $ (cvar, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheMissTime )
+            Just cval@(CachedVal val) -> (val, OMap.fromList $ (cvar, cval) : (                       OMap.assocs $ OMap.delete cvar cache), cacheHitTime  )
 
 
 cacheOnlyReadLRU :: Var -> CacheState -> CacheState
@@ -175,11 +206,12 @@ cacheOnlyReadLRU var cache = case var of
     Global      _ -> lookup
     ThreadLocal _ -> lookup
     Register    _ -> cache
-  where lookup = 
-          case OMap.lookup var cache of
-            Nothing  -> OMap.fromList $ (var, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                   cache)
-            Just val -> assert (val == undefinedCacheValue) $
-                        OMap.fromList $ (var, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete var cache)
+  where cvar = CachedVar var
+        lookup =
+          case OMap.lookup cvar cache of
+            Nothing  -> OMap.fromList $ (cvar, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                    cache)
+            Just cval-> assert (cval == undefinedCacheValue) $
+                        OMap.fromList $ (cvar, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete cvar cache)
 
 
 cacheAwareReadLRUState :: Monad m => Var -> StateT FullState m Val
@@ -203,15 +235,17 @@ cacheOnlyWriteLRUState = cacheOnlyReadLRUState
 
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
-cacheAwareWriteLRU var val σ@((globalσ,tlσ,i), cache, time ) = case var of
-    Global      _ -> let (globalσ', cache', accessTime) = write globalσ in ((globalσ',tlσ ,i), cache', time + accessTime)
-    ThreadLocal _ -> let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ ,tlσ',i), cache', time + accessTime)
-    Register    _ -> let tlσ' = Map.insert var val tlσ in  ((globalσ,tlσ',i), cache, time + registerAccessTime )
-  where write someσ = 
+cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) = case var of
+    Global      _ -> let (     σv', cache', accessTime) = write      σv in ((globalσ{ σv = σv'}, tlσ , i), cache', time + accessTime)
+    ThreadLocal _ -> let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ           , tlσ', i), cache', time + accessTime)
+    Register    _ -> let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
+  where cvar = CachedVar var
+        cval = CachedVal val
+        write someσ = 
           require (consistent σ) $
-          case OMap.lookup var cache of
-            Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (take (cacheSize - 1) $ OMap.assocs                   cache), cacheWriteTime )
-            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (var, val) : (                       OMap.assocs $ OMap.delete var cache), cacheWriteTime  )
+          case OMap.lookup cvar cache of
+            Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (cvar, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheWriteTime )
+            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (cvar, cval) : (                       OMap.assocs $ OMap.delete cvar cache), cacheWriteTime )
 
 
 cacheAwareWriteLRUState :: Monad m => Var -> Val -> StateT FullState m ()
@@ -224,13 +258,14 @@ initialCacheState :: CacheState
 initialCacheState = OMap.empty
 
 initialFullState :: FullState
-initialFullState = ((Map.empty, Map.empty, ()), initialCacheState, 0)
+initialFullState = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
 
 exampleSurvey1 :: FullState
-exampleSurvey1 = ((  Map.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4), (Global "x", 42)], Map.empty, ()),
-                    OMap.fromList [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4)],
-                    0
+exampleSurvey1 = ((GlobalState { σv = Map.fromList                $ [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4), (Global "x", 42)] }, Map.empty, ()),
+                                     OMap.fromList $ fmap wrapped $ [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4)],
+                  0
                  )
+  where wrapped (a,b) = (CachedVar a, CachedVal b)
 
 
 
@@ -433,9 +468,7 @@ stateGraphFor α step g σ0 n0 = mkGraph nodes [(toNode ! c, toNode ! c', e) | (
         nodes = zip [0..] (Set.toList cs')
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
-type AbstractCacheState = ([(Var, OMap.Index)], Set Var)
-
-cacheStateGraphForVars :: (Graph gr) => Set Var -> gr CFGNode CFGEdge -> CacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraphForVars :: (Graph gr) => Set CachedObject -> gr CFGNode CFGEdge -> CacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
   where α = αFor vars
 
@@ -444,13 +477,15 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
             Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars]
            )
 
+αForReach :: Set CachedObject -> Set Name -> CacheState -> AbstractCacheState
 αForReach vars reach cache = (
             [ (v,i) | (i,(v,s)) <- zip [0..] (OMap.assocs cache), v ∈ vars],
-            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars, v ∈ reach]
+            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars, isReachable v]
            )
+  where isReachable (CachedVar v)          = VarName   v ∈ reach
+        isReachable (CachedArrayRange a _) = ArrayName a ∈ reach
 
-
-αForReach2 :: Set Var -> Node -> Set Var -> Node -> OMap Var OMap.Index -> AbstractCacheState
+αForReach2 :: Set CachedObject -> Node -> Set Name -> Node -> CacheState -> AbstractCacheState
 αForReach2 vars mm reach n cache
   | n == mm = (
             [ (v,0) | (v,s) <- OMap.assocs cache, v ∈ vars],
@@ -461,7 +496,7 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
 
 
 
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set CachedObject -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Name) -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
           where f (n, s) = (n, α (reach !! n) s)
@@ -475,7 +510,7 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mk
         (!!) m x = Map.findWithDefault Set.empty x m
 
 
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set CachedObject -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Name) -> Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
           where f (n, s) = (n, α (reach !! n) n s)
@@ -489,7 +524,7 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =
         (!!) m x = Map.findWithDefault Set.empty x m
 
 
-cacheStateGraph'ForVarsAtMForGraph :: forall gr. (DynGraph gr) => Set Var ->  gr (Node, CacheState) CFGEdge  ->  Node -> gr (Node, CacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph :: forall gr. (DynGraph gr) => Set CachedObject ->  gr (Node, CacheState) CFGEdge  ->  Node -> gr (Node, CacheState) CFGEdge
 cacheStateGraph'ForVarsAtMForGraph vars g0 mm = result
   where result = subgraph (rdfs (fmap fst $ withNewIds) merged) merged
         merged :: gr (Node, CacheState) CFGEdge
@@ -570,8 +605,9 @@ costsFor csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]
 
 fakeFullState :: CFGEdge -> CacheTimeState -> FullState
 fakeFullState e (cs,time) = (
-      ((Map.fromList $ OMap.assocs cs) `Map.union` Map.fromList [(var, 0) | var@(Global      _) <- Set.toList $ useE e],
-       (Map.fromList $ OMap.assocs cs) `Map.union` Map.fromList [(var, 0) | var@(ThreadLocal _) <- Set.toList $ useE e] `Map.union` Map.fromList [(var, 0) | var@(Register _) <- Set.toList $ useE e],
+      (GlobalState { σv = σvCs  `Map.union` Map.fromList [(var, 0) | VarName   var <- Set.toList $ useE e,       isGlobal var],
+                     σa = σaCs  `Map.union` Map.fromList [(arr, 0) | ArrayName arr <- Set.toList $ useE e]},
+                          σtlCs `Map.union` Map.fromList [(var, 0) | VarName   var <- Set.toList $ useE e, not $ isGlobal var],
        ()
       ),
       cs,
@@ -580,6 +616,14 @@ fakeFullState e (cs,time) = (
    where findWithDefault n x m = case OMap.lookup x m of
            Nothing -> n
            Just v  -> v
+         σvCs = byVar
+           where byVar =        Map.fromList [ (x, v)       | (CachedVar x,             CachedVal v          ) <- OMap.assocs cs,       isGlobal x]
+         σtlCs = byVar
+           where byVar =        Map.fromList [ (x, v)       | (CachedVar x,             CachedVal v          ) <- OMap.assocs cs, not $ isGlobal x]
+         σaCs = fmap (`Map.union` arrayEmpty) byArr 
+           where byArr = join [ Map.fromList [ (a, slice) ] | (CachedArrayRange a index, CachedArraySlice vals) <- OMap.assocs cs, let slice = Map.fromList $ zip [index .. cacheLineSize - 1] vals ]
+                 join = foldr (Map.unionWith Map.union) Map.empty
+
 
 cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraph g n0 = (
@@ -665,6 +709,8 @@ csd''''Of3 graph n0 =  invert'' $
           where Just (_,cs) = lab csGraph y'
         (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
 
+        
+
 
 csd''''Of4 :: (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csd''''Of4 graph n0 =  invert'' $
@@ -702,7 +748,7 @@ csd''''Of4 graph n0 =  invert'' $
         (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
 
 
-accessReachableFrom :: Graph gr => gr CFGNode CFGEdge -> Map Node (Set Var)
+accessReachableFrom :: Graph gr => gr CFGNode CFGEdge -> Map Node (Set Name)
 accessReachableFrom graph = (㎲⊒) init f
   where f reach = Map.fromList [ (n, (∐) [ Set.filter isCachable $ useE e ∪ defE e | (_,e) <- lsuc graph n ]) | n <- nodes graph ]
                 ⊔ Map.fromList [ (n, (∐) [ reach ! x | x <- suc graph n] ) | n <- nodes graph ]

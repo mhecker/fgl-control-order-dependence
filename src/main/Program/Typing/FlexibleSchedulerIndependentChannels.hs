@@ -171,10 +171,10 @@ main2 = 1
           computeAccountOverview = 4
 
 expBTypingFrom :: VarTyping -> ExpBTyping
-expBTypingFrom var e = (∐) [ var v | v <- Set.toList $ useB e]
+expBTypingFrom var e = (∐) [ var v | VarName v <- Set.toList $ useB e]
 
 expVTypingFrom :: VarTyping -> ExpVTyping
-expVTypingFrom var e = (∐) [ var v | v <- Set.toList $ useV e]
+expVTypingFrom var e = (∐) [ var v | VarName v <- Set.toList $ useV e]
 
 data ProgramTyping = ProgramTyping {
  pc  :: SecurityLattice,
@@ -263,15 +263,16 @@ principalTypingOf p@(ForProgram { code }) = principalTypingUsing initial var p
 varsToLevelVariable :: (Map ThreadId For) -> Map Var LevelVariable
 varsToLevelVariable ps = Map.fromList [
     (x,n) | (x,n) <- zip (nub $ [ x | p <- Map.elems ps,
-                                  x <- [ x | Ass  x' e            <- subCommands p, x <- [x'] ++ (Set.toList $ useV e)]
+                                  x <- [ x | Ass  x' e            <- subCommands p, x <- [x'] ++ [ v | VarName v <- Set.toList $ useV e]]
                                     ++ [ x | ForV x  _            <- subCommands p]
-                                    ++ [ x | If e _ _             <- subCommands p, x <-         (Set.toList $ useB e)]
+                                    ++ [ x | If e _ _             <- subCommands p, x <-         [ v | VarName v <- Set.toList $ useB e]]
                                     ++ [ x | ReadFromChannel x _  <- subCommands p]
-                                    ++ [ x | PrintToChannel  e _  <- subCommands p, x <-         (Set.toList $ useV e)]
+                                    ++ [ x | PrintToChannel  e _  <- subCommands p, x <-         [ v | VarName v <- Set.toList $ useV e]]
                                 ]
                           )
                           [nVarStart, nVarStart -1 ..]
   ]
+
 
 
 --principalTypingUsing ::  Gr () () -> Map Var LevelVariable -> ForProgram -> Fresh (Maybe ProgramTyping)
@@ -311,9 +312,9 @@ varDependenciesOf nPc nStpJoinTau var p obs (If b c1 c2) deps = do
 
     deps1 <- varDependenciesOf nPc nStp  var p obs c1 deps'
     deps2 <- varDependenciesOf nPc nStp  var p obs c2 deps1
-    return $ insEdges [ (var ! x,                         nPc,                                RuleApplication FSIif) | x <- Set.toList $ useB b]
+    return $ insEdges [ (var ! x,                         nPc,                                RuleApplication FSIif) | VarName x <- Set.toList $ useB b]
            $ insEdge (nStp,                               nStpJoinTau,                        RuleApplication FSIif)
-           $ insEdges [ (var ! x,                         nStpJoinTau,                        RuleApplication FSIif) | x <- Set.toList $ useB b]
+           $ insEdges [ (var ! x,                         nStpJoinTau,                        RuleApplication FSIif) | VarName x <- Set.toList $ useB b]
            $ deps2
 varDependenciesOf nPc nStpJoinTau var p obs (ForV x c) deps = do
     nStp <- freshVar
@@ -355,7 +356,7 @@ varDependenciesOf nPc1MeetPc2 nStp1JoinStp2 var p obs (Seq c1 c2) deps = do
 
 varDependenciesOf nPc nStp var p obs (Ass x e) deps =
     return $ insEdge (nPc,                               var ! x,                          RuleApplication FSIass)
-           $ insEdges [ (var ! x',                       var ! x,                          RuleApplication FSIass) | x' <- Set.toList $ useV e ]
+           $ insEdges [ (var ! x',                       var ! x,                          RuleApplication FSIass) | VarName x' <- Set.toList $ useV e ]
            $ insEdge (nLevel $ Low,                      nStp,                             RuleApplication FSIass)
              deps
 
@@ -373,7 +374,7 @@ varDependenciesOf nPc nStp var p obs (ReadFromChannel x ch) deps =
              deps
 
 varDependenciesOf nPc nStp var p obs (PrintToChannel  e ch) deps =
-    return $ insEdges [ (var ! x,                        nLevel $ obs ch,                  RuleApplication FSIprint) | x <- Set.toList $ useV e ]
+    return $ insEdges [ (var ! x,                        nLevel $ obs ch,                  RuleApplication FSIprint) | VarName x <- Set.toList $ useV e ]
 
            -- in the LSOD-Setting, a low print is always visible.
            -- Hence, in order to obtain "fair"(™) comparison,

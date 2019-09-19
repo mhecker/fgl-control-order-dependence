@@ -262,10 +262,10 @@ main2 = 1
 
 
 expBTypingFrom :: VarTyping -> ExpBTyping
-expBTypingFrom var e = (∐) [ var v | v <- Set.toList $ useB e]
+expBTypingFrom var e = (∐) [ var v | VarName v <- Set.toList $ useB e]
 
 expVTypingFrom :: VarTyping -> ExpVTyping
-expVTypingFrom var e = (∐) [ var v | v <- Set.toList $ useV e]
+expVTypingFrom var e = (∐) [ var v | VarName v <- Set.toList $ useV e]
 
 data Criterion = Impossible | Discr | Siso | StrongBisimilarity | ZeroOneBisimilarity | None deriving (Show, Eq)
 
@@ -366,7 +366,7 @@ pres _   _   _                        _    = undefined
 cpt :: ChannelTyping -> Map Var LevelVariable -> For -> Gr ConstraintNode ConstraintEdge -> Gr ConstraintNode ConstraintEdge 
 cpt _   _      Skip     deps = deps
 cpt _   var c@(Ass x e) deps =
-      insEdges [ (var ! x',                       var ! x,                          Cpt c) | x' <- Set.toList $ useV e ]
+      insEdges [ (var ! x',                       var ! x,                          Cpt c) | VarName x' <- Set.toList $ useV e ]
     $ deps
 cpt obs var c@(ReadFromChannel x ch) deps =
       insEdges [ (nLevel $ obs ch,                var ! x,                          Cpt c) ]
@@ -376,7 +376,7 @@ cpt obs var c@(ReadFromChannel x ch) deps =
     $ insEdges [ (var ! x,                        nLevel $ obs ch,                  Cpt c) ]
     $ deps
 cpt obs var c@(PrintToChannel  e ch) deps =
-      insEdges [ (var ! x,                        nLevel $ obs ch,                  Cpt c) | x <- Set.toList $ useV e ]
+      insEdges [ (var ! x,                        nLevel $ obs ch,                  Cpt c) | VarName x <- Set.toList $ useV e ]
     $ deps
 cpt obs var c@(ClassifyGlobally x lvl) deps =
       insEdges [ (var ! x,                        nLvl,                           Pres c) ]
@@ -390,7 +390,7 @@ cpt _   _   _                        _    = undefined
 
 cptE ::  Map Var LevelVariable -> BoolFunction -> Gr ConstraintNode ConstraintEdge -> Gr ConstraintNode ConstraintEdge
 cptE var b deps = 
-      insEdges [ (var ! x',                       nLow,                             CptE b) | x' <- Set.toList $ useB b ]
+      insEdges [ (var ! x',                       nLow,                             CptE b) | VarName x' <- Set.toList $ useB b ]
     $ deps
 
 
@@ -434,11 +434,11 @@ principalTypingOf  maximalCriterion p@(ForProgram { code }) = principalTypingUsi
 varsToLevelVariable :: For -> Map Var LevelVariable
 varsToLevelVariable p = Map.fromList [
     (x,n) | (x,n) <- zip (nub $ [ x |
-                                  x <- [ x | Ass  x' e            <- subCommands p, x <- [x'] ++ (Set.toList $ useV e)]
+                                  x <- [ x | Ass  x' e            <- subCommands p, x <- [x'] ++ [ var | VarName  var <- Set.toList $ useV e]]
                                     ++ [ x | ForV x  _            <- subCommands p]
-                                    ++ [ x | If e _ _             <- subCommands p, x <-         (Set.toList $ useB e)]
+                                    ++ [ x | If e _ _             <- subCommands p, x <-         [ var | VarName  var <- Set.toList $ useB e]]
                                     ++ [ x | ReadFromChannel x _  <- subCommands p]
-                                    ++ [ x | PrintToChannel  e _  <- subCommands p, x <-         (Set.toList $ useV e)]
+                                    ++ [ x | PrintToChannel  e _  <- subCommands p, x <-         [ var | VarName  var <- Set.toList $ useV e]]
                                     ++ [ x | ClassifyGlobally x l <- subCommands p]
                                 ]
                           )

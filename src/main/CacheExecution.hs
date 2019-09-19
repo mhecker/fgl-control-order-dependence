@@ -461,17 +461,6 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
 
 
 
-cacheStateGraphForVarsAndCacheStates :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> gr (Node, AbstractCacheState) CFGEdge
-cacheStateGraphForVarsAndCacheStates vars (cs, es) =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
-  where cs' =  Set.map f cs
-          where f (n, s) = (n, α s)
-        es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α sn), e, (m, α sm))
-        nodes = zip [0..] (Set.toList cs')
-        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
-
-        α = αFor vars
-
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map Node (Set Var) -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
   where cs' =  Set.map f cs
@@ -498,39 +487,6 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =
         α = αForReach2 vars mm
 
         (!!) m x = Map.findWithDefault Set.empty x m
-
-
-cacheStateGraphForVarsAtMSlow :: (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, CacheState) CFGEdge
-cacheStateGraphForVarsAtMSlow vars (cs, es) mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
-  where cs' =  Set.map f cs
-          where f (n, s) = (n, α n s)
-        es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α n sn), e, (m, α m sm))
-        nodes = zip [0..] (Set.toList cs')
-        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
-
-        α n cache
-          | n == mm   = OMap.fromList [ (v,undefinedCacheValue) | (v,s) <- OMap.assocs cache, v ∈ vars]
-          | otherwise = cache
-
-
-cacheStateGraphForVarsAtM :: forall gr. (Graph gr) => Set Var -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, CacheState) CFGEdge
-cacheStateGraphForVarsAtM vars (cs, es) mm = {- assert ((nodes result == nodes resultSlow) ∧ (edges result == edges resultSlow)) $ -} result
-  where result = mkGraph nodess [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
-        {- resultSlow = cacheStateGraphForVarsAtMSlow vars (cs, es) mm :: gr (Node, CacheState) CFGEdge -}
-        cs' =  (Set.map f csMM) ∪ csNs
-          where (csMM, csNs) = Set.partition (\(n,_) -> n == mm) cs
-                f (n, s) = (n, α n s)
-        es' =  (Set.map f esMM) ∪ esNs
-          where (esMM, esNs) = Set.partition (\((n, sn), e, (m,sm)) -> n == mm ∨ m == mm) es
-                f ((n, sn), e, (m,sm)) = ((n,α n sn), e, (m, α m sm))
-
-        nodess = zip [0..] (Set.toList cs')
-        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodess
-
-        α n cache
-          | n == mm   = OMap.fromList [ (v,undefinedCacheValue) | (v,s) <- OMap.assocs cache, v ∈ vars]
-          | otherwise = cache
 
 
 cacheStateGraph'ForVarsAtMForGraph :: forall gr. (DynGraph gr) => Set Var ->  gr (Node, CacheState) CFGEdge  ->  Node -> gr (Node, CacheState) CFGEdge
@@ -679,24 +635,6 @@ nextReachable csGraph = (㎲⊒) init f
                     ⊔ Map.fromList [ (y, Map.delete n $ (∐) [ nextReach ! x | x <- suc csGraph y] ) | (y,(n,_)) <- labNodes csGraph ]
         init = Map.fromList [ (y, Map.empty) | y <- nodes csGraph ]
 
-
-
-reachableBefore ::  DynGraph gr => Set Var -> gr CFGNode CFGEdge -> Node -> CacheGraphNode -> (Set CacheGraphNode)
-reachableBefore vars graph n0 y = Set.fromList [ y' | x <- suc csGraph y,
-                                                      y' <- dfs [x] (foldr (flip delSuccessorEdges) csGraph (Set.toList $ sinkdoms ! y)),
-                                                      not $ y' ∈ sinkdoms ! y,
-                                                      (∃) (lsuc csGraph y') (\(_,e) -> (Set.filter isCachable $ useE e) == vars),
-                                                      let Just (m,_) = lab csGraph y',
-                                                      let canonicalCacheState = cacheState y',
-                                                      not $ (∀) (nodesToCsNodes ! m) (\y'' -> cacheState y'' == canonicalCacheState)
-                                  ]
-  where
-        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
-        cacheState y' = fmap fst $ fst $ cs
-          where Just (_,cs) = lab csGraph y'
-        csGraph = cacheStateGraphForVars vars graph initialCacheState n0
-
-        sinkdoms = sinkdomsOf csGraph 
 
 
 csd''''Of3 :: (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)

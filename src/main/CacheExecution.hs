@@ -37,7 +37,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet)
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayMaxIndex, arrayEmpty, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, use, def, SimpleShow (..))
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, use, def, SimpleShow (..))
 import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
@@ -59,6 +59,25 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Inpu
 cacheLineSize :: Int
 cacheLineSize = assert ((arrayMaxIndex + 1) `mod` n == 0) n
   where n = 64
+
+toAlignedIndex i = require (0 <= i ∧ i <=arrayMaxIndex) $ i `div` cacheLineSize
+
+
+alignedIndices = [ cacheLineSize * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` cacheLineSize ]]
+
+between :: Ord k => Map k v -> k -> k -> Map k v
+between map n m = require (n <= m) $ 
+                  let (_, right) = Map.split n map
+                      (mid, _)   = Map.split m right
+                  in mid
+
+sliceFor :: Index -> ArrayVal -> ArrayVal
+sliceFor ix array = between array (left - 1) (right + 1)
+  where left  = toAlignedIndex ix
+        right = left + cacheLineSize - 1
+
+
+
 
 
 
@@ -84,6 +103,7 @@ noOpTime = 1
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
 undefinedCacheValue = CachedVal (-1)
+undefinedCacheArrayValue = CachedArraySlice []
 
 type ConcreteSemantic a = CFGEdge -> a -> Maybe a
 
@@ -98,11 +118,12 @@ data CachedObject
     = CachedVar Var 
     | CachedArrayRange Array ArrayBound -- contents of Array from [ArrayBound ..to.. ArrayBound+cacheLineSize]
   deriving (Show, Eq, Ord)
+
 data CacheValue = CachedVal Val | CachedArraySlice [Val] deriving (Show, Eq, Ord)
 
 cachedObjectsFor :: Name -> Set CachedObject
 cachedObjectsFor (VarName   var) = Set.singleton (CachedVar var)
-cachedObjectsFor (ArrayName arr) = Set.fromList  [CachedArrayRange arr i | i <-  [ cacheLineSize * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` 64 ]] ]
+cachedObjectsFor (ArrayName arr) = Set.fromList  [CachedArrayRange arr i | i <- alignedIndices ]
 
 type CacheState = OMap CachedObject CacheValue
 type AbstractCacheState = ([(CachedObject, OMap.Index)], Set CachedObject)
@@ -197,11 +218,10 @@ consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = OMap.size cache <= 
         cons (CachedVar        var@(ThreadLocal x)      , CachedVal        val ) = val ==     tlσ ! var
         cons (CachedArrayRange arr@(Array       a) index, CachedArraySlice vals) = 
             (length vals == cacheLineSize) ∧ (index >= 0) ∧ (index `mod` cacheLineSize == 0) ∧ (index <= arrayMaxIndex)
-          ∧ (∀) (zipWith (==) vals (Map.elems $ between (index - 1) (index + cacheLineSize))) id
-          where between n m = 
-                  let (_, right) = Map.split n (σa ! arr)
-                      (mid, _)   = Map.split m right
-                  in assert (Map.size mid == cacheLineSize) mid
+          ∧ (Map.size betw == cacheLineSize)
+          ∧ (∀) (zipWith (==) vals (Map.elems betw)) id
+          where betw :: ArrayVal
+                betw = sliceFor index (σa ! arr)
 
 
 cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
@@ -233,6 +253,35 @@ cacheOnlyReadLRU var cache = case var of
                         OMap.fromList $ (cvar, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete cvar cache)
 
 
+type Index = Val
+
+cacheAwareArrayReadLRU :: Array -> Index -> FullState -> (Val, CacheState, AccessTime)
+cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = case arr of
+    Array       _ -> lookup
+  where alignedIx = toAlignedIndex ix
+        carr = CachedArrayRange arr alignedIx
+        lookup :: (Val, CacheState, AccessTime )
+        lookup = 
+          require (consistent σ) $
+          case OMap.lookup carr cache of
+            Nothing ->                           let { cval = CachedArraySlice vals ; vals = Map.elems $ sliceFor alignedIx (σa ! arr) } in
+                                                 (vals !! (ix - alignedIx), OMap.fromList $ (carr, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheMissTime )
+            Just cval@(CachedArraySlice vals) -> (vals !! (ix - alignedIx), OMap.fromList $ (carr, cval) : (                       OMap.assocs $ OMap.delete carr cache), cacheHitTime  )
+
+
+cacheOnlyArrayReadLRU :: Array -> Index -> CacheState -> CacheState
+cacheOnlyArrayReadLRU arr ix cache = case arr of
+    Array       _ -> lookup
+  where alignedIx = toAlignedIndex ix
+        carr = CachedArrayRange arr alignedIx
+        lookup = 
+          case OMap.lookup carr cache of
+            Nothing   -> OMap.fromList $ (carr, undefinedCacheArrayValue) : (take (cacheSize - 1) $ OMap.assocs                    cache)
+            Just cval -> assert (cval == undefinedCacheArrayValue) $
+                         OMap.fromList $ (carr, undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache)
+
+
+
 cacheAwareReadLRUState :: Monad m => Var -> StateT FullState m Val
 cacheAwareReadLRUState var = do
     σ@((globalσ,tlσ,i), cache, time) <- get
@@ -250,6 +299,32 @@ cacheOnlyReadLRUState var = do
 
 cacheOnlyWriteLRUState :: Monad m => Var -> StateT CacheState m ()
 cacheOnlyWriteLRUState = cacheOnlyReadLRUState
+
+
+
+
+cacheAwareArrayReadLRUState :: Monad m => Array -> Index -> StateT FullState m Val
+cacheAwareArrayReadLRUState arr ix = do
+    σ@((globalσ,tlσ,i), cache, time) <- get
+    let (val, cache', accessTime) = cacheAwareArrayReadLRU arr ix σ
+    put ((globalσ,tlσ,i), cache', time + accessTime)
+    return val
+
+
+cacheOnlyArrayReadLRUState :: Monad m =>  Array -> Index -> StateT CacheState m ()
+cacheOnlyArrayReadLRUState arr ix = do
+    cache <- get
+    let cache' = cacheOnlyArrayReadLRU arr ix cache
+    put cache'
+    return ()
+
+cacheOnlyArrayWriteLRUState :: Monad m => Var -> StateT CacheState m ()
+cacheOnlyArrayWriteLRUState = cacheOnlyArrayReadLRUState
+
+
+
+
+
 
 
 
@@ -410,6 +485,9 @@ cacheOnlyLRUEvalB (Not b) = do
 cacheOnlyLRUEvalV :: Monad m => VarFunction -> StateT CacheState m ()
 cacheOnlyLRUEvalV (Val  x) = return ()
 cacheOnlyLRUEvalV (Var  x) = cacheOnlyReadLRUState x
+cacheOnlyLRUEvalV (ArrayRead a ix) = do
+  ixVal <- cacheOnlyLRUEvalV
+  cacheOnlyArrayReadLRUState a
 cacheOnlyLRUEvalV (Plus  x y) = do
   xVal <- cacheOnlyLRUEvalV x
   yVal <- cacheOnlyLRUEvalV y
@@ -435,6 +513,12 @@ cacheOnlyStepForState (Guard b bf) = do
         return σ'
 cacheOnlyStepForState (Assign x vf) = do
         cacheOnlyLRUEvalV vf
+        cacheOnlyWriteLRUState x
+        σ' <- get
+        return σ'
+cacheOnlyStepForState (AssignArray a i vf) = do
+        cacheOnlyLRUEvalV vf
+        cacheOnlyLRUEvalV i
         cacheOnlyWriteLRUState x
         σ' <- get
         return σ'

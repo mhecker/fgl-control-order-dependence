@@ -106,7 +106,7 @@ instance SimpleShow VarFunction where
   simpleShow (Plus  a b) = "(" ++ simpleShow a ++ " + " ++ simpleShow b ++ ")"
   simpleShow (Times a b) =        simpleShow a ++ " · " ++ simpleShow b
   simpleShow (Neg   a  ) = "-" ++ simpleShow a
-  simpleShow (ArrayRead a b) = simpleShow a ++ "[" ++ simpleShow b ++ "]"
+  simpleShow (ArrayRead (Array a) b) = a ++ "[" ++ simpleShow b ++ "]"
 
 
 evalB :: GlobalState -> ThreadLocalState -> BoolFunction -> Bool

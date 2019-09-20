@@ -3318,6 +3318,38 @@ example42 = toProgramIntra $ IntraGeneratedProgram
                      ) undefined undefined undefined)])
 
 
+exampleMerge :: Program Gr
+exampleMerge = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Skip
+               `Seq`  Skip
+               `Seq`  Ass (Register 0) (Var (Global "d"))
+               `Seq`  Ass (Register 1) (Var (Global "e"))
+               `Seq`  Ass (Global "d") (Var (Register 0) `Plus` (Var (Register 1)))
+               `Seq`  Ass (Register 0) (Var (Global "c"))
+               `Seq`  If ((Val 0) `Leq` (Var (Register 0))) (
+                          Ass (Register 0) (Var (Global "z"))
+               `Seq`      Ass (Global "d") (Neg $ (Var (Register 0)))
+                      ) {-else-} (
+                          Skip
+                      )
+               `Seq`  Ass (Register 0) (Var (Global "z"))
+               `Seq`  Ass (Register 1) (Var (Global "a"))
+               `Seq`  If ((Val 0) `Leq` ((Var (Register 0)) `Times` (Var (Register 1)))) (
+                          Skip
+                      ) {-else-} (
+                          Ass (Register 0) (Var (Global "a"))
+               `Seq`      Ass (Register 1) (Var (Global "x"))
+               `Seq`      Ass (Global "a") ((Var (Register 0)) `Plus` (Var (Register 1)))
+                      )
+               `Seq` Skip
+               `Seq` Ass (Register 0) (Var (Global "x"))
+               `Seq` Ass (Global "d") (Neg $ (Var (Register 0)))
+                     ) undefined undefined undefined)])
+
+
+
 
 exampleDomPaths :: Program Gr
 exampleDomPaths = toProgramIntra $ IntraGeneratedProgram

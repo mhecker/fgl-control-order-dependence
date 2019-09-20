@@ -45,6 +45,8 @@ instance SimpleShow Array where
   simpleShow (Array x) = x ++ "[]"
 
 type Val = Int
+type ArrayVal = Map Int Val
+
 type InputChannel = String
 type OutputChannel = String
 type Channel = String
@@ -66,7 +68,7 @@ highOut2 = "highOut2"
 
 data GlobalState = GlobalState {
     σv :: (Map Var Val),
-    σa :: (Map Array (Map Int Val))
+    σa :: (Map Array ArrayVal)
   } deriving (Show, Eq, Ord, Generic, NFData)
 
 globalEmpty :: GlobalState
@@ -133,6 +135,10 @@ evalVM σg σl (Neg x)     = - evalVM σg σl  x
 
 
 data Name = VarName Var | ArrayName Array deriving (Eq, Show, Ord)
+
+isGlobalName (VarName var)   = isGlobal var
+isGlobalName (ArrayName arr) = True
+
 
 useV :: VarFunction -> Set Name
 useV (ArrayRead a i) = Set.insert (ArrayName a) $ useV i
@@ -408,8 +414,6 @@ stepFor e c@(globalσ@(GlobalState {σv, σa}), tlσ, i)  = step e where
               insert a i val = Map.alter f a σa
                 where f (Nothing) = Just $ Map.insert i val $ arrayEmpty
                       f ( Just a) = Just $ Map.insert i val $ a
-      step (Assign x                 vf) = [(                             globalσ, Map.insert x val             tlσ,                    i)]
-        where val = evalV globalσ tlσ vf
       step (Print  x ch)                 = [c]
       step (Spawn      )                 = undefined
       step (NoOp       )                 = [c]

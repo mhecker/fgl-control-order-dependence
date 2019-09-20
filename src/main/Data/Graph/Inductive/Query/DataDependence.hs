@@ -44,7 +44,7 @@ import Data.Graph.Inductive.Query.Dependence
    instance BoundedJoinSemiLattice (Map Var (Set Node))
 -}
 
-dependenceAnalysis :: Set Var -> DataflowAnalysis (Map Var (Set (LEdge CFGEdge))) CFGEdge
+dependenceAnalysis :: Set Name -> DataflowAnalysis (Map Name (Set (LEdge CFGEdge))) CFGEdge
 dependenceAnalysis vars = DataflowAnalysis {
     transfer = transfer,
     initial = initial
@@ -53,9 +53,11 @@ dependenceAnalysis vars = DataflowAnalysis {
   initial = Map.fromList [ (var, Set.empty) | var <- Set.toList vars ]
 
   transfer e@(_,_,Guard _ _)  reachingDefs = reachingDefs
-  transfer e@(_,_,Assign x _) reachingDefs = Map.insert x (Set.singleton e) reachingDefs
-  transfer e@(_,_,Read   x _) reachingDefs = Map.insert x (Set.singleton e) reachingDefs
-  transfer e@(_,_,Def    x)   reachingDefs = Map.insert x (Set.singleton e) reachingDefs
+  transfer e@(_,_,Assign x _) reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
+  transfer e@(_,_,AssignArray a _ _ )
+                              reachingDefs =     alter  (ArrayName a) (insert        e) reachingDefs
+  transfer e@(_,_,Read   x _) reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
+  transfer e@(_,_,Def    x)   reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
   transfer e@(_,_,Use    x)   reachingDefs = reachingDefs
   transfer e@(_,_,Print  _ _) reachingDefs = reachingDefs
   transfer e@(_,_,Spawn)      reachingDefs = reachingDefs
@@ -64,6 +66,9 @@ dependenceAnalysis vars = DataflowAnalysis {
   transfer e@(_,_,Return)     reachingDefs = initial
   transfer e@(_,_,CallSummary)reachingDefs = initial
 
+  insert x Nothing   = Just $ Set.singleton x
+  insert x (Just s)  = Just $ Set.insert    x s
+  alter = flip Map.alter
 
 
 find :: Graph gr => gr a b -> Node -> ((Node, b) -> Bool) -> (a -> Bool) -> Node
@@ -225,23 +230,23 @@ addBefore end nodeLabels graph = do
 
 
 
-dataDependence :: DynGraph gr => gr a CFGEdge -> Set Var -> Node -> Map Node (Set Node)
+dataDependence :: DynGraph gr => gr a CFGEdge -> Set Name -> Node -> Map Node (Set Node)
 dataDependence graph vars entry = Map.fromList [
       (n, Set.fromList $
           [ reachedFromN | reachedFromN <- nodes graph,
-                           let edges :: Map Var (Set (LEdge CFGEdge))
+                           let edges :: Map Name (Set (LEdge CFGEdge))
                                edges = reaching ! reachedFromN,
-                           let nodes :: Map Var (Set (Node))
+                           let nodes :: Map Name (Set (Node))
                                nodes = fmap (\set -> Set.map (\(n,_,_) -> n) set) edges,
                            var <- Set.toList $ use graph reachedFromN,
                            n `Set.member` (nodes ! var)]
       )
      | n <- nodes graph
     ]
-  where reaching :: Map Node (Map Var (Set (LEdge CFGEdge)))
+  where reaching :: Map Node (Map Name (Set (LEdge CFGEdge)))
         reaching = analysis (dependenceAnalysis vars) graph entry
 
-dataDependenceGraph :: DynGraph gr => gr a CFGEdge -> Set Var -> Node -> gr a Dependence
+dataDependenceGraph :: DynGraph gr => gr a CFGEdge -> Set Name -> Node -> gr a Dependence
 dataDependenceGraph graph vars entry = mkGraph (labNodes graph) [ (n,n',DataDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's]
   where dependencies = dataDependence graph vars entry
 
@@ -249,7 +254,7 @@ dataDependenceGraph graph vars entry = mkGraph (labNodes graph) [ (n,n',DataDepe
 
 dataDependenceGraphP :: DynGraph gr => Program gr -> (gr SDGNode Dependence, ParameterMaps)
 dataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, procedureOf}) = (
-      dataDependenceGraph withParameters (vars p) (entryOf $ procedureOf $ mainThread),
+      dataDependenceGraph withParameters (names p) (entryOf $ procedureOf $ mainThread),
       parameterMaps
     )
   where (withParameters, parameterMaps) = withParameterNodes p
@@ -260,7 +265,7 @@ nonTrivialDataDependenceGraphP :: DynGraph gr => Program gr -> (gr SDGNode Depen
 nonTrivialDataDependenceGraphP p@(Program { tcfg, mainThread, entryOf, procedureOf}) = (nonTrivialDataDependenceGraph, parameterMaps)
   where (withParameters, parameterMaps) = withParameterNodes p
         nonTrivialDataDependenceGraph = mkGraph (labNodes withParameters) [ (n, n', DataDependence) | (n,n's) <- Map.toList dependencies, n' <- Set.toList n's, nonTrivial n n']
-        dependencies = dataDependence withParameters (vars p) (entryOf $ procedureOf $ mainThread)
+        dependencies = dataDependence withParameters (names p) (entryOf $ procedureOf $ mainThread)
         nonTrivial n n' = case (lab withParameters n, lab withParameters n') of
           (Just (FormalIn  x),   Just (FormalOut x'))    -> x /= x'
           (Just (FormalIn  x),   Just (ActualIn  x' _ )) -> x /= x'

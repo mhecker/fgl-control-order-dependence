@@ -233,7 +233,7 @@ genAndShowSimpleTransitionSystem = do
     let high = Set.map Global (Set.fromList ["a", "b", "c"]) ∩ vars p
     showCFG   $ p
     showGraph $ fromSimpleProgram p
-    putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic low high p)
+    putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic (Set.map VarName low) (Set.map VarName high) p)
     putStrLn  $ "securePDG:      " ++ (show $ securePDG (vars p) low high simple)
 
 
@@ -244,7 +244,7 @@ showSimpleTransitionSystem = do
     let high = Set.map Global (Set.fromList ["a", "b", "c"]) ∩ vars p
     showCFG   $ p
     showGraph $ fromSimpleProgram p
-    putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic low high p)
+    putStrLn  $ "secureSymbolic: " ++ (show $ secureSymbolic (Set.map VarName low) (Set.map VarName high) p)
 
 
 showConcreteTransitionSystem = do
@@ -252,10 +252,10 @@ showConcreteTransitionSystem = do
     let low  = Set.map Global (Set.fromList ["z"]) ∩ vars p
     let high = Set.map Global (Set.fromList ["a", "b", "c"]) ∩ vars p
     let system = concreteFromSimpleProgram p
-    let obs = observablePartOfConcrete (vars p)
+    let obs = observablePartOfConcrete (names p)
                                        (entryOf p $ procedureOf p $ mainThread p)
                                        (exitOf  p $ procedureOf p $ mainThread p)
-                                       low
+                                       (Set.map VarName low)
                                        system
     showCFG   $ p
     showGraph $ system
@@ -270,10 +270,10 @@ genAndShowSimpleTwoValuTransitionSystem = do
     let simple = generatedSimples !! (length generatedSimples `div` 4)
     let p :: Program Gr = toProgramSimple $ simple
     let system = twoValueFromSimpleProgram p
-    let obs = observablePartOfTwoValueDefUseSimple (vars p)
+    let obs = observablePartOfTwoValueDefUseSimple (names p)
                                                    (entryOf p $ procedureOf p $ mainThread p)
                                                    (exitOf  p $ procedureOf p $ mainThread p)
-                                                   (Set.map Global (Set.fromList ["x", "y", "z"]) ∩ vars p)
+                                                   (Set.map (VarName . Global) (Set.fromList ["x", "y", "z"]) ∩ names p)
                                                    system
     showCFG   $ p
     showGraph $ system
@@ -289,8 +289,8 @@ showSimpleTwoValueTransitionSystem = do
 
     let system = twoValueFromSimpleProgram p
     -- let low = (Set.fromList ["z"])
-    let low =  Set.map Global (Set.fromList ["x", "y", "z"]) ∩ vars p
-    let obs = observablePartOfTwoValueDefUseSimple (vars p)
+    let low =  Set.map (VarName . Global) (Set.fromList ["x", "y", "z"]) ∩ names p
+    let obs = observablePartOfTwoValueDefUseSimple (names p)
                                                    (entryOf p $ procedureOf p $ mainThread p)
                                                    (exitOf  p $ procedureOf p $ mainThread p)
                                                    low
@@ -308,8 +308,8 @@ showSimpleOneValueTransitionSystem = do
     let p = (toProgramSimple $ SimpleProgram (Map.fromList [(1, "1")])  (Map.fromList [("1",Generated (Seq Skip (If (Leq (Val 0) (Times (Var (Global "y")) (Var (Global "x")))) (Ass (Global "z") (Times (Var (Global "z")) (Var (Global "x")))) (Ass (Global "h") (Times (Var (Global "h")) (Var (Global "x")))))) (Set.map Global $ Set.fromList ["h","x","y","z"]) (Map.fromList []) (Map.empty))])) :: Program Gr
     let system = oneValueFromSimpleProgram p
     -- let low = (Set.fromList ["z"])
-    let low = Set.map Global (Set.fromList ["x", "y", "z"]) ∩ vars p
-    let obs = observablePartOfOneValueDefUseSimple (vars p)
+    let low = Set.map (VarName . Global) (Set.fromList ["x", "y", "z"]) ∩ names p
+    let obs = observablePartOfOneValueDefUseSimple (names p)
                                                    (entryOf p $ procedureOf p $ mainThread p)
                                                    (exitOf  p $ procedureOf p $ mainThread p)
                                                    low

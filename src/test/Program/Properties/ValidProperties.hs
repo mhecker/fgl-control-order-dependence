@@ -59,7 +59,7 @@ import Data.List (sortOn)
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
-import IRLSOD(CFGEdge(..), Var(..), use, def)
+import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
 import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
@@ -4715,7 +4715,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g0 = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        vars = Set.fromList [ var | n <- nodes g0, var@(Global x) <- Set.toList $ use g0 n ∪ def g0 n]
+                        vars = Set.fromList [ var | n <- nodes g0, var <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName var]
                         (newN0:new) = (newNodes ((Set.size vars) + 1) g0)
                         varToNode = Map.fromList $ zip (Set.toList vars) new
                         nodeToVar = Map.fromList $ zip new (Set.toList vars)
@@ -4723,7 +4723,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         prepend = prependInitialization g0 n0 newN0 varToNode
 
                         initialGlobalState1 = Map.fromList $ zip (Set.toList vars) (fmap (`rem` 32) $ moreSeeds seed1 (Set.size vars))
-                        initialFullState   = ((Map.empty, Map.empty, ()), initialCacheState, 0)
+                        initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
                         g1 = prepend initialGlobalState1
 
 

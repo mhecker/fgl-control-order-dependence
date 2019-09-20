@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module IRLSOD where
@@ -35,6 +36,17 @@ data Array = Array String deriving (Show, Eq, Ord, Generic, NFData)
 
 class SimpleShow a where
   simpleShow :: a -> String
+
+instance (SimpleShow a,SimpleShow b) => SimpleShow (a,b) where
+  simpleShow (a,b) = "(" ++ simpleShow a ++ ", " ++ simpleShow b ++ ")"
+
+instance SimpleShow a => SimpleShow [a] where
+  simpleShow xs = "[" ++ (concat $ List.intersperse "," $ fmap simpleShow xs) ++ "]"
+
+
+instance SimpleShow a => SimpleShow (Set a) where
+  simpleShow xs = "{" ++ (concat $ List.intersperse "," $ fmap simpleShow $ Set.toList xs) ++ "}"
+
 
 instance SimpleShow Var where
   simpleShow (Global x) = x
@@ -171,6 +183,8 @@ instance SimpleShow CFGEdge where
   simpleShow (NoOp) = ""
   simpleShow e = show e
 
+instance (SimpleShow Node) where
+  simpleShow = show
 
 isIntraCFGEdge :: CFGEdge -> Bool
 isIntraCFGEdge Call    = False

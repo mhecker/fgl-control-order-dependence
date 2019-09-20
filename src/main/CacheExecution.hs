@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
@@ -35,7 +37,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet)
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayMaxIndex, arrayEmpty, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, use, def)
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayMaxIndex, arrayEmpty, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, use, def, SimpleShow (..))
 import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
@@ -110,6 +112,19 @@ type TimeState = Integer
 
 type CacheTimeState = (CacheState, TimeState)
 type FullState = (NormalState, CacheState, TimeState)
+
+
+instance SimpleShow CachedObject where
+  simpleShow (CachedVar        var)  = simpleShow var
+  simpleShow (CachedArrayRange (Array x) i) = x ++ "[" ++ (show i) ++ ".." ++ (show $ i + cacheLineSize -1) ++ "]"
+
+instance SimpleShow CacheValue where
+  simpleShow (CachedVal        val ) = simpleShow val
+  simpleShow (CachedArraySlice vals) = simpleShow vals
+
+
+instance SimpleShow CacheState where
+  simpleShow cs = simpleShow $ fmap fst $ OMap.assocs cs
 
 
 isCachable :: Name -> Bool

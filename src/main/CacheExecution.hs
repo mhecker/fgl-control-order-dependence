@@ -58,9 +58,9 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Inpu
 
 cacheLineSize :: Int
 cacheLineSize = assert ((arrayMaxIndex + 1) `mod` n == 0) n
-  where n = 64
+  where n = 128
 
-toAlignedIndex i = require (0 <= i ∧ i <=arrayMaxIndex) $ i `div` cacheLineSize
+toAlignedIndex i = require (0 <= i ∧ i <=arrayMaxIndex) $ (i `div` cacheLineSize) * cacheLineSize
 
 
 alignedIndices = [ cacheLineSize * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` cacheLineSize ]]
@@ -311,14 +311,14 @@ cacheAwareArrayReadLRUState arr ix = do
     return val
 
 
-cacheOnlyArrayReadLRUState :: Monad m =>  Array -> Index -> StateT CacheState m ()
+cacheOnlyArrayReadLRUState :: Monad m => Array -> Index -> StateT CacheState m ()
 cacheOnlyArrayReadLRUState arr ix = do
     cache <- get
     let cache' = cacheOnlyArrayReadLRU arr ix cache
     put cache'
     return ()
 
-cacheOnlyArrayWriteLRUState :: Monad m => Var -> StateT CacheState m ()
+cacheOnlyArrayWriteLRUState :: Monad m => Array -> Index -> StateT CacheState m ()
 cacheOnlyArrayWriteLRUState = cacheOnlyArrayReadLRUState
 
 
@@ -463,7 +463,7 @@ cacheTimeStepFor e σ = evalStateT (cacheTimeStepForState e) fullState
 
 
 
-cacheOnlyLRUEvalB :: Monad m => BoolFunction -> StateT CacheState m ()
+cacheOnlyLRUEvalB :: BoolFunction -> StateT CacheState [] ()
 cacheOnlyLRUEvalB CTrue     = return ()
 cacheOnlyLRUEvalB CFalse    = return ()
 cacheOnlyLRUEvalB (Leq x y) = do
@@ -482,22 +482,29 @@ cacheOnlyLRUEvalB (Not b) = do
   bVal <- cacheOnlyLRUEvalB b
   return ()
 
-cacheOnlyLRUEvalV :: Monad m => VarFunction -> StateT CacheState m ()
+cacheOnlyLRUEvalV :: VarFunction -> StateT CacheState [] ()
 cacheOnlyLRUEvalV (Val  x) = return ()
 cacheOnlyLRUEvalV (Var  x) = cacheOnlyReadLRUState x
+{- special case for constants -}
+cacheOnlyLRUEvalV (ArrayRead a ix@(Val i)) = do
+  cacheOnlyLRUEvalV ix -- does nothing
+  cacheOnlyArrayReadLRUState a i
+  return ()
 cacheOnlyLRUEvalV (ArrayRead a ix) = do
-  ixVal <- cacheOnlyLRUEvalV
-  cacheOnlyArrayReadLRUState a
+  cacheOnlyLRUEvalV ix
+  i <- lift alignedIndices
+  cacheOnlyArrayReadLRUState a i
+  return ()
 cacheOnlyLRUEvalV (Plus  x y) = do
-  xVal <- cacheOnlyLRUEvalV x
-  yVal <- cacheOnlyLRUEvalV y
+  cacheOnlyLRUEvalV x
+  cacheOnlyLRUEvalV y
   return ()
 cacheOnlyLRUEvalV (Times x y) = do
-  xVal <- cacheOnlyLRUEvalV x
-  yVal <- cacheOnlyLRUEvalV y
+  cacheOnlyLRUEvalV x
+  cacheOnlyLRUEvalV y
   return ()
 cacheOnlyLRUEvalV (Neg x) = do
-  xVal <- cacheOnlyLRUEvalV x
+  cacheOnlyLRUEvalV x
   return ()
 
 
@@ -516,10 +523,18 @@ cacheOnlyStepForState (Assign x vf) = do
         cacheOnlyWriteLRUState x
         σ' <- get
         return σ'
-cacheOnlyStepForState (AssignArray a i vf) = do
+{- special case for constants -}
+cacheOnlyStepForState (AssignArray a ix@(Val i) vf) = do
         cacheOnlyLRUEvalV vf
-        cacheOnlyLRUEvalV i
-        cacheOnlyWriteLRUState x
+        cacheOnlyLRUEvalV ix -- does nothing
+        cacheOnlyArrayWriteLRUState a i
+        σ' <- get
+        return σ'
+cacheOnlyStepForState (AssignArray a ix vf) = do
+        cacheOnlyLRUEvalV vf
+        cacheOnlyLRUEvalV ix
+        i <- lift alignedIndices
+        cacheOnlyArrayWriteLRUState a i
         σ' <- get
         return σ'
 cacheOnlyStepForState NoOp = do
@@ -536,16 +551,16 @@ cacheOnlyStepFor e σ = evalStateT (cacheOnlyStepForState e) σ
 
 
 
-stateSetsSlow :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
-stateSetsSlow step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList []) f
+stateSets :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
+stateSets step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList []) f
   where f (cs, es) = (cs ∪ Set.fromList [  (n', σ') | (n, σ, e, n', σ') <- next ],
                       es ∪ Set.fromList [ ((n,  σ ), e, (n', σ')) | (n, σ, e, n', σ') <- next ]
                      )
           where next = [ (n, σ, e, n', σ')  | (n,σ) <- Set.toList cs, (n',e) <- lsuc g n, σ' <- step e σ]
 
-
-stateSets :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
-stateSets step g σ0 n0 = {- assert (result == stateSetsSlow step g σ0 n0) $ -} result
+{-- TODO: is currently not equivalent with stateSets. whats going on? --}
+stateSetsFast :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
+stateSetsFast step g σ0 n0 = {- assert (result == stateSetsSlow step g σ0 n0) $ -} result
   where result = go (Set.fromList [(n0,σ0)]) (Set.fromList [(n0,σ0)]) (Set.fromList [])
         go workset cs es
          | Set.null workset = (cs, es)

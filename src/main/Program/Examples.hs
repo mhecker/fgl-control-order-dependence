@@ -3349,6 +3349,34 @@ exampleMerge = toProgramIntra $ IntraGeneratedProgram
                      ) undefined undefined undefined)])
 
 
+simpleArray :: Program Gr
+simpleArray = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      AssArr (Array "a") (Val a) (Val 1)
+               `Seq`  AssArr (Array "a") (Val b) (Val 2)
+               `Seq`  AssArr (Array "a") (Val c) (Val 3)
+               `Seq`  AssArr (Array "a") (Val d) (Val 4)
+               `Seq`  AssArr (Array "a") (Val x) (Val 24)
+               `Seq`  If ((ArrayRead (Array "a") (Val x)) `Leq` (Val 0))
+                          (Ass (Global "y") ((ArrayRead (Array "a") (Val b)) `Plus` (ArrayRead (Array "a") (Val c))))
+                       {-else-}
+                          (Ass (Global "y") ((ArrayRead (Array "a") (Val d)) `Plus` (ArrayRead (Array "a") (Val d))))
+               `Seq`  Ass (Register 1) (ArrayRead (Array "a") (Val b))
+               `Seq`  Ass (Register 2) (Var (Global "y"))
+               `Seq`  If ((Var (Register 2)) `Leq` (Val 3))
+                          (Ass (Register 3) (ArrayRead (Array "a") (Val a)))
+                       {-else-}
+                          (Ass (Register 3) (ArrayRead (Array "a") (Val b)))
+               `Seq`  Ass (Register 4) (ArrayRead (Array "a") (Val c))
+                     ) undefined undefined undefined)])
+  where a = 0
+        b = 63
+        c = 64
+        d = 255
+        x = 128
+
+
 
 
 exampleDomPaths :: Program Gr

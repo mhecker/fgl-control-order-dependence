@@ -24,6 +24,7 @@ import Data.Graph.Inductive.Util
 
 data For = If   BoolFunction For For
          | Ass  Var VarFunction
+         | AssArr Array VarFunction VarFunction
          | ForC Val For
          | ForV Var For
          | Seq For For
@@ -100,6 +101,16 @@ compile procedureOf entryOfProcedure exitOfProcedure  nStart (Ass var f) = do
             nEnd,
             nodesInThread
            )
+
+compile procedureOf entryOfProcedure exitOfProcedure  nStart (AssArr arr i f) = do
+  nEnd <- gen
+  let nodesInThread = [nStart, nEnd]
+  return $ (mkGraph [(n,n) | n <- nodesInThread ]
+                    [(nStart, nEnd, AssignArray arr i f)],
+            nEnd,
+            nodesInThread
+           )
+
 
 compile procedureOf entryOfProcedure exitOfProcedure  nStart (ForC val s) = do
   nInit <- gen

@@ -551,16 +551,15 @@ cacheOnlyStepFor e σ = evalStateT (cacheOnlyStepForState e) σ
 
 
 
-stateSets :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
-stateSets step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList []) f
+stateSetsSlow :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
+stateSetsSlow step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList []) f
   where f (cs, es) = (cs ∪ Set.fromList [  (n', σ') | (n, σ, e, n', σ') <- next ],
                       es ∪ Set.fromList [ ((n,  σ ), e, (n', σ')) | (n, σ, e, n', σ') <- next ]
                      )
           where next = [ (n, σ, e, n', σ')  | (n,σ) <- Set.toList cs, (n',e) <- lsuc g n, σ' <- step e σ]
 
-{-- TODO: is currently not equivalent with stateSets. whats going on? --}
-stateSetsFast :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
-stateSetsFast step g σ0 n0 = {- assert (result == stateSetsSlow step g σ0 n0) $ -} result
+stateSets :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
+stateSets step g σ0 n0 = {- assert (result == stateSetsSlow step g σ0 n0) $ -} result
   where result = go (Set.fromList [(n0,σ0)]) (Set.fromList [(n0,σ0)]) (Set.fromList [])
         go workset cs es
          | Set.null workset = (cs, es)
@@ -568,7 +567,7 @@ stateSetsFast step g σ0 n0 = {- assert (result == stateSetsSlow step g σ0 n0) 
              where ((n,σ), workset') = Set.deleteFindMin workset
                    next = [ (n, σ, e, n', σ')  | (n',e) <- lsuc g n, σ' <- step e σ]
                    
-                   csNew = Set.fromList [ (n', σ') | (n, σ, e, n', σ') <- next, not $ (n', σ) ∈ cs ]
+                   csNew = Set.fromList [ (n', σ') | (n, σ, e, n', σ') <- next, not $ (n', σ') ∈ cs ]
                    esNew = Set.fromList [ ((n,  σ ), e, (n', σ')) | (n, σ, e, n', σ') <- next ]
 
 

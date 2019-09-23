@@ -36,7 +36,7 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
-import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet)
+import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt)
 import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, use, def, SimpleShow (..))
 import qualified IRLSOD as IRLSOD (Input)
 
@@ -58,7 +58,9 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Inpu
 
 cacheLineSize :: Int
 cacheLineSize = assert ((arrayMaxIndex + 1) `mod` n == 0) n
-  where n = 32
+  where n = 64
+
+initialCacheLine = [ 0 | i <- [0 .. cacheLineSize - 1] ]
 
 toAlignedIndex i = require (0 <= i ∧ i <=arrayMaxIndex) $ (i `div` cacheLineSize) * cacheLineSize
 
@@ -296,15 +298,12 @@ cacheOnlyArrayReadLRU arr ix cache = case arr of
             Just cval -> assert (cval == undefinedCacheArrayValue) $
                          OMap.fromList $ (carr, undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache)
 
-
-
 cacheAwareReadLRUState :: Monad m => Var -> StateT FullState m Val
 cacheAwareReadLRUState var = do
     σ@((globalσ,tlσ,i), cache, time) <- get
     let (val, cache', accessTime) = cacheAwareReadLRU var σ
     put ((globalσ,tlσ,i), cache', time + accessTime)
     return val
-
 
 cacheOnlyReadLRUState :: Monad m => Var -> StateT CacheState m ()
 cacheOnlyReadLRUState var = do
@@ -316,16 +315,12 @@ cacheOnlyReadLRUState var = do
 cacheOnlyWriteLRUState :: Monad m => Var -> StateT CacheState m ()
 cacheOnlyWriteLRUState = cacheOnlyReadLRUState
 
-
-
-
 cacheAwareArrayReadLRUState :: Monad m => Array -> Index -> StateT FullState m Val
 cacheAwareArrayReadLRUState arr ix = do
     σ@((globalσ,tlσ,i), cache, time) <- get
     let (val, cache', accessTime) = cacheAwareArrayReadLRU arr ix σ
     put ((globalσ,tlσ,i), cache', time + accessTime)
     return val
-
 
 cacheOnlyArrayReadLRUState :: Monad m => Array -> Index -> StateT CacheState m ()
 cacheOnlyArrayReadLRUState arr ix = do
@@ -336,13 +331,6 @@ cacheOnlyArrayReadLRUState arr ix = do
 
 cacheOnlyArrayWriteLRUState :: Monad m => Array -> Index -> StateT CacheState m ()
 cacheOnlyArrayWriteLRUState = cacheOnlyArrayReadLRUState
-
-
-
-
-
-
-
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
 cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) = case var of
@@ -363,6 +351,33 @@ cacheAwareWriteLRUState var val = do
     σ <- get
     put $ cacheAwareWriteLRU var val σ
     return ()
+
+cacheAwareArrayWriteLRU :: Array -> Index -> Val -> FullState -> FullState
+cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i), cache, time ) = case arr of
+    Array  _ -> let (     σa', cache', accessTime) = write      σa in ((globalσ{ σa = σa'}, tlσ , i), cache', time + accessTime)
+  where alignedIx = toAlignedIndex ix
+        carr = CachedArrayRange arr (toAlignedIndex ix)
+        cval = CachedArraySlice vals'
+          where vals  = case Map.lookup arr σa of
+                  Nothing -> initialCacheLine
+                  Just av -> Map.elems $ sliceFor alignedIx av
+                vals' = updateAt sliceIndex val vals
+                 where sliceIndex = ix - alignedIx
+        write :: Map Array ArrayVal -> (Map Array ArrayVal, CacheState, TimeState )
+        write someσ = 
+            require (consistent σ) $
+            case OMap.lookup carr cache of
+              Nothing  ->  (Map.alter update arr someσ, OMap.fromList $ (carr, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheWriteTime )
+              Just _   ->  (Map.alter update arr someσ, OMap.fromList $ (carr, cval) : (                       OMap.assocs $ OMap.delete carr cache), cacheWriteTime )
+          where update (Nothing) = Just $ Map.insert ix val arrayEmpty
+                update (Just av) = Just $ Map.insert ix val av 
+          
+cacheAwareArrayWriteLRUState :: Monad m => Array -> Index -> Val -> StateT FullState m ()
+cacheAwareArrayWriteLRUState arr ix val = do
+    σ <- get
+    put $ cacheAwareArrayWriteLRU arr ix val σ
+    return ()
+
 
 initialCacheState :: CacheState
 initialCacheState = OMap.empty
@@ -403,6 +418,9 @@ cacheAwareLRUEvalB (Not b) = do
 cacheAwareLRUEvalV :: Monad m => VarFunction -> StateT FullState m Val
 cacheAwareLRUEvalV (Val  x) = return x
 cacheAwareLRUEvalV (Var  x) = cacheAwareReadLRUState x
+cacheAwareLRUEvalV (ArrayRead a ix) = do
+  iVal <- cacheAwareLRUEvalV ix
+  cacheAwareArrayReadLRUState a iVal
 cacheAwareLRUEvalV (Plus  x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
@@ -429,6 +447,12 @@ cacheStepForState (Guard b bf) = do
 cacheStepForState (Assign x vf) = do
         xVal <- cacheAwareLRUEvalV vf
         cacheAwareWriteLRUState x xVal
+        σ' <- get
+        return σ'
+cacheStepForState (AssignArray a ix vf) = do
+        vVal <- cacheAwareLRUEvalV vf
+        iVal <- cacheAwareLRUEvalV ix
+        cacheAwareArrayWriteLRUState a iVal vVal
         σ' <- get
         return σ'
 cacheStepForState NoOp = do
@@ -660,7 +684,7 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =
 
 
 cacheStateGraph'ForVarsAtMForGraph :: forall gr. (DynGraph gr) => Set CachedObject ->  gr (Node, CacheState) CFGEdge  ->  Node -> gr (Node, CacheState) CFGEdge
-cacheStateGraph'ForVarsAtMForGraph vars g0 mm = traceShow (mm, vars) $ result
+cacheStateGraph'ForVarsAtMForGraph vars g0 mm = result
   where result = subgraph (rdfs (fmap fst $ withNewIds) merged) merged
         merged :: gr (Node, CacheState) CFGEdge
         merged = insEdges [ (id, oldMNodesToNew ! id', e) | edge@(id,id',e) <- mEdgesIncoming]

@@ -37,11 +37,18 @@ data Array = Array String deriving (Show, Eq, Ord, Generic, NFData)
 class SimpleShow a where
   simpleShow :: a -> String
 
+instance SimpleShow Integer
+  where simpleShow x = show x
+
 instance SimpleShow ()
   where simpleShow () = ""
 
 instance (SimpleShow a,SimpleShow b) => SimpleShow (a,b) where
   simpleShow (a,b) = "(" ++ simpleShow a ++ ", " ++ simpleShow b ++ ")"
+
+instance (SimpleShow a,SimpleShow b, SimpleShow c) => SimpleShow (a,b,c) where
+  simpleShow (a,b,c) = "(" ++ simpleShow a ++ ", " ++ simpleShow b ++ ", " ++ simpleShow c ++ ")"
+
 
 instance SimpleShow a => SimpleShow [a] where
   simpleShow xs = "[" ++ (concat $ List.intersperse "," $ fmap simpleShow xs) ++ "]"
@@ -49,6 +56,11 @@ instance SimpleShow a => SimpleShow [a] where
 
 instance SimpleShow a => SimpleShow (Set a) where
   simpleShow xs = "{" ++ (concat $ List.intersperse "," $ fmap simpleShow $ Set.toList xs) ++ "}"
+
+
+instance (SimpleShow k, SimpleShow v       ) => SimpleShow (Map k v) where
+  simpleShow xs = "[" ++ (concat $ List.intersperse "," $ fmap simpleShow $ Map.toList xs) ++ "]"
+
 
 
 instance SimpleShow Var where
@@ -88,6 +100,12 @@ data GlobalState = GlobalState {
 
 globalEmpty :: GlobalState
 globalEmpty = GlobalState { σv = Map.empty, σa = Map.empty }
+
+nonZeroOnly :: GlobalState -> GlobalState
+nonZeroOnly σ@(GlobalState { σv, σa }) = σ{ σv = Map.filter (/=0) σv, σa = fmap (Map.filter (/=0)) σa }
+
+instance SimpleShow GlobalState where
+  simpleShow (GlobalState { σv, σa }) = "{ v = " ++ simpleShow σv ++ ", a = " ++ simpleShow σa ++ "}"
 
 type ThreadLocalState = Map Var Val
 -- type CombinedState = Map Var Val

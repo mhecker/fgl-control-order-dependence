@@ -72,6 +72,11 @@ instance SimpleShow Array where
   simpleShow (Array x) = x ++ "[]"
 
 type Val = Int
+
+centralValue :: Val
+centralValue = 0
+
+
 type ArrayVal = Map Int Val
 
 type InputChannel = String

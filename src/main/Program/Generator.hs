@@ -25,13 +25,16 @@ import Data.List ((\\))
 import Debug.Trace
 
 
-data Generated = Generated For (Set Var) (Map StaticThread (Set Var)) (Map StaticProcedure (Set Var))
+data Generated = Generated For (Set Name) (Map StaticThread (Set Name)) (Map StaticProcedure (Set Name))
 instance Show Generated where
   show (Generated p vars spawned called)  = "Generated (" ++ (show p) ++ ") undefined undefined undefined"
 
 data IntraGeneratedProgram = IntraGeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 data GeneratedProgram = GeneratedProgram (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
 data SimpleProgram    = SimpleProgram    (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
+data SimpleWithArraysProgram = SimpleWithArraysProgram
+                                         (Map StaticThread StaticProcedure) (Map StaticProcedure Generated) deriving Show
+
 
 data SimpleCFG gr = SimpleCFG (gr () ())
 
@@ -50,6 +53,14 @@ toCodeSimple (SimpleProgram threadOf forProcedures) = (
   fmap (\(Generated for _ _ _) -> for) forProcedures
  )
 
+toCodeSimpleWithArrays :: SimpleWithArraysProgram -> (Map StaticThread  StaticProcedure, Map StaticProcedure For)
+toCodeSimpleWithArrays (SimpleWithArraysProgram threadOf forProcedures) = (
+  threadOf, 
+  fmap (\(Generated for _ _ _) -> for) forProcedures
+ )
+
+
+
 toCode :: GeneratedProgram -> (Map StaticThread StaticProcedure, Map StaticProcedure For)
 toCode (GeneratedProgram threadOf forProcedures) = (
   threadOf, 
@@ -62,8 +73,8 @@ sampleCode = do
     do putStrLn $ show $ procedures
    )
 
-programGenerator :: Int -> (Set StaticThread) -> (Set StaticProcedure) -> (Map StaticThread StaticProcedure) -> (Map StaticProcedure Generated) -> Gen (Map StaticThread StaticProcedure, Map StaticProcedure Generated)
-programGenerator n threadsAvailable proceduresAvailable generated generatedProcedures
+programGenerator :: Int -> Set InputChannel -> Set OutputChannel -> Set Name -> Set Name -> (Set StaticThread) -> (Set StaticProcedure) -> (Map StaticThread StaticProcedure) -> (Map StaticProcedure Generated) -> Gen (Map StaticThread StaticProcedure, Map StaticProcedure Generated)
+programGenerator n inChannels outChannels vars varsForbidden threadsAvailable proceduresAvailable generated generatedProcedures
   | not $ Set.null $ threadsAvailable ∩ threadsGenerated = error "invariance violated"
   | (Set.null $ toGenerate) && (Set.null $ toGenerateProcedures) = return (generated, generatedProcedures)
   -- TODO: is this bias toward threads harmful?
@@ -79,6 +90,10 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
                                                           proceduresAvailable
                                                           n
       programGenerator (n `div` 2)
+                       inChannels
+                       outChannels
+                       vars
+                       varsForbidden
                        ((threadsAvailable ∖ (Map.keysSet spawned')) ∖ (Set.fromList [thread]) )
                        proceduresAvailable 
                        (Map.insert thread    procedure generated)
@@ -94,6 +109,10 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
                                                           (proceduresAvailable)
                                                           n
       programGenerator n
+                       inChannels
+                       outChannels
+                       vars
+                       varsForbidden
                        threadsAvailable 
                        ((proceduresAvailable ∖ Set.fromList [procedure]) )
                        generated
@@ -106,12 +125,6 @@ programGenerator n threadsAvailable proceduresAvailable generated generatedProce
         proceduresGenerated  = Map.keysSet generatedProcedures
         toGenerate           = spawned ∖ threadsGenerated
         toGenerateProcedures = called ∖ proceduresGenerated
-
-        inChannels       = Set.fromList [stdIn,lowIn1]
-        outChannels      = Set.fromList [stdOut]
-        vars             = Set.map Global $
-                           Set.fromList ["x", "y", "z", "a", "b", "c"]
-        varsForbidden    = Set.fromList []
 
 
 instance Arbitrary GeneratedProgram where
@@ -127,6 +140,10 @@ instance Arbitrary GeneratedProgram where
                                                        proceduresAvailable
                                                        n'
       (generated, generatedProcedures) <- programGenerator n'
+                                    inChannels
+                                    outChannels
+                                    vars
+                                    varsForbidden
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
                                     (Map.fromList [(1, "main")])
@@ -137,7 +154,7 @@ instance Arbitrary GeneratedProgram where
       proceduresAvailable = Set.fromList ["foo", "bar", "baz", "procF", "procH", "procG"]
       inChannels       = Set.fromList [stdIn,lowIn1]
       outChannels      = Set.fromList [stdOut]
-      vars             = Set.map Global $
+      vars             = Set.map (VarName . Global) $
                          Set.fromList ["x", "y", "z", "a", "b", "c"]
       varsForbidden    = Set.fromList []
       varsAvailable    = Set.fromList []
@@ -162,10 +179,35 @@ instance Arbitrary SimpleProgram where
       proceduresAvailable = Set.fromList []
       inChannels       = Set.fromList []
       outChannels      = Set.fromList []
-      vars             = Set.map Global $
+      vars             = Set.map (VarName . Global) $
                          Set.fromList ["a", "b", "c", "d", "e", "x", "y", "z", "h"]
       varsForbidden    = Set.fromList []
       varsAvailable    = vars
+
+instance Arbitrary SimpleWithArraysProgram where
+  arbitrary = sized $ \n -> do
+      let ratio = 1/1.7 :: Double -- attempt to generate a CFG with one procedure of size ~~ n
+      let n' = ceiling $ (ratio * (fromInteger $ toInteger n))
+      f@(Generated p vars spawned called) <- forGenerator inChannels
+                                                          outChannels
+                                                          vars
+                                                          varsAvailable
+                                                          varsForbidden
+                                                          threadsAvailable
+                                                          proceduresAvailable
+                                                          n'
+      return $ SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main", Generated (Skip `Seq` p) vars spawned called)])
+    where
+      threadsAvailable = Set.fromList []
+      proceduresAvailable = Set.fromList []
+      inChannels       = Set.fromList []
+      outChannels      = Set.fromList []
+      vars             = (Set.map (VarName   . Global) $ Set.fromList ["b", "c", "d", "e", "x", "y", "z", "h"])
+                       ∪ (Set.map (ArrayName . Array ) $ Set.fromList ["arrA", "arrB", "arrC"])
+      varsForbidden    = Set.fromList []
+      varsAvailable    = vars
+
+
 
 instance DynGraph gr => Arbitrary (SimpleCFG gr) where
   arbitrary = sized $ \n -> do
@@ -186,6 +228,10 @@ instance Arbitrary IntraGeneratedProgram where
                                                        proceduresAvailable
                                                        n'
       (generated, generatedProcedures) <- programGenerator n'
+                                    inChannels
+                                    outChannels
+                                    vars
+                                    varsForbidden
                                     ((threadsAvailable ∖ (Map.keysSet spawned)) ∖ (Set.fromList [1]))
                                     proceduresAvailable
                                     (Map.fromList [(1, "main")])
@@ -196,7 +242,7 @@ instance Arbitrary IntraGeneratedProgram where
       proceduresAvailable = Set.fromList []
       inChannels       = Set.fromList [stdIn,lowIn1]
       outChannels      = Set.fromList [stdOut]
-      vars             = Set.map Global $
+      vars             = Set.map (VarName . Global) $
                          Set.fromList ["x", "y", "z", "a", "b", "c"]
       varsForbidden    = Set.fromList []
       varsAvailable    = Set.fromList []
@@ -208,6 +254,9 @@ instance Arbitrary IntraGeneratedProgram where
 
 toProgramSimple :: DynGraph gr => SimpleProgram -> Program gr
 toProgramSimple (SimpleProgram forThreads forProcedures) = toProgram (GeneratedProgram forThreads forProcedures)
+
+toProgramSimpleWithArrays :: DynGraph gr => SimpleWithArraysProgram -> Program gr
+toProgramSimpleWithArrays (SimpleWithArraysProgram forThreads forProcedures) = toProgram (GeneratedProgram forThreads forProcedures)
 
 toProgramIntra :: DynGraph gr => IntraGeneratedProgram -> Program gr
 toProgramIntra (IntraGeneratedProgram forThreads forProcedures) = toProgram (GeneratedProgram forThreads forProcedures)
@@ -225,7 +274,7 @@ instance DynGraph gr => Arbitrary (Program gr) where
     return $ toProgram generated
 
 
-expGenerator :: Set Var -> Gen VarFunction
+expGenerator :: Set Name -> Gen VarFunction
 expGenerator varsAvailable
   | Set.null varsAvailable = elements $ fmap Val vals
   | otherwise              = frequency [
@@ -233,32 +282,43 @@ expGenerator varsAvailable
            return $ (Val x)
     ),
     (1, do x <- elements $ Set.toList varsAvailable
-           return $ (Var x)
+           xx <- forName x
+           return $ (Neg xx)
     ),
     (1, do x <- elements $ Set.toList varsAvailable
-           return $ (Neg (Var x))
-    ),
-    (1, do x <- elements $ Set.toList varsAvailable
+           xx <- forName x
            y <- elements $ Set.toList varsAvailable
-           return $ (Var x) `Plus` (Var y)
+           yy <- forName y
+           return $ xx `Plus` yy
     ),
     (1, do x <- elements $ Set.toList varsAvailable
+           xx <- forName x
            y <- elements $ Set.toList varsAvailable
-           return $ (Var x) `Times` (Var y)
+           yy <- forName y
+           return $ xx `Times` yy
     )
   ]
  where vals = [-1,0,1,9,4]
+       forName = forAvailableName varsAvailable
 
-bexpGenerator :: Set Var -> Gen BoolFunction
+forAvailableName namesAvailable x = do
+  case x of
+    VarName   var -> return $ (Var var)
+    ArrayName arr -> do
+      ix <- expGenerator namesAvailable
+      return $ (ArrayRead arr ix)
+
+
+bexpGenerator :: Set Name -> Gen BoolFunction
 bexpGenerator varsAvailable
   | Set.null varsAvailable = elements $ [CTrue, CFalse]
   | otherwise              = frequency [
     (1, do x <- expGenerator varsAvailable
-           return $ Leq (Val 0) x 
+           return $ Leq (Val centralValue) x
     )
   ]
 
-forGenerator :: Set InputChannel -> Set OutputChannel -> Set Var -> Set Var -> Set Var -> Set StaticThread -> Set StaticProcedure -> Int -> Gen Generated
+forGenerator :: Set InputChannel -> Set OutputChannel -> Set Name -> Set Name -> Set Name -> Set StaticThread -> Set StaticProcedure -> Int -> Gen Generated
 forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable proceduresAvailable n
  | n > maxSize = forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvailable proceduresAvailable maxSize
  | n <= 1      = frequency [
@@ -267,18 +327,27 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
                              (Map.empty)
                              (Map.empty)
    ),
-   (2, do var <- elements $ Set.toList (vars ∖ varsForbidden)
+   (2, do var <- elements $ [ var | VarName var <- Set.toList (vars ∖ varsForbidden) ]
           exp <- expGenerator varsAvailable
           return $ Generated (Ass var exp)
-                             (varsAvailable ∪ Set.fromList [var])
+                             (varsAvailable ∪ Set.fromList [VarName var])
+                             (Map.empty)
+                             (Map.empty)
+   ),
+   (if hasArr then 2 else 0, do
+          arr <- elements $ [ arr | ArrayName arr <- Set.toList (vars ∖ varsForbidden) ]
+          exp <- expGenerator varsAvailable
+          ix  <- expGenerator varsAvailable
+          return $ Generated (AssArr arr ix exp)
+                             (varsAvailable ∪ Set.fromList [ArrayName arr])
                              (Map.empty)
                              (Map.empty)
    ),
    (if (Set.null inChannels) then 0 else 2,
        do channel <- elements $ Set.toList inChannels
-          var     <- elements $ Set.toList (vars ∖ varsForbidden)
+          VarName var <- elements $ Set.toList $ Set.filter (not . isArr) (vars ∖ varsForbidden)
           return $ Generated (ReadFromChannel var channel)
-                             (varsAvailable ∪ Set.fromList [var])
+                             (varsAvailable ∪ Set.fromList [VarName var])
                              (Map.empty)
                              (Map.empty)
    ),
@@ -313,9 +382,9 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
                              (spawned')
                              (called')
    ),
-   (if (Set.size (varsAvailable ∖ varsForbidden) <= 1) then 0 else 1,
-       do var <- elements $ Set.toList (varsAvailable ∖ varsForbidden)
-          Generated p'               _ spawned' called' <- forGenerator inChannels outChannels vars varsAvailable (varsForbidden ∪ Set.fromList [var]) threadsAvailable     proceduresAvailable (n-1)
+   (if ((Set.size $ Set.filter (not . isArr) $ (varsAvailable ∖ varsForbidden)) <= 1) then 0 else 1,
+       do VarName var <- elements $ Set.toList $ Set.filter (not . isArr) $ (varsAvailable ∖ varsForbidden)
+          Generated p'               _ spawned' called' <- forGenerator inChannels outChannels vars varsAvailable (varsForbidden ∪ Set.fromList [VarName var]) threadsAvailable     proceduresAvailable (n-1)
           return $ Generated (ForV var p')
                              (varsAvailable)
                              (spawned')
@@ -338,6 +407,10 @@ forGenerator inChannels outChannels vars varsAvailable varsForbidden threadsAvai
    )
    ]
  where maxSize = 10000
+       hasArr = (∃) (vars ∖ varsForbidden) isArr
+
+       isArr (ArrayName _) = True
+       isArr _             = False
 
 {- randomly pick n elements out of a given list, without repetition -}
 pick :: Eq a => Int -> [a] -> Gen [a]

@@ -37,6 +37,9 @@ data Array = Array String deriving (Show, Eq, Ord, Generic, NFData)
 class SimpleShow a where
   simpleShow :: a -> String
 
+instance SimpleShow ()
+  where simpleShow () = ""
+
 instance (SimpleShow a,SimpleShow b) => SimpleShow (a,b) where
   simpleShow (a,b) = "(" ++ simpleShow a ++ ", " ++ simpleShow b ++ ")"
 
@@ -117,13 +120,14 @@ evalB σg σl (And b1 b2) = evalB σg σl  b1 && evalB σg σl  b2
 evalB σg σl (Or  b1 b2) = evalB σg σl  b1 || evalB σg σl  b2
 evalB σg σl (Not b)     = not $ evalB σg σl  b
 
+useB = useBFor useV
 
-useB CTrue       = Set.empty
-useB CFalse      = Set.empty
-useB (Leq x y)   = useV x ∪ useV y
-useB (And b1 b2) = useB b1 ∪ useB b2
-useB (Or  b1 b2) = useB b1 ∪ useB b2
-useB (Not b)     = useB b
+useBFor useV CTrue       = Set.empty
+useBFor useV CFalse      = Set.empty
+useBFor useV (Leq x y)   = useV x ∪ useV y
+useBFor useV (And b1 b2) = useBFor useV b1 ∪ useBFor useV b2
+useBFor useV (Or  b1 b2) = useBFor useV b1 ∪ useBFor useV b2
+useBFor useV (Not b)     = useBFor useV b
 
 evalV :: GlobalState -> ThreadLocalState -> VarFunction -> Val
 evalV σg σl vf = (evalVM σg σl vf) `rem` 16 -- lets keep values small :O
@@ -193,18 +197,20 @@ isIntraCFGEdge Spawn   = False
 isIntraCFGEdge _       = True
 
 useE :: CFGEdge -> Set Name
-useE (Guard   _ bf) = useB bf
-useE (AssignArray a i vf) = useV i ∪ useV vf
-useE (Assign  _ vf) = useV vf
-useE (Read    _ _)  = Set.empty
-useE Spawn          = Set.empty
-useE (Print vf _)   = useV vf
-useE NoOp           = Set.empty
-useE (Def _)        = Set.empty
-useE (Use x)        = Set.fromList [ VarName x]
-useE CallSummary    = Set.empty
-useE Call           = Set.empty
-useE Return         = Set.empty
+useE = useEFor useV useB
+
+useEFor useV useB (Guard   _ bf) = useB bf
+useEFor useV useB (AssignArray a i vf) = useV i ∪ useV vf
+useEFor useV useB (Assign  _ vf) = useV vf
+useEFor useV useB (Read    _ _)  = Set.empty
+useEFor useV useB Spawn          = Set.empty
+useEFor useV useB (Print vf _)   = useV vf
+useEFor useV useB NoOp           = Set.empty
+useEFor useV useB (Def _)        = Set.empty
+useEFor useV useB (Use x)        = useV (Var x)
+useEFor useV useB CallSummary    = Set.empty
+useEFor useV useB Call           = Set.empty
+useEFor useV useB Return         = Set.empty
 
 defE :: CFGEdge -> Set Name
 defE (Guard   _ _) = Set.empty

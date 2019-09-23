@@ -3371,7 +3371,7 @@ simpleArray = toProgramIntra $ IntraGeneratedProgram
                `Seq`  Ass (Register 4) (ArrayRead (Array "a") (Val c))
                      ) undefined undefined undefined)])
   where a = 0
-        b = 63
+        b = 32
         c = 64
         d = 255
         x = 128

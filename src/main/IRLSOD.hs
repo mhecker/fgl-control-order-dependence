@@ -32,6 +32,10 @@ arrayMaxIndex = 255
 
 arrayEmpty = Map.fromList [(i,0) | i <- [0..arrayMaxIndex] ]
 
+arrayIndex i =  (abs i) `mod` (arrayMaxIndex + 1)
+isArrayIndex i = (0 <= i ∧ i <= arrayMaxIndex)
+
+
 data Array = Array String deriving (Show, Eq, Ord, Generic, NFData)
 
 class SimpleShow a where
@@ -453,7 +457,8 @@ stepFor e c@(globalσ@(GlobalState {σv, σa}), tlσ, i)  = step e where
       step (Read   x                 ch) = [( globalσ                          , Map.insert x (head $ i ! ch) tlσ, Map.adjust tail ch i)]
       step (AssignArray a ix         vf) = [( globalσ{σa = insert a index val },                              tlσ,                    i)]
         where val   = evalV globalσ tlσ vf
-              index = evalV globalσ tlσ ix
+              index = arrayIndex $
+                      evalV globalσ tlσ ix
               insert a i val = Map.alter f a σa
                 where f (Nothing) = Just $ Map.insert i val $ arrayEmpty
                       f ( Just a) = Just $ Map.insert i val $ a

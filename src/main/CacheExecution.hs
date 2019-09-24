@@ -37,7 +37,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt)
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, use, def, SimpleShow (..))
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, use, def, SimpleShow (..))
 import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
@@ -60,10 +60,10 @@ cacheLineSize :: Int
 cacheLineSize = assert ((arrayMaxIndex + 1) `mod` n == 0) n
   where n = 64
 
-initialCacheLine = [ 0 | i <- [0 .. cacheLineSize - 1] ]
+initialCacheLine   = [  0 | i <- [0 .. cacheLineSize - 1] ]
+undefinedCacheLine = [ -1 | i <- [0 .. cacheLineSize - 1] ]
 
-toAlignedIndex i = require (0 <= i ∧ i <=arrayMaxIndex) $ (i `div` cacheLineSize) * cacheLineSize
-
+toAlignedIndex i = require (isArrayIndex i) $ (i `div` cacheLineSize) * cacheLineSize
 
 alignedIndices = [ cacheLineSize * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` cacheLineSize ]]
 
@@ -105,7 +105,7 @@ noOpTime = 1
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
 undefinedCacheValue = CachedVal (-1)
-undefinedCacheArrayValue = CachedArraySlice []
+undefinedCacheArrayValue = CachedArraySlice undefinedCacheLine
 
 type ConcreteSemantic a = CFGEdge -> a -> Maybe a
 
@@ -134,7 +134,7 @@ cachedObjectsFor = useE
 
     useV :: VarFunction -> Set CachedObject
     {- special case for constants -}
-    useV (ArrayRead a ix@(Val i)) = Set.fromList [CachedArrayRange a (toAlignedIndex i) ]
+    useV (ArrayRead a ix@(Val i)) = Set.fromList [CachedArrayRange a (toAlignedIndex $ arrayIndex i) ]
     useV (ArrayRead a ix        ) = Set.fromList [CachedArrayRange a           aligned | aligned <- alignedIndices ]
                                   ∪ useV ix
     useV (Val  x)    = Set.empty
@@ -182,6 +182,13 @@ twoAddressCode (Ass var vf)  =
   let (loads, vf', _) = twoAddressCodeV 0 vf in case loads of
     Nothing ->          (Ass var vf')
     Just ls -> ls `Seq` (Ass var vf')
+twoAddressCode (AssArr arr ix vf)  =
+  let (loadsVf, vf', r) = twoAddressCodeV 0 vf
+      (loadsIx, ix', _) = twoAddressCodeV r ix
+      loads = loadsVf `sseq` loadsIx
+  in case loads of
+       Nothing ->          (AssArr arr ix' vf')
+       Just ls -> ls `Seq` (AssArr arr ix' vf')
 twoAddressCode (ForC val c) = ForC val (twoAddressCode c)
 twoAddressCode (ForV var c) = ForV var (twoAddressCode c)
 twoAddressCode (Seq c1 c2 ) = Seq (twoAddressCode c1) (twoAddressCode c2)
@@ -216,6 +223,9 @@ sseq (Just l) (Just r) = Just (l `Seq` r)
 twoAddressCodeV :: Int -> VarFunction -> (Maybe For, VarFunction, Int)
 twoAddressCodeV r vf@(Val _) = (Nothing, vf, r)
 twoAddressCodeV r    (Var (Register _)) = undefined
+twoAddressCodeV r (ArrayRead x ix) =
+    let (loadsIx, ix', r' ) = twoAddressCodeV r ix
+    in (loadsIx `sseq` (Just $ Ass (Register r') (ArrayRead x ix')), Var (Register r'), r' + 1)
 twoAddressCodeV r vf@(Var x) = (Just $ Ass (Register r) vf, Var (Register r), r + 1)
 twoAddressCodeV r vf@(Plus x y) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
@@ -258,17 +268,17 @@ cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var o
             Just cval@(CachedVal val) -> (val, OMap.fromList $ (cvar, cval) : (                       OMap.assocs $ OMap.delete cvar cache), cacheHitTime  )
 
 
-cacheOnlyReadLRU :: Var -> CacheState -> CacheState
-cacheOnlyReadLRU var cache = case var of
+cacheTimeReadLRU :: Var -> CacheState -> (CacheState, AccessTime)
+cacheTimeReadLRU var cache = case var of
     Global      _ -> lookup
     ThreadLocal _ -> lookup
-    Register    _ -> cache
+    Register    _ -> (cache, registerAccessTime)
   where cvar = CachedVar var
         lookup =
           case OMap.lookup cvar cache of
-            Nothing  -> OMap.fromList $ (cvar, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                    cache)
+            Nothing  -> (OMap.fromList $ (cvar, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheMissTime)
             Just cval-> assert (cval == undefinedCacheValue) $
-                        OMap.fromList $ (cvar, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete cvar cache)
+                        (OMap.fromList $ (cvar, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete cvar cache), cacheHitTime)
 
 
 type Index = Val
@@ -287,16 +297,16 @@ cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = ca
             Just cval@(CachedArraySlice vals) -> (vals !! (ix - alignedIx), OMap.fromList $ (carr, cval) : (                       OMap.assocs $ OMap.delete carr cache), cacheHitTime  )
 
 
-cacheOnlyArrayReadLRU :: Array -> Index -> CacheState -> CacheState
-cacheOnlyArrayReadLRU arr ix cache = case arr of
+cacheTimeArrayReadLRU :: Array -> Index -> CacheState -> (CacheState, AccessTime)
+cacheTimeArrayReadLRU arr ix cache = case arr of
     Array       _ -> lookup
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         lookup = 
           case OMap.lookup carr cache of
-            Nothing   -> OMap.fromList $ (carr, undefinedCacheArrayValue) : (take (cacheSize - 1) $ OMap.assocs                    cache)
+            Nothing   -> (OMap.fromList $ (carr, undefinedCacheArrayValue) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheMissTime)
             Just cval -> assert (cval == undefinedCacheArrayValue) $
-                         OMap.fromList $ (carr, undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache)
+                         (OMap.fromList $ (carr, undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache), cacheHitTime)
 
 cacheAwareReadLRUState :: Monad m => Var -> StateT FullState m Val
 cacheAwareReadLRUState var = do
@@ -305,15 +315,15 @@ cacheAwareReadLRUState var = do
     put ((globalσ,tlσ,i), cache', time + accessTime)
     return val
 
-cacheOnlyReadLRUState :: Monad m => Var -> StateT CacheState m ()
-cacheOnlyReadLRUState var = do
-    cache <- get
-    let cache' = cacheOnlyReadLRU var cache
-    put cache'
+cacheTimeReadLRUState :: Monad m => Var -> StateT CacheTimeState m ()
+cacheTimeReadLRUState var = do
+    (cache, time) <- get
+    let (cache', accessTime) = cacheTimeReadLRU var cache
+    put (cache', time + accessTime)
     return ()
 
-cacheOnlyWriteLRUState :: Monad m => Var -> StateT CacheState m ()
-cacheOnlyWriteLRUState = cacheOnlyReadLRUState
+cacheTimeWriteLRUState :: Monad m => Var -> StateT CacheTimeState m ()
+cacheTimeWriteLRUState = cacheTimeReadLRUState -- TODO
 
 cacheAwareArrayReadLRUState :: Monad m => Array -> Index -> StateT FullState m Val
 cacheAwareArrayReadLRUState arr ix = do
@@ -322,15 +332,15 @@ cacheAwareArrayReadLRUState arr ix = do
     put ((globalσ,tlσ,i), cache', time + accessTime)
     return val
 
-cacheOnlyArrayReadLRUState :: Monad m => Array -> Index -> StateT CacheState m ()
-cacheOnlyArrayReadLRUState arr ix = do
-    cache <- get
-    let cache' = cacheOnlyArrayReadLRU arr ix cache
-    put cache'
+cacheTimeArrayReadLRUState :: Monad m => Array -> Index -> StateT CacheTimeState m ()
+cacheTimeArrayReadLRUState arr ix = do
+    (cache, time) <- get
+    let (cache', accessTime) = cacheTimeArrayReadLRU arr ix cache
+    put (cache', time + accessTime)
     return ()
 
-cacheOnlyArrayWriteLRUState :: Monad m => Array -> Index -> StateT CacheState m ()
-cacheOnlyArrayWriteLRUState = cacheOnlyArrayReadLRUState
+cacheTimeArrayWriteLRUState :: Monad m => Array -> Index -> StateT CacheTimeState m ()
+cacheTimeArrayWriteLRUState = cacheTimeArrayReadLRUState -- TODO
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
 cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) = case var of
@@ -356,7 +366,7 @@ cacheAwareArrayWriteLRU :: Array -> Index -> Val -> FullState -> FullState
 cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i), cache, time ) = case arr of
     Array  _ -> let (     σa', cache', accessTime) = write      σa in ((globalσ{ σa = σa'}, tlσ , i), cache', time + accessTime)
   where alignedIx = toAlignedIndex ix
-        carr = CachedArrayRange arr (toAlignedIndex ix)
+        carr = CachedArrayRange arr alignedIx
         cval = CachedArraySlice vals'
           where vals  = case Map.lookup arr σa of
                   Nothing -> initialCacheLine
@@ -420,7 +430,7 @@ cacheAwareLRUEvalV (Val  x) = return x
 cacheAwareLRUEvalV (Var  x) = cacheAwareReadLRUState x
 cacheAwareLRUEvalV (ArrayRead a ix) = do
   iVal <- cacheAwareLRUEvalV ix
-  cacheAwareArrayReadLRUState a iVal
+  cacheAwareArrayReadLRUState a (arrayIndex iVal)
 cacheAwareLRUEvalV (Plus  x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
@@ -452,7 +462,7 @@ cacheStepForState (Assign x vf) = do
 cacheStepForState (AssignArray a ix vf) = do
         vVal <- cacheAwareLRUEvalV vf
         iVal <- cacheAwareLRUEvalV ix
-        cacheAwareArrayWriteLRUState a iVal vVal
+        cacheAwareArrayWriteLRUState a (arrayIndex iVal) vVal
         σ' <- get
         return σ'
 cacheStepForState NoOp = do
@@ -472,20 +482,83 @@ cacheStepFor e σ = evalStateT (cacheStepForState e) σ
 
 
 
-cacheTimeStepForState :: CFGEdge -> StateT FullState [] CacheTimeState
+cacheTimeLRUEvalB :: BoolFunction -> StateT CacheTimeState [] ()
+cacheTimeLRUEvalB CTrue     = return ()
+cacheTimeLRUEvalB CFalse    = return ()
+cacheTimeLRUEvalB (Leq x y) = do
+  xVal <- cacheTimeLRUEvalV x
+  yVal <- cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalB (And b1 b2) = do
+  b1Val <- cacheTimeLRUEvalB b1
+  b2Val <- cacheTimeLRUEvalB b2
+  return ()
+cacheTimeLRUEvalB (Or b1 b2) = do
+  b1Val <- cacheTimeLRUEvalB b1
+  b2Val <- cacheTimeLRUEvalB b2
+  return ()
+cacheTimeLRUEvalB (Not b) = do
+  bVal <- cacheTimeLRUEvalB b
+  return ()
+
+cacheTimeLRUEvalV :: VarFunction -> StateT CacheTimeState [] ()
+cacheTimeLRUEvalV (Val  x) = return ()
+cacheTimeLRUEvalV (Var  x) = cacheTimeReadLRUState x
+{- special case for constants -}
+cacheTimeLRUEvalV (ArrayRead a ix@(Val i)) = do
+  cacheTimeLRUEvalV ix -- does nothing
+  cacheTimeArrayReadLRUState a (arrayIndex i)
+  return ()
+cacheTimeLRUEvalV (ArrayRead a ix) = do
+  cacheTimeLRUEvalV ix
+  i <- lift alignedIndices
+  cacheTimeArrayReadLRUState a i
+  return ()
+cacheTimeLRUEvalV (Plus  x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Times x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Neg x) = do
+  cacheTimeLRUEvalV x
+  return ()
+
+
+
+
+
+
+
+cacheTimeStepForState :: CFGEdge -> StateT CacheTimeState [] CacheTimeState
 cacheTimeStepForState (Guard b bf) = do
-        bVal <- cacheAwareLRUEvalB bf
-        (_,cache,time) <- get
-        return (cache,time)
+        cacheTimeLRUEvalB bf
+        σ' <- get
+        return σ'
 cacheTimeStepForState (Assign x vf) = do
-        xVal <- cacheAwareLRUEvalV vf
-        cacheAwareWriteLRUState x xVal
-        (_,cache,time) <- get
-        return (cache,time)
+        cacheTimeLRUEvalV vf
+        cacheTimeWriteLRUState x
+        σ' <- get
+        return σ'
+{- special case for constants -}
+cacheTimeStepForState (AssignArray a ix@(Val i) vf) = do
+        cacheTimeLRUEvalV vf
+        cacheTimeLRUEvalV ix -- does nothing
+        cacheTimeArrayWriteLRUState a (arrayIndex i)
+        σ' <- get
+        return σ'
+cacheTimeStepForState (AssignArray a ix vf) = do
+        cacheTimeLRUEvalV vf
+        cacheTimeLRUEvalV ix
+        i <- lift alignedIndices
+        cacheTimeArrayWriteLRUState a i
+        σ' <- get
+        return σ'
 cacheTimeStepForState NoOp = do
-        (normal,cache,time) <- get
-        put (normal, cache, time + noOpTime)
-        return (cache,time + noOpTime)
+        σ' <- get
+        return σ'
 cacheTimeStepForState (Read  _ _) = undefined
 cacheTimeStepForState (Print _ _) = undefined
 cacheTimeStepForState (Spawn    ) = undefined
@@ -493,101 +566,11 @@ cacheTimeStepForState (Call     ) = undefined
 cacheTimeStepForState (Return   ) = undefined
 
 cacheTimeStepFor ::  AbstractSemantic CacheTimeState
-cacheTimeStepFor e σ = evalStateT (cacheTimeStepForState e) fullState
-  where fullState = fakeFullState e σ
-
-
-
-
-
-
-
-
-cacheOnlyLRUEvalB :: BoolFunction -> StateT CacheState [] ()
-cacheOnlyLRUEvalB CTrue     = return ()
-cacheOnlyLRUEvalB CFalse    = return ()
-cacheOnlyLRUEvalB (Leq x y) = do
-  xVal <- cacheOnlyLRUEvalV x
-  yVal <- cacheOnlyLRUEvalV y
-  return ()
-cacheOnlyLRUEvalB (And b1 b2) = do
-  b1Val <- cacheOnlyLRUEvalB b1
-  b2Val <- cacheOnlyLRUEvalB b2
-  return ()
-cacheOnlyLRUEvalB (Or b1 b2) = do
-  b1Val <- cacheOnlyLRUEvalB b1
-  b2Val <- cacheOnlyLRUEvalB b2
-  return ()
-cacheOnlyLRUEvalB (Not b) = do
-  bVal <- cacheOnlyLRUEvalB b
-  return ()
-
-cacheOnlyLRUEvalV :: VarFunction -> StateT CacheState [] ()
-cacheOnlyLRUEvalV (Val  x) = return ()
-cacheOnlyLRUEvalV (Var  x) = cacheOnlyReadLRUState x
-{- special case for constants -}
-cacheOnlyLRUEvalV (ArrayRead a ix@(Val i)) = do
-  cacheOnlyLRUEvalV ix -- does nothing
-  cacheOnlyArrayReadLRUState a i
-  return ()
-cacheOnlyLRUEvalV (ArrayRead a ix) = do
-  cacheOnlyLRUEvalV ix
-  i <- lift alignedIndices
-  cacheOnlyArrayReadLRUState a i
-  return ()
-cacheOnlyLRUEvalV (Plus  x y) = do
-  cacheOnlyLRUEvalV x
-  cacheOnlyLRUEvalV y
-  return ()
-cacheOnlyLRUEvalV (Times x y) = do
-  cacheOnlyLRUEvalV x
-  cacheOnlyLRUEvalV y
-  return ()
-cacheOnlyLRUEvalV (Neg x) = do
-  cacheOnlyLRUEvalV x
-  return ()
-
-
-
-
-
-
-
-cacheOnlyStepForState :: CFGEdge -> StateT CacheState [] CacheState
-cacheOnlyStepForState (Guard b bf) = do
-        cacheOnlyLRUEvalB bf
-        σ' <- get
-        return σ'
-cacheOnlyStepForState (Assign x vf) = do
-        cacheOnlyLRUEvalV vf
-        cacheOnlyWriteLRUState x
-        σ' <- get
-        return σ'
-{- special case for constants -}
-cacheOnlyStepForState (AssignArray a ix@(Val i) vf) = do
-        cacheOnlyLRUEvalV vf
-        cacheOnlyLRUEvalV ix -- does nothing
-        cacheOnlyArrayWriteLRUState a i
-        σ' <- get
-        return σ'
-cacheOnlyStepForState (AssignArray a ix vf) = do
-        cacheOnlyLRUEvalV vf
-        cacheOnlyLRUEvalV ix
-        i <- lift alignedIndices
-        cacheOnlyArrayWriteLRUState a i
-        σ' <- get
-        return σ'
-cacheOnlyStepForState NoOp = do
-        σ' <- get
-        return σ'
-cacheOnlyStepForState (Read  _ _) = undefined
-cacheOnlyStepForState (Print _ _) = undefined
-cacheOnlyStepForState (Spawn    ) = undefined
-cacheOnlyStepForState (Call     ) = undefined
-cacheOnlyStepForState (Return   ) = undefined
+cacheTimeStepFor e σ = evalStateT (cacheTimeStepForState e) σ
 
 cacheOnlyStepFor ::  AbstractSemantic CacheState
-cacheOnlyStepFor e σ = evalStateT (cacheOnlyStepForState e) σ
+cacheOnlyStepFor e σ = fmap fst $ evalStateT (cacheTimeStepForState e) (σ, 0)
+
 
 
 
@@ -762,28 +745,6 @@ costsFor csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]
                                                  let Just (m0,_) = lab csGraph m,
                                                  fullState'@(_,time) <- cacheTimeStepFor e (cs, 0)
                       ]
-
-fakeFullState :: CFGEdge -> CacheTimeState -> FullState
-fakeFullState e (cs,time) = (
-      (GlobalState { σv = σvCs  `Map.union` Map.fromList [(var,          0) | VarName   var <- Set.toList $ useE e,       isGlobal var],
-                     σa = σaCs  `Map.union` Map.fromList [(arr, arrayEmpty) | ArrayName arr <- Set.toList $ useE e]},
-                          σtlCs `Map.union` Map.fromList [(var,          0) | VarName   var <- Set.toList $ useE e, not $ isGlobal var],
-       ()
-      ),
-      cs,
-      time
-     )
-   where findWithDefault n x m = case OMap.lookup x m of
-           Nothing -> n
-           Just v  -> v
-         σvCs = byVar
-           where byVar =        Map.fromList [ (x, v)       | (CachedVar x,             CachedVal v          ) <- OMap.assocs cs,       isGlobal x]
-         σtlCs = byVar
-           where byVar =        Map.fromList [ (x, v)       | (CachedVar x,             CachedVal v          ) <- OMap.assocs cs, not $ isGlobal x]
-         σaCs = fmap (`Map.union` arrayEmpty) byArr 
-           where byArr = join [ Map.fromList [ (a, slice) ] | (CachedArrayRange a index, CachedArraySlice vals) <- OMap.assocs cs, let slice = Map.fromList $ zip [index .. cacheLineSize - 1] vals ]
-                 join = foldr (Map.unionWith Map.union) Map.empty
-
 
 cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraph g n0 = (

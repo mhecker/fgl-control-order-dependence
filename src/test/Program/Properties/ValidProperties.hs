@@ -178,7 +178,7 @@ import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
 import Program.Typing.ResumptionBasedSecurity (Criterion(..), isSecureResumptionBasedSecurity, isSecureResumptionBasedSecurityFor)
 import Program.CDom
-import Program.Generator (toProgram, toProgramIntra, toCodeSimple, GeneratedProgram, SimpleCFG(..))
+import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
 
 import Program.For (compileAllToProgram)
 
@@ -4711,7 +4711,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                 $ \generated seed1 seed2 seed3 ->
                     let pr :: Program Gr
                         pr = compileAllToProgram a b'
-                          where (a,b) = toCodeSimple generated
+                          where (a,b) = toCodeSimpleWithArrays generated
                                 b' = fmap twoAddressCode b
                         g0 = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr

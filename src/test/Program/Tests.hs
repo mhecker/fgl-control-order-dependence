@@ -42,7 +42,7 @@ import Program.DynamicAnalysis (isSecureEmpirically, isSecureEmpiricallyCombined
 import Program.Generator (GeneratedProgram(..), toCode, toProgram,
                           IntraGeneratedProgram(..), toCodeIntra, toProgramIntra,
                           SimpleProgram(..), toCodeSimple, toProgramSimple,
-                          SimpleWithArraysProgram(..), toProgramSimpleWithArrays,
+                          SimpleWithArraysProgram(..), toProgramSimpleWithArrays, toCodeSimpleWithArrays,
                           SimpleCFG(..),
                           Generated(..))
 import Program.TransitionSystem

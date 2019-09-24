@@ -176,7 +176,8 @@ lcaTimdomOfTwoFinger idom (n, sn, ns) (m, sm, ms) = assert (result == lcaTimdomO
 
 
 lcaTimdomOfTwoFingerFast idom (n, sn, ns) (m, sm, ms) =
-              assert (result == lcaTimdomOfTwoFinger idom (n, sn, ns) (m, sm, ms))
+              require ((∀) (Map.elems $ Map.filter (/= Nothing) $ idom) (\(Just (_,k)) -> k > 0))
+            $ assert (result == lcaTimdomOfTwoFinger idom (n, sn, ns) (m, sm, ms))
             $ assert (ns == Map.fromList [(n, Set.fromList [sn])])
             $ assert (ms == Map.fromList [(m, Set.fromList [sm])])
             $ result

@@ -101,7 +101,11 @@ registerAccessTime :: AccessTime
 registerAccessTime = 1
 
 noOpTime  :: AccessTime
-noOpTime = 1 
+noOpTime = 1
+
+guardTime :: AccessTime
+guardTime = 1
+
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
 undefinedCacheValue = CachedVal (-1)
@@ -452,7 +456,8 @@ lift (cacheAwareLRUevalB bf) :: StateT FullState (State FullState) Val
 cacheStepForState :: CFGEdge -> StateT FullState [] FullState
 cacheStepForState (Guard b bf) = do
         bVal <- cacheAwareLRUEvalB bf
-        σ' <- get
+        σ@(normal, cache, time) <- get
+        let σ' = (normal, cache, time + guardTime)
         if (b == bVal) then return σ' else lift []
 cacheStepForState (Assign x vf) = do
         xVal <- cacheAwareLRUEvalV vf
@@ -467,7 +472,7 @@ cacheStepForState (AssignArray a ix vf) = do
         return σ'
 cacheStepForState NoOp = do
         σ@(normal,cache,time) <- get
-        let σ' = (normal,cache,time + noOpTime)
+        let σ' = (normal, cache, time + noOpTime)
         put σ'
         return σ'
 cacheStepForState (Read  _ _) = undefined
@@ -535,8 +540,8 @@ cacheTimeLRUEvalV (Neg x) = do
 cacheTimeStepForState :: CFGEdge -> StateT CacheTimeState [] CacheTimeState
 cacheTimeStepForState (Guard b bf) = do
         cacheTimeLRUEvalB bf
-        σ' <- get
-        return σ'
+        (cache, time) <- get
+        return (cache, time + guardTime)
 cacheTimeStepForState (Assign x vf) = do
         cacheTimeLRUEvalV vf
         cacheTimeWriteLRUState x
@@ -557,8 +562,8 @@ cacheTimeStepForState (AssignArray a ix vf) = do
         σ' <- get
         return σ'
 cacheTimeStepForState NoOp = do
-        σ' <- get
-        return σ'
+        (cache, time) <- get
+        return (cache, time + noOpTime) 
 cacheTimeStepForState (Read  _ _) = undefined
 cacheTimeStepForState (Print _ _) = undefined
 cacheTimeStepForState (Spawn    ) = undefined
@@ -753,7 +758,7 @@ cacheCostDecisionGraph g n0 = (
         (irrelevant ++ [ (n,m',l)    | ((e@(n,_,l),_), m') <- Map.assocs nodesFor ]
                     ++ [ (m',m,NoOp) | ((e@(_,m,_),_), m') <- Map.assocs nodesFor ]
         ),
-                  Map.fromList [ ((n ,m),  cost    ) | e@(n,m,l) <- irrelevant, let [cost] = Set.toList $ costs ! e ]
+                  Map.fromList [ ((n ,m),  cost    ) | e@(n,m,l) <- irrelevant, let [cost] = Set.toList $ costs ! e, assert (cost > 0) True]
       `Map.union` Map.fromList [ ((n ,m'), cost - 1) | ((e@(n,_,_),cost), m') <- Map.assocs nodesFor, assert (cost > 1) True   ]
       `Map.union` Map.fromList [ ((m',m ),        1) | ((e@(_,m,_),   _), m') <- Map.assocs nodesFor ]
     )

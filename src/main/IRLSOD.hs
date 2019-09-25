@@ -14,6 +14,8 @@ import Control.Exception.Base (assert)
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
+import Data.Bits (xor, (.&.), shiftL, shiftR)
+
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -70,7 +72,7 @@ instance (SimpleShow k, SimpleShow v       ) => SimpleShow (Map k v) where
 instance SimpleShow Var where
   simpleShow (Global x) = x
   simpleShow (ThreadLocal x) = x ++ " (thread local)"
-  simpleShow (Register i) = "[r" ++ (show i) ++ "]"
+  simpleShow (Register i) = "r" ++ (show i) ++ ""
 
 instance SimpleShow Array where
   simpleShow (Array x) = x ++ "[]"
@@ -120,21 +122,25 @@ type ThreadLocalState = Map Var Val
 -- type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
-data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction deriving (Show, Eq, Ord)
+data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction deriving (Show, Eq, Ord)
 
 instance SimpleShow BoolFunction where
   simpleShow CTrue  = "true"
   simpleShow CFalse = "false"
-  simpleShow (Leq a b) = "(" ++ simpleShow a ++ " ≤ " ++ simpleShow b ++ ")"
-  simpleShow (Or  a b) = "(" ++ simpleShow a ++ " ∨ " ++ simpleShow b ++ ")"
-  simpleShow (And a b) =        simpleShow a ++ " ∧ " ++ simpleShow b
-  simpleShow (Not a  ) = "¬" ++ simpleShow a
+  simpleShow (Leq a b) = "(" ++ simpleShow a ++ " <= " ++ simpleShow b ++ ")"
+  simpleShow (Or  a b) = "(" ++ simpleShow a ++ " && " ++ simpleShow b ++ ")"
+  simpleShow (And a b) =        simpleShow a ++ " || " ++ simpleShow b
+  simpleShow (Not a  ) = "!" ++ simpleShow a
 
 instance SimpleShow VarFunction where
   simpleShow (Val x) = show x
   simpleShow (Var x) = simpleShow x
   simpleShow (Plus  a b) = "(" ++ simpleShow a ++ " + " ++ simpleShow b ++ ")"
-  simpleShow (Times a b) =        simpleShow a ++ " · " ++ simpleShow b
+  simpleShow (Xor   a b) = "(" ++ simpleShow a ++ " ^ " ++ simpleShow b ++ ")"
+  simpleShow (BAnd  a b) =        simpleShow a ++ " & " ++ simpleShow b       
+  simpleShow (Times a b) =        simpleShow a ++ " * " ++ simpleShow b
+  simpleShow (Shl   a b) =        simpleShow a ++ " << " ++ simpleShow b
+  simpleShow (Shr   a b) =        simpleShow a ++ " >> " ++ simpleShow b
   simpleShow (Neg   a  ) = "-" ++ simpleShow a
   simpleShow (ArrayRead (Array a) b) = a ++ "[" ++ simpleShow b ++ "]"
 
@@ -174,6 +180,11 @@ evalVM σg@(GlobalState { σa }) σl (ArrayRead a x) =
 
 evalVM σg σl (Plus  x y) = evalVM σg σl  x + evalVM σg σl  y
 evalVM σg σl (Times x y) = evalVM σg σl  x * evalVM σg σl  y
+evalVM σg σl (Shl   x y) = evalVM σg σl  x `shiftL` evalVM σg σl  y
+evalVM σg σl (Shr   x y) = evalVM σg σl  x `shiftR` evalVM σg σl  y
+evalVM σg σl (Xor   x y) = evalVM σg σl  x `xor` evalVM σg σl  y
+evalVM σg σl (BAnd  x y) = evalVM σg σl  x .&. evalVM σg σl  y
+
 evalVM σg σl (Neg x)     = - evalVM σg σl  x
 
 
@@ -189,6 +200,10 @@ useV (Val  x)    = Set.empty
 useV (Var  x)    = Set.fromList [VarName x]
 useV (Plus  x y) = useV x ∪ useV y
 useV (Times x y) = useV x ∪ useV y
+useV (Shl   x y) = useV x ∪ useV y
+useV (Shr   x y) = useV x ∪ useV y
+useV (Xor   x y) = useV x ∪ useV y
+useV (BAnd  x y) = useV x ∪ useV y
 useV (Neg x)     = useV x
 
 
@@ -208,7 +223,7 @@ data CFGEdge = Guard  Bool BoolFunction
 
 instance SimpleShow CFGEdge where
   simpleShow (Guard True  bf) =         simpleShow bf
-  simpleShow (Guard False bf) = "¬ " ++ simpleShow bf
+  simpleShow (Guard False bf) = "!" ++ simpleShow bf
   simpleShow (Assign x vf)    = simpleShow x ++ " := " ++ simpleShow vf
   simpleShow (AssignArray (Array x) i vf) = x ++ "[" ++ simpleShow i ++ "] := " ++ simpleShow vf
   simpleShow (NoOp) = ""

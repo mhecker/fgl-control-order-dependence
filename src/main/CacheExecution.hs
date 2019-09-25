@@ -12,6 +12,7 @@ import qualified Data.Map.Ordered as OMap
 
 import qualified Data.List as List
 
+import Data.Bits (xor, (.&.), shiftL, shiftR)
 
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
@@ -145,6 +146,10 @@ cachedObjectsFor = useE
     useV (Var  x)    = Set.fromList [CachedVar x]
     useV (Plus  x y) = useV x ∪ useV y
     useV (Times x y) = useV x ∪ useV y
+    useV (BAnd  x y) = useV x ∪ useV y
+    useV (Shl   x y) = useV x ∪ useV y
+    useV (Shr   x y) = useV x ∪ useV y
+    useV (Xor   x y) = useV x ∪ useV y
     useV (Neg x)     = useV x
 
 type CacheState = OMap CachedObject CacheValue
@@ -239,6 +244,22 @@ twoAddressCodeV r vf@(Times x y) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
         (loadsY, y', r'') = twoAddressCodeV r' y
     in (loadsX `sseq` loadsY, Times x' y', r'')
+twoAddressCodeV r vf@(Shl x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Shl x' y', r'')
+twoAddressCodeV r vf@(Shr x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Shr x' y', r'')
+twoAddressCodeV r vf@(Xor x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Xor x' y', r'')
+twoAddressCodeV r vf@(BAnd x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, BAnd x' y', r'')
 twoAddressCodeV r bf@(Neg x) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
     in (loadsX, Neg x', r')
@@ -478,6 +499,22 @@ cacheAwareLRUEvalV (Times x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
   return $ xVal * yVal
+cacheAwareLRUEvalV (Shl x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal `shiftL` yVal
+cacheAwareLRUEvalV (Shr x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal `shiftR` yVal
+cacheAwareLRUEvalV (Xor x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal `xor` yVal
+cacheAwareLRUEvalV (BAnd x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal .&. yVal
 cacheAwareLRUEvalV (Neg x) = do
   xVal <- cacheAwareLRUEvalV x
   return $ - xVal
@@ -559,6 +596,18 @@ cacheTimeLRUEvalV (Plus  x y) = do
   cacheTimeLRUEvalV y
   return ()
 cacheTimeLRUEvalV (Times x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Shl   x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Shr   x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (BAnd  x y) = do
   cacheTimeLRUEvalV x
   cacheTimeLRUEvalV y
   return ()

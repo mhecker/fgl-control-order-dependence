@@ -64,6 +64,7 @@ library
     NNGraph
     Statistics
     Program.Examples
+    Program.ExamplesCrypto
     Program.Analysis
     Program.DynamicAnalysis
     Program.Generator

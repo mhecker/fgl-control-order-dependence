@@ -992,22 +992,22 @@ csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert''
       let y's  = nodesToCsNodes ! m,
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
-      let equivs = mergeFromForEdgeToSuccessor edgeToSuccessor0 graph' csGraph'  idom' roots',
+      let equivs = mergeFromForEdgeToSuccessor edgeToSuccessors0 graph' csGraph'  idom' roots',
       let csGraph'' = merged csGraph' equivs,
       let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'',
       let ys = Set.fromList [ y | y <- nodes csGraph'', idom'' ! y == Nothing]
    ]
   where csGraph = cacheStateGraph graph initialCacheState n0
-        edgeToSuccessor0 = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
+        edgeToSuccessors0 = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)])] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
 
 
 csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeDirectFromFor graph n0 m
 
 
-mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor edgeToSuccessor0 graph' csGraph'  idom roots, csGraph')
+mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor edgeToSuccessors0 graph' csGraph'  idom roots, csGraph')
   where   csGraph = cacheStateGraph graph initialCacheState n0
-          edgeToSuccessor0 = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
+          edgeToSuccessors0 = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)]) ] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
           
           vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars]
           graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
@@ -1060,18 +1060,19 @@ mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge)) =>
   Map CacheGraphNode (Maybe CacheGraphNode) ->
   Set CacheGraphNode ->
   Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor edgeToSuccessor graph csGraph  idom roots
-  where edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x] -- assumes that for a given (y,e), there is only one such x
+mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor edgeToSuccessors graph csGraph  idom roots
+  where edgeToSuccessors = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)]) ] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
+
 
 
 mergeFromForEdgeToSuccessor ::  (DynGraph gr, Show (gr (Node, s) CFGEdge)) =>
-  Map (CacheGraphNode, CFGEdge) (CacheGraphNode, Node) ->
+  Map (CacheGraphNode, CFGEdge) (Set (CacheGraphNode, Node)) ->
   gr CFGNode CFGEdge ->
   gr (Node, s) CFGEdge ->
   Map CacheGraphNode (Maybe CacheGraphNode) ->
   Set CacheGraphNode ->
   Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFromForEdgeToSuccessor edgeToSuccessor0 graph csGraph idom roots = assert (result == mergeFromSlow graph csGraph idom roots) result
+mergeFromForEdgeToSuccessor edgeToSuccessors0 graph csGraph idom roots = assert (result == mergeFromSlow graph csGraph idom roots) result
   where result = (go orderToNodes init) ⊔ equivsNBase
           where (⊔) :: Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
                 (⊔) left right =  Map.unionWithKey f left right
@@ -1081,39 +1082,44 @@ mergeFromForEdgeToSuccessor edgeToSuccessor0 graph csGraph idom roots = assert (
            | Map.null workset  = fromSuccessors
            | otherwise         =
                if changed then
-                 go (workset' `Map.union` influenced) (Map.insert n fromSuccessorsN' fromSuccessors)
+                 go (workset' `Map.union` influenced) (Map.insert n (fromSuccessorsN' ⊔ fromRootsN) fromSuccessors)
                else
-                 go  workset'                                                        fromSuccessors
+                 go  workset'                                                                       fromSuccessors
           where ((_,n), workset') = Map.deleteFindMin workset
                 ys = nodesToCsNodes ! n
+                fromRootsN = fromRoots ! n
                 fromSuccessorsN' = goSuccessors (ys ∖ roots) Map.empty
                   where goSuccessors ysLeft fromsucc
                            | Set.null ysLeft = fromsucc
-                           | otherwise = assert (y ∈ y's) $ goSuccessors ysLeft' ((Map.fromSet (const y's) y's) `Map.union` fromsucc)
+                           | otherwise = assert (y ∈ y's) goSuccessors ysLeft' ((Map.fromSet (const y's) y's) `Map.union` fromsucc)
                           where y = Set.findMin ysLeft
                                 es = lsuc csGraph y
-                                (y's, ysLeft') = Set.partition (\y' -> 
+                                y's     = Set.insert y y's0
+                                ysLeft' = Set.delete y ysLeft'0
+                                (y's0, ysLeft'0) = Set.partition (\y' -> 
                                                                    (∀) es (\(_,e) ->
-                                                                     let (x,  m ) = edgeToSuccessor ! (y,  e)
-                                                                         (x', m') = edgeToSuccessor ! (y', e)
-                                                                     in assert (m == m') $
+                                                                     (∀) (edgeToSuccessors ! (y , e)) (\(x , m ) ->
+                                                                     (∀) (edgeToSuccessors ! (y', e)) (\(x', m') ->
+                                                                          assert (m == m') $
                                                                           (x  ∈ Map.findWithDefault Set.empty x' (fromSuccessors ! m')  ∨  x ∈ equivsNBase ! m' ! x')
+                                                                     ))
                                                                    )
                                                                )
                                                                ysLeft
 
-                changed = {- assert (diffSize == (fromSuccessorsN' /= fromSuccessorsN)) $ -} diffSize
+                changed = assert (fromSuccessorsN ⊒ fromSuccessorsN') $
+                          assert (diffSize == (fromSuccessorsN' /= fromSuccessorsN)) $ diffSize
                   where fromSuccessorsN = fromSuccessors ! n
                         diffSize = Map.size fromSuccessorsN /= Map.size fromSuccessorsN'
                                  ∨ (∃) (zip (Map.toAscList fromSuccessorsN) (Map.toAscList fromSuccessorsN')) (\((y,ys), (y', y's)) -> assert (y == y') $ Set.size ys /= Set.size y's)
                 influenced = Map.fromList [ (nodesToOrder ! m, m) | m <- pre graph n]
 
-        init = Map.mapWithKey (\n ys -> fromRoots ! n `Map.union` Map.fromSet (const ys) ys) nodesToCsNodes
+        init = Map.mapWithKey (\n ys -> Map.fromSet (const ys) ys) nodesToCsNodes
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
         nodesToCsNodes = Map.fromList [ (n, Set.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
-        edgeToSuccessor = Map.fromList [ ((y,e), (x,m)) | x <- Set.toList $ roots, let Just (m,_) = lab csGraph x, (y,e) <- lpre csGraph x] `Map.union` edgeToSuccessor0
+        edgeToSuccessors = (∐) [ Map.fromList [ ((y,e), Set.fromList [ (x,m) ]) ] | x <- Set.toList $ roots, let Just (m,_) = lab csGraph x, (y,e) <- lpre csGraph x] `Map.union` edgeToSuccessors0
 
         fromRoots = Map.mapWithKey (\n ys -> go ys Map.empty) nodesToCsNodes
           where go ysLeft fromroots

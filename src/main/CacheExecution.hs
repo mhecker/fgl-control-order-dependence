@@ -326,8 +326,26 @@ cacheTimeReadLRUState var = do
     put (cache', time + accessTime)
     return ()
 
+
+cacheTimeWriteLRU :: Var -> CacheState -> (CacheState, AccessTime)
+cacheTimeWriteLRU var cache = case var of
+    Global      _ -> write
+    ThreadLocal _ -> write
+    Register    _ -> (cache, registerAccessTime )
+  where cvar = CachedVar var
+        write = 
+          case OMap.lookup cvar cache of
+            Nothing  ->  (OMap.fromList $ (cvar, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheWriteTime )
+            Just _   ->  (OMap.fromList $ (cvar, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete cvar cache), cacheWriteTime )
+
+
 cacheTimeWriteLRUState :: Monad m => Var -> StateT CacheTimeState m ()
-cacheTimeWriteLRUState = cacheTimeReadLRUState -- TODO
+cacheTimeWriteLRUState var = do
+    (cache, time) <- get
+    let (cache', accessTime) = cacheTimeWriteLRU var cache
+    put (cache', time + accessTime)
+    return ()
+
 
 cacheAwareArrayReadLRUState :: Monad m => Array -> Index -> StateT FullState m Val
 cacheAwareArrayReadLRUState arr ix = do
@@ -343,8 +361,25 @@ cacheTimeArrayReadLRUState arr ix = do
     put (cache', time + accessTime)
     return ()
 
+
+
+cacheTimeArrayWriteLRU :: Array -> Index -> CacheState -> (CacheState, AccessTime)
+cacheTimeArrayWriteLRU arr ix cache = case arr of
+    Array       _ -> write
+  where alignedIx = toAlignedIndex ix
+        carr = CachedArrayRange arr alignedIx
+        write = 
+          case OMap.lookup carr cache of
+            Nothing  ->  (OMap.fromList $ (carr, undefinedCacheArrayValue) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheWriteTime )
+            Just _   ->  (OMap.fromList $ (carr, undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache), cacheWriteTime )
+
+
 cacheTimeArrayWriteLRUState :: Monad m => Array -> Index -> StateT CacheTimeState m ()
-cacheTimeArrayWriteLRUState = cacheTimeArrayReadLRUState -- TODO
+cacheTimeArrayWriteLRUState arr ix = do
+    (cache, time) <- get
+    let (cache', accessTime) = cacheTimeArrayWriteLRU arr ix cache
+    put (cache', time + accessTime)
+    return ()
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
 cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) = case var of

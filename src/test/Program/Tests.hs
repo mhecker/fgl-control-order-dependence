@@ -34,6 +34,7 @@ import Program.For
 import Program
 import Program.Defaults
 import Program.Examples
+import Program.ExamplesCrypto
 import Program.MultiThread
 import Program.MHP
 import Program.CDom

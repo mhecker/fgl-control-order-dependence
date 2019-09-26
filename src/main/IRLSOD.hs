@@ -122,7 +122,9 @@ type ThreadLocalState = Map Var Val
 -- type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
-data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction deriving (Show, Eq, Ord)
+data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction deriving (Show, Eq, Ord)
+
+eeq a b = (a `Leq` b) `And` (b `Leq` a)
 
 instance SimpleShow BoolFunction where
   simpleShow CTrue  = "true"
@@ -139,6 +141,8 @@ instance SimpleShow VarFunction where
   simpleShow (Xor   a b) = "(" ++ simpleShow a ++ " ^ " ++ simpleShow b ++ ")"
   simpleShow (BAnd  a b) =        simpleShow a ++ " & " ++ simpleShow b       
   simpleShow (Times a b) =        simpleShow a ++ " * " ++ simpleShow b
+  simpleShow (Div   a b) =        simpleShow a ++ " / " ++ simpleShow b
+  simpleShow (Mod   a b) =        simpleShow a ++ " % " ++ simpleShow b
   simpleShow (Shl   a b) =        simpleShow a ++ " << " ++ simpleShow b
   simpleShow (Shr   a b) =        simpleShow a ++ " >> " ++ simpleShow b
   simpleShow (Neg   a  ) = "-" ++ simpleShow a
@@ -180,6 +184,8 @@ evalVM σg@(GlobalState { σa }) σl (ArrayRead a x) =
 
 evalVM σg σl (Plus  x y) = evalVM σg σl  x + evalVM σg σl  y
 evalVM σg σl (Times x y) = evalVM σg σl  x * evalVM σg σl  y
+evalVM σg σl (Div   x y) = evalVM σg σl  x `div` evalVM σg σl  y
+evalVM σg σl (Mod x y)   = evalVM σg σl  x `mod` evalVM σg σl  y
 evalVM σg σl (Shl   x y) = evalVM σg σl  x `shiftL` evalVM σg σl  y
 evalVM σg σl (Shr   x y) = evalVM σg σl  x `shiftR` evalVM σg σl  y
 evalVM σg σl (Xor   x y) = evalVM σg σl  x `xor` evalVM σg σl  y
@@ -200,6 +206,8 @@ useV (Val  x)    = Set.empty
 useV (Var  x)    = Set.fromList [VarName x]
 useV (Plus  x y) = useV x ∪ useV y
 useV (Times x y) = useV x ∪ useV y
+useV (Div   x y) = useV x ∪ useV y
+useV (Mod   x y) = useV x ∪ useV y
 useV (Shl   x y) = useV x ∪ useV y
 useV (Shr   x y) = useV x ∪ useV y
 useV (Xor   x y) = useV x ∪ useV y

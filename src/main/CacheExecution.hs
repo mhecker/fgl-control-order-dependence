@@ -146,6 +146,8 @@ cachedObjectsFor = useE
     useV (Var  x)    = Set.fromList [CachedVar x]
     useV (Plus  x y) = useV x ∪ useV y
     useV (Times x y) = useV x ∪ useV y
+    useV (Div   x y) = useV x ∪ useV y
+    useV (Mod   x y) = useV x ∪ useV y
     useV (BAnd  x y) = useV x ∪ useV y
     useV (Shl   x y) = useV x ∪ useV y
     useV (Shr   x y) = useV x ∪ useV y
@@ -244,6 +246,14 @@ twoAddressCodeV r vf@(Times x y) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
         (loadsY, y', r'') = twoAddressCodeV r' y
     in (loadsX `sseq` loadsY, Times x' y', r'')
+twoAddressCodeV r vf@(Div x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Div x' y', r'')
+twoAddressCodeV r vf@(Mod x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Mod x' y', r'')
 twoAddressCodeV r vf@(Shl x y) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
         (loadsY, y', r'') = twoAddressCodeV r' y
@@ -499,6 +509,14 @@ cacheAwareLRUEvalV (Times x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
   return $ xVal * yVal
+cacheAwareLRUEvalV (Div x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal `div` yVal
+cacheAwareLRUEvalV (Mod x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal `mod` yVal
 cacheAwareLRUEvalV (Shl x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
@@ -596,6 +614,14 @@ cacheTimeLRUEvalV (Plus  x y) = do
   cacheTimeLRUEvalV y
   return ()
 cacheTimeLRUEvalV (Times x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Div x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Mod x y) = do
   cacheTimeLRUEvalV x
   cacheTimeLRUEvalV y
   return ()

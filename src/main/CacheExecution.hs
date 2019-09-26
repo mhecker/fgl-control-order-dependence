@@ -38,12 +38,12 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt)
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, use, def, SimpleShow (..))
+import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..))
 import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
 import Program.Generator (toCodeSimple)
-import Program.For (compileAllToProgram, For(..))
+import Program.For (compileAllToProgram, For(..), subCommands)
 
 import Data.Graph.Inductive.Util (mergeTwoGraphs, isTransitive, fromSuccMap, delSuccessorEdges)
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp, sinkdomsOf, isinkdomOfTwoFinger8)
@@ -185,25 +185,44 @@ isCachable (ArrayName _) = True
 
 
 twoAddressCode :: For -> For
-twoAddressCode (If bf c1 c2) =
-  let (loads, bf', _) = twoAddressCodeB 0 bf in case loads of
+twoAddressCode c = twoAddressCodeFrom r0 c
+  where r0 = maximum [ r | c <- cs, r <- regsIn c ] + 1000
+        cs = subCommands c
+
+        regsIn (If bf _ _)            =  [ r | VarName (Register r) <- Set.toList $ useB bf ]
+        regsIn (ForC _ _)             =  []
+        regsIn (ForV x _ )            =  [ r |         (Register r) <- [x] ]
+        regsIn (Ass x vf)             =  [ r | VarName (Register r) <- Set.toList $ useV vf ]
+                                      ++ [ r |         (Register r) <- [x] ]
+        regsIn (AssArr a ix vf)       =  [ r | VarName (Register r) <- Set.toList $ useV ix ∪ useV vf ]
+        regsIn (ReadFromChannel x _)  =  [ r |         (Register r) <- [x] ]
+        regsIn (PrintToChannel  vf _) =  [ r | VarName (Register r) <- Set.toList $ useV vf ]
+        regsIn (Skip)                 =  []
+        regsIn (CallProcedure _)      =  []
+        regsIn (SpawnThread _)        =  []
+        regsIn (Seq _ _)              =  []
+
+
+twoAddressCodeFrom :: Int -> For -> For
+twoAddressCodeFrom r0 (If bf c1 c2) =
+  let (loads, bf', _) = twoAddressCodeB r0 bf in case loads of
     Nothing ->          (If bf' (twoAddressCode c1) (twoAddressCode c2))
     Just ls -> ls `Seq` (If bf' (twoAddressCode c1) (twoAddressCode c2))
-twoAddressCode (Ass var vf)  =
-  let (loads, vf', _) = twoAddressCodeV 0 vf in case loads of
+twoAddressCodeFrom r0  (Ass var vf)  =
+  let (loads, vf', _) = twoAddressCodeV r0 vf in case loads of
     Nothing ->          (Ass var vf')
     Just ls -> ls `Seq` (Ass var vf')
-twoAddressCode (AssArr arr ix vf)  =
-  let (loadsVf, vf', r) = twoAddressCodeV 0 vf
+twoAddressCodeFrom r0  (AssArr arr ix vf)  =
+  let (loadsVf, vf', r) = twoAddressCodeV r0 vf
       (loadsIx, ix', _) = twoAddressCodeV r ix
       loads = loadsVf `sseq` loadsIx
   in case loads of
        Nothing ->          (AssArr arr ix' vf')
        Just ls -> ls `Seq` (AssArr arr ix' vf')
-twoAddressCode (ForC val c) = ForC val (twoAddressCode c)
-twoAddressCode (ForV var c) = ForV var (twoAddressCode c)
-twoAddressCode (Seq c1 c2 ) = Seq (twoAddressCode c1) (twoAddressCode c2)
-twoAddressCode c = c
+twoAddressCodeFrom r0  (ForC val c) = ForC val (twoAddressCodeFrom r0 c)
+twoAddressCodeFrom r0  (ForV var c) = ForV var (twoAddressCodeFrom r0 c)
+twoAddressCodeFrom r0  (Seq c1 c2 ) = Seq (twoAddressCodeFrom r0 c1) (twoAddressCodeFrom r0 c2)
+twoAddressCodeFrom r0  c = c
 
 
 twoAddressCodeB :: Int -> BoolFunction -> (Maybe For, BoolFunction, Int)
@@ -233,7 +252,7 @@ sseq (Just l) (Just r) = Just (l `Seq` r)
 
 twoAddressCodeV :: Int -> VarFunction -> (Maybe For, VarFunction, Int)
 twoAddressCodeV r vf@(Val _) = (Nothing, vf, r)
-twoAddressCodeV r    (Var (Register _)) = undefined
+twoAddressCodeV r vf@(Var (Register rr)) = assert (rr < r) $ (Nothing, vf, r)
 twoAddressCodeV r (ArrayRead x ix) =
     let (loadsIx, ix', r' ) = twoAddressCodeV r ix
     in (loadsIx `sseq` (Just $ Ass (Register r') (ArrayRead x ix')), Var (Register r'), r' + 1)

@@ -33,89 +33,6 @@ for2Program for = p { observability = defaultObservabilityMap (tcfg p) }
   where p = compileAllToProgram (Map.fromList [ (1, "1") ]) (Map.fromList [("1", for) ])
 
 
-example42 :: Program Gr
-example42 = toProgramIntra $ IntraGeneratedProgram
-    (Map.fromList [(1,"main")])
-    (Map.fromList [("main", Generated (
-                      Ass (Global "a") (Val 1)
-               `Seq`  Ass (Global "b") (Val 2)
-               `Seq`  Ass (Global "c") (Val 3)
-               `Seq`  Ass (Global "d") (Val 4)
-               `Seq`  Ass (Global "x") (Val 24)
-               `Seq`  If ((Var (Global "x")) `Leq` (Val 0))
-                          (Ass (Global "y") ((Var (Global "b")) `Plus` (Var (Global "c"))))
-                       {-else-}
-                          (Ass (Global "y") ((Var (Global "d")) `Plus` (Var (Global "d"))))
-               `Seq`  Ass (Register 1) (Var (Global "b"))
-               `Seq`  Ass (Register 2) (Var (Global "y"))
-               `Seq`  If ((Var (Register 2)) `Leq` (Val 3))
-                          (Ass (Register 3) (Var (Global "a")))
-                       {-else-}
-                          (Ass (Register 3) (Var (Global "b")))
-               `Seq`  Ass (Register 4) (Var (Global "c"))
-                     ) undefined undefined undefined)])
-
-
-exampleMerge :: Program Gr
-exampleMerge = toProgramIntra $ IntraGeneratedProgram
-    (Map.fromList [(1,"main")])
-    (Map.fromList [("main", Generated (
-                      Skip
-               `Seq`  Skip
-               `Seq`  Ass (Register 0) (Var (Global "d"))
-               `Seq`  Ass (Register 1) (Var (Global "e"))
-               `Seq`  Ass (Global "d") (Var (Register 0) `Plus` (Var (Register 1)))
-               `Seq`  Ass (Register 0) (Var (Global "c"))
-               `Seq`  If ((Val 0) `Leq` (Var (Register 0))) (
-                          Ass (Register 0) (Var (Global "z"))
-               `Seq`      Ass (Global "d") (Neg $ (Var (Register 0)))
-                      ) {-else-} (
-                          Skip
-                      )
-               `Seq`  Ass (Register 0) (Var (Global "z"))
-               `Seq`  Ass (Register 1) (Var (Global "a"))
-               `Seq`  If ((Val 0) `Leq` ((Var (Register 0)) `Times` (Var (Register 1)))) (
-                          Skip
-                      ) {-else-} (
-                          Ass (Register 0) (Var (Global "a"))
-               `Seq`      Ass (Register 1) (Var (Global "x"))
-               `Seq`      Ass (Global "a") ((Var (Register 0)) `Plus` (Var (Register 1)))
-                      )
-               `Seq` Skip
-               `Seq` Ass (Register 0) (Var (Global "x"))
-               `Seq` Ass (Global "d") (Neg $ (Var (Register 0)))
-                     ) undefined undefined undefined)])
-
-
-simpleArray :: Program Gr
-simpleArray = toProgramIntra $ IntraGeneratedProgram
-    (Map.fromList [(1,"main")])
-    (Map.fromList [("main", Generated (
-                      AssArr (Array "a") (Val a) (Val 1)
-               `Seq`  AssArr (Array "a") (Val b) (Val 2)
-               `Seq`  AssArr (Array "a") (Val c) (Val 3)
-               `Seq`  AssArr (Array "a") (Val d) (Val 4)
-               `Seq`  AssArr (Array "a") (Val x) (Val 24)
-               `Seq`  If ((ArrayRead (Array "a") (Val x)) `Leq` (Val 0))
-                          (Ass (Global "y") ((ArrayRead (Array "a") (Val b)) `Plus` (ArrayRead (Array "a") (Val c))))
-                       {-else-}
-                          (Ass (Global "y") ((ArrayRead (Array "a") (Val d)) `Plus` (ArrayRead (Array "a") (Val d))))
-               `Seq`  Ass (Register 1) (ArrayRead (Array "a") (Val b))
-               `Seq`  Ass (Register 2) (Var (Global "y"))
-               `Seq`  If ((Var (Register 2)) `Leq` (Val 3))
-                          (Ass (Register 3) (ArrayRead (Array "a") (Val a)))
-                       {-else-}
-                          (Ass (Register 3) (ArrayRead (Array "a") (Val b)))
-               `Seq`  Ass (Register 4) (ArrayRead (Array "a") (Val c))
-                     ) undefined undefined undefined)])
-  where a = 0
-        b = 32
-        c = 64
-        d = 255
-        x = 128
-
-
-
 sbox                    = Array  "sbox"
 sboxConst = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B,
@@ -341,7 +258,7 @@ expandKey skey key =
         t2 = expandKeyT !! 2
         t3 = expandKeyT !! 3
         n = expandKeyN
- 
+
 
 
 br_aes_small_cbcenc_run :: Array -> Array -> Array -> For
@@ -382,67 +299,6 @@ br_aes_small_encrypt skey buf =
         state = encryptState
 
 
-{-
-br_aes_keysched :: Array -> Array -> For
-br_aes_keysched skey key =
-                       Ass nk  (Val key_len `Shr` (Val 2))
-                 `Seq` Ass nkf (Val (num_rounds + 1) `Shl` (Val 2))
-                 `Seq` Ass i (Val 0)
-                 `Seq` ForC key_len (
-                                 AssArr skey (Var i) (ArrayRead key (Var i))
-                 `Seq`           Ass i (Var i `Plus` (Val 1))
-                       )
-
-
-  where i   = aesKeySchedI
-        j   = aesKeySchedJ
-        k   = aesKeySchedK
-        nk  = aesKeySchedNK
-        nkf = aesKeySchedNKF
--}
-{-
-unsigned
-br_aes_keysched(uint32_t *skey, const void *key, size_t key_len)
-{
-	unsigned num_rounds;
-	int i, j, k, nk, nkf;
-
-	nk = (int)(key_len >> 2);
-	nkf = (int)((num_rounds + 1) << 2);
-	for (i = 0; i < nk; i ++) {
-		skey[i] = br_dec32be((const unsigned char *)key + (i << 2));
-	}
-	for (i = nk, j = 0, k = 0; i < nkf; i ++) {
-		uint32_t tmp;
-
-		tmp = skey[i - 1];
-		if (j == 0) {
-			tmp = (tmp << 8) | (tmp >> 24);
-			tmp = SubWord(tmp) ^ Rcon[k];
-		} else if (nk > 6 && j == 4) {
-			tmp = SubWord(tmp);
-		}
-		skey[i] = skey[i - nk] ^ tmp;
-		if (++ j == nk) {
-			j = 0;
-			k ++;
-		}
-	}
-	return num_rounds;
-}br_aes_keysched skey key = undefined
--}
-
-
-
-
-
-
-
-
-
-
-
-
 br_aes_small_cbcenc_init :: Array -> Array -> For
 br_aes_small_cbcenc_init skey key =
                        -- br_aes_keysched skey key
@@ -460,5 +316,5 @@ br_aes_small_cbcenc_main =
 
 
 cryptoTestSuit = [
-                $(withName 'simpleArray)
+                $(withName 'br_aes_small_cbcenc_main)
             ]

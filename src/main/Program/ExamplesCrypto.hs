@@ -67,12 +67,18 @@ rconConst = [
 
 
 
-
+{-
 subBytesIteratorIndex   = Global "subBytesIteratorIndex"
 addRoundIteratorIndex   = Global "addRoundIteratorIndex"
 cbcEncRunIndex          = Global "cbcEncRunIndex"
 encryptIndex            = Global "encryptIndex"
 encryptIndexU           = Global "encryptIndexU"
+-}
+subBytesIteratorIndex   = Register 1
+addRoundIteratorIndex   = Register 2
+cbcEncRunIndex          = Register 3
+encryptIndex            = Register 4
+encryptIndexU           = Register 5
 encryptState            = Array  "encryptState"
 
 aesKeySchedI            = Global "aesKeySchedI"

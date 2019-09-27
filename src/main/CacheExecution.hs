@@ -186,7 +186,7 @@ isCachable (ArrayName _) = True
 
 twoAddressCode :: For -> For
 twoAddressCode c = twoAddressCodeFrom r0 c
-  where r0 = maximum [ r | c <- cs, r <- regsIn c ] + 1000
+  where r0 = maximum ( 0 : [ r | c <- cs, r <- regsIn c ]) + 1000
         cs = subCommands c
 
         regsIn (If bf _ _)            =  [ r | VarName (Register r) <- Set.toList $ useB bf ]

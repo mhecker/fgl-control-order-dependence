@@ -4733,7 +4733,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         
                         -- nticd' =            isinkDFTwoFinger g1
                         tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFastCost ccg1 costF
-                        dd'    = invert'' $ dataDependence         g1 vars newN0
+                        dd'    = invert'' $ dataDependence         ccg1 vars newN0
                         -- csd'   = invert'' $ csd'Of                 g1      newN0
                         -- csd'   = invert'' $ csd''''Of3             g1      newN0
                         csd'   = invert'' $ csdMergeOf             g1      newN0

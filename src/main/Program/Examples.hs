@@ -3377,6 +3377,28 @@ simpleArray = toProgramIntra $ IntraGeneratedProgram
         x = 128
 
 
+{- here, the exeucution time of the program depends on "l", but not on "h" -}
+{- in order to find this out, wee need to use ddep and tscd *from the cachecost graph* -}
+exampleCacheCostGraph :: Program Gr
+exampleCacheCostGraph = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Ass (Global "a") (Val 1)
+               `Seq`  Ass (Global "b") (Val 2)
+               `Seq`  Ass (Global "c") (Val 2)
+               `Seq`  Ass (Global "d") (Val 2)
+               `Seq`  Ass (Global "_") (Val 42)
+               `Seq`  Ass (Global "h") (Val 1337)
+               `Seq`  Ass (Global "l")  (Val 17)
+               `Seq`  If ((Var $ Global "l") `Leq` (Val 0)) (
+                          Ass (Global "a") (Val 11)
+                      ) {- else -} (
+                          Skip
+                      )
+               `Seq`  Ass (Register 0) ((Var $ Global "a") `Plus` (Var $ Global "h"))
+                     ) undefined undefined undefined)])
+
+
 
 
 exampleDomPaths :: Program Gr

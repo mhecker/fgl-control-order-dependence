@@ -308,9 +308,9 @@ consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = OMap.size cache <= 
 
 cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
 cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var of
-    Global      _ -> lookup     σv
-    ThreadLocal _ -> lookup     tlσ
-    Register    _ -> (tlσ ! var, cache, registerAccessTime)
+    Global      _ -> assert (      isCachable $ VarName var) $ lookup     σv
+    ThreadLocal _ -> assert (      isCachable $ VarName var) $ lookup     tlσ
+    Register    _ -> assert (not $ isCachable $ VarName var) $ (tlσ ! var, cache, registerAccessTime)
   where cvar = CachedVar var
 
         lookup :: Map Var Val -> (Val, CacheState, AccessTime )
@@ -324,9 +324,9 @@ cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var o
 
 cacheTimeReadLRU :: Var -> CacheState -> (CacheState, AccessTime)
 cacheTimeReadLRU var cache = case var of
-    Global      _ -> lookup
-    ThreadLocal _ -> lookup
-    Register    _ -> (cache, registerAccessTime)
+    Global      _ -> assert (      isCachable $ VarName var) $ lookup
+    ThreadLocal _ -> assert (      isCachable $ VarName var) $ lookup
+    Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
   where cvar = CachedVar var
         lookup =
           case OMap.lookup cvar cache of
@@ -339,7 +339,7 @@ type Index = Val
 
 cacheAwareArrayReadLRU :: Array -> Index -> FullState -> (Val, CacheState, AccessTime)
 cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = case arr of
-    Array       _ -> lookup
+    Array       _ -> assert (      isCachable $ ArrayName arr) $ lookup
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         lookup :: (Val, CacheState, AccessTime )
@@ -353,7 +353,7 @@ cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = ca
 
 cacheTimeArrayReadLRU :: Array -> Index -> CacheState -> (CacheState, AccessTime)
 cacheTimeArrayReadLRU arr ix cache = case arr of
-    Array       _ -> lookup
+    Array       _ -> assert (      isCachable $ ArrayName arr) $ lookup
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         lookup = 
@@ -379,9 +379,9 @@ cacheTimeReadLRUState var = do
 
 cacheTimeWriteLRU :: Var -> CacheState -> (CacheState, AccessTime)
 cacheTimeWriteLRU var cache = case var of
-    Global      _ -> write
-    ThreadLocal _ -> write
-    Register    _ -> (cache, registerAccessTime )
+    Global      _ -> assert (      isCachable $ VarName var) $ write
+    ThreadLocal _ -> assert (      isCachable $ VarName var) $ write
+    Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
   where cvar = CachedVar var
         write = 
           case OMap.lookup cvar cache of
@@ -415,7 +415,7 @@ cacheTimeArrayReadLRUState arr ix = do
 
 cacheTimeArrayWriteLRU :: Array -> Index -> CacheState -> (CacheState, AccessTime)
 cacheTimeArrayWriteLRU arr ix cache = case arr of
-    Array       _ -> write
+    Array       _ -> assert (      isCachable $ ArrayName arr) $ write
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         write = 
@@ -433,9 +433,9 @@ cacheTimeArrayWriteLRUState arr ix = do
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
 cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) = case var of
-    Global      _ -> let (     σv', cache', accessTime) = write      σv in ((globalσ{ σv = σv'}, tlσ , i), cache', time + accessTime)
-    ThreadLocal _ -> let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ           , tlσ', i), cache', time + accessTime)
-    Register    _ -> let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
+    Global      _ -> assert (      isCachable $ VarName var) $ let (     σv', cache', accessTime) = write      σv in ((globalσ{ σv = σv'}, tlσ , i), cache', time + accessTime)
+    ThreadLocal _ -> assert (      isCachable $ VarName var) $ let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ           , tlσ', i), cache', time + accessTime)
+    Register    _ -> assert (not $ isCachable $ VarName var) $ let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
   where cvar = CachedVar var
         cval = CachedVal val
         write someσ = 
@@ -453,7 +453,7 @@ cacheAwareWriteLRUState var val = do
 
 cacheAwareArrayWriteLRU :: Array -> Index -> Val -> FullState -> FullState
 cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i), cache, time ) = case arr of
-    Array  _ -> let (     σa', cache', accessTime) = write      σa in ((globalσ{ σa = σa'}, tlσ , i), cache', time + accessTime)
+    Array  _ -> assert (      isCachable $ ArrayName arr) $ let (     σa', cache', accessTime) = write      σa in ((globalσ{ σa = σa'}, tlσ , i), cache', time + accessTime)
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         cval = CachedArraySlice vals'

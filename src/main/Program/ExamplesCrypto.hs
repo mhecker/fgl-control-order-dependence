@@ -79,6 +79,9 @@ addRoundIteratorIndex   = Register 2
 cbcEncRunIndex          = Register 3
 encryptIndex            = Register 4
 encryptIndexU           = Register 5
+addRoundTmp             = Register 6
+subBytesTmp             = Register 7
+subBytesTmp2            = Register 8
 encryptState            = Array  "encryptState"
 
 aesKeySchedI            = Global "aesKeySchedI"
@@ -90,8 +93,6 @@ aesKeySchedNKF          = Global "aesKeySchedNKF"
 
 mainSkey                = Array  "skey"
 mainKey                 = Array  "key"
-mainBuf                 = Array  "buf"
-
 
 mixColumnsS = [ Global $ "mixColumnsS" ++ (show i) | i <- [0 .. 3] ]
 mixColumnsT = [ Global $ "mixColumnsT" ++ (show i) | i <- [0 .. 3] ]
@@ -109,7 +110,7 @@ allNames = assert (length vars == (Set.size $ Set.fromList vars))
          $ assert (length arrs == (Set.size $ Set.fromList arrs))
   where vars =   [subBytesIteratorIndex, addRoundIteratorIndex, shiftRowsTmp, cbcEncRunIndex, encryptIndex, encryptIndexU, expandKeyN] ++ mixColumnsS ++ mixColumnsT ++ expandKeyT
              ++  [aesKeySchedI, aesKeySchedJ, aesKeySchedK, aesKeySchedNK, aesKeySchedNKF]
-        arrs = [mainSkey, mainKey, mainBuf]
+        arrs = [mainSkey, mainKey]
 
 br_aes_S :: For
 br_aes_S = assert (length sboxConst == 256) $ 
@@ -128,19 +129,26 @@ addRound :: Array -> Array -> VarFunction -> For
 addRound state skey offset = 
                        Ass i (Val 0)
                  `Seq` ForC 16 (
-                                 AssArr state (Var i) (ArrayRead state (Var i) `Xor` (ArrayRead skey (Var i `Plus` offset)))
+                                 Ass tmp (ArrayRead state (Var i))
+                           `Seq` Ass tmp (Var tmp `Xor` (ArrayRead skey (Var i `Plus` offset)))
+                           `Seq` AssArr state (Var i) (Var tmp)
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
   where i = addRoundIteratorIndex
+        tmp = addRoundTmp
 
 sub_bytes :: Array -> For
 sub_bytes state =
                        Ass i (Val 0)
                  `Seq` ForC 16 (
-                                 AssArr state (Var i) (ArrayRead sbox (ArrayRead state (Var i)))
+                                 Ass tmp  (ArrayRead state (Var i))
+                           `Seq` Ass tmp2 (ArrayRead sbox (Var tmp))
+                           `Seq` AssArr state (Var i) (Var tmp2)
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
   where i = subBytesIteratorIndex
+        tmp  = subBytesTmp
+        tmp2 = subBytesTmp2
 
 
 shift_rows :: Array -> For
@@ -278,13 +286,8 @@ br_aes_small_cbcenc_run skey buf iv =
   where i = cbcEncRunIndex 
 
 br_aes_small_encrypt :: Array -> Array -> For
-br_aes_small_encrypt skey buf =
-                       Ass i (Val 0)
-                 `Seq` ForC 16 (
-                                 AssArr state (Var i) (ArrayRead buf (Var i))
-                 `Seq`           Ass i (Var i `Plus` (Val 1))
-                       )
-                 `Seq` addRound buf skey (Val 0)
+br_aes_small_encrypt skey state =
+                       addRound state skey (Val 0)
                  `Seq` Ass u (Val 1)
                  `Seq` ForC (num_rounds - 1) (
                                  sub_bytes state
@@ -295,14 +298,7 @@ br_aes_small_encrypt skey buf =
                  `Seq` sub_bytes state
                  `Seq` shift_rows state
                  `Seq` addRound state skey (Val num_rounds `Shl` (Val 2))
-                 `Seq` Ass i (Val 0)
-                 `Seq` ForC 16 (
-                                 AssArr buf (Var i) (ArrayRead state (Var i))
-                 `Seq`           Ass i (Var i `Plus` (Val 1))
-                       )
-  where i = encryptIndex
-        u = encryptIndexU
-        state = encryptState
+  where u = encryptIndexU
 
 
 br_aes_small_cbcenc_init :: Array -> Array -> For
@@ -313,12 +309,12 @@ br_aes_small_cbcenc_init skey key =
 br_aes_small_cbcenc_main :: For
 br_aes_small_cbcenc_main =
                        br_aes_S
+                 `Seq` simpleRcon
                  `Seq` br_aes_small_cbcenc_init skey key
-                 `Seq` br_aes_small_encrypt skey buf
-
+                 `Seq` br_aes_small_encrypt skey state
   where key = mainKey
         skey = mainSkey
-        buf = mainBuf
+        state = encryptState
 
 
 cryptoTestSuit = [

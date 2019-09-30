@@ -147,7 +147,7 @@ instance SimpleShow VarFunction where
   simpleShow (Shr   a b) =        simpleShow a ++ " >> " ++ simpleShow b
   simpleShow (Neg   a  ) = "-" ++ simpleShow a
   simpleShow (ArrayRead (Array a) b) = a ++ "[" ++ simpleShow b ++ "]"
-  simpleShow (AssertRange min max a) = simpleShow a ++ "∈ [" ++ (show min) ++ ", " ++ (show max) ++ "]"
+  simpleShow (AssertRange min max a) = simpleShow a ++ " within [" ++ (show min) ++ ", " ++ (show max) ++ "]"
 
 
 evalB :: GlobalState -> ThreadLocalState -> BoolFunction -> Bool

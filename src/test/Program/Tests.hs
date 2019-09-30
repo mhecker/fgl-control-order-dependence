@@ -102,7 +102,16 @@ import qualified Data.Set as Set
 
 
 
-main = let { p = notReallyUnsound  :: Program Gr } in  do { putStrLn $ show $ isSecureTimingClassificationAtUses p ; putStrLn $ show $ isSecureEmpiricallyCombinedTest p }
+main = let {
+         pr = for2Program $ br_aes_small_cbcenc_main  :: Program Gr ;
+         graph = tcfg pr ; n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
+         csGraph = cacheStateGraph graph initialCacheState n0
+       } in
+  do
+    putStrLn  $ show $ length $ nodes $ graph
+    showGraph $ withNodes $ graph
+
+    putStrLn  $ show $ length $ nodes $ csGraph
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, (n,n') ∈ mhp]
   where mhp = mhpSetFor p

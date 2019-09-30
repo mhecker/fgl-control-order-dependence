@@ -86,6 +86,8 @@ sliceFor ix array = between array (left - 1) (right + 1)
 
 cacheSize = 4
 
+cacheSizeInBytes = cacheLineSize * cacheSize
+
 type AccessTime = Integer
 
 cacheMissTime :: AccessTime
@@ -641,6 +643,10 @@ cacheTimeLRUEvalV (Div x y) = do
   cacheTimeLRUEvalV y
   return ()
 cacheTimeLRUEvalV (Mod x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Xor x y) = do
   cacheTimeLRUEvalV x
   cacheTimeLRUEvalV y
   return ()

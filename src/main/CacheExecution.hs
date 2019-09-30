@@ -66,7 +66,13 @@ undefinedCacheLine = [ -1 | i <- [0 .. cacheLineSize - 1] ]
 
 toAlignedIndex i = require (isArrayIndex i) $ (i `div` cacheLineSize) * cacheLineSize
 
+
+{- all possible cacheline aligned array indices -}
 alignedIndices = [ cacheLineSize * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` cacheLineSize ]]
+{- all possible cacheline aligned array indices relevant for an array acces at index x such that x is known to be: min <= x <= max -}
+alignedIndicesFor min max = require (min <= max) $
+    [ i | i <- alignedIndices, (i  < min  ∧  i + cacheLineSize > min)  ∨  (min <= i ∧ i <= max) ]
+
 
 between :: Ord k => Map k v -> k -> k -> Map k v
 between map n m = require (n <= m) $ 
@@ -142,6 +148,9 @@ cachedObjectsFor = useE
     useV :: VarFunction -> Set CachedObject
     {- special case for constants -}
     useV (ArrayRead a ix@(Val i)) = Set.fromList [CachedArrayRange a (toAlignedIndex $ arrayIndex i) ]
+    {- special case for assertions -}
+    useV (ArrayRead a ix@(AssertRange min max i)) =
+                                    Set.fromList [CachedArrayRange a           aligned | aligned <- alignedIndicesFor min max ]
     useV (ArrayRead a ix        ) = Set.fromList [CachedArrayRange a           aligned | aligned <- alignedIndices ]
                                   ∪ useV ix
     useV (Val  x)    = Set.empty
@@ -155,6 +164,7 @@ cachedObjectsFor = useE
     useV (Shr   x y) = useV x ∪ useV y
     useV (Xor   x y) = useV x ∪ useV y
     useV (Neg x)     = useV x
+    useV (AssertRange _ _ x) = useV x
 
 type CacheState = OMap CachedObject CacheValue
 type AbstractCacheState = ([(CachedObject, OMap.Index)], Set CachedObject)
@@ -294,6 +304,9 @@ twoAddressCodeV r vf@(BAnd x y) =
 twoAddressCodeV r bf@(Neg x) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
     in (loadsX, Neg x', r')
+twoAddressCodeV r vf@(AssertRange min max x) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+    in (loadsX, (AssertRange min max x'), r')
 
 
 consistent :: FullState -> Bool
@@ -557,6 +570,9 @@ cacheAwareLRUEvalV (BAnd x y) = do
 cacheAwareLRUEvalV (Neg x) = do
   xVal <- cacheAwareLRUEvalV x
   return $ - xVal
+cacheAwareLRUEvalV (AssertRange min max x) = do
+  xVal <- cacheAwareLRUEvalV x
+  return $   xVal
 
 {-
 instance MonadTrans (StateT s)
@@ -625,6 +641,12 @@ cacheTimeLRUEvalV (ArrayRead a ix@(Val i)) = do
   cacheTimeLRUEvalV ix -- does nothing
   cacheTimeArrayReadLRUState a (arrayIndex i)
   return ()
+{- special case for assertions -}
+cacheTimeLRUEvalV (ArrayRead a ix@(AssertRange min max i)) = do
+  cacheTimeLRUEvalV i
+  i <- lift $ alignedIndicesFor min max
+  cacheTimeArrayReadLRUState a (arrayIndex i)
+  return ()
 cacheTimeLRUEvalV (ArrayRead a ix) = do
   cacheTimeLRUEvalV ix
   i <- lift alignedIndices
@@ -665,6 +687,9 @@ cacheTimeLRUEvalV (BAnd  x y) = do
 cacheTimeLRUEvalV (Neg x) = do
   cacheTimeLRUEvalV x
   return ()
+cacheTimeLRUEvalV (AssertRange min max x) = do
+  cacheTimeLRUEvalV x
+  return ()
 
 
 
@@ -686,6 +711,14 @@ cacheTimeStepForState (Assign x vf) = do
 cacheTimeStepForState (AssignArray a ix@(Val i) vf) = do
         cacheTimeLRUEvalV vf
         cacheTimeLRUEvalV ix -- does nothing
+        cacheTimeArrayWriteLRUState a (arrayIndex i)
+        σ' <- get
+        return σ'
+{- special case for assertions -}
+cacheTimeStepForState (AssignArray a ix@((AssertRange min max i)) vf) = do
+        cacheTimeLRUEvalV vf
+        cacheTimeLRUEvalV i
+        i <- lift $ alignedIndicesFor min max
         cacheTimeArrayWriteLRUState a (arrayIndex i)
         σ' <- get
         return σ'
@@ -924,6 +957,7 @@ cacheCostDecisionGraph g n0 = (
                 arrayReadsV   (Xor   x y) = arrayReadsV x ∪ arrayReadsV y
                 arrayReadsV   (BAnd  x y) = arrayReadsV x ∪ arrayReadsV y
                 arrayReadsV   (Neg x)     = arrayReadsV x
+                arrayReadsV   (AssertRange min max x) = arrayReadsV x
 
                 arrayReadsB = useBFor arrayReadsV
                 arrayReadsE = useEFor arrayReadsV arrayReadsB

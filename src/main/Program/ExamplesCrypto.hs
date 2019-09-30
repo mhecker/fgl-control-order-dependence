@@ -129,9 +129,9 @@ addRound :: Array -> Array -> VarFunction -> For
 addRound state skey offset = 
                        Ass i (Val 0)
                  `Seq` ForC 16 (
-                                 Ass tmp (ArrayRead state (Var i))
+                                 Ass tmp (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp (Var tmp `Xor` (ArrayRead skey (Var i `Plus` offset)))
-                           `Seq` AssArr state (Var i) (Var tmp)
+                           `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp)
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
   where i = addRoundIteratorIndex
@@ -141,9 +141,9 @@ sub_bytes :: Array -> For
 sub_bytes state =
                        Ass i (Val 0)
                  `Seq` ForC 16 (
-                                 Ass tmp  (ArrayRead state (Var i))
+                                 Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp2 (ArrayRead sbox (Var tmp))
-                           `Seq` AssArr state (Var i) (Var tmp2)
+                           `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp2)
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
   where i = subBytesIteratorIndex

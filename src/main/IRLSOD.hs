@@ -122,7 +122,7 @@ type ThreadLocalState = Map Var Val
 -- type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
-data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction deriving (Show, Eq, Ord)
+data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction | AssertRange Val Val VarFunction deriving (Show, Eq, Ord)
 
 eeq a b = (a `Leq` b) `And` (b `Leq` a)
 
@@ -147,6 +147,7 @@ instance SimpleShow VarFunction where
   simpleShow (Shr   a b) =        simpleShow a ++ " >> " ++ simpleShow b
   simpleShow (Neg   a  ) = "-" ++ simpleShow a
   simpleShow (ArrayRead (Array a) b) = a ++ "[" ++ simpleShow b ++ "]"
+  simpleShow (AssertRange min max a) = simpleShow a ++ "∈ [" ++ (show min) ++ ", " ++ (show max) ++ "]"
 
 
 evalB :: GlobalState -> ThreadLocalState -> BoolFunction -> Bool
@@ -192,6 +193,7 @@ evalVM σg σl (Xor   x y) = evalVM σg σl  x `xor` evalVM σg σl  y
 evalVM σg σl (BAnd  x y) = evalVM σg σl  x .&. evalVM σg σl  y
 
 evalVM σg σl (Neg x)     = - evalVM σg σl  x
+evalVM σg σl (AssertRange _ _ x) = evalVM σg σl  x
 
 
 data Name = VarName Var | ArrayName Array deriving (Eq, Show, Ord)
@@ -213,6 +215,7 @@ useV (Shr   x y) = useV x ∪ useV y
 useV (Xor   x y) = useV x ∪ useV y
 useV (BAnd  x y) = useV x ∪ useV y
 useV (Neg x)     = useV x
+useV (AssertRange _ _ x) = useV x
 
 
 data CFGEdge = Guard  Bool BoolFunction

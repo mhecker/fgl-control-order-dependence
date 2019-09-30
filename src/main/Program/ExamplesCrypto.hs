@@ -240,7 +240,7 @@ expandKey skey key =
                                  AssArr skey (Var i) (ArrayRead key (Var i))
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
-                 `Seq` foldr Seq Skip [ for size | size <- [keySize `div` 8 .. scheduleSize256 - 1] ]
+                 `Seq` foldr Seq Skip [ for size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1] ]
   where for size =
                        Ass t0 (ArrayRead skey (Val $ 0 + size - 4))
                  `Seq` Ass t1 (ArrayRead skey (Val $ 1 + size - 4))

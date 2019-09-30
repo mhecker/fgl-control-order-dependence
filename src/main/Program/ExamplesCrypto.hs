@@ -237,7 +237,7 @@ expandKey skey key =
                        Ass n (Val 1)
                  `Seq` Ass i (Val 0)
                  `Seq` ForC 32 (
-                                 AssArr skey (Var i) (ArrayRead key (Var i))
+                                 AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
                  `Seq` foldr Seq Skip [ for size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1] ]

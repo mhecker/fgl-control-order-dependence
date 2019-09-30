@@ -247,18 +247,18 @@ expandKey skey key =
                  `Seq` Ass t2 (ArrayRead skey (Val $ 2 + size - 4))
                  `Seq` Ass t3 (ArrayRead skey (Val $ 3 + size - 4))
 
-                 `Seq` If ( (Val $ size `mod` (keySize `div` 8)) `eeq` (Val 0)) (
+                 `Seq` if size `mod` (keySize `div` 8) == 0 then (
                            scheduleCore t0 t1 t2 t3 n
                  `Seq`     Ass n (Var n `Plus` (Val 1))
-                       ) {- else -} (
+                       ) else (
                            Skip
                        )
-                 `Seq` If ((Val keySize `eeq` (Val 256)) `And` ((Val $ size `mod` (keySize `div` 8)) `eeq` (Val 16))) (
+                 `Seq` if keySize == 256 ∧ (size `mod` (keySize `div` 8) == 16) then (
                            Ass t0 (ArrayRead sbox (Var t0))
                  `Seq`     Ass t1 (ArrayRead sbox (Var t1))
                  `Seq`     Ass t2 (ArrayRead sbox (Var t2))
                  `Seq`     Ass t3 (ArrayRead sbox (Var t3))
-                       ) {- else -} (
+                       ) else (
                            Skip
                        )
                  `Seq` AssArr skey (Val $ size + 0) (ArrayRead skey ((Val $ size - (keySize `div` 8)) `Xor` (Var t0)))

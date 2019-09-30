@@ -285,8 +285,12 @@ br_aes_small_cbcenc_run skey buf iv =
                  `Seq` (br_aes_small_encrypt skey buf)
   where i = cbcEncRunIndex 
 
-br_aes_small_encrypt :: Array -> Array -> For
-br_aes_small_encrypt skey state =
+br_aes_small_encryptFor ::
+     (Array -> Array -> VarFunction -> For)
+  -> (Array -> For)
+  -> (Array -> For)
+  -> Array -> Array -> For
+br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                        addRound state skey (Val 0)
                  `Seq` Ass u (Val 1)
                  `Seq` ForC (num_rounds - 1) (
@@ -299,6 +303,15 @@ br_aes_small_encrypt skey state =
                  `Seq` shift_rows state
                  `Seq` addRound state skey (Val num_rounds `Shl` (Val 2))
   where u = encryptIndexU
+
+br_aes_small_encrypt = br_aes_small_encryptFor addRound sub_bytes shift_rows
+
+
+br_aes_small_encryptCheat = br_aes_small_encryptFor cheat3 cheat1 cheat1
+  where cheat1 _     = Skip
+        cheat2 _ _   = Skip
+        cheat3 _ _ _ = Skip
+
 
 
 br_aes_small_cbcenc_init :: Array -> Array -> For
@@ -315,6 +328,16 @@ br_aes_small_cbcenc_main =
   where key = mainKey
         skey = mainSkey
         state = encryptState
+
+br_aes_small_cbcenc_mainCheat :: For
+br_aes_small_cbcenc_mainCheat =
+                       Skip
+                 `Seq` br_aes_small_cbcenc_init skey key
+                 `Seq` br_aes_small_encryptCheat skey state
+  where key = mainKey
+        skey = mainSkey
+        state = encryptState
+
 
 
 cryptoTestSuit = [

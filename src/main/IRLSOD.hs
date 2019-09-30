@@ -130,8 +130,8 @@ instance SimpleShow BoolFunction where
   simpleShow CTrue  = "true"
   simpleShow CFalse = "false"
   simpleShow (Leq a b) = "(" ++ simpleShow a ++ " <= " ++ simpleShow b ++ ")"
-  simpleShow (Or  a b) = "(" ++ simpleShow a ++ " && " ++ simpleShow b ++ ")"
-  simpleShow (And a b) =        simpleShow a ++ " || " ++ simpleShow b
+  simpleShow (Or  a b) = "(" ++ simpleShow a ++ " || " ++ simpleShow b ++ ")"
+  simpleShow (And a b) =        simpleShow a ++ " && " ++ simpleShow b
   simpleShow (Not a  ) = "!" ++ simpleShow a
 
 instance SimpleShow VarFunction where

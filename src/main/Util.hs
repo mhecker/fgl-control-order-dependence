@@ -33,6 +33,25 @@ focus f l = foc l
           | otherwise = fmap (\(left, x', right) -> (x:left, x', right)) $ foc rest
 
 
+focusFirst :: (a -> Bool) -> [a] -> Maybe ([a], a, [a])
+focusFirst f l = foc l
+  where foc [] = Nothing
+        foc (x : rest)
+          | f x       = Just ([],x,rest)
+          | otherwise = fmap (\(left, x', right) -> (x:left, x', right)) $ foc rest
+
+removeFirstOrButLast :: Eq k => k -> [(k,v)] -> Either (v, [(k,v)]) [(k,v)]
+removeFirstOrButLast y l = foc l
+  where foc [] = Right []
+        foc (x@(k,v) : rest)
+          | k == y    = Left (v, rest)
+          | otherwise = case rest of
+              [x'@(k',v')] -> if (k' == y) then Left (v', [x]) else Right [x]
+              _  -> case foc rest of
+                Left (v, l') -> Left  $ (v, x:l')
+                Right l'     -> Right $     x:l'
+
+
 
 sublists [] = [[]]
 sublists (x:xs) = [x:sublist | sublist <- sublists xs] ++ sublists xs

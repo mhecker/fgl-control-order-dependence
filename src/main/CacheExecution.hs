@@ -8,9 +8,6 @@
 -- #define USE_PRECISE_ARRAY_CACHELINES
 module CacheExecution where
 
-import Data.Map.Ordered (OMap, (<|), (|<), (>|), (|>), (<>|), (|<>))
-import qualified Data.Map.Ordered as OMap
-
 import qualified Data.List as List
 
 import Data.Bits (xor, (.&.), shiftL, shiftR)
@@ -38,7 +35,7 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
-import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus)
+import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLast)
 import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..))
 import qualified IRLSOD as IRLSOD (Input)
 
@@ -172,8 +169,8 @@ cachedObjectsFor = useE
     useV (Neg x)     = useV x
     useV (AssertRange _ _ x) = useV x
 
-type CacheState = OMap CachedObject CacheValue
-type AbstractCacheState = ([(CachedObject, OMap.Index)], Set CachedObject)
+type CacheState = [(CachedObject, CacheValue)]
+type AbstractCacheState = ([(CachedObject, Int)], Set CachedObject)
 
 type TimeState = Integer
 
@@ -190,10 +187,6 @@ instance SimpleShow CachedObject where
 instance SimpleShow CacheValue where
   simpleShow (CachedVal        val ) = simpleShow val
   simpleShow (CachedArraySlice vals) = simpleShow vals
-
-
-instance SimpleShow CacheState where
-  simpleShow cs = simpleShow $ fmap fst $ OMap.assocs cs
 
 
 isCachable :: Name -> Bool
@@ -317,7 +310,7 @@ twoAddressCodeV r vf@(AssertRange min max x) =
 
 
 consistent :: FullState -> Bool
-consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = OMap.size cache <= cacheSize && (∀) (OMap.assocs cache) cons
+consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = length cache <= cacheSize && (∀) (cache) cons
   where cons (CachedVar        var@(Global      x)      , CachedVal        val ) = val ==      σv ! var
         cons (CachedVar        var@(ThreadLocal x)      , CachedVal        val ) = val ==     tlσ ! var
         cons (CachedArrayRange arr@(Array       a) index, CachedArraySlice vals) = 
@@ -328,7 +321,7 @@ consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = OMap.size cache <= 
                 betw = sliceFor index (σa ! arr)
 
 reIndex :: CacheState -> CacheState
-reIndex cache = OMap.fromList $ zipWith setIndex [0..] $ OMap.assocs cache
+reIndex cache = zipWith setIndex [0..] $ cache
           where setIndex i ((CachedUnknownRange a _), v) = ((CachedUnknownRange a i), v)
                 setIndex i x                             = x
 reIndex2 (cache, time) = (reIndex cache, time)
@@ -338,6 +331,7 @@ reIndex3 (val, cache, time) = (val, reIndex cache, time)
 sameArrayAs a (CachedArrayRange   a' _) = a' == a
 sameArrayAs a (CachedUnknownRange a' _) = a' == a
 sameArrayAs _ _                         = False
+
 
 cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
 cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = reIndex3 $ case var of
@@ -349,10 +343,11 @@ cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = reIndex3 $
         lookup :: Map Var Val -> (Val, CacheState, AccessTime )
         lookup someσ = 
           require (consistent σ) $
-          case OMap.lookup cvar cache of
-            Nothing                   -> let { cval = CachedVal val ; val = someσ ! var } in
-                                         (val, OMap.fromList $ (cvar, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheMissTime )
-            Just cval@(CachedVal val) -> (val, OMap.fromList $ (cvar, cval) : (                       OMap.assocs $ OMap.delete cvar cache), cacheHitTime  )
+          case removeFirstOrButLast cvar cache of
+            Right cache0 -> let { cval = CachedVal val ; val = someσ ! var } in
+              (val, (cvar, cval) : cache0, cacheMissTime )
+            Left (cval@(CachedVal val), cache0) ->
+              (val, (cvar, cval) : cache0, cacheHitTime  )
 
 
 cacheTimeReadLRU :: Var -> CacheState -> (CacheState, AccessTime)
@@ -362,10 +357,11 @@ cacheTimeReadLRU var cache = reIndex2 $ case var of
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
   where cvar = CachedVar var
         lookup =
-          case OMap.lookup cvar cache of
-            Nothing  -> (OMap.fromList $ (cvar, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheMissTime)
-            Just cval-> assert (cval == undefinedCacheValue) $
-                        (OMap.fromList $ (cvar, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete cvar cache), cacheHitTime)
+          case removeFirstOrButLast cvar cache of
+            Right                       cache0  ->
+              ( (cvar, undefinedCacheValue) : cache0, cacheMissTime)
+            Left (cval@(CachedVal val), cache0) -> assert (cval == undefinedCacheValue) $
+              ( (cvar, undefinedCacheValue) : cache0, cacheHitTime )
 
 
 type Index = Val
@@ -378,10 +374,11 @@ cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = re
         lookup :: (Val, CacheState, AccessTime )
         lookup = 
           require (consistent σ) $
-          case OMap.lookup carr cache of
-            Nothing ->                           let { cval = CachedArraySlice vals ; vals = Map.elems $ sliceFor alignedIx (σa ! arr) } in
-                                                 (vals !! (ix - alignedIx), OMap.fromList $ (carr, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheMissTime )
-            Just cval@(CachedArraySlice vals) -> (vals !! (ix - alignedIx), OMap.fromList $ (carr, cval) : (                       OMap.assocs $ OMap.delete carr cache), cacheHitTime  )
+          case removeFirstOrButLast carr cache of
+            Right                               cache0 -> let { cval = CachedArraySlice vals ; vals = Map.elems $ sliceFor alignedIx (σa ! arr) } in
+              (vals !! (ix - alignedIx), (carr, cval) : cache0, cacheMissTime )
+            Left (cval@(CachedArraySlice vals), cache0)->
+              (vals !! (ix - alignedIx), (carr, cval) : cache0, cacheHitTime  )
 
 
 unknownranges arr cache carr hitTime missTime =
@@ -391,15 +388,15 @@ unknownranges arr cache carr hitTime missTime =
         isArray _ = False
         
         incache = do
-              (left, (carr', cval), right) <- focus (mayMatch carr . fst) (OMap.assocs cache)
+              (left, (carr', cval), right) <- focus (mayMatch carr . fst) cache
               return $ assert (cval == undefinedCacheArrayValue) $
-                (OMap.fromList $ (carr', undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache), hitTime)
+                ( (carr', undefinedCacheArrayValue) : ( left ++ right            ), hitTime)
         notincache 
             | length carrs < nrOfDifferentCacheLinesPerArray =
-               assert (not $ OMap.member carr cache) $
-               [(OMap.fromList $ (carr , undefinedCacheArrayValue) : (take (cacheSize - 1) $ OMap.assocs                    cache), missTime)]
+               assert (List.lookup carr cache == Nothing) $
+               [( (carr , undefinedCacheArrayValue) : (take (cacheSize - 1) cache), missTime)]
             | otherwise = []
-        carrs = [ carr | (carr                         , _) <- OMap.assocs cache, sameArray carr]
+        carrs = [ carr' | (carr'                         , _) <- cache, sameArray carr']
         sameArray = sameArrayAs arr
 
         mayMatch _                      (CachedVar _) = False
@@ -420,10 +417,11 @@ cacheTimeArrayReadLRU arr ix cache = fmap reIndex2 $ case arr of
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         lookup = 
-          case OMap.lookup carr cache of
-            Nothing   -> unknownranges arr cache carr cacheHitTime cacheMissTime
-            Just cval -> assert (cval == undefinedCacheArrayValue) $
-                         [(OMap.fromList $ (carr, undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache), cacheHitTime)]
+          case removeFirstOrButLast carr cache of
+            Right _ ->
+              unknownranges arr cache carr cacheHitTime cacheMissTime
+            Left (cval, cache0) -> assert (cval == undefinedCacheArrayValue) $
+              [( (carr, undefinedCacheArrayValue) : cache0, cacheHitTime)]
 
 cacheTimeArrayReadUnknownIndexLRU :: Array -> CacheState -> [(CacheState, AccessTime)]
 cacheTimeArrayReadUnknownIndexLRU arr cache = fmap reIndex2 $ case arr of
@@ -455,9 +453,9 @@ cacheTimeWriteLRU var cache = reIndex2 $ case var of
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
   where cvar = CachedVar var
         write = 
-          case OMap.lookup cvar cache of
-            Nothing  ->  (OMap.fromList $ (cvar, undefinedCacheValue) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheWriteTime )
-            Just _   ->  (OMap.fromList $ (cvar, undefinedCacheValue) : (                       OMap.assocs $ OMap.delete cvar cache), cacheWriteTime )
+          case removeFirstOrButLast cvar cache of
+            Right cache0      -> ( (cvar, undefinedCacheValue) : cache0, cacheWriteTime )
+            Left  (_, cache0) -> ( (cvar, undefinedCacheValue) : cache0, cacheWriteTime )
 
 
 cacheTimeWriteLRUState :: Monad m => Var -> StateT CacheTimeState m ()
@@ -497,9 +495,9 @@ cacheTimeArrayWriteLRU arr ix cache = fmap reIndex2 $ case arr of
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         write = 
-          case OMap.lookup carr cache of
-            Nothing  ->  unknownranges arr cache carr cacheWriteTime cacheWriteTime
-            Just _   ->  [(OMap.fromList $ (carr, undefinedCacheArrayValue) : (                       OMap.assocs $ OMap.delete carr cache), cacheWriteTime )]
+          case removeFirstOrButLast carr cache of
+            Right _ ->  unknownranges arr cache carr cacheWriteTime cacheWriteTime
+            Left (_, cache0) ->  [( (carr, undefinedCacheArrayValue) : cache0, cacheWriteTime )]
 
 
 cacheTimeArrayWriteUnknownIndexLRU :: Array -> CacheState -> [(CacheState, AccessTime)]
@@ -534,9 +532,9 @@ cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache,
         cval = CachedVal val
         write someσ = 
           require (consistent σ) $
-          case OMap.lookup cvar cache of
-            Nothing  ->  (Map.insert var val someσ, OMap.fromList $ (cvar, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheWriteTime )
-            Just _   ->  (Map.insert var val someσ, OMap.fromList $ (cvar, cval) : (                       OMap.assocs $ OMap.delete cvar cache), cacheWriteTime )
+          case removeFirstOrButLast cvar cache of
+            Right cache0     -> (Map.insert var val someσ, (cvar, cval) : cache0, cacheWriteTime )
+            Left (_, cache0) -> (Map.insert var val someσ, (cvar, cval) : cache0, cacheWriteTime )
 
 
 cacheAwareWriteLRUState :: Monad m => Var -> Val -> StateT FullState m ()
@@ -559,9 +557,9 @@ cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i)
         write :: Map Array ArrayVal -> (Map Array ArrayVal, CacheState, TimeState )
         write someσ = 
             require (consistent σ) $
-            case OMap.lookup carr cache of
-              Nothing  ->  (Map.alter update arr someσ, OMap.fromList $ (carr, cval) : (take (cacheSize - 1) $ OMap.assocs                    cache), cacheWriteTime )
-              Just _   ->  (Map.alter update arr someσ, OMap.fromList $ (carr, cval) : (                       OMap.assocs $ OMap.delete carr cache), cacheWriteTime )
+            case removeFirstOrButLast carr cache of
+              Right cache0     ->  (Map.alter update arr someσ, (carr, cval) : cache0, cacheWriteTime )
+              Left (_, cache0) ->  (Map.alter update arr someσ, (carr, cval) : cache0, cacheWriteTime )
           where update (Nothing) = Just $ Map.insert ix val arrayEmpty
                 update (Just av) = Just $ Map.insert ix val av 
           
@@ -573,7 +571,7 @@ cacheAwareArrayWriteLRUState arr ix val = do
 
 
 initialCacheState :: CacheState
-initialCacheState = OMap.empty
+initialCacheState = []
 
 initialFullState :: FullState
 initialFullState = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
@@ -582,7 +580,7 @@ exampleSurvey1 :: FullState
 exampleSurvey1 = ((GlobalState { σv = Map.fromList                $ [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4), (Global "x", 42)],
                                  σa = Map.empty },
                    Map.empty, ()),
-                   OMap.fromList $ fmap wrapped                   $ [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4)],
+                                   fmap wrapped                   $ [(Global "a", 1), (Global "b", 2), (Global "c", 3), (Global "d", 4)],
                   0
                  )
   where wrapped (a,b) = (CachedVar a, CachedVal b)
@@ -883,14 +881,14 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
   where α = αFor vars
 
 αFor vars cache = (
-            [ (v,i) | (i,(v,s)) <- zip [0..] (OMap.assocs cache), v ∈ vars],
-            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars]
+            [ (v,i) | (i,(v,s)) <- zip [0..] cache, v ∈ vars],
+            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) cache, not $ v ∈ vars]
            )
 
 αForReach :: Set CachedObject -> Set Name -> CacheState -> AbstractCacheState
 αForReach vars reach cache = (
-            [ (v,i) | (i,(v,s)) <- zip [0..] (OMap.assocs cache), v ∈ vars],
-            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) (OMap.assocs cache), not $ v ∈ vars, isReachable v]
+            [ (v,i) | (i,(v,s)) <- zip [0..] cache, v ∈ vars],
+            Set.fromList [ v |  (v,s) <- List.dropWhileEnd (\(v,s) -> not $ v ∈ vars) cache, not $ v ∈ vars, isReachable v]
            )
   where isReachable (CachedVar v)          = VarName   v ∈ reach
         isReachable (CachedArrayRange a _) = ArrayName a ∈ reach
@@ -898,7 +896,7 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
 αForReach2 :: Set CachedObject -> Node -> Set Name -> Node -> CacheState -> AbstractCacheState
 αForReach2 vars mm reach n cache
   | n == mm = (
-            [ (v,0) | (v,s) <- OMap.assocs cache, v ∈ vars],
+            [ (v,0) | (v,s) <- cache, v ∈ vars],
             Set.empty
            )
   | otherwise = αForReach vars reach cache
@@ -953,7 +951,7 @@ cacheStateGraph'ForVarsAtMForGraph vars g0 mm = result
 
 
         α n cache
-          | n == mm   = OMap.fromList [ (v,undefinedCacheValue) | (v,s) <- OMap.assocs cache, v ∈ vars]
+          | n == mm   = [ (v,undefinedCacheValue) | (v,s) <- cache, v ∈ vars]
           | otherwise = cache
 
 
@@ -1078,16 +1076,16 @@ cacheCostDecisionGraph g n0 = (
 type CacheGraphNode = Node
 
 
-cacheStateFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
+cacheStateFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
            where cs = assert (n == n') $ cs'
                  Just (n', cs') = lab csGraph y'
 
-cacheStateOnFor csGraph vars y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | var <- Set.toList $ vars ]
+cacheStateOnFor csGraph vars y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | var <- Set.toList $ vars ]
            where Just (_, cs) = lab csGraph y'
 
 
 
-cacheStateUnsafeFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ OMap.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
+cacheStateUnsafeFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
            where cs = cs'
                  Just (_, cs') = lab csGraph y'
 

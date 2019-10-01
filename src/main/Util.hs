@@ -25,6 +25,15 @@ import Control.Monad.Random hiding (join)
 the p = fromJust . find p 
 
 
+focus :: (a -> Bool) -> [a] -> [([a], a, [a])]
+focus f l = foc l
+  where foc [] = []
+        foc (x : rest)
+          | f x       = ([],x,rest) : foc rest
+          | otherwise = fmap (\(left, x', right) -> (x:left, x', right)) $ foc rest
+
+
+
 sublists [] = [[]]
 sublists (x:xs) = [x:sublist | sublist <- sublists xs] ++ sublists xs
 

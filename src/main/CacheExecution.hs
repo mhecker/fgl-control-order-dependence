@@ -62,8 +62,6 @@ cacheLineSize = assert ((arrayMaxIndex + 1) `mod` n == 0) n
 initialCacheLine   = [  0 | i <- [0 .. cacheLineSize - 1] ]
 undefinedCacheLine = [ -1 | i <- [0 .. cacheLineSize - 1] ]
 
-undefinedUnknownRangeIndex = -1
-
 toAlignedIndex i = require (isArrayIndex i) $ (i `div` cacheLineSize) * cacheLineSize
 
 
@@ -134,7 +132,7 @@ type ArrayBound = Int
 data CachedObject
     = CachedVar Var 
     | CachedArrayRange Array ArrayBound -- contents of Array from [ArrayBound ..to.. ArrayBound+cacheLineSize]
-    | CachedUnknownRange Array Int      -- In an abstract cache   OMap.fromList [ .., (CacheUnknownRange a k), ..] is the kth appearance of an unknown cache range for array a.
+    | CachedUnknownRange Array          -- In an abstract cache [, .. CacheUnknownRange a  ..] represents a cacheline within array a with  unknown range
   deriving (Show, Eq, Ord)
 
 data CacheValue = CachedVal Val | CachedArraySlice [Val] deriving (Show, Eq, Ord)
@@ -182,7 +180,7 @@ type FullState = (NormalState, CacheState, TimeState)
 instance SimpleShow CachedObject where
   simpleShow (CachedVar        var)  = simpleShow var
   simpleShow (CachedArrayRange (Array x) i) = x ++ "[" ++ (show i) ++ ".." ++ (show $ i + cacheLineSize -1) ++ "]"
-  simpleShow (CachedUnknownRange (Array x) k) = x ++ "[ unknown .. unknown (" ++ (show k) ++ ")]"
+  simpleShow (CachedUnknownRange (Array x)) = x ++ "[ unknown .. unknown ]"
 
 instance SimpleShow CacheValue where
   simpleShow (CachedVal        val ) = simpleShow val
@@ -320,21 +318,13 @@ consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = length cache <= cac
           where betw :: ArrayVal
                 betw = sliceFor index (σa ! arr)
 
-reIndex :: CacheState -> CacheState
-reIndex cache = zipWith setIndex [0..] $ cache
-          where setIndex i ((CachedUnknownRange a _), v) = ((CachedUnknownRange a i), v)
-                setIndex i x                             = x
-reIndex2 (cache, time) = (reIndex cache, time)
-reIndex3 (val, cache, time) = (val, reIndex cache, time)
-
-
-sameArrayAs a (CachedArrayRange   a' _) = a' == a
-sameArrayAs a (CachedUnknownRange a' _) = a' == a
-sameArrayAs _ _                         = False
+sameArrayAs a (CachedArrayRange   a' _ ) = a' == a
+sameArrayAs a (CachedUnknownRange a'   ) = a' == a
+sameArrayAs _ _                          = False
 
 
 cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
-cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = reIndex3 $ case var of
+cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ lookup     σv
     ThreadLocal _ -> assert (      isCachable $ VarName var) $ lookup     tlσ
     Register    _ -> assert (not $ isCachable $ VarName var) $ (tlσ ! var, cache, registerAccessTime)
@@ -351,7 +341,7 @@ cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = reIndex3 $
 
 
 cacheTimeReadLRU :: Var -> CacheState -> (CacheState, AccessTime)
-cacheTimeReadLRU var cache = reIndex2 $ case var of
+cacheTimeReadLRU var cache = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ lookup
     ThreadLocal _ -> assert (      isCachable $ VarName var) $ lookup
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
@@ -367,7 +357,7 @@ cacheTimeReadLRU var cache = reIndex2 $ case var of
 type Index = Val
 
 cacheAwareArrayReadLRU :: Array -> Index -> FullState -> (Val, CacheState, AccessTime)
-cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = reIndex3 $ case arr of
+cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ lookup
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
@@ -384,7 +374,7 @@ cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = re
 unknownranges arr cache carr hitTime missTime =
     require (isArray carr) $ incache ++ notincache
   where isArray (CachedArrayRange _ _) = True
-        isArray (CachedUnknownRange _ _) = True
+        isArray (CachedUnknownRange _) = True
         isArray _ = False
         
         incache = do
@@ -393,7 +383,6 @@ unknownranges arr cache carr hitTime missTime =
                 ( (carr', undefinedCacheArrayValue) : ( left ++ right            ), hitTime)
         notincache 
             | length carrs < nrOfDifferentCacheLinesPerArray =
-               assert (List.lookup carr cache == Nothing) $
                [( (carr , undefinedCacheArrayValue) : (take (cacheSize - 1) cache), missTime)]
             | otherwise = []
         carrs = [ carr' | (carr'                         , _) <- cache, sameArray carr']
@@ -404,15 +393,15 @@ unknownranges arr cache carr hitTime missTime =
         mayMatch (CachedArrayRange a i) (CachedArrayRange a' i') =
             require (toAlignedIndex i == i   ∧  toAlignedIndex i' == i')
           $ a == a' ∧ i == i'
-        mayMatch (CachedArrayRange a _) (CachedUnknownRange a' _) =
+        mayMatch (CachedArrayRange a _) (CachedUnknownRange a') =
             a == a'
-        mayMatch (CachedUnknownRange a _) (CachedArrayRange a' _) =
+        mayMatch (CachedUnknownRange a) (CachedArrayRange a' _) =
             a == a'
-        mayMatch (CachedUnknownRange a _) (CachedUnknownRange a' _) =
+        mayMatch (CachedUnknownRange a) (CachedUnknownRange a') =
             a == a'
 
 cacheTimeArrayReadLRU :: Array -> Index -> CacheState -> [(CacheState, AccessTime)]
-cacheTimeArrayReadLRU arr ix cache = fmap reIndex2 $ case arr of
+cacheTimeArrayReadLRU arr ix cache = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ lookup
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
@@ -424,10 +413,10 @@ cacheTimeArrayReadLRU arr ix cache = fmap reIndex2 $ case arr of
               [( (carr, undefinedCacheArrayValue) : cache0, cacheHitTime)]
 
 cacheTimeArrayReadUnknownIndexLRU :: Array -> CacheState -> [(CacheState, AccessTime)]
-cacheTimeArrayReadUnknownIndexLRU arr cache = fmap reIndex2 $ case arr of
+cacheTimeArrayReadUnknownIndexLRU arr cache = case arr of
     Array       a -> assert (      isCachable $ ArrayName arr) $ lookup
   where lookup = unknownranges arr cache carr cacheHitTime cacheMissTime
-        carr  = CachedUnknownRange arr undefinedUnknownRangeIndex
+        carr  = CachedUnknownRange arr
 
 
 
@@ -447,7 +436,7 @@ cacheTimeReadLRUState var = do
 
 
 cacheTimeWriteLRU :: Var -> CacheState -> (CacheState, AccessTime)
-cacheTimeWriteLRU var cache = reIndex2 $ case var of
+cacheTimeWriteLRU var cache = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ write
     ThreadLocal _ -> assert (      isCachable $ VarName var) $ write
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
@@ -490,7 +479,7 @@ cacheTimeArrayReadUnknownIndexLRUState arr = do
 
 
 cacheTimeArrayWriteLRU :: Array -> Index -> CacheState -> [(CacheState, AccessTime)]
-cacheTimeArrayWriteLRU arr ix cache = fmap reIndex2 $ case arr of
+cacheTimeArrayWriteLRU arr ix cache = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ write
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
@@ -501,10 +490,10 @@ cacheTimeArrayWriteLRU arr ix cache = fmap reIndex2 $ case arr of
 
 
 cacheTimeArrayWriteUnknownIndexLRU :: Array -> CacheState -> [(CacheState, AccessTime)]
-cacheTimeArrayWriteUnknownIndexLRU arr cache = fmap reIndex2 $ case arr of
+cacheTimeArrayWriteUnknownIndexLRU arr cache = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ write
   where write = unknownranges arr cache carr cacheWriteTime cacheWriteTime
-        carr  = CachedUnknownRange arr undefinedUnknownRangeIndex
+        carr  = CachedUnknownRange arr
 
 
 
@@ -524,7 +513,7 @@ cacheTimeArrayWriteUnknownIndexLRUState arr = do
 
 
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
-cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) =  reIndex3 $ case var of
+cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) =  case var of
     Global      _ -> assert (      isCachable $ VarName var) $ let (     σv', cache', accessTime) = write      σv in ((globalσ{ σv = σv'}, tlσ , i), cache', time + accessTime)
     ThreadLocal _ -> assert (      isCachable $ VarName var) $ let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ           , tlσ', i), cache', time + accessTime)
     Register    _ -> assert (not $ isCachable $ VarName var) $ let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
@@ -544,7 +533,7 @@ cacheAwareWriteLRUState var val = do
     return ()
 
 cacheAwareArrayWriteLRU :: Array -> Index -> Val -> FullState -> FullState
-cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i), cache, time ) = reIndex3 $ case arr of
+cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i), cache, time ) = case arr of
     Array  _ -> assert (      isCachable $ ArrayName arr) $ let (     σa', cache', accessTime) = write      σa in ((globalσ{ σa = σa'}, tlσ , i), cache', time + accessTime)
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx

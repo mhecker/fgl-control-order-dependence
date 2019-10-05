@@ -35,7 +35,7 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
-import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLast)
+import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
 import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..))
 import qualified IRLSOD as IRLSOD (Input)
 
@@ -115,6 +115,8 @@ noOpTime = 1
 guardTime :: AccessTime
 guardTime = 1
 
+
+removeFirstOrButLast = removeFirstOrButLastMaxSize cacheSize
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
 undefinedCacheValue = CachedVal (-1)

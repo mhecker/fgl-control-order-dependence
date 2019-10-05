@@ -40,14 +40,17 @@ focusFirst f l = foc l
           | f x       = Just ([],x,rest)
           | otherwise = fmap (\(left, x', right) -> (x:left, x', right)) $ foc rest
 
-removeFirstOrButLast :: Eq k => k -> [(k,v)] -> Either (v, [(k,v)]) [(k,v)]
-removeFirstOrButLast y l = foc l
-  where foc [] = Right []
-        foc (x@(k,v) : rest)
+removeFirstOrButLastMaxSize :: Eq k => Int -> k -> [(k,v)] -> Either (v, [(k,v)]) [(k,v)]
+removeFirstOrButLastMaxSize size y l = foc 1 l
+  where foc n [] = Right []
+        foc n (x@(k,v) : rest)
           | k == y    = Left (v, rest)
           | otherwise = case rest of
-              [x'@(k',v')] -> if (k' == y) then Left (v', [x]) else Right [x]
-              _  -> case foc rest of
+              [x'@(k',v')] -> if (k' == y) then
+                                Left (v', [x])
+                              else
+                                if n +1 >= size then Right [x]      else Right [x,x']
+              _  -> case foc (n+1) rest of
                 Left (v, l') -> Left  $ (v, x:l')
                 Right l'     -> Right $     x:l'
 

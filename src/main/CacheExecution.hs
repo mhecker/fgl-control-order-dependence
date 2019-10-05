@@ -881,6 +881,7 @@ cacheStateGraphForVars vars = stateGraphFor α cacheOnlyStepFor
            )
   where isReachable (CachedVar v)          = VarName   v ∈ reach
         isReachable (CachedArrayRange a _) = ArrayName a ∈ reach
+        isReachable (CachedUnknownRange a) = ArrayName a ∈ reach
 
 αForReach2 :: Set CachedObject -> Node -> Set Name -> Node -> CacheState -> AbstractCacheState
 αForReach2 vars mm reach n cache

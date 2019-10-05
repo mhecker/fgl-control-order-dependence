@@ -5,7 +5,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 #define require assert
--- #define USE_PRECISE_ARRAY_CACHELINES
+#define USE_PRECISE_ARRAY_CACHELINES
 module CacheExecution where
 
 import qualified Data.List as List

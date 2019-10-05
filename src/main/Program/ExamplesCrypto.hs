@@ -118,7 +118,7 @@ br_aes_S = assert (length sboxConst == 256) $
 
 
 simpleRcon :: For
-simpleRcon = assert (length sboxConst == 10) $ 
+simpleRcon = assert (length rconConst == 10) $ 
   foldr Seq Skip [ AssArr rcon (Val i) (Val rcval) | (i,rcval) <- zip [0..9] rconConst]
 
 

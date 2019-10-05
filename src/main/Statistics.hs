@@ -89,8 +89,6 @@ lol' = generate 2 f
   where f 0 = (35, 37)
         f 1 = (2,0)
 
-test = chi2test 0.05 0 wikipediaExample
-
 
 infixl 7 *.
 (*.) x y = if x == 0 then 0 else x * y

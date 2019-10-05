@@ -35,7 +35,8 @@ infixl 7 ⊓
 (∐) l = joins l
 
 (∏) :: (MeetSemiLattice a) => [a] -> a
-(∏) = meets1
+(∏) [] = error "empty meet"
+(∏) (x:xs) = foldr (/\) x xs
 
 
 𝝁 :: (Eq a, BoundedJoinSemiLattice a) => (a -> a) -> a

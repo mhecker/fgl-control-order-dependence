@@ -1552,7 +1552,7 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        )))))),
     testProperty   "ntiod size for looping ladders"
     $ \(size :: Int) ->
-                let msum = Map.fold (\ns s -> Set.size ns + s) 0
+                let msum = Map.foldr (\ns s -> Set.size ns + s) 0
 
                     n0 = (abs size) `div` 2
                     g = fullLadder n0  :: Gr () ()
@@ -2636,7 +2636,7 @@ dodProps = testGroup "(concerning decisive order dependence)" [
     testProperty  "|ntsodFastPDom|             >= |dodColoredDagFixedFast|"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
-                        sum = Map.fold (\ns s -> Set.size ns + s) 0
+                        sum = Map.foldr (\ns s -> Set.size ns + s) 0
                     in (sum $ ODEP.ntsodFastPDom          g) >=
                        (sum $ ODEP.dodColoredDagFixedFast g),
     testProperty  "ntsodFastPDom               ≡ ntsodFast"
@@ -4055,7 +4055,7 @@ timingDepProps = testGroup "(concerning timingDependence)" [
                                     g = tcfg p
                                     td    = timingDependence g
                                     tdOld = timingDependenceOld g
-                                    count = Map.fold (\s k -> Set.size s + k) 0
+                                    count = Map.foldr (\s k -> Set.size s + k) 0
                                     ts ok = traceShow (count td, count tdOld) $ if ok then ok else traceShow g $ ok
                                 in td ⊑ tdOld
   ]

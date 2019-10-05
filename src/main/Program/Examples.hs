@@ -3399,6 +3399,24 @@ exampleCacheCostGraph = toProgramIntra $ IntraGeneratedProgram
                      ) undefined undefined undefined)])
 
 
+exampleTooCoarseAbstractionIsUnsound :: Program Gr
+exampleTooCoarseAbstractionIsUnsound = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Ass (Global "b") (Val 1)
+               `Seq`  Ass (Global "x") (Val 0)
+               `Seq`  Ass (Global "y") (Val 255)
+               `Seq`  Ass (Register 0) (Var $ Global "x")
+               `Seq`  Ass (Register 1) (Var $ Global "y")
+               `Seq`  If ((Var $ Global "l") `Leq` (Val 0)) (
+                          AssArr (Array "a") (Var $ Register 0) (Val 0)
+                      ) {- else -} (
+                          AssArr (Array "a") (Var $ Register 1) (Val 0)
+                      )
+               `Seq`  Ass (Register 22) (ArrayRead (Array "a") (Var $ Register 0))
+                     ) undefined undefined undefined)])
+
+
 
 
 exampleDomPaths :: Program Gr

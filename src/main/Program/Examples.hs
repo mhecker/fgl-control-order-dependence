@@ -3408,12 +3408,12 @@ exampleTooCoarseAbstractionIsUnsound = toProgramIntra $ IntraGeneratedProgram
                `Seq`  Ass (Global "y") (Val 255)
                `Seq`  Ass (Register 0) (Var $ Global "x")
                `Seq`  Ass (Register 1) (Var $ Global "y")
-               `Seq`  If ((Var $ Global "l") `Leq` (Val 0)) (
+               `Seq`  If ((Var $ Global "l") `Leq` (Val 5)) (
                           AssArr (Array "a") (Var $ Register 0) (Val 0)
                       ) {- else -} (
                           AssArr (Array "a") (Var $ Register 1) (Val 0)
                       )
-               `Seq`  Ass (Register 22) (ArrayRead (Array "a") (Var $ Register 0))
+               `Seq`  Ass (Register 22) (ArrayRead (Array "a") (Val 0))
                      ) undefined undefined undefined)])
 
 

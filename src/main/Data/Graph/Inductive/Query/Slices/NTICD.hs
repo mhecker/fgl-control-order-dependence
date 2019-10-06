@@ -16,32 +16,32 @@ import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom, ntscdViaMDom)
 
 nticdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdSlice graph =  combinedBackwardSlice graph nticd w
+nticdSlice graph = combinedBackwardSlice nticd w
   where nticd = invert''  $ nticdViaSinkDom graph
         w     = Map.empty
 
 ntscdSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdSlice graph =  combinedBackwardSlice graph ntscd w
+ntscdSlice graph = combinedBackwardSlice ntscd w
   where ntscd = invert''  $ ntscdViaMDom graph
         w     = Map.empty
 
 
 nticdNTIODSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODSlice graph msS = combinedBackwardSlice graph nticd' empty msS
+nticdNTIODSlice graph msS = combinedBackwardSlice nticd' empty msS
   where ms = Set.toList msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         nticd' = invert'' $ nticdViaSinkDom graph'
         empty = Map.empty
 
 ntscdNTSODSliceViaNtscd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdNTSODSliceViaNtscd graph msS = combinedBackwardSlice graph ntscd' empty msS
+ntscdNTSODSliceViaNtscd graph msS = combinedBackwardSlice ntscd' empty msS
   where ms = Set.toList msS
         graph' = foldr (flip delSuccessorEdges) graph ms
         ntscd' = invert'' $ ntscdViaMDom graph'
         empty = Map.empty
 
 wodTEILSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSliceViaNticd g msS = combinedBackwardSlice g nticd'' empty msS
+wodTEILSliceViaNticd g msS = combinedBackwardSlice nticd'' empty msS
   where ms = Set.toList msS
         g''   = foldr (flip delSuccessorEdges) g' ms
           where  toMs   = rdfs ms g
@@ -50,7 +50,7 @@ wodTEILSliceViaNticd g msS = combinedBackwardSlice g nticd'' empty msS
         empty = Map.empty
 
 wccSliceViaNticd :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wccSliceViaNticd g msS = combinedBackwardSlice g nticd''' empty msS
+wccSliceViaNticd g msS = combinedBackwardSlice nticd''' empty msS
   where ms = Set.toList msS
         g'''   = foldr (flip delSuccessorEdges) g'' ms
           where  toMs   = rdfs ms g

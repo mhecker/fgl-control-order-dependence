@@ -51,7 +51,7 @@ cacheTimingSliceFor :: forall gr. (DynGraph gr) =>
   -> Node
   -> Set Node
   -> Set Node
-cacheTimingSliceFor csd g n0 = \ms -> combinedBackwardSlice (undefined :: gr CFGNode CFGEdge) (tscd' ⊔ dd' ⊔ csd') Map.empty ms
+cacheTimingSliceFor csd g n0 = \ms -> combinedBackwardSlice (tscd' ⊔ dd' ⊔ csd') Map.empty ms
   where tscd'  =            timDFFromFromItimdomMultipleOfFastCost ccg costF
         dd'    = invert'' $ dataDependence                         ccg vars  n0
         csd'   = invert'' $ csd                                      g       n0

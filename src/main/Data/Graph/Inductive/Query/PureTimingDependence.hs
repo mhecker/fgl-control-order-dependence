@@ -711,14 +711,14 @@ timingDependenceViaTwoFinger g =
 
 
 nticdTimingSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdTimingSlice graph =  combinedBackwardSlice graph (nticd' ⊔ timing') w
+nticdTimingSlice graph = combinedBackwardSlice (nticd' ⊔ timing') w
   where nticd'  = isinkDFTwoFinger graph
         timing' = invert'' $ timingDependenceViaTwoFinger graph
         w     = Map.empty
 
 
 ntscdTimingSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdTimingSlice graph =  combinedBackwardSlice graph (ntscd' ⊔ timing') w
+ntscdTimingSlice graph = combinedBackwardSlice (ntscd' ⊔ timing') w
   where ntscd'  = invert'' $ ntscdViaMDom graph
         timing' = invert'' $ timingDependenceViaTwoFinger graph
         w     = Map.empty

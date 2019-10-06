@@ -467,7 +467,7 @@ ntiodFromSimpleSliceStep newIPDomFor graph = \m1 m2 ->
 nticdNTIODSliceSimple :: (Show (gr a b), DynGraph gr) => ((gr a b, Map Node [Node]) -> Maybe (Node, Map Node (Maybe Node)) -> Node -> Map Node (Maybe Node)) -> gr a b -> Set Node -> Set Node
 nticdNTIODSliceSimple newIPDomFor graph = \ms ->
            nticdslicer $ slice s0 ms
-  where nticdslicer = combinedBackwardSlice graph nticd Map.empty
+  where nticdslicer = combinedBackwardSlice nticd Map.empty
         s0@(NTIODSimpleSliceState { sinks, isinkdom }) = initialNTIODSimpleSliceState graph
         nticd = idomToDFFastForRoots roots graph isinkdom
           where roots = go (Map.assocs isinkdom) sinks

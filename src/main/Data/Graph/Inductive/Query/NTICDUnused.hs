@@ -706,7 +706,7 @@ wodMyEntryWodMyCDSlice graph = (if cdEdges == cdFromDomEdges then
                                    -- traceShow (length $ nodes graph, Set.size cdFromDomEdges, Set.size cdEdges, foldl (+) 0 (fmap Set.size cdFromDom), foldl (+) 0 (fmap Set.size cd), graph)
                                   id
                                ) $
-                               combinedBackwardSlice graph (invert'' $ nticdViaSinkDom graph ⊔ cd) w
+                               combinedBackwardSlice (invert'' $ nticdViaSinkDom graph ⊔ cd) w
   where cdFromDom    = myCDFromMyDom graph
         cd           = myCD graph
         w     = myEntryWodFast graph

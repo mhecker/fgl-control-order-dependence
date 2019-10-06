@@ -34,18 +34,18 @@ import Data.Graph.Inductive.Query.Slices.NTICD (ntscdSlice, ntscdNTSODSliceViaNt
 
 
 tscdSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-tscdSlice graph =  combinedBackwardSlice graph tscd' w
+tscdSlice graph = combinedBackwardSlice tscd' w
   where tscd' = invert'' $ tscdOfLfp graph
         w     = Map.empty
 
 tscdCostSlice :: (DynGraph gr) => gr a b ->  (Node -> Node -> Integer) -> Set Node -> Set Node
-tscdCostSlice graph cost =  combinedBackwardSlice graph tscd' w
+tscdCostSlice graph cost = combinedBackwardSlice tscd' w
   where tscd' = invert'' $ tscdOfNaiveCostfLfp graph cost 
         w     = Map.empty
 
 
 tscdSliceViaTimDF :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-tscdSliceViaTimDF graph msS = combinedBackwardSlice graph tscd' w msS
+tscdSliceViaTimDF graph msS = combinedBackwardSlice tscd' w msS
   where ms = Set.toList msS
         tscd' = timDFFromFromItimdomMultipleOfFast graph
         w     = Map.empty
@@ -384,7 +384,7 @@ itimdomMultipleTwoFingercd = xDFcd timMultipleDFTwoFinger
 
 
 tscdSliceFast :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-tscdSliceFast graph msS = combinedBackwardSlice graph tscd' w msS
+tscdSliceFast graph msS = combinedBackwardSlice tscd' w msS
   where ms = Set.toList msS
         toMs   = rdfs ms graph
         graph' = foldr (flip delSuccessorEdges) graph ms
@@ -393,7 +393,7 @@ tscdSliceFast graph msS = combinedBackwardSlice graph tscd' w msS
 
 
 tscdSliceForTrivialSinks :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-tscdSliceForTrivialSinks graph =  combinedBackwardSlice graph tscd' w
+tscdSliceForTrivialSinks graph = combinedBackwardSlice tscd' w
   where tscd' = -- require ((∀) sinks (\sink -> length sink == 1)) $
                 timMultipleDFTwoFinger graph
         w     = Map.empty

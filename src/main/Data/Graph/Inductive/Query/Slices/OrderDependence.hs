@@ -22,46 +22,46 @@ import Data.Graph.Inductive.Query.OrderDependence (
 
 
 ntscdNTSODSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdNTSODSlice graph =  combinedBackwardSlice graph ntscd d
+ntscdNTSODSlice graph = combinedBackwardSlice ntscd d
   where ntscd = invert'' $ ntscdViaMDom graph
         d     = ntsod graph
 
 ntscdNTSODFastPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdNTSODFastPDomSlice graph =  combinedBackwardSlice graph ntscd d
+ntscdNTSODFastPDomSlice graph = combinedBackwardSlice ntscd d
   where ntscd = invert'' $ ntscdViaMDom graph
         d     = ntsodFastPDom graph
 
 
 ntscdDodSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdDodSlice graph =  combinedBackwardSlice graph ntscd d
+ntscdDodSlice graph = combinedBackwardSlice ntscd d
   where ntscd = invert'' $ ntscdViaMDom graph
         d     = dod graph
 
 
 nticdNTIODSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODSlice graph =  combinedBackwardSlice graph nticd w
+nticdNTIODSlice graph = combinedBackwardSlice nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiod graph
 
 
 nticdNTIODFastSlice :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODFastSlice graph =  combinedBackwardSlice graph nticd w
+nticdNTIODFastSlice graph = combinedBackwardSlice nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiodFast graph
 
 nticdNTIODPDomSimpleHeuristic :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODPDomSimpleHeuristic graph =  combinedBackwardSlice graph nticd w
+nticdNTIODPDomSimpleHeuristic graph = combinedBackwardSlice nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiodFastPDomSimpleHeuristic graph
 
 nticdNTIODPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODPDom graph =  combinedBackwardSlice graph nticd w
+nticdNTIODPDom graph = combinedBackwardSlice nticd w
   where nticd = invert'' $ nticdViaSinkDom graph
         w     = ntiodFastPDom graph
 
 
 wccSliceViaWodTEILPDom :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-wccSliceViaWodTEILPDom graph = \ms -> let fromMs = (Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m graph ]) in combinedBackwardSlice graph empty w ms ∩ fromMs
+wccSliceViaWodTEILPDom graph = \ms -> let fromMs = (Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m graph ]) in combinedBackwardSlice empty w ms ∩ fromMs
   where empty = Map.empty
         w     = wodTEIL'PDom graph
 
@@ -74,22 +74,22 @@ wccSliceViaNticdNTIODPDomSimpleHeuristic g ms = s ∩ fromMs
         fromMs = Set.fromList $ [ n | m <- Set.toList ms, n <- reachable m g    ]
 
 ntiodFastSlice :: ( DynGraph gr) => gr a b ->  Set Node  -> Set Node
-ntiodFastSlice graph =  combinedBackwardSlice graph empty w
+ntiodFastSlice graph = combinedBackwardSlice empty w
   where empty = Map.empty
         w     = ntiodFast graph
 
 
 ntiodFastPDomSimpleHeuristicSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntiodFastPDomSimpleHeuristicSlice graph =  combinedBackwardSlice graph empty w
+ntiodFastPDomSimpleHeuristicSlice graph = combinedBackwardSlice empty w
   where empty = Map.empty
         w     = ntiodFastPDomSimpleHeuristic graph
 
 wodTEILSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILSlice graph = combinedBackwardSlice graph empty w
+wodTEILSlice graph = combinedBackwardSlice empty w
   where empty = Map.empty
         w     = wodTEIL' graph
 
 wodTEILPDomSlice :: ( DynGraph gr) => gr a b ->  Set Node -> Set Node
-wodTEILPDomSlice graph = combinedBackwardSlice graph empty w
+wodTEILPDomSlice graph = combinedBackwardSlice empty w
   where empty = Map.empty
         w     = wodTEIL'PDom graph

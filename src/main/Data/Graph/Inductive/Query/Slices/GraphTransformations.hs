@@ -20,14 +20,14 @@ import Data.Graph.Inductive.Query.NTICD (nticdViaSinkDom, ntscdViaMDom)
 
 
 nticdNTIODSliceViaEscapeNodes :: (DynGraph gr) => gr () () ->  Set Node -> Set Node
-nticdNTIODSliceViaEscapeNodes g = \ms -> combinedBackwardSlice g' nticd' empty ms ∖ (Set.fromList (end:escape))
+nticdNTIODSliceViaEscapeNodes g = \ms -> combinedBackwardSlice nticd' empty ms ∖ (Set.fromList (end:escape))
   where (end, escape, g') = withUniqueEndNodeAndEscapeNodes () () () () g
         nticd' = invert'' $ nticdViaSinkDom g'
         empty = Map.empty
 
 
 nticdNTIODSliceViaChoiceAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODSliceViaChoiceAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nticd'') empty ms
+nticdNTIODSliceViaChoiceAtRepresentatives g = \ms -> combinedBackwardSlice (nticd'') empty ms
   where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
         g'' = choiceAtRepresentativesGraphOf g
         nticd'' = invert'' $ nticdViaSinkDom g''
@@ -36,7 +36,7 @@ nticdNTIODSliceViaChoiceAtRepresentatives g = \ms -> combinedBackwardSlice g'' (
 
 
 nticdNTIODSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nticd ⊔ nticd'') empty ms
+nticdNTIODSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice (nticd ⊔ nticd'') empty ms
   where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
         g'' = splitRepresentativesGraphOf g
         nticd   = invert'' $ nticdViaSinkDom g
@@ -44,7 +44,7 @@ nticdNTIODSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (nti
         empty = Map.empty
 
 nticdNTIODSliceViaCutAtRepresentativesNoTrivial :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdNTIODSliceViaCutAtRepresentativesNoTrivial g = \ms -> combinedBackwardSlice g'' (nticd ⊔ nticd'') empty ms
+nticdNTIODSliceViaCutAtRepresentativesNoTrivial g = \ms -> combinedBackwardSlice (nticd ⊔ nticd'') empty ms
   where -- g'  = foldr (flip delSuccessorEdges) g (Map.keys representants)
         g'' = splitRepresentativesGraphNoTrivialOf g
         nticd   = invert'' $ nticdViaSinkDom g
@@ -53,7 +53,7 @@ nticdNTIODSliceViaCutAtRepresentativesNoTrivial g = \ms -> combinedBackwardSlice
 
 
 ntscdNTSODSliceViaCutAtRepresentatives :: forall gr a b . (DynGraph gr) => gr a b ->  Set Node -> Set Node
-ntscdNTSODSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice g'' (ntscd ⊔ ntscd'') empty ms
+ntscdNTSODSliceViaCutAtRepresentatives g = \ms -> combinedBackwardSlice (ntscd ⊔ ntscd'') empty ms
   where g'' = splitRepresentativesGraphOf g
         ntscd   = invert'' $ ntscdViaMDom g
         ntscd'' = invert'' $ ntscdViaMDom g''

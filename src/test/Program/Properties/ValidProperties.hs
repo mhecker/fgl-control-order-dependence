@@ -1744,14 +1744,14 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                        nticd = PDF.isinkDFTwoFinger g
                        ntiod =  ODEP.ntiodFastPDomSimpleHeuristic g
-                       slicer = combinedBackwardSlice g (ddep ⊔ nticd) ntiod 
+                       slicer = combinedBackwardSlice (ddep ⊔ nticd) ntiod 
                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 ->
                         let ms  = [m1, m2, m3]
                             msS = Set.fromList ms
                             g' = foldr (flip delSuccessorEdges) g ms
                             nticd' = PDF.isinkDFTwoFinger g'
                             empty = Map.empty
-                            slicer' = combinedBackwardSlice g (ddep ⊔ nticd') empty
+                            slicer' = combinedBackwardSlice (ddep ⊔ nticd') empty
                         in slicer msS == slicer' msS
                       ))),
       testProperty "nticdNTIODSlice == nticdNTIODSliceViaNticd even when using data dependencies, for random slice-criteria of random size "
@@ -1767,13 +1767,13 @@ wodProps = testGroup "(concerning weak order dependence)" [
                        ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                        nticd = PDF.isinkDFTwoFinger g
                        ntiod =  ODEP.ntiodFastPDomSimpleHeuristic g
-                       slicer = combinedBackwardSlice g (ddep ⊔ nticd) ntiod
+                       slicer = combinedBackwardSlice (ddep ⊔ nticd) ntiod
                        
                        msS = Set.fromList ms
                        g' = foldr (flip delSuccessorEdges) g ms
                        nticd' = PDF.isinkDFTwoFinger g'
                        empty = Map.empty
-                       slicer' = combinedBackwardSlice g (ddep ⊔ nticd') empty
+                       slicer' = combinedBackwardSlice (ddep ⊔ nticd') empty
                    in slicer msS == slicer' msS,
     testProperty "wodTEIL ⊑ ntiod ∪ nticd*"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -2600,14 +2600,14 @@ dodProps = testGroup "(concerning decisive order dependence)" [
                        ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                        ntscd = PDF.mDFTwoFinger g
                        ntsod =  ODEP.ntsodFastPDom g
-                       slicer = combinedBackwardSlice g (ddep ⊔ ntscd) ntsod 
+                       slicer = combinedBackwardSlice (ddep ⊔ ntscd) ntsod 
                    in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 -> (∀) (nodes g) (\m3 ->
                         let ms  = [m1, m2, m3]
                             msS = Set.fromList ms
                             g' = foldr (flip delSuccessorEdges) g ms
                             ntscd' = PDF.mDFTwoFinger g'
                             empty = Map.empty
-                            slicer' = combinedBackwardSlice g (ddep ⊔ ntscd') empty
+                            slicer' = combinedBackwardSlice (ddep ⊔ ntscd') empty
                         in slicer msS == slicer' msS
                       ))),
       testProperty  "mdomOfLfp m2                 == mustOfLfp"

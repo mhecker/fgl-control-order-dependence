@@ -38,6 +38,6 @@ isinkDFNumbered graph = isinkDFNumberedForSinks sinks graph
 
 
 nticdSliceNumbered :: (DynGraph gr) => gr a b ->  Set Node -> Set Node
-nticdSliceNumbered graph =  combinedBackwardSlice graph nticd w
+nticdSliceNumbered graph = combinedBackwardSlice nticd w
   where nticd = isinkDFNumbered graph
         w     = Map.empty

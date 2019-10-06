@@ -17,14 +17,14 @@ import Unicode
 
 
 
-combinedBackwardSliceSlow :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
-combinedBackwardSliceSlow graph cd od = \ms -> (㎲⊒) ms f
+combinedBackwardSliceSlow :: Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
+combinedBackwardSliceSlow cd od = \ms -> (㎲⊒) ms f
   where f slice = slice
                 ⊔ Set.fromList [ n | m <- Set.toList slice, n <- Set.toList $ cd ! m ]
                 ⊔ Set.fromList [ n | m1 <- Set.toList slice, m2 <- Set.toList slice, m1 /= m2, n <- Set.toList $ Map.findWithDefault Set.empty (m1,m2) od ]
 
-combinedBackwardSlice :: DynGraph gr => gr a b -> Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
-combinedBackwardSlice graph cd od = \ms ->
+combinedBackwardSlice :: Map Node (Set Node) -> Map (Node, Node) (Set Node) -> Set Node -> Set Node
+combinedBackwardSlice cd od = \ms ->
      let result = slice Set.empty ms 
          slice s workset
              | Set.null workset = s

@@ -90,6 +90,8 @@ sliceFor ix array = between array (left - 1) (right + 1)
 
 
 
+-- max: 32, at cacheLineSize 128
+-- max:  8, at cacheLineSize  64
 cacheSize = 4
 
 cacheSizeInBytes = cacheLineSize * cacheSize

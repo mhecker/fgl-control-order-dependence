@@ -122,6 +122,12 @@ simpleRcon = assert (length rconConst == 10) $
   foldr Seq Skip [ AssArr rcon (Val i) (Val rcval) | (i,rcval) <- zip [0..9] rconConst]
 
 
+mainInput :: For
+mainInput = 
+        (foldr Seq Skip [ AssArr encryptState (Val i) (Val i) | i <- [0..255]])
+  `Seq` (foldr Seq Skip [ AssArr mainKey      (Val i) (Val i) | i <- [0..255]])
+
+
 
 
 
@@ -321,8 +327,10 @@ br_aes_small_cbcenc_init skey key =
 
 br_aes_small_cbcenc_main :: For
 br_aes_small_cbcenc_main =
-                       br_aes_S
+                       Skip
+                 `Seq` br_aes_S
                  `Seq` simpleRcon
+                 `Seq` mainInput
                  `Seq` br_aes_small_cbcenc_init skey key
                  `Seq` br_aes_small_encrypt skey state
   where key = mainKey

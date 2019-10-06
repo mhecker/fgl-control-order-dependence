@@ -1204,7 +1204,7 @@ mergeFromFor graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
           idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
           roots = Set.fromList y's
 
-csdMergeOf :: forall gr. (DynGraph gr, Show (gr (Node, AbstractCacheState) CFGEdge)) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdMergeOf :: forall gr. (DynGraph gr) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeOf graph n0 =  invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
                                         let Just (n, _) = lab csGraph'' y,
@@ -1272,7 +1272,7 @@ mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor edgeToSuccessors0 g
           roots = Set.fromList y's
 
 
-mergeFromSlow ::  (DynGraph gr, Show (gr (Node, s) CFGEdge))=> gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
+mergeFromSlow ::  (DynGraph gr) => gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
 mergeFromSlow graph csGraph idom roots  =  (𝝂) init f 
   where 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
@@ -1307,7 +1307,7 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
 
-mergeFrom ::  (DynGraph gr, Show (gr (Node, s) CFGEdge)) =>
+mergeFrom ::  (DynGraph gr) =>
   gr CFGNode CFGEdge ->
   gr (Node, s) CFGEdge ->
   Map CacheGraphNode (Maybe CacheGraphNode) ->
@@ -1318,7 +1318,7 @@ mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor edgeToSuccessor
 
 
 
-mergeFromForEdgeToSuccessor ::  (DynGraph gr, Show (gr (Node, s) CFGEdge)) =>
+mergeFromForEdgeToSuccessor ::  (DynGraph gr) =>
   Map (CacheGraphNode, CFGEdge) (Set (CacheGraphNode, Node)) ->
   gr CFGNode CFGEdge ->
   gr (Node, s) CFGEdge ->

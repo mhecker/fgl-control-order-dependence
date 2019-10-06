@@ -60,6 +60,7 @@ library
   exposed-modules:
     IRLSOD
     CacheExecution
+    CacheSlice
     Unicode
     NNGraph
     Statistics

@@ -61,6 +61,7 @@ import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
 import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph)
+import CacheSlice (cacheTimingSliceViaReach)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
 import Data.Graph.Inductive.Query.DFS (scc, dfs, rdfs, rdff, reachable, condensation)
@@ -4715,40 +4716,25 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g0 = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        
                         vars = Set.fromList [ var | n <- nodes g0, var <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName var]
                         (newN0:new) = (newNodes ((Set.size vars) + 1) g0)
                         varToNode = Map.fromList $ zip (Set.toList vars) new
                         nodeToVar = Map.fromList $ zip new (Set.toList vars)
-
                         prepend = prependInitialization g0 n0 newN0 varToNode
 
                         initialGlobalState1 = Map.fromList $ zip (Set.toList vars) (fmap (`rem` 32) $ moreSeeds seed1 (Set.size vars))
                         initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
                         g1 = prepend initialGlobalState1
 
-
-                        (ccg1, cost) = cacheCostDecisionGraph g1 newN0
-                        costF n m = cost ! (n,m)
-                        artificialNodes = Set.fromList (nodes ccg1) ∖ Set.fromList (nodes g1)
-                        
-                        -- nticd' =            isinkDFTwoFinger g1
-                        tscd'  =            TSCD.timDFFromFromItimdomMultipleOfFastCost ccg1 costF
-                        dd'    = invert'' $ dataDependence         ccg1 vars newN0
-                        -- csd'   = invert'' $ csd'Of                 g1      newN0
-                        -- csd'   = invert'' $ csd''''Of3             g1      newN0
-                        csd'   = invert'' $ csdMergeOf             g1      newN0
-
-
-                        slicer ms = s ∖ artificialNodes
-                          where s = combinedBackwardSlice g1 (tscd' ⊔ dd' ⊔ csd') (Map.empty) ms
+                        slicer = cacheTimingSliceViaReach g1 newN0
 
                         limit = 9000
                         (execution1, limited1) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
                           where es = cacheExecutionLimit limit g1 initialFullState newN0
 
                         ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 100]
-                    in traceShow ("|g1|", length $ nodes g1, "|ccg1|", length $ nodes ccg1, "|csd'", sum $ fmap Set.size $ Map.elems csd') $
-                       (∀) ms (\m ->
+                    in (∀) ms (\m ->
                          let s = slicer (Set.fromList [m])
                              notInS = (Set.fromList $ Map.elems varToNode) ∖ s
                              newValues = fmap (`rem` 32) $ moreSeeds (seed3 + m) (Set.size notInS)
@@ -4761,9 +4747,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                              exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
                              exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
 
-                             ok = -- traceShow ("|notInS|:", Set.size notInS, "Limited: ", limited1 ∨ limited2, "   |execution1|: ", length execution1, "   |execution2|: ", length execution2) $
-                                  -- traceShow ("g2: ", g2) $
-                                  limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
+                             ok = limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
                           in if ok then ok else
                                traceShow ("M:: ", m, "  S::", s) $
                                traceShow ("G1 =====", g1) $
@@ -4773,52 +4757,9 @@ cacheProps = testGroup "(concerning cache timing)" [
                                traceShow (List.span (\(a,b) -> a == b) (zip exec1Obs exec2Obs)) $
                                ok
                         )
-                    --      let observable   = InfiniteDelay.observable s
-                    --          differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
-                    --            let input = InfiniteDelay.Input startNode choice
-                    --                trace = runInput input
-                    --                obs   = observable trace
-                    --            in (∃) choices' (\choice' ->
-                    --                 let input' = InfiniteDelay.Input startNode choice'
-                    --                     trace' = runInput input'
-                    --                     obs'   = observable trace'
-                    --                     different = not $ obs == obs'
-                    --                  in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
-                    --                     different
-                    --               )
-                    --            ))
-                    --      in not differentobservation
-                    -- ),
   ]
   
--- cacheTests = testGroup "(concerning  inifinite delay)" $
---   [  testCase    ( "ntscdNTSODFastPDomSlice  is sound for " ++ exampleName) $ 
---                let n = toInteger $ length $ nodes g
---                    condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
---                    choices    = InfiniteDelay.allChoices g Map.empty condNodes
---                    runInput   = InfiniteDelay.runInput         g
---                in (∀) (nodes g) (\m1 -> (∀) (nodes g) (\m2 ->
---                     let s = SLICE.ODEP.ntscdNTSODFastPDomSlice g (Set.fromList [m1, m2])
---                         observable       = InfiniteDelay.observable         s
---                         differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
---                                let input = InfiniteDelay.Input startNode choice
---                                    trace = runInput input
---                                    obs   = observable trace
---                                in (∃) choices' (\choice' ->
---                                     let input' = InfiniteDelay.Input startNode choice'
---                                         trace' = runInput input'
---                                         obs'   = observable trace'
---                                         different = not $ obs == obs'
---                                      in (if not $ different then id else traceShow (m1,m2, startNode, choice, choice', g)) $
---                                         different
---                                   )
---                                ))
---                     in -- traceShow (length $ nodes g, Set.size s, Set.size condNodes) $
---                        (if not $ differentobservation then id else traceShow (m1, m2, differentobservation)) $
---                        not differentobservation
---                   )) @? ""
---   | (exampleName, g) <- interestingDodWod, exampleName /= "wodDodInteresting4"
---   ] ++
+-- cacheTests = testGroup "(concerning cache timing)" $
 --   []
 
 

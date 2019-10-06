@@ -82,6 +82,7 @@ encryptIndexU           = Register 5
 addRoundTmp             = Register 6
 subBytesTmp             = Register 7
 subBytesTmp2            = Register 8
+addRoundTmp2            = Register 9
 encryptState            = Array  "encryptState"
 
 aesKeySchedI            = Global "aesKeySchedI"
@@ -135,13 +136,15 @@ addRound :: Array -> Array -> VarFunction -> For
 addRound state skey offset = 
                        Ass i (Val 0)
                  `Seq` ForC 16 (
-                                 Ass tmp (ArrayRead state (AssertRange 0 15 $ Var i))
-                           `Seq` Ass tmp (Var tmp `Xor` (ArrayRead skey (Var i `Plus` offset)))
+                                 Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
+                           `Seq` Ass tmp2 (ArrayRead skey (Var i `Plus` offset))
+                           `Seq` Ass tmp (Var tmp `Xor` (Var tmp2))
                            `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp)
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
   where i = addRoundIteratorIndex
-        tmp = addRoundTmp
+        tmp  = addRoundTmp
+        tmp2 = addRoundTmp2
 
 sub_bytes :: Array -> For
 sub_bytes state =

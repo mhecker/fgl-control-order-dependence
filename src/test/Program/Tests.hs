@@ -103,7 +103,7 @@ import qualified Data.Set as Set
 
 
 main = let {
-         pr = for2Program $ br_aes_small_cbcenc_mainCheat  :: Program Gr ;
+         pr = for2Program $ br_aes_small_cbcenc_main  :: Program Gr ;
          graph = tcfg pr ; n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          csGraph = cacheStateGraph graph initialCacheState n0
        } in

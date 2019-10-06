@@ -193,7 +193,7 @@ instance SimpleShow CacheValue where
 
 isCachable :: Name -> Bool
 isCachable (VarName (Global _)) = True
-isCachable (VarName (ThreadLocal _)) = True -- maybe we dont want this?
+isCachable (VarName (ThreadLocal _)) = False
 isCachable (VarName (Register _)) = False
 isCachable (ArrayName _) = True
 
@@ -330,7 +330,7 @@ sameArrayAs _ _                          = False
 cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
 cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ lookup     σv
-    ThreadLocal _ -> assert (      isCachable $ VarName var) $ lookup     tlσ
+    ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (tlσ ! var, cache, registerAccessTime)
     Register    _ -> assert (not $ isCachable $ VarName var) $ (tlσ ! var, cache, registerAccessTime)
   where cvar = CachedVar var
 
@@ -347,7 +347,7 @@ cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var o
 cacheTimeReadLRU :: Var -> CacheState -> (CacheState, AccessTime)
 cacheTimeReadLRU var cache = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ lookup
-    ThreadLocal _ -> assert (      isCachable $ VarName var) $ lookup
+    ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
   where cvar = CachedVar var
         lookup =
@@ -442,7 +442,7 @@ cacheTimeReadLRUState var = do
 cacheTimeWriteLRU :: Var -> CacheState -> (CacheState, AccessTime)
 cacheTimeWriteLRU var cache = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ write
-    ThreadLocal _ -> assert (      isCachable $ VarName var) $ write
+    ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
   where cvar = CachedVar var
         write = 
@@ -519,7 +519,7 @@ cacheTimeArrayWriteUnknownIndexLRUState arr = do
 cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
 cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) =  case var of
     Global      _ -> assert (      isCachable $ VarName var) $ let (     σv', cache', accessTime) = write      σv in ((globalσ{ σv = σv'}, tlσ , i), cache', time + accessTime)
-    ThreadLocal _ -> assert (      isCachable $ VarName var) $ let (    tlσ', cache', accessTime) = write     tlσ in ((globalσ           , tlσ', i), cache', time + accessTime)
+    ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
     Register    _ -> assert (not $ isCachable $ VarName var) $ let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
   where cvar = CachedVar var
         cval = CachedVal val

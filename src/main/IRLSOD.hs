@@ -225,8 +225,8 @@ data CFGEdge = Guard  Bool BoolFunction
              | Print  VarFunction  OutputChannel
              | Call
              | CallSummary
-             | Use    Var
-             | Def    Var
+             | Use    [Name]
+             | Def    [Name]
              | Return
              | NoOp
              | Spawn
@@ -260,7 +260,8 @@ useEFor useV useB Spawn          = Set.empty
 useEFor useV useB (Print vf _)   = useV vf
 useEFor useV useB NoOp           = Set.empty
 useEFor useV useB (Def _)        = Set.empty
-useEFor useV useB (Use x)        = useV (Var x)
+useEFor useV useB (Use xs)       =   (∐) [ useV $ ArrayRead a (Val 0) | ArrayName a <- xs ]
+                                   ∪ (∐) [ useV $ Var v               | VarName   v <- xs ] -- == Set.fromList xs
 useEFor useV useB CallSummary    = Set.empty
 useEFor useV useB Call           = Set.empty
 useEFor useV useB Return         = Set.empty
@@ -273,7 +274,7 @@ defE (Read    x _) = Set.singleton $ VarName x
 defE Spawn         = Set.empty
 defE (Print   _ _) = Set.empty
 defE NoOp          = Set.empty
-defE (Def x)       = Set.fromList [ VarName x]
+defE (Def xs)      = Set.fromList xs
 defE (Use _)       = Set.empty
 defE CallSummary   = Set.empty
 defE Call          = Set.empty

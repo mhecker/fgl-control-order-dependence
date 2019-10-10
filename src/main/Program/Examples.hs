@@ -3418,6 +3418,29 @@ exampleTooCoarseAbstractionIsUnsound = toProgramIntra $ IntraGeneratedProgram
 
 
 
+exampleArrayDataDep :: Program Gr
+exampleArrayDataDep = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Ass (Global "b") (Val 1)
+               `Seq`  Ass (Global "x") (Val 0)
+               `Seq`  Ass (Global "y") (Val 255)
+               `Seq`  Ass (Register 0) (Var $ Global "x")
+               `Seq`  Ass (Register 1) (Var $ Global "y")
+               `Seq`  If ((Var $ Global "l") `Leq` (Val 5)) (
+                          AssArr (Array "a") (Var $ Register 0) (Val 0)
+                      ) {- else -} (
+                          AssArr (Array "a") (Var $ Register 1) (Val 0)
+                      )
+               `Seq`  Ass (Register 44) (Val 137)
+               `Seq`  Ass (Register 55) (Val 42)
+               `Seq`  Ass (Register 21) (ArrayRead (Array "a") (Val 0))
+               `Seq`  Ass (Register 22) (ArrayRead (Array "a") (Var $ (Register 44)))
+               `Seq`  Ass (Register 23) (ArrayRead (Array "a") (ArrayRead (Array "b") (Var $ (Register 44))))
+                     ) undefined undefined undefined)])
+
+
+
 
 exampleDomPaths :: Program Gr
 exampleDomPaths = toProgramIntra $ IntraGeneratedProgram

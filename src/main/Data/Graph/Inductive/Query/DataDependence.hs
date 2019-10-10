@@ -57,8 +57,9 @@ dependenceAnalysis vars = DataflowAnalysis {
   transfer e@(_,_,AssignArray a _ _ )
                               reachingDefs =     alter  (ArrayName a) (insert        e) reachingDefs
   transfer e@(_,_,Read   x _) reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
-  transfer e@(_,_,Def    x)   reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
-  transfer e@(_,_,Use    x)   reachingDefs = reachingDefs
+  transfer e@(_,_,Def    xs)  reachingDefs = foldr ins reachingDefs xs -- For arrays, this kind of Def  are assumed to def *every* array cell.
+    where ins x rs = Map.insert x (Set.singleton e) rs 
+  transfer e@(_,_,Use    xs)  reachingDefs = reachingDefs
   transfer e@(_,_,Print  _ _) reachingDefs = reachingDefs
   transfer e@(_,_,Spawn)      reachingDefs = reachingDefs
   transfer e@(_,_,NoOp)       reachingDefs = reachingDefs
@@ -171,23 +172,23 @@ withParameterNodes p@(Program { tcfg, entryOf, exitOf, staticProcedures })
 addFormals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Map (Node, Node) (Set Node) -> Gen Node (gr SDGNode CFGEdge, Map (Node, Node) (Set Node))
 addFormals allVars                   [] graph parameterNodesFor = return (graph, parameterNodesFor)
 addFormals allVars ((entry, exit):rest) graph parameterNodesFor = do
-        (withFormalIns,  formalIns)  <- addAfter  entry NoOp Dummy [ (FormalIn  v, Def v) | v <- Set.toList $ allVars ] graph
-        (withFormalOuts, formalOuts) <- addBefore exit             [ (FormalOut v, Use v) | v <- Set.toList $ allVars ] withFormalIns
+        (withFormalIns,  formalIns)  <- addAfter  entry NoOp Dummy [ (FormalIn  v, Def [VarName v]) | v <- Set.toList $ allVars ] graph
+        (withFormalOuts, formalOuts) <- addBefore exit             [ (FormalOut v, Use [VarName v]) | v <- Set.toList $ allVars ] withFormalIns
         addFormals allVars rest withFormalOuts (parameterNodesFor ⊔ (Map.fromList [ ((entry, exit), formalIns ∪ formalOuts) ]))
 
 
 addActuals :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Map (Node, Node) (Set Node) -> Gen Node (gr SDGNode CFGEdge, Map (Node, Node) (Set Node))
 addActuals allVars []                    graph parameterNodesFor = return (graph, parameterNodesFor)
 addActuals allVars ((call, return):rest) graph parameterNodesFor = do
-        (withActualIns,  actualIns ) <- addAfter  call   NoOp Dummy [ (ActualIn  v (call, return), Use v) | v <- Set.toList $ allVars ] graph
-        (withActualOuts, actualOuts) <- addBefore return            [ (ActualOut v (call, return), Def v) | v <- Set.toList $ allVars ] withActualIns
+        (withActualIns,  actualIns ) <- addAfter  call   NoOp Dummy [ (ActualIn  v (call, return), Use [VarName v]) | v <- Set.toList $ allVars ] graph
+        (withActualOuts, actualOuts) <- addBefore return            [ (ActualOut v (call, return), Def [VarName v]) | v <- Set.toList $ allVars ] withActualIns
         addActuals allVars rest withActualOuts (parameterNodesFor ⊔ (Map.fromList [ ((call, return), actualIns ∪ actualOuts) ]))
 
 
 addSpawns :: DynGraph gr => Set Var -> [(Node, Node)] -> gr SDGNode CFGEdge -> Gen Node (gr SDGNode CFGEdge)
 addSpawns allVars []                    graph = return graph
 addSpawns allVars ((spawn, entry):rest) graph = do
-        (withSpawns, _             ) <- addBefore entry             [ (SpawnIn   v spawn, Use v) | v <- Set.toList $ allVars ] graph
+        (withSpawns, _             ) <- addBefore entry             [ (SpawnIn   v spawn, Use [VarName v]) | v <- Set.toList $ allVars ] graph
         addSpawns allVars rest withSpawns
 
 addAfter :: DynGraph gr => Node -> b -> a ->  [(a,b)] -> gr a b -> Gen Node (gr a b, Set Node)

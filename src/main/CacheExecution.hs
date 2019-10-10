@@ -1010,12 +1010,9 @@ cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNo
 cacheCostDecisionGraph g n0 = (
       mkGraph
         ((labNodes g) ++ ([(n,n) | n <- new]))
-        (irrelevant ++ [ (n , m', l   ) | ((e@(n,_,l),_), m') <- Map.assocs nodesFor,       isDataDependent l ]
-                    ++ [ (m', mj, NoOp) | ((e@(_,_,l),_), m') <- Map.assocs nodesFor,       isDataDependent l, let mj = joinFor ! e ]
-                    ++ [ (mj, m , NoOp) |   e@(_,m,l)         <- relevant,                  isDataDependent l, let mj = joinFor ! e ]
-                    ++ [ (n , m', NoOp) | ((e@(n,_,l),_), m') <- Map.assocs nodesFor, not $ isDataDependent l ]
-                    ++ [ (m', mj, NoOp) | ((e@(_,m,l),_), m') <- Map.assocs nodesFor, not $ isDataDependent l, let mj = joinFor ! e ]
-                    ++ [ (mj,  m, l   ) |   e@(_,m,l)         <- relevant,            not $ isDataDependent l, let mj = joinFor ! e ]
+        (irrelevant ++ [ (n , m', l'  ) | ((e@(n,_,l),_), m') <- Map.assocs nodesFor, let l' = Use $ isDataDependent l ]
+                    ++ [ (m', mj, NoOp) | ((e@(_,_,l),_), m') <- Map.assocs nodesFor,                          let mj = joinFor ! e ]
+                    ++ [ (mj,  m, l   ) |   e@(_,m,l)         <- relevant,                                     let mj = joinFor ! e ]
         ),
                   Map.fromList [ ((n ,m ), cost    ) | e@(n,m,l) <- irrelevant, let [cost] = Set.toList $ costs ! e,           assert (cost > 0) True ]
       `Map.union` Map.fromList [ ((n ,m'), cost - 2) | ((e@(n,_,l),cost), m') <- Map.assocs nodesFor,                          assert (cost > 2) True ]
@@ -1050,11 +1047,11 @@ cacheCostDecisionGraph g n0 = (
                 arrayReadsE = useEFor arrayReadsV arrayReadsB
 
 
-                isDataDepV vf = not $ List.null $ [ r | r@(ArrayRead a ix) <- Set.toList $ arrayReadsV vf, case ix of { Val _ -> False ; _ -> True } ]
+                isDataDepV vf = [ name | r@(ArrayRead a ix) <- Set.toList $ arrayReadsV vf, case ix of { Val _ -> False ; _ -> True }, name <- Set.toList $ useV ix ]
 {- unused
                 isDataDepB bf = not $ List.null $ [ r | r@(ArrayRead a ix) <- Set.toList $ arrayReadsB bf, case ix of { Val _ -> False ; _ -> True } ]
 -}
-                isDataDepE l  = not $ List.null $ [ r | r@(ArrayRead a ix) <- Set.toList $ arrayReadsE  l, case ix of { Val _ -> False ; _ -> True } ]
+                isDataDepE l  = [ name | r@(ArrayRead a ix) <- Set.toList $ arrayReadsE  l, case ix of { Val _ -> False ; _ -> True }, name <- Set.toList $ useV ix ]
 
         nodesFor =               Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ costs ! e ] (take totalnewSplit new)
         joinFor  =               Map.fromList $ zip                     relevant                                   (drop totalnewSplit new)

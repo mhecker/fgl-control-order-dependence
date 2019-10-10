@@ -55,13 +55,13 @@ cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) =>
   -> Set Node
   -> Set Node
 cacheTimingSliceFor csd g n0 = \ms ->
-    traceShow ("ccg",         ccg) $
+    -- traceShow ("ccg",         ccg) $
     -- traceShow ("tscd", hide $ tscd') $
     -- traceShow ("dd",   hide $ dd') $ 
     -- traceShow ("csd",  hide $ csd') $
  -- combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms
-    traceShow (3, 19, path 3 19) $
-    traceShow (3, 20, path 3 20) $
+    -- traceShow (3, 19, path 3 19) $
+    -- traceShow (3, 20, path 3 20) $
     traceShow (3, 22, path 3 22) $
     traceShow (3, 23, path 3 23) $ 
     combinedBackwardSlice3  tscd'   dd'   csd'            ms

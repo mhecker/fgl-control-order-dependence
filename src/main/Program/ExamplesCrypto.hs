@@ -1,4 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
+#define require assert
 module Program.ExamplesCrypto where
 
 
@@ -26,6 +28,19 @@ import Data.Set.Unicode
 
 
 import Control.Exception.Base (assert)
+
+unrolledFor unrolls n command =
+    require (n >         0)
+  $ require (n >=  unrolls)
+  $ if (unrolls == n) then
+      foldr1 Seq                              commands
+     else
+      foldr  Seq (ForC (n - unrolls) command) commands
+  where commands = take unrolls $ repeat command
+
+for  = unrolledFor 1
+
+
 
 
 for2Program :: For -> Program Gr
@@ -135,7 +150,7 @@ mainInput =
 addRound :: Array -> Array -> VarFunction -> For
 addRound state skey offset = 
                        Ass i (Val 0)
-                 `Seq` ForC 16 (
+                 `Seq` for 16 (
                                  Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp2 (ArrayRead skey (Var i `Plus` offset))
                            `Seq` Ass tmp (Var tmp `Xor` (Var tmp2))
@@ -149,7 +164,7 @@ addRound state skey offset =
 sub_bytes :: Array -> For
 sub_bytes state =
                        Ass i (Val 0)
-                 `Seq` ForC 16 (
+                 `Seq` for 16 (
                                  Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp2 (ArrayRead sbox (Var tmp))
                            `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp2)
@@ -245,12 +260,12 @@ expandKey :: Array -> Array -> For
 expandKey skey key =
                        Ass n (Val 1)
                  `Seq` Ass i (Val 0)
-                 `Seq` ForC 32 (
+                 `Seq` for 32 (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
-                 `Seq` foldr Seq Skip [ for size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1] ]
-  where for size =
+                 `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1] ]
+  where body size =
                        Ass t0 (ArrayRead skey (Val $ 0 + size - 4))
                  `Seq` Ass t1 (ArrayRead skey (Val $ 1 + size - 4))
                  `Seq` Ass t2 (ArrayRead skey (Val $ 2 + size - 4))
@@ -287,7 +302,7 @@ expandKey skey key =
 br_aes_small_cbcenc_run :: Array -> Array -> Array -> For
 br_aes_small_cbcenc_run skey buf iv =
                         Ass i (Val 0)
-                 `Seq` ForC 16 (
+                 `Seq` for 16 (
                                  AssArr buf (Var i) (  (ArrayRead buf (Var i)) `Xor` (ArrayRead iv (Var i)))
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
@@ -302,7 +317,7 @@ br_aes_small_encryptFor ::
 br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                        addRound state skey (Val 0)
                  `Seq` Ass u (Val 1)
-                 `Seq` ForC (num_rounds - 1) (
+                 `Seq` for (num_rounds - 1) (
                                  sub_bytes state
                  `Seq`           shift_rows state
                  `Seq`           addRound state skey (Var u `Shl` (Val 2))

@@ -288,10 +288,10 @@ expandKey skey key =
                        ) else (
                            Skip
                        )
-                 `Seq` AssArr skey (Val $ size + 0) (ArrayRead skey ((Val $ size - (keySize `div` 8)) `Xor` (Var t0)))
-                 `Seq` AssArr skey (Val $ size + 1) (ArrayRead skey ((Val $ size - (keySize `div` 8)) `Xor` (Var t1)))
-                 `Seq` AssArr skey (Val $ size + 2) (ArrayRead skey ((Val $ size - (keySize `div` 8)) `Xor` (Var t2)))
-                 `Seq` AssArr skey (Val $ size + 3) (ArrayRead skey ((Val $ size - (keySize `div` 8)) `Xor` (Var t3)))
+                 `Seq` AssArr skey (Val $ size + 0) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t0))
+                 `Seq` AssArr skey (Val $ size + 1) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t1))
+                 `Seq` AssArr skey (Val $ size + 2) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t2))
+                 `Seq` AssArr skey (Val $ size + 3) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t3))
 
         i = expandKeyIndex 
         t0 = expandKeyT !! 0

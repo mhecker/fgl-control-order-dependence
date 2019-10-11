@@ -6,6 +6,8 @@ import System.Process
 
 import Data.Graph.Inductive.Dot
 
+import Data.Word
+
 import Data.List
 
 import Data.Maybe (fromJust)
@@ -35,6 +37,8 @@ import Program
 import Program.Defaults
 import Program.Examples
 import Program.ExamplesCrypto
+import ReferenceCrypto
+
 import Program.MultiThread
 import Program.MHP
 import Program.CDom

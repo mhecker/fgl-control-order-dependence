@@ -184,7 +184,7 @@ sub_bytes state =
 
 shift_rows :: Array -> For
 shift_rows state =
-                       Ass tmp (ArrayRead state (Val 5))
+                       Ass tmp (ArrayRead state (Val 1))
                 `Seq`  AssArr state (Val  1) (ArrayRead state (Val  5))
                 `Seq`  AssArr state (Val  5) (ArrayRead state (Val  9))
                 `Seq`  AssArr state (Val  9) (ArrayRead state (Val 13))
@@ -193,6 +193,7 @@ shift_rows state =
                 `Seq`  Ass tmp (ArrayRead state (Val 2))
                 `Seq`  AssArr state (Val  2) (ArrayRead state (Val 10))
                 `Seq`  AssArr state (Val 10) (Var tmp)
+                       
                 `Seq`  Ass tmp (ArrayRead state (Val 6))
                 `Seq`  AssArr state (Val  6) (ArrayRead state (Val 14))
                 `Seq`  AssArr state (Val 14) (Var tmp)

@@ -421,6 +421,16 @@ runAES256 key msg =
   in outputs
 
 
+runMixColumns :: [Word8] -> [Word8] -> [Word8]
+runMixColumns key msg = 
+  let program = for2Program $ ioInput `Seq` (mixColumns encryptState) `Seq` ioOutput :: Program Gr
+      input = inputFor key msg
+      traces = allFinishedExecutionTraces program input
+      outputs =
+          assert (length traces == 1)
+        $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
+  in outputs
+
 
 cryptoTestSuit = [
                 $(withName 'br_aes_small_cbcenc_main)

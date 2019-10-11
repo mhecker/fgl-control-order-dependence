@@ -104,19 +104,25 @@ import qualified Data.Set as Set
 
 
 main = let {
-         pr = for2Program $ br_aes_small_cbcenc_main  :: Program Gr ;
+         pr = for2Program $ br_aes_small_cbcenc_mainCheat mainInput Skip  :: Program Gr ;
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         csGraph = cacheStateGraph graph initialCacheState n0
+         csGraph = cacheStateGraph graph initialCacheState n0 ;
+         (ccg, cost) = cacheCostDecisionGraph graph n0
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph
     putStrLn  $ show $ (n0,nx)
     showGraphWith simpleShow simpleShow $ withNodes $ graph
+
+    putStrLn  $ show $ length $ nodes $ ccg
+    showGraphWith simpleShow simpleShow $ withNodes $ ccg
+
     putStrLn  $ show $ cacheTimingSliceViaReach graph n0 (Set.fromList [nx])
 
-    putStrLn  $ show $ length $ nodes $ csGraph
+    
+    -- putStrLn  $ show $ length $ nodes $ csGraph
     -- showGraphWith simpleShow simpleShow $ withNodes $ csGraph
 
 showCdomChef p = [ ((n,n'),c) | ((n,n'),c) <- Map.toList $ idomChef p, (n,n') ∈ mhp]

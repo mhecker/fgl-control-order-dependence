@@ -67,6 +67,22 @@ showAllFinishedExecutionTraces program input = do
        )
     )
 
+
+showAllFinishedEvents program input = do
+  forM_ (allFinishedExecutionTraces program input) (\trace -> do
+     putStrLn "-----------------"
+     forM_ trace (\((ns,globalσ,tlσ,i),(n,e,index),(ns',globalσ',tlσ',i')) -> do
+        if (e == Tau) then
+          return ()
+         else do
+          putStr   $ "---"
+          putStr   $ show (e)
+          putStrLn $ "-->"
+          putStrLn $ ""
+       )
+    )
+
+
 allFinishedExecutionTraces :: Graph gr => Program gr -> Input -> [ExecutionTrace]
 allFinishedExecutionTraces program@(Program { tcfg }) input = fmap reverse $ iter [] [[(initialConfiguration program input, e, c')] | (e,c') <- eventStep tcfg $ initialConfiguration program input]
   where iter :: [ExecutionTrace] -> [ExecutionTrace] -> [ExecutionTrace]

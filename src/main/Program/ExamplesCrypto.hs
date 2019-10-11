@@ -10,6 +10,7 @@ import Program.Defaults
 import Program.Generator (Generated(..), GeneratedProgram(..), IntraGeneratedProgram(..), toProgram, toProgramIntra)
 
 import IRLSOD
+import Execution(allFinishedExecutionTraces)
 
 import Unicode
 
@@ -99,6 +100,7 @@ subBytesTmp             = Register 7
 subBytesTmp2            = Register 8
 addRoundTmp2            = Register 9
 addRoundTmp3            = Register 10
+ioTmp                   = Register 11
 encryptState            = Array  "encryptState"
 
 aesKeySchedI            = Global "aesKeySchedI"
@@ -331,10 +333,12 @@ br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                  `Seq` addRound state skey (Val num_rounds `Shl` (Val 2))
   where u = encryptIndexU
 
-br_aes_small_encrypt = br_aes_small_encryptFor addRound sub_bytes shift_rows
+br_aes_small_encrypt      = br_aes_small_encryptFor addRound sub_bytes shift_rows
 
-
-br_aes_small_encryptCheat = br_aes_small_encryptFor cheat3 cheat1 cheat1
+{-
+br_aes_small_encryptCheat = br_aes_small_encryptFor cheat3   cheat1    cheat1
+-}
+br_aes_small_encryptCheat = br_aes_small_encryptFor cheat3   cheat1    shift_rows
   where cheat1 _     = Skip
         cheat2 _ _   = Skip
         cheat3 _ _ _ = Skip
@@ -346,26 +350,52 @@ br_aes_small_cbcenc_init skey key =
                        -- br_aes_keysched skey key
                        expandKey skey key
 
-br_aes_small_cbcenc_main :: For
-br_aes_small_cbcenc_main =
+br_aes_small_cbcenc_main :: For -> For -> For
+br_aes_small_cbcenc_main input output =
                        Skip
                  `Seq` br_aes_S
                  `Seq` simpleRcon
-                 `Seq` mainInput
+                 `Seq` input
                  `Seq` br_aes_small_cbcenc_init skey key
                  `Seq` br_aes_small_encrypt skey state
+                 `Seq` output
   where key = mainKey
         skey = mainSkey
         state = encryptState
 
-br_aes_small_cbcenc_mainCheat :: For
-br_aes_small_cbcenc_mainCheat =
+br_aes_small_cbcenc_mainCheat :: For -> For -> For
+br_aes_small_cbcenc_mainCheat input output =
                        Skip
+                 `Seq` input
                  `Seq` br_aes_small_cbcenc_init skey key
                  `Seq` br_aes_small_encryptCheat skey state
+                 `Seq` output
   where key = mainKey
         skey = mainSkey
         state = encryptState
+
+ioInput :: For
+ioInput =
+          (foldr1 Seq [ ReadFromChannel tmp stdIn `Seq` AssArr state (Val i) (Var tmp) | i <- [0..15]])
+    `Seq` (foldr1 Seq [ ReadFromChannel tmp stdIn `Seq` AssArr key   (Val i) (Var tmp) | i <- [0..(key_len - 1)]])
+  where key = mainKey
+        state = encryptState
+        tmp = ioTmp
+ioOutput = 
+          (foldr1 Seq [ PrintToChannel  (ArrayRead state (Val i)) stdOut  | i <- [0..15]])
+  where state = encryptState
+  
+
+inputFor key state = Map.fromList [(stdIn, state ++ key)]
+
+runAES256 key msg =
+  let program = for2Program $ br_aes_small_cbcenc_main ioInput ioOutput :: Program Gr
+      input = inputFor key msg
+      traces = allFinishedExecutionTraces program input
+      outputs =
+          assert (length traces == 1)
+        $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
+  in outputs
 
 
 

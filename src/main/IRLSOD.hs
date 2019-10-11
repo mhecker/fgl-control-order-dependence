@@ -348,6 +348,7 @@ fromEdge σg σl i (Guard b bf)
   | b == evalB σg σl  bf = Tau
   | otherwise            = undefined
 fromEdge σg σl i (Assign x  vf) = Tau
+fromEdge σg σl i (AssignArray _ _ _) = Tau
 fromEdge σg σl i (Read   x  ch) = ReadEvent  (head $ i ! ch)   ch
 fromEdge σg σl i (Print  vf ch) = PrintEvent (evalV σg σl vf) ch
 fromEdge σg σl i (Spawn      ) = Tau

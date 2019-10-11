@@ -78,6 +78,7 @@ sboxConst = [
 
 rcon                    = Array "rcon"
 rconConst = [
+    0x00,
     0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
     0x40, 0x80, 0x1B, 0x36
  ]
@@ -139,8 +140,8 @@ br_aes_S = assert (length sboxConst == 256) $
 
 
 simpleRcon :: For
-simpleRcon = assert (length rconConst == 10) $ 
-  foldr Seq Skip [ AssArr rcon (Val i) (Val rcval) | (i,rcval) <- zip [0..9] rconConst]
+simpleRcon = assert (length rconConst == 11) $ 
+  foldr Seq Skip [ AssArr rcon (Val i) (Val rcval) | (i,rcval) <- zip [0..10] rconConst]
 
 
 mainInput :: For
@@ -307,10 +308,10 @@ expandKey skey key =
                        ) else (
                            Skip
                        )
-                 `Seq` AssArr skey (Val $ from $ size + 0) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t0))
-                 `Seq` AssArr skey (Val $ from $ size + 1) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t1))
-                 `Seq` AssArr skey (Val $ from $ size + 2) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t2))
-                 `Seq` AssArr skey (Val $ from $ size + 3) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t3))
+                 `Seq` AssArr skey (Val $ from $ size + 0) (ArrayRead skey (Val $ from $ size + 0 - (keySize `div` 8)) `Xor` (Var t0))
+                 `Seq` AssArr skey (Val $ from $ size + 1) (ArrayRead skey (Val $ from $ size + 1 - (keySize `div` 8)) `Xor` (Var t1))
+                 `Seq` AssArr skey (Val $ from $ size + 2) (ArrayRead skey (Val $ from $ size + 2 - (keySize `div` 8)) `Xor` (Var t2))
+                 `Seq` AssArr skey (Val $ from $ size + 3) (ArrayRead skey (Val $ from $ size + 3 - (keySize `div` 8)) `Xor` (Var t3))
 
         i = expandKeyIndex 
         t0 = expandKeyT !! 0

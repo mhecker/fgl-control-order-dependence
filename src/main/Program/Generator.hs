@@ -298,7 +298,8 @@ expGenerator varsAvailable
            return $ xx `Times` yy
     )
   ]
- where vals = [-1,0,1,9,4]
+ where vals = [mid - 1, mid + 0, mid + 1, mid + 9, mid + 4]
+         where mid = centralValue
        forName = forAvailableName varsAvailable
 
 forAvailableName namesAvailable x = do

@@ -56,20 +56,27 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Inpu
 
 
 cacheLineSize :: Int
-cacheLineSize = assert ((arrayMaxIndex + 1) `mod` n == 0) n
-  where n = 64
+cacheLineSize =
+       assert ((max + 1) `mod` n == 0)
+     $ assert ( n <= max + 1)
+     $ n
+  where max = fromIntegral arrayMaxIndex
+        n = 64
+
+cacheLineSizeVal = fromIntegral cacheLineSize
 
 initialCacheLine   = [  0 | i <- [0 .. cacheLineSize - 1] ]
-undefinedCacheLine = [ -1 | i <- [0 .. cacheLineSize - 1] ]
+undefinedCacheLine = [0-1 | i <- [0 .. cacheLineSize - 1] ]
 
-toAlignedIndex i = require (isArrayIndex i) $ (i `div` cacheLineSize) * cacheLineSize
+toAlignedIndex :: Val -> Val
+toAlignedIndex i = require (isArrayIndex i) $ (i `div` cacheLineSizeVal) * cacheLineSizeVal
 
 
 {- all possible cacheline aligned array indices -}
-alignedIndices = [ cacheLineSize * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` cacheLineSize ]]
+alignedIndices = [ cacheLineSizeVal * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` cacheLineSizeVal ]]
 {- all possible cacheline aligned array indices relevant for an array acces at index x such that x is known to be: min <= x <= max -}
 alignedIndicesFor min max = require (min <= max) $
-    [ i | i <- alignedIndices, (i  < min  ∧  i + cacheLineSize > min)  ∨  (min <= i ∧ i <= max) ]
+    [ i | i <- alignedIndices, (i  < min  ∧  i + cacheLineSizeVal > min)  ∨  (min <= i ∧ i <= max) ]
 
 nrOfDifferentCacheLinesPerArray = length $ alignedIndices
 
@@ -83,7 +90,7 @@ between map n m = require (n <= m) $
 sliceFor :: Index -> ArrayVal -> ArrayVal
 sliceFor ix array = between array (left - 1) (right + 1)
   where left  = toAlignedIndex ix
-        right = left + cacheLineSize - 1
+        right = left + cacheLineSizeVal - 1
 
 
 
@@ -92,6 +99,7 @@ sliceFor ix array = between array (left - 1) (right + 1)
 
 -- max: 32, at cacheLineSize 128
 -- max:  8, at cacheLineSize  64
+cacheSize :: Int
 cacheSize = 4
 
 cacheSizeInBytes = cacheLineSize * cacheSize
@@ -121,7 +129,7 @@ guardTime = 1
 removeFirstOrButLast = removeFirstOrButLastMaxSize cacheSize
 
 undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
-undefinedCacheValue = CachedVal (-1)
+undefinedCacheValue = CachedVal (0-1)
 undefinedCacheArrayValue = CachedArraySlice undefinedCacheLine
 
 type ConcreteSemantic a = CFGEdge -> a -> Maybe a
@@ -131,7 +139,7 @@ type AbstractSemantic a = CFGEdge -> a -> [a]
 type NormalState = (GlobalState,ThreadLocalState, ())
 
 
-type ArrayBound = Int
+type ArrayBound = Val
 
 data CachedObject
     = CachedVar Var 
@@ -161,6 +169,7 @@ cachedObjectsFor = useE
     useV (Val  x)    = Set.empty
     useV (Var  x)    = Set.fromList [CachedVar x]
     useV (Plus  x y) = useV x ∪ useV y
+    useV (Minus x y) = useV x ∪ useV y
     useV (Times x y) = useV x ∪ useV y
     useV (Div   x y) = useV x ∪ useV y
     useV (Mod   x y) = useV x ∪ useV y
@@ -183,7 +192,7 @@ type FullState = (NormalState, CacheState, TimeState)
 
 instance SimpleShow CachedObject where
   simpleShow (CachedVar        var)  = simpleShow var
-  simpleShow (CachedArrayRange (Array x) i) = x ++ "[" ++ (show i) ++ ".." ++ (show $ i + cacheLineSize -1) ++ "]"
+  simpleShow (CachedArrayRange (Array x) i) = x ++ "[" ++ (show i) ++ ".." ++ (show $ i + cacheLineSizeVal -1) ++ "]"
   simpleShow (CachedUnknownRange (Array x)) = x ++ "[ unknown .. unknown ]"
 
 instance SimpleShow CacheValue where
@@ -275,6 +284,10 @@ twoAddressCodeV r vf@(Plus x y) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
         (loadsY, y', r'') = twoAddressCodeV r' y
     in (loadsX `sseq` loadsY, Plus x' y', r'')
+twoAddressCodeV r vf@(Minus x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Minus x' y', r'')
 twoAddressCodeV r vf@(Times x y) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
         (loadsY, y', r'') = twoAddressCodeV r' y
@@ -316,7 +329,7 @@ consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = length cache <= cac
   where cons (CachedVar        var@(Global      x)      , CachedVal        val ) = val ==      σv ! var
         cons (CachedVar        var@(ThreadLocal x)      , CachedVal        val ) = val ==     tlσ ! var
         cons (CachedArrayRange arr@(Array       a) index, CachedArraySlice vals) = 
-            (length vals == cacheLineSize) ∧ (index >= 0) ∧ (index `mod` cacheLineSize == 0) ∧ (index <= arrayMaxIndex)
+            (length vals == cacheLineSize) ∧ (index >= 0) ∧ (index `mod` cacheLineSizeVal == 0) ∧ (index <= arrayMaxIndex)
           ∧ (Map.size betw == cacheLineSize)
           ∧ (∀) (zipWith (==) vals (Map.elems betw)) id
           where betw :: ArrayVal
@@ -368,11 +381,12 @@ cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = ca
         lookup :: (Val, CacheState, AccessTime )
         lookup = 
           require (consistent σ) $
+          assert (alignedIx >= ix) $
           case removeFirstOrButLast carr cache of
             Right                               cache0 -> let { cval = CachedArraySlice vals ; vals = Map.elems $ sliceFor alignedIx (σa ! arr) } in
-              (vals !! (ix - alignedIx), (carr, cval) : cache0, cacheMissTime )
+              (vals !! (fromIntegral $ ix - alignedIx), (carr, cval) : cache0, cacheMissTime )
             Left (cval@(CachedArraySlice vals), cache0)->
-              (vals !! (ix - alignedIx), (carr, cval) : cache0, cacheHitTime  )
+              (vals !! (fromIntegral $ ix - alignedIx), (carr, cval) : cache0, cacheHitTime  )
 
 
 unknownranges arr cache carr hitTime missTime =
@@ -609,6 +623,10 @@ cacheAwareLRUEvalV (Plus  x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
   return $ xVal + yVal
+cacheAwareLRUEvalV (Minus x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal - yVal
 cacheAwareLRUEvalV (Times x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
@@ -624,11 +642,11 @@ cacheAwareLRUEvalV (Mod x y) = do
 cacheAwareLRUEvalV (Shl x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
-  return $ xVal `shiftL` yVal
+  return $ xVal `shiftL` (fromIntegral yVal)
 cacheAwareLRUEvalV (Shr x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
-  return $ xVal `shiftR` yVal
+  return $ xVal `shiftR` (fromIntegral yVal)
 cacheAwareLRUEvalV (Xor x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
@@ -730,6 +748,10 @@ cacheTimeLRUEvalV (ArrayRead a ix) = do
   return ()
 #endif
 cacheTimeLRUEvalV (Plus  x y) = do
+  cacheTimeLRUEvalV x
+  cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalV (Minus x y) = do
   cacheTimeLRUEvalV x
   cacheTimeLRUEvalV y
   return ()
@@ -1033,6 +1055,7 @@ cacheCostDecisionGraph g n0 = (
                 arrayReadsV   (Val  x)    = Set.empty
                 arrayReadsV   (Var  x)    = Set.empty
                 arrayReadsV   (Plus  x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Minus x y) = arrayReadsV x ∪ arrayReadsV y
                 arrayReadsV   (Times x y) = arrayReadsV x ∪ arrayReadsV y
                 arrayReadsV   (Div   x y) = arrayReadsV x ∪ arrayReadsV y
                 arrayReadsV   (Mod   x y) = arrayReadsV x ∪ arrayReadsV y

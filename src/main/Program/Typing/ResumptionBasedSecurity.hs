@@ -172,8 +172,8 @@ exampleD0 = exampleInitialize `Seq` exampleD0Body
 exampleD1Body =
     While (Not $ ((Var h) `Leq` (Val 0))) (
         Ch 0.5
-           (Ass h   ((Var h) `Plus` (Val (-1))))
-           (Ass h   ((Var h) `Plus` (Val   1 )))
+           (Ass h   ((Var h) `Minus` (Val   1 )))
+           (Ass h   ((Var h) `Plus`  (Val   1 )))
     )
   where h  = Global "h" 
 exampleD1 = exampleInitialize `Seq` exampleD1Body

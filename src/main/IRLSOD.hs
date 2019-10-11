@@ -15,6 +15,7 @@ import GHC.Generics (Generic)
 import Control.DeepSeq
 
 import Data.Bits (xor, (.&.), shiftL, shiftR)
+import Data.Word
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as Map
@@ -29,12 +30,14 @@ data Var = Global String | ThreadLocal String | Register Int deriving (Show, Eq,
 isGlobal (Global _) = True
 isGlobal _          = False
 
-arrayMaxIndex :: Int
+arrayMaxIndex :: Val
 arrayMaxIndex = 255
 
 arrayEmpty = Map.fromList [(i,0) | i <- [0..arrayMaxIndex] ]
 
+arrayIndex :: Val -> Val
 arrayIndex i =  (abs i) `mod` (arrayMaxIndex + 1)
+
 isArrayIndex i = (0 <= i ∧ i <= arrayMaxIndex)
 
 
@@ -77,13 +80,13 @@ instance SimpleShow Var where
 instance SimpleShow Array where
   simpleShow (Array x) = x ++ "[]"
 
-type Val = Int
+type Val = Word32
 
 centralValue :: Val
-centralValue = 0
+centralValue = 127
 
 
-type ArrayVal = Map Int Val
+type ArrayVal = Map Val Val
 
 type InputChannel = String
 type OutputChannel = String
@@ -115,6 +118,13 @@ globalEmpty = GlobalState { σv = Map.empty, σa = Map.empty }
 nonZeroOnly :: GlobalState -> GlobalState
 nonZeroOnly σ@(GlobalState { σv, σa }) = σ{ σv = Map.filter (/=0) σv, σa = fmap (Map.filter (/=0)) σa }
 
+
+instance SimpleShow Word8 where
+  simpleShow = show
+
+instance SimpleShow Word32 where
+  simpleShow = show
+
 instance SimpleShow GlobalState where
   simpleShow (GlobalState { σv, σa }) = "{ v = " ++ simpleShow σv ++ ", a = " ++ simpleShow σa ++ "}"
 
@@ -122,7 +132,7 @@ type ThreadLocalState = Map Var Val
 -- type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
-data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction | AssertRange Val Val VarFunction deriving (Show, Eq, Ord)
+data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Minus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction | AssertRange Val Val VarFunction deriving (Show, Eq, Ord)
 
 eeq a b = (a `Leq` b) `And` (b `Leq` a)
 
@@ -138,6 +148,7 @@ instance SimpleShow VarFunction where
   simpleShow (Val x) = show x
   simpleShow (Var x) = simpleShow x
   simpleShow (Plus  a b) = "(" ++ simpleShow a ++ " + " ++ simpleShow b ++ ")"
+  simpleShow (Minus a b) = "(" ++ simpleShow a ++ " - " ++ simpleShow b ++ ")"
   simpleShow (Xor   a b) = "(" ++ simpleShow a ++ " ^ " ++ simpleShow b ++ ")"
   simpleShow (BAnd  a b) =        simpleShow a ++ " & " ++ simpleShow b       
   simpleShow (Times a b) =        simpleShow a ++ " * " ++ simpleShow b
@@ -168,7 +179,8 @@ useBFor useV (Or  b1 b2) = useBFor useV b1 ∪ useBFor useV b2
 useBFor useV (Not b)     = useBFor useV b
 
 evalV :: GlobalState -> ThreadLocalState -> VarFunction -> Val
-evalV σg σl vf = (evalVM σg σl vf) `rem` 16 -- lets keep values small :O
+evalV σg σl vf = evalVM σg σl vf `rem` 256
+
 evalVM :: GlobalState -> ThreadLocalState -> VarFunction -> Val
 evalVM _  _  (Val  x)    = x
 evalVM σg@(GlobalState { σv }) σl (Var  x) = case Map.lookup x σl of
@@ -184,11 +196,12 @@ evalVM σg@(GlobalState { σa }) σl (ArrayRead a x) =
       Just val -> val
 
 evalVM σg σl (Plus  x y) = evalVM σg σl  x + evalVM σg σl  y
+evalVM σg σl (Minus x y) = evalVM σg σl  x - evalVM σg σl  y
 evalVM σg σl (Times x y) = evalVM σg σl  x * evalVM σg σl  y
 evalVM σg σl (Div   x y) = evalVM σg σl  x `div` evalVM σg σl  y
 evalVM σg σl (Mod x y)   = evalVM σg σl  x `mod` evalVM σg σl  y
-evalVM σg σl (Shl   x y) = evalVM σg σl  x `shiftL` evalVM σg σl  y
-evalVM σg σl (Shr   x y) = evalVM σg σl  x `shiftR` evalVM σg σl  y
+evalVM σg σl (Shl   x y) = evalVM σg σl  x `shiftL` (fromIntegral $ evalVM σg σl  y)
+evalVM σg σl (Shr   x y) = evalVM σg σl  x `shiftR` (fromIntegral $ evalVM σg σl  y)
 evalVM σg σl (Xor   x y) = evalVM σg σl  x `xor` evalVM σg σl  y
 evalVM σg σl (BAnd  x y) = evalVM σg σl  x .&. evalVM σg σl  y
 
@@ -207,6 +220,7 @@ useV (ArrayRead a i) = Set.insert (ArrayName a) $ useV i
 useV (Val  x)    = Set.empty
 useV (Var  x)    = Set.fromList [VarName x]
 useV (Plus  x y) = useV x ∪ useV y
+useV (Minus x y) = useV x ∪ useV y
 useV (Times x y) = useV x ∪ useV y
 useV (Div   x y) = useV x ∪ useV y
 useV (Mod   x y) = useV x ∪ useV y

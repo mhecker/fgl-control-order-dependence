@@ -121,7 +121,7 @@ compile procedureOf entryOfProcedure exitOfProcedure  nStart (ForC val s) = do
                     [(nStart, nInit, Assign loopvar (Val val)),
                      (nInit,  nLoop, Guard True  (Leq (Val 1) (Var loopvar) )),
                      (nInit,  nJoin, Guard False (Leq (Val 1) (Var loopvar) )),
-                     (nLoop', nInit, Assign loopvar ((Var loopvar) `Plus` (Val (-1))))
+                     (nLoop', nInit, Assign loopvar ((Var loopvar) `Minus` (Val 1)))
                    ]
             `mergeTwoGraphs` gLoop,
             nJoin,
@@ -138,7 +138,7 @@ compile procedureOf entryOfProcedure exitOfProcedure  nStart (ForV var s) = do
                     [(nStart,  nInit, Assign loopvar (Var var)),
                      (nInit,   nLoop, Guard True  (Leq (Val 1) (Var loopvar))),
                      (nInit,   nJoin, Guard False (Leq (Val 1) (Var loopvar))),
-                     (nLoop',  nInit, Assign loopvar ((Var loopvar) `Plus` (Val (-1))))
+                     (nLoop',  nInit, Assign loopvar ((Var loopvar) `Minus` (Val 1)))
                    ]
             `mergeTwoGraphs` gLoop,
             nJoin,

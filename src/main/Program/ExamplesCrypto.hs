@@ -37,7 +37,7 @@ unrolledFor unrolls n command =
       foldr1 Seq                              commands
      else
       foldr  Seq (ForC (n - unrolls) command) commands
-  where commands = take unrolls $ repeat command
+  where commands = take (fromIntegral unrolls) $ repeat command
 
 for  = unrolledFor 1
 

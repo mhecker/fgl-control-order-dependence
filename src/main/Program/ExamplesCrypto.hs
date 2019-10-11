@@ -19,6 +19,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Util
 
+import Data.Word
 import Data.Bits
 
 import Data.Map ( Map, (!) )
@@ -114,7 +115,8 @@ mainSkey                = Array  "skey"
 mainKey                 = Array  "key"
 
 mixColumnsS = [ Global $ "mixColumnsS" ++ (show i) | i <- [0 .. 3] ]
-mixColumnsT = [ Global $ "mixColumnsT" ++ (show i) | i <- [0 .. 3] ]
+mixColumnsB = [ Global $ "mixColumnsB" ++ (show i) | i <- [0 .. 3] ]
+mixColumnsR = [ Global $ "mixColumnsR" ++ (show i) | i <- [0 .. 3] ]
 
 expandKeyT = [ Global $ "expandKeyT" ++ (show i) | i <- [0 .. 3] ]
 expandKeyIndex          = Global "expandKeyIndex"
@@ -127,7 +129,7 @@ rotateTmp             = Global "rotateTmp"
 
 allNames = assert (length vars == (Set.size $ Set.fromList vars))
          $ assert (length arrs == (Set.size $ Set.fromList arrs))
-  where vars =   [subBytesIteratorIndex, addRoundIteratorIndex, shiftRowsTmp, cbcEncRunIndex, encryptIndex, encryptIndexU, expandKeyN] ++ mixColumnsS ++ mixColumnsT ++ expandKeyT
+  where vars =   [subBytesIteratorIndex, addRoundIteratorIndex, shiftRowsTmp, cbcEncRunIndex, encryptIndex, encryptIndexU, expandKeyN] ++ mixColumnsS ++ mixColumnsR ++ mixColumnsB ++ expandKeyT
              ++  [aesKeySchedI, aesKeySchedJ, aesKeySchedK, aesKeySchedNK, aesKeySchedNKF]
         arrs = [mainSkey, mainKey]
 
@@ -216,30 +218,44 @@ mixColumns state =
         s2 = mixColumnsS !! 2
         s3 = mixColumnsS !! 3
 
-        t0 = mixColumnsT !! 0
-        t1 = mixColumnsT !! 1
-        t2 = mixColumnsT !! 2
-        t3 = mixColumnsT !! 3
+        b0 = mixColumnsB !! 0
+        b1 = mixColumnsB !! 1
+        b2 = mixColumnsB !! 2
+        b3 = mixColumnsB !! 3
+        
+        r0 = mixColumnsR !! 0
+        r1 = mixColumnsR !! 1
+        r2 = mixColumnsR !! 2
+        r3 = mixColumnsR !! 3
 
         for i = 
                        Ass s0 (ArrayRead state (Val $ i + 0))
                  `Seq` Ass s1 (ArrayRead state (Val $ i + 1))
-                 `Seq` Ass s2 (ArrayRead state (Val $ i + 1))
-                 `Seq` Ass s3 (ArrayRead state (Val $ i + 1))
+                 `Seq` Ass s2 (ArrayRead state (Val $ i + 2))
+                 `Seq` Ass s3 (ArrayRead state (Val $ i + 3))
 
-                 `Seq` Ass t0 (  (Var s0 `Shl` (Val 1)) `Xor` (Var s1) `Xor` (Var s1 `Shl` (Val 1)) `Xor` (Var s2) `Xor` (Var s3)   )
-                 `Seq` Ass t1 (  (Var s0) `Xor` (Var s1 `Shl` (Val 1)) `Xor` (Var s2) `Xor` (Var s2 `Shl` (Val 1)) `Xor` (Var s3)   )
-                 `Seq` Ass t2 (  (Var s0) `Xor` (Var s1) `Xor` (Var s2 `Shl` (Val 1)) `Xor` (Var s3) `Xor` (Var s3 `Shl` (Val 1))   )
-                 `Seq` Ass t3 (  (Var s0) `Xor` (Var s0 `Shl` (Val 1)) `Xor` (Var s1) `Xor` (Var s2) `Xor` (Var s3 `Shl` (Val 1))   )
+                 `Seq` Ass b0 ((Var s0 `Shl` (Val 1)) `Xor` (Val 0x1b `BAnd` ((Var s0 `Shr` (Val 7)) `Times` (Val 255))))
+                 `Seq` Ass b1 ((Var s1 `Shl` (Val 1)) `Xor` (Val 0x1b `BAnd` ((Var s1 `Shr` (Val 7)) `Times` (Val 255))))
+                 `Seq` Ass b2 ((Var s2 `Shl` (Val 1)) `Xor` (Val 0x1b `BAnd` ((Var s2 `Shr` (Val 7)) `Times` (Val 255))))
+                 `Seq` Ass b3 ((Var s3 `Shl` (Val 1)) `Xor` (Val 0x1b `BAnd` ((Var s3 `Shr` (Val 7)) `Times` (Val 255))))
 
-                 `Seq` AssArr state (Val $ i + 0) (Var t0 `Xor` ((Neg (Var t0 `Shr` (Val 8))) `BAnd` (Val 0x11b))) -- TODO: overflow/shr/wordsize
-                 `Seq` AssArr state (Val $ i + 1) (Var t1 `Xor` ((Neg (Var t1 `Shr` (Val 8))) `BAnd` (Val 0x11b)))
-                 `Seq` AssArr state (Val $ i + 2) (Var t2 `Xor` ((Neg (Var t2 `Shr` (Val 8))) `BAnd` (Val 0x11b)))
-                 `Seq` AssArr state (Val $ i + 3) (Var t3 `Xor` ((Neg (Var t3 `Shr` (Val 8))) `BAnd` (Val 0x11b)))
+                 `Seq` Ass r0 ((Var b0) `Xor` (Var s1) `Xor` (Var b1) `Xor` (Var s2) `Xor` (Var s3))
+                 `Seq` Ass r1 ((Var s0) `Xor` (Var b1) `Xor` (Var s2) `Xor` (Var b2) `Xor` (Var s3))
+                 `Seq` Ass r2 ((Var s0) `Xor` (Var s1) `Xor` (Var b2) `Xor` (Var s3) `Xor` (Var b3))
+                 `Seq` Ass r3 ((Var s0) `Xor` (Var b0) `Xor` (Var s1) `Xor` (Var s2) `Xor` (Var b3))
+                 
+                 `Seq` AssArr state (Val $ i + 0) (Var r0)
+                 `Seq` AssArr state (Val $ i + 1) (Var r1)
+                 `Seq` AssArr state (Val $ i + 2) (Var r2)
+                 `Seq` AssArr state (Val $ i + 3) (Var r3)
 
 
+scheduleSize256 :: Int
 scheduleSize256 = 240
+
+keySize :: Int
 keySize = 256
+
 num_rounds = 14
 key_len = 32 -- 32 * 8 == 256
 
@@ -269,12 +285,12 @@ expandKey skey key =
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
                            `Seq` Ass i (Var i `Plus` (Val 1))
                        )
-                 `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1] ]
+                 `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1], assert (size >= 0 && size <= 255) True ]
   where body size =
-                       Ass t0 (ArrayRead skey (Val $ 0 + size - 4))
-                 `Seq` Ass t1 (ArrayRead skey (Val $ 1 + size - 4))
-                 `Seq` Ass t2 (ArrayRead skey (Val $ 2 + size - 4))
-                 `Seq` Ass t3 (ArrayRead skey (Val $ 3 + size - 4))
+                       Ass t0 (ArrayRead skey (Val $ from $ 0 + size - 4))
+                 `Seq` Ass t1 (ArrayRead skey (Val $ from $ 1 + size - 4))
+                 `Seq` Ass t2 (ArrayRead skey (Val $ from $ 2 + size - 4))
+                 `Seq` Ass t3 (ArrayRead skey (Val $ from $ 3 + size - 4))
 
                  `Seq` if size `mod` (keySize `div` 8) == 0 then (
                            scheduleCore t0 t1 t2 t3 n
@@ -290,10 +306,10 @@ expandKey skey key =
                        ) else (
                            Skip
                        )
-                 `Seq` AssArr skey (Val $ size + 0) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t0))
-                 `Seq` AssArr skey (Val $ size + 1) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t1))
-                 `Seq` AssArr skey (Val $ size + 2) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t2))
-                 `Seq` AssArr skey (Val $ size + 3) (ArrayRead skey (Val $ size - (keySize `div` 8)) `Xor` (Var t3))
+                 `Seq` AssArr skey (Val $ from $ size + 0) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t0))
+                 `Seq` AssArr skey (Val $ from $ size + 1) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t1))
+                 `Seq` AssArr skey (Val $ from $ size + 2) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t2))
+                 `Seq` AssArr skey (Val $ from $ size + 3) (ArrayRead skey (Val $ from $ size - (keySize `div` 8)) `Xor` (Var t3))
 
         i = expandKeyIndex 
         t0 = expandKeyT !! 0
@@ -301,6 +317,11 @@ expandKey skey key =
         t2 = expandKeyT !! 2
         t3 = expandKeyT !! 3
         n = expandKeyN
+
+        from :: Int -> Val
+        from i = assert (min <= i  ∧  i <= max) $ fromIntegral i
+          where min = fromIntegral (minBound :: Val)
+                max = fromIntegral (maxBound :: Val)
 
 
 
@@ -325,6 +346,7 @@ br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                  `Seq` for (num_rounds - 1) (
                                  sub_bytes state
                  `Seq`           shift_rows state
+                 `Seq`           mixColumns state
                  `Seq`           addRound state skey (Var u `Shl` (Val 2))
                  `Seq`           Ass u (Var u `Plus` (Val 1))
                        )
@@ -388,6 +410,7 @@ ioOutput =
 
 inputFor key state = Map.fromList [(stdIn, state ++ key)]
 
+runAES256 :: [Word8] -> [Word8] -> [Word8]
 runAES256 key msg =
   let program = for2Program $ br_aes_small_cbcenc_main ioInput ioOutput :: Program Gr
       input = inputFor key msg

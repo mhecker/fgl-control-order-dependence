@@ -36,7 +36,8 @@ arrayMaxIndex = 255
 arrayEmpty = Map.fromList [(i,0) | i <- [0..arrayMaxIndex] ]
 
 arrayIndex :: Val -> Val
-arrayIndex i =  (abs i) `mod` (arrayMaxIndex + 1)
+arrayIndex i = fromIntegral i'
+  where i' = (abs $ fromIntegral $ i) `mod` (1 + fromIntegral arrayMaxIndex) :: Int
 
 isArrayIndex i = (0 <= i ∧ i <= arrayMaxIndex)
 
@@ -80,7 +81,7 @@ instance SimpleShow Var where
 instance SimpleShow Array where
   simpleShow (Array x) = x ++ "[]"
 
-type Val = Word32
+type Val = Word8
 
 centralValue :: Val
 centralValue = 127
@@ -179,7 +180,7 @@ useBFor useV (Or  b1 b2) = useBFor useV b1 ∪ useBFor useV b2
 useBFor useV (Not b)     = useBFor useV b
 
 evalV :: GlobalState -> ThreadLocalState -> VarFunction -> Val
-evalV σg σl vf = evalVM σg σl vf `rem` 256
+evalV σg σl vf = evalVM σg σl vf
 
 evalVM :: GlobalState -> ThreadLocalState -> VarFunction -> Val
 evalVM _  _  (Val  x)    = x

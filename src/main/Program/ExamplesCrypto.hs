@@ -294,20 +294,20 @@ expandKey skey key =
                  `Seq` Ass t2 (ArrayRead skey (Val $ from $ 2 + size - 4))
                  `Seq` Ass t3 (ArrayRead skey (Val $ from $ 3 + size - 4))
 
-                 `Seq` if size `mod` (keySize `div` 8) == 0 then (
+                 `Seq` (if size `mod` (keySize `div` 8) == 0 then (
                            scheduleCore t0 t1 t2 t3 n
                  `Seq`     Ass n (Var n `Plus` (Val 1))
                        ) else (
                            Skip
-                       )
-                 `Seq` if keySize == 256 ∧ (size `mod` (keySize `div` 8) == 16) then (
+                       ))
+                 `Seq` (if keySize == 256 ∧ (size `mod` (keySize `div` 8) == 16) then (
                            Ass t0 (ArrayRead sbox (Var t0))
                  `Seq`     Ass t1 (ArrayRead sbox (Var t1))
                  `Seq`     Ass t2 (ArrayRead sbox (Var t2))
                  `Seq`     Ass t3 (ArrayRead sbox (Var t3))
                        ) else (
                            Skip
-                       )
+                       ))
                  `Seq` AssArr skey (Val $ from $ size + 0) (ArrayRead skey (Val $ from $ size + 0 - (keySize `div` 8)) `Xor` (Var t0))
                  `Seq` AssArr skey (Val $ from $ size + 1) (ArrayRead skey (Val $ from $ size + 1 - (keySize `div` 8)) `Xor` (Var t1))
                  `Seq` AssArr skey (Val $ from $ size + 2) (ArrayRead skey (Val $ from $ size + 2 - (keySize `div` 8)) `Xor` (Var t2))
@@ -408,7 +408,17 @@ ioInput =
 ioOutput = 
           (foldr1 Seq [ PrintToChannel  (ArrayRead state (Val i)) stdOut  | i <- [0..15]])
   where state = encryptState
-  
+
+
+ioOutputSkey = 
+          (foldr1 Seq [ PrintToChannel  (ArrayRead skey (Val i)) stdOut  | i <- [0..239]])
+  where skey = mainSkey
+
+
+ioOutputKey = 
+          (foldr1 Seq [ PrintToChannel  (ArrayRead key (Val i)) stdOut  | i <- [0..31]])
+  where key = mainKey
+
 
 inputFor key state = Map.fromList [(stdIn, state ++ key)]
 
@@ -432,6 +442,23 @@ runMixColumns key msg =
           assert (length traces == 1)
         $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
   in outputs
+
+
+runExpandKey :: [Word8] -> [Word8] -> [Word8]
+runExpandKey key msg = 
+  let program = for2Program $
+                       br_aes_S
+                 `Seq` simpleRcon
+                 `Seq` ioInput
+                 `Seq` (expandKey mainSkey mainKey)
+                 `Seq` ioOutputSkey :: Program Gr
+      input = inputFor key msg
+      traces = allFinishedExecutionTraces program input
+      outputs =
+          assert (length traces == 1)
+        $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
+  in outputs
+
 
 
 cryptoTestSuit = [

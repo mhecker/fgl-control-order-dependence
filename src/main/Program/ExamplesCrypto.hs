@@ -153,8 +153,8 @@ simpleRcon = assert (length rconConst == 11) $
 
 mainInput :: For
 mainInput = 
-        (foldr Seq Skip [ AssArr encryptState (Val i) (Val i) | i <- [0..255]])
-  `Seq` (foldr Seq Skip [ AssArr mainKey      (Val i) (Val i) | i <- [0..255]])
+        (foldr Seq Skip [ AssArr encryptState (Val i) (Val i) | i <- [0..15]])
+  `Seq` (foldr Seq Skip [ AssArr mainKey      (Val i) (Val i) | i <- [0..31]])
 
 
 
@@ -749,11 +749,11 @@ br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
 br_aes_small_encrypt         = br_aes_small_encryptFor addRound sub_bytes    shift_rows
 br_aes_small_encrypt_ct      = br_aes_small_encryptFor addRound sub_bytes_ct shift_rows
 
-br_aes_small_encryptCheat    = br_aes_small_encryptFor addRound sub_bytes    shift_rows
+br_aes_small_encryptCheat    = br_aes_small_encryptFor cheat3   sub_bytes    cheat1
   where cheat1 _     = Skip
         cheat2 _ _   = Skip
         cheat3 _ _ _ = Skip
-br_aes_small_encryptCheat_ct = br_aes_small_encryptFor addRound sub_bytes_ct shift_rows
+br_aes_small_encryptCheat_ct = br_aes_small_encryptFor cheat3   sub_bytes_ct cheat1
   where cheat1 _     = Skip
         cheat2 _ _   = Skip
         cheat3 _ _ _ = Skip
@@ -790,23 +790,25 @@ br_aes_small_cbcenc_mainCheat :: For -> For -> For
 br_aes_small_cbcenc_mainCheat input output =
                        Skip
                  `Seq` input
-                 `Seq` expandKey skey key
+                 `Seq` expandKeyCheat skey key
                  `Seq` br_aes_small_encryptCheat skey state
                  `Seq` output
   where key = mainKey
         skey = mainSkey
         state = encryptState
+        expandKeyCheat _ _ = Skip
 
 br_aes_small_cbcenc_mainCheat_ct :: For -> For -> For
 br_aes_small_cbcenc_mainCheat_ct input output =
                        Skip
                  `Seq` input
-                 `Seq` expandKey skey key
+                 `Seq` expandKeyCheat_ct skey key
                  `Seq` br_aes_small_encryptCheat_ct skey state
                  `Seq` output
   where key = mainKey
         skey = mainSkey
         state = encryptState
+        expandKeyCheat_ct _ _ = Skip
 
 
 ioInput :: For

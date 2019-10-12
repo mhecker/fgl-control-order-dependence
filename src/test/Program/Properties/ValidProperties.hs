@@ -176,7 +176,7 @@ import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
 import Program.Examples (insecure, testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger, interestingImdomTwoFinger, exampleTooCoarseAbstractionIsUnsound)
 import qualified ReferenceCrypto (runAES256)
-import qualified Program.ExamplesCrypto (runAES256)
+import qualified Program.ExamplesCrypto (runAES256, runAES256_ct)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -4681,6 +4681,12 @@ delayTests = testGroup "(concerning  inifinite delay)" $
 
 
 cryptoProps = testGroup "(concerning crypto example)" [
+    testProperty "aes256_ct example is correct"
+                $ \seed1 seed2 ->
+                    let key = moreSeeds seed1 32 :: [Word8]
+                        msg = moreSeeds seed2 16 :: [Word8]
+                    in    ReferenceCrypto.runAES256            key msg
+                       == Program.ExamplesCrypto.runAES256_ct  key msg,
     testProperty "aes256 example is correct"
                 $ \seed1 seed2 ->
                     let key = moreSeeds seed1 32 :: [Word8]

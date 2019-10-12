@@ -108,7 +108,7 @@ import qualified Data.Set as Set
 
 
 main = let {
-         pr = for2Program $ br_aes_small_cbcenc_mainCheat mainInput Skip  :: Program Gr ;
+         pr = for2Program $ br_aes_small_cbcenc_mainCheat_ct mainInput Skip  :: Program Gr ;
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;

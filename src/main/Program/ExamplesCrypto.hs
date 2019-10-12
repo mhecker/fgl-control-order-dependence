@@ -609,6 +609,20 @@ scheduleCore t0 t1 t2 t3 n =
                  `Seq` Ass t3  (Var tmp)
           where tmp = rotateTmp
 
+scheduleCore_ct :: Var -> Var -> Var -> Var -> Var -> For
+scheduleCore_ct t0 t1 t2 t3 n =
+                       rotate
+                 `Seq` sub_bytes_ct_4 t0 t1 t2 t3
+                 `Seq` Ass t0 (Var t0 `Xor` (ArrayRead rcon (Var n)))
+  where rotate =
+                       Ass tmp (Var t0)
+                 `Seq` Ass t0  (Var t1)
+                 `Seq` Ass t1  (Var t2)
+                 `Seq` Ass t2  (Var t3)
+                 `Seq` Ass t3  (Var tmp)
+          where tmp = rotateTmp
+
+
 
 expandKey :: Array -> Array -> For
 expandKey skey key =
@@ -636,6 +650,50 @@ expandKey skey key =
                  `Seq`     Ass t1 (ArrayRead sbox (Var t1))
                  `Seq`     Ass t2 (ArrayRead sbox (Var t2))
                  `Seq`     Ass t3 (ArrayRead sbox (Var t3))
+                       ) else (
+                           Skip
+                       ))
+                 `Seq` AssArr skey (Val $ from $ size + 0) (ArrayRead skey (Val $ from $ size + 0 - (keySize `div` 8)) `Xor` (Var t0))
+                 `Seq` AssArr skey (Val $ from $ size + 1) (ArrayRead skey (Val $ from $ size + 1 - (keySize `div` 8)) `Xor` (Var t1))
+                 `Seq` AssArr skey (Val $ from $ size + 2) (ArrayRead skey (Val $ from $ size + 2 - (keySize `div` 8)) `Xor` (Var t2))
+                 `Seq` AssArr skey (Val $ from $ size + 3) (ArrayRead skey (Val $ from $ size + 3 - (keySize `div` 8)) `Xor` (Var t3))
+
+        i = expandKeyIndex 
+        t0 = expandKeyT !! 0
+        t1 = expandKeyT !! 1
+        t2 = expandKeyT !! 2
+        t3 = expandKeyT !! 3
+        n = expandKeyN
+
+        from :: Int -> Val
+        from i = assert (min <= i  ∧  i <= max) $ fromIntegral i
+          where min = fromIntegral (minBound :: Val)
+                max = fromIntegral (maxBound :: Val)
+
+
+expandKey_ct :: Array -> Array -> For
+expandKey_ct skey key =
+                       Ass n (Val 1)
+                 `Seq` Ass i (Val 0)
+                 `Seq` for 32 (
+                                 AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
+                           `Seq` Ass i (Var i `Plus` (Val 1))
+                       )
+                 `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1], assert (size >= 0 && size <= 255) True ]
+  where body size =
+                       Ass t0 (ArrayRead skey (Val $ from $ 0 + size - 4))
+                 `Seq` Ass t1 (ArrayRead skey (Val $ from $ 1 + size - 4))
+                 `Seq` Ass t2 (ArrayRead skey (Val $ from $ 2 + size - 4))
+                 `Seq` Ass t3 (ArrayRead skey (Val $ from $ 3 + size - 4))
+
+                 `Seq` (if size `mod` (keySize `div` 8) == 0 then (
+                           scheduleCore_ct t0 t1 t2 t3 n
+                 `Seq`     Ass n (Var n `Plus` (Val 1))
+                       ) else (
+                           Skip
+                       ))
+                 `Seq` (if keySize == 256 ∧ (size `mod` (keySize `div` 8) == 16) then (
+                           sub_bytes_ct_4 t0 t1 t2 t3
                        ) else (
                            Skip
                        ))
@@ -688,22 +746,18 @@ br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                  `Seq` addRound state skey (Val num_rounds `Shl` (Val 4))
   where u = encryptIndexU
 
-br_aes_small_encrypt      = br_aes_small_encryptFor addRound sub_bytes_ct shift_rows
+br_aes_small_encrypt         = br_aes_small_encryptFor addRound sub_bytes    shift_rows
+br_aes_small_encrypt_ct      = br_aes_small_encryptFor addRound sub_bytes_ct shift_rows
 
-{-
-br_aes_small_encryptCheat = br_aes_small_encryptFor cheat3   cheat1    cheat1
--}
-br_aes_small_encryptCheat = br_aes_small_encryptFor addRound sub_bytes_ct shift_rows
+br_aes_small_encryptCheat    = br_aes_small_encryptFor addRound sub_bytes    shift_rows
+  where cheat1 _     = Skip
+        cheat2 _ _   = Skip
+        cheat3 _ _ _ = Skip
+br_aes_small_encryptCheat_ct = br_aes_small_encryptFor addRound sub_bytes_ct shift_rows
   where cheat1 _     = Skip
         cheat2 _ _   = Skip
         cheat3 _ _ _ = Skip
 
-
-
-br_aes_small_cbcenc_init :: Array -> Array -> For
-br_aes_small_cbcenc_init skey key =
-                       -- br_aes_keysched skey key
-                       expandKey skey key
 
 br_aes_small_cbcenc_main :: For -> For -> For
 br_aes_small_cbcenc_main input output =
@@ -711,23 +765,49 @@ br_aes_small_cbcenc_main input output =
                  `Seq` br_aes_S
                  `Seq` simpleRcon
                  `Seq` input
-                 `Seq` br_aes_small_cbcenc_init skey key
+                 `Seq` expandKey skey key
                  `Seq` br_aes_small_encrypt skey state
                  `Seq` output
   where key = mainKey
         skey = mainSkey
         state = encryptState
 
+
+br_aes_small_cbcenc_main_ct :: For -> For -> For
+br_aes_small_cbcenc_main_ct input output =
+                       Skip
+                 `Seq` simpleRcon
+                 `Seq` input
+                 `Seq` expandKey_ct skey key
+                 `Seq` br_aes_small_encrypt_ct skey state
+                 `Seq` output
+  where key = mainKey
+        skey = mainSkey
+        state = encryptState
+
+
 br_aes_small_cbcenc_mainCheat :: For -> For -> For
 br_aes_small_cbcenc_mainCheat input output =
                        Skip
                  `Seq` input
-                 `Seq` br_aes_small_cbcenc_init skey key
+                 `Seq` expandKey skey key
                  `Seq` br_aes_small_encryptCheat skey state
                  `Seq` output
   where key = mainKey
         skey = mainSkey
         state = encryptState
+
+br_aes_small_cbcenc_mainCheat_ct :: For -> For -> For
+br_aes_small_cbcenc_mainCheat_ct input output =
+                       Skip
+                 `Seq` input
+                 `Seq` expandKey skey key
+                 `Seq` br_aes_small_encryptCheat_ct skey state
+                 `Seq` output
+  where key = mainKey
+        skey = mainSkey
+        state = encryptState
+
 
 ioInput :: For
 ioInput =
@@ -756,6 +836,16 @@ inputFor key state = Map.fromList [(stdIn, state ++ key)]
 runAES256 :: [Word8] -> [Word8] -> [Word8]
 runAES256 key msg =
   let program = for2Program $ br_aes_small_cbcenc_main ioInput ioOutput :: Program Gr
+      input = inputFor key msg
+      traces = allFinishedExecutionTraces program input
+      outputs =
+          assert (length traces == 1)
+        $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
+  in outputs
+
+runAES256_ct :: [Word8] -> [Word8] -> [Word8]
+runAES256_ct key msg =
+  let program = for2Program $ br_aes_small_cbcenc_main_ct ioInput ioOutput :: Program Gr
       input = inputFor key msg
       traces = allFinishedExecutionTraces program input
       outputs =

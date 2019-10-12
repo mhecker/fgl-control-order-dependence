@@ -10,7 +10,7 @@ module CacheExecution where
 
 import qualified Data.List as List
 
-import Data.Bits (xor, (.&.), shiftL, shiftR)
+import Data.Bits (xor, (.&.), shiftL, shiftR, complement)
 
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
@@ -182,6 +182,7 @@ cachedObjectsFor = useE
     useV (Shr   x y) = useV x ∪ useV y
     useV (Xor   x y) = useV x ∪ useV y
     useV (Neg x)     = useV x
+    useV (BNot x)    = useV x
     useV (AssertRange _ _ x) = useV x
 
 type CacheState = [(CachedObject, CacheValue)]
@@ -323,6 +324,9 @@ twoAddressCodeV r vf@(BAnd x y) =
 twoAddressCodeV r bf@(Neg x) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
     in (loadsX, Neg x', r')
+twoAddressCodeV r bf@(BNot x) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+    in (loadsX, BNot x', r')
 twoAddressCodeV r vf@(AssertRange min max x) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
     in (loadsX, (AssertRange min max x'), r')
@@ -662,6 +666,9 @@ cacheAwareLRUEvalV (BAnd x y) = do
 cacheAwareLRUEvalV (Neg x) = do
   xVal <- cacheAwareLRUEvalV x
   return $ - xVal
+cacheAwareLRUEvalV (BNot x) = do
+  xVal <- cacheAwareLRUEvalV x
+  return $ complement $ xVal
 cacheAwareLRUEvalV (AssertRange min max x) = do
   xVal <- cacheAwareLRUEvalV x
   return $   xVal
@@ -788,6 +795,9 @@ cacheTimeLRUEvalV (BAnd  x y) = do
   cacheTimeLRUEvalV y
   return ()
 cacheTimeLRUEvalV (Neg x) = do
+  cacheTimeLRUEvalV x
+  return ()
+cacheTimeLRUEvalV (BNot x) = do
   cacheTimeLRUEvalV x
   return ()
 cacheTimeLRUEvalV (AssertRange min max x) = do
@@ -1068,6 +1078,7 @@ cacheCostDecisionGraph g n0 = (
                 arrayReadsV   (Xor   x y) = arrayReadsV x ∪ arrayReadsV y
                 arrayReadsV   (BAnd  x y) = arrayReadsV x ∪ arrayReadsV y
                 arrayReadsV   (Neg x)     = arrayReadsV x
+                arrayReadsV   (BNot x)    = arrayReadsV x
                 arrayReadsV   (AssertRange min max x) = arrayReadsV x
 
                 arrayReadsB = useBFor arrayReadsV

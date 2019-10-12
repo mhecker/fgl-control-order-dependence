@@ -14,7 +14,7 @@ import Control.Exception.Base (assert)
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
-import Data.Bits (xor, (.&.), shiftL, shiftR)
+import Data.Bits (xor, (.&.), shiftL, shiftR, complement)
 import Data.Word
 
 import Data.Map ( Map, (!) )
@@ -133,7 +133,7 @@ type ThreadLocalState = Map Var Val
 -- type CombinedState = Map Var Val
 
 data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
-data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Minus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction | AssertRange Val Val VarFunction deriving (Show, Eq, Ord)
+data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Minus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | BNot VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction | AssertRange Val Val VarFunction deriving (Show, Eq, Ord)
 
 eeq a b = (a `Leq` b) `And` (b `Leq` a)
 
@@ -158,6 +158,7 @@ instance SimpleShow VarFunction where
   simpleShow (Shl   a b) =        simpleShow a ++ " << " ++ simpleShow b
   simpleShow (Shr   a b) =        simpleShow a ++ " >> " ++ simpleShow b
   simpleShow (Neg   a  ) = "-" ++ simpleShow a
+  simpleShow (BNot  a  ) = "~" ++ simpleShow a
   simpleShow (ArrayRead (Array a) b) = a ++ "[" ++ simpleShow b ++ "]"
   simpleShow (AssertRange min max a) = simpleShow a ++ " within [" ++ (show min) ++ ", " ++ (show max) ++ "]"
 
@@ -207,6 +208,7 @@ evalVM σg σl (Xor   x y) = evalVM σg σl  x `xor` evalVM σg σl  y
 evalVM σg σl (BAnd  x y) = evalVM σg σl  x .&. evalVM σg σl  y
 
 evalVM σg σl (Neg x)     = - evalVM σg σl  x
+evalVM σg σl (BNot x)    = complement $ evalVM σg σl  x
 evalVM σg σl (AssertRange _ _ x) = evalVM σg σl  x
 
 
@@ -230,6 +232,7 @@ useV (Shr   x y) = useV x ∪ useV y
 useV (Xor   x y) = useV x ∪ useV y
 useV (BAnd  x y) = useV x ∪ useV y
 useV (Neg x)     = useV x
+useV (BNot x)    = useV x
 useV (AssertRange _ _ x) = useV x
 
 

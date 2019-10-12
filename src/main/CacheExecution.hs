@@ -65,6 +65,9 @@ cacheLineSize =
 
 cacheLineSizeVal = fromIntegral cacheLineSize
 
+arrayMaxIndexInt :: Int
+arrayMaxIndexInt = fromIntegral arrayMaxIndex
+
 initialCacheLine   = [  0 | i <- [0 .. cacheLineSize - 1] ]
 undefinedCacheLine = [0-1 | i <- [0 .. cacheLineSize - 1] ]
 
@@ -73,7 +76,8 @@ toAlignedIndex i = require (isArrayIndex i) $ (i `div` cacheLineSizeVal) * cache
 
 
 {- all possible cacheline aligned array indices -}
-alignedIndices = [ cacheLineSizeVal * (i-1) | i <- [1 ..  (arrayMaxIndex + 1) `div` cacheLineSizeVal ]]
+alignedIndices :: [Val]
+alignedIndices = fmap fromIntegral [ cacheLineSize * (i-1) | i <- [1 ..  (arrayMaxIndexInt + 1) `div` cacheLineSize ]]
 {- all possible cacheline aligned array indices relevant for an array acces at index x such that x is known to be: min <= x <= max -}
 alignedIndicesFor min max = require (min <= max) $
     [ i | i <- alignedIndices, (i  < min  ∧  i + cacheLineSizeVal > min)  ∨  (min <= i ∧ i <= max) ]

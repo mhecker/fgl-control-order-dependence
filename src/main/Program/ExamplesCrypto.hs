@@ -190,6 +190,30 @@ sub_bytes state =
         tmp2 = subBytesTmp2
 
 
+sub_bytes_ct :: Array -> For
+sub_bytes_ct state =
+          sub_bytes_ct_8 (a  0) (a  1) (a  2) (a  3) (a  4) (a  5) (a  6) (a  7)   (f  0) (f  1) (f  2) (f  3) (f  4) (f  5) (f  6) (f  7)
+    `Seq` sub_bytes_ct_8 (a  8) (a  9) (a 10) (a 11) (a 12) (a 13) (a 14) (a 15)   (f  8) (f  9) (f 10) (f 11) (f 12) (f 13) (f 14) (f 15)
+  where a i = ArrayRead state (Val i)
+        f i = AssArr state (Val i)
+
+sub_bytes_ct_4 :: Var -> Var -> Var -> Var -> For
+sub_bytes_ct_4 v0 v1 v2 v3 =
+  sub_bytes_ct_8 t0 t1 t2 t3 t0 t1 t2 t3
+                 f0 f1 f2 f3 f0 f1 f2 f3
+  where t0 = Var v0
+        t1 = Var v1
+        t2 = Var v2
+        t3 = Var v3
+        
+        f0 = Ass v0
+        f1 = Ass v1
+        f2 = Ass v2
+        f3 = Ass v3
+
+type VarFunctionF = VarFunction -> For
+
+
 {-
        /*
 	 * This S-box implementation is a straightforward translation of
@@ -202,10 +226,12 @@ sub_bytes state =
 	 */
 -}
 
-sub_bytes_ct :: Array -> For
-sub_bytes_ct state =
-                       sbox  0  1  2  3  4  5  6  7
-                 `Seq` sbox  8  9 10 11 12 13 14 15
+sub_bytes_ct_8 ::
+     VarFunction  -> VarFunction  -> VarFunction  -> VarFunction  -> VarFunction  -> VarFunction  -> VarFunction  -> VarFunction  
+  -> VarFunctionF -> VarFunctionF -> VarFunctionF -> VarFunctionF -> VarFunctionF -> VarFunctionF -> VarFunctionF -> VarFunctionF
+  -> For
+sub_bytes_ct_8 a0 a1 a2 a3 a4 a5 a6 a7 
+               f0 f1 f2 f3 f4 f5 f6 f7 = sub
   where [x0 , x1 , x2 , x3 , x4 , x5 , x6 , x7           ] = subBytesCtX
         [     y1 , y2 , y3 , y4 , y5 , y6 , y7 , y8 , y9 ,
          y10, y11, y12, y13, y14, y15, y16, y17, y18, y19,
@@ -221,78 +247,77 @@ sub_bytes_ct state =
          t60, t61, t62, t63, t64, t65, t66, t67          ] = subBytesCtT
         [s0 , s1 , s2 , s3 , s4 , s5 , s6 , s7           ] = subBytesCtS
 
-        sbox i0 i1 i2 i3 i4 i5 i6 i7 =
-                       Ass x0 (       (ArrayRead state (Val i0) `BAnd` (Val 128))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val 128) `Shr` (Val 1))
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val 128) `Shr` (Val 2))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val 128) `Shr` (Val 3))
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val 128) `Shr` (Val 4))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val 128) `Shr` (Val 5))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val 128) `Shr` (Val 6))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val 128) `Shr` (Val 7))
+        sub =          Ass x0 (       (a0 `BAnd` (Val 128))
+                                `Xor` (a1 `BAnd` (Val 128) `Shr` (Val 1))
+                                `Xor` (a2 `BAnd` (Val 128) `Shr` (Val 2))
+                                `Xor` (a3 `BAnd` (Val 128) `Shr` (Val 3))
+                                `Xor` (a4 `BAnd` (Val 128) `Shr` (Val 4))
+                                `Xor` (a5 `BAnd` (Val 128) `Shr` (Val 5))
+                                `Xor` (a6 `BAnd` (Val 128) `Shr` (Val 6))
+                                `Xor` (a7 `BAnd` (Val 128) `Shr` (Val 7))
                                )
-                 `Seq` Ass x1 (       (ArrayRead state (Val i0) `BAnd` (Val  64) `Shl` (Val 1))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val  64)              )
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val  64) `Shr` (Val 1))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val  64) `Shr` (Val 2))
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val  64) `Shr` (Val 3))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val  64) `Shr` (Val 4))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val  64) `Shr` (Val 5))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val  64) `Shr` (Val 6))
+                 `Seq` Ass x1 (       (a0 `BAnd` (Val  64) `Shl` (Val 1))
+                                `Xor` (a1 `BAnd` (Val  64)              )
+                                `Xor` (a2 `BAnd` (Val  64) `Shr` (Val 1))
+                                `Xor` (a3 `BAnd` (Val  64) `Shr` (Val 2))
+                                `Xor` (a4 `BAnd` (Val  64) `Shr` (Val 3))
+                                `Xor` (a5 `BAnd` (Val  64) `Shr` (Val 4))
+                                `Xor` (a6 `BAnd` (Val  64) `Shr` (Val 5))
+                                `Xor` (a7 `BAnd` (Val  64) `Shr` (Val 6))
                                )
-                 `Seq` Ass x2 (       (ArrayRead state (Val i0) `BAnd` (Val  32) `Shl` (Val 2))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val  32) `Shl` (Val 1))
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val  32))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val  32) `Shr` (Val 1))
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val  32) `Shr` (Val 2))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val  32) `Shr` (Val 3))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val  32) `Shr` (Val 4))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val  32) `Shr` (Val 5))
+                 `Seq` Ass x2 (       (a0 `BAnd` (Val  32) `Shl` (Val 2))
+                                `Xor` (a1 `BAnd` (Val  32) `Shl` (Val 1))
+                                `Xor` (a2 `BAnd` (Val  32))
+                                `Xor` (a3 `BAnd` (Val  32) `Shr` (Val 1))
+                                `Xor` (a4 `BAnd` (Val  32) `Shr` (Val 2))
+                                `Xor` (a5 `BAnd` (Val  32) `Shr` (Val 3))
+                                `Xor` (a6 `BAnd` (Val  32) `Shr` (Val 4))
+                                `Xor` (a7 `BAnd` (Val  32) `Shr` (Val 5))
                                )
-                 `Seq` Ass x3 (       (ArrayRead state (Val i0) `BAnd` (Val  16) `Shl` (Val 3))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val  16) `Shl` (Val 2))
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val  16) `Shl` (Val 1))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val  16)              )
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val  16) `Shr` (Val 1))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val  16) `Shr` (Val 2))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val  16) `Shr` (Val 3))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val  16) `Shr` (Val 4))
+                 `Seq` Ass x3 (       (a0 `BAnd` (Val  16) `Shl` (Val 3))
+                                `Xor` (a1 `BAnd` (Val  16) `Shl` (Val 2))
+                                `Xor` (a2 `BAnd` (Val  16) `Shl` (Val 1))
+                                `Xor` (a3 `BAnd` (Val  16)              )
+                                `Xor` (a4 `BAnd` (Val  16) `Shr` (Val 1))
+                                `Xor` (a5 `BAnd` (Val  16) `Shr` (Val 2))
+                                `Xor` (a6 `BAnd` (Val  16) `Shr` (Val 3))
+                                `Xor` (a7 `BAnd` (Val  16) `Shr` (Val 4))
                                )
-                 `Seq` Ass x4 (       (ArrayRead state (Val i0) `BAnd` (Val   8) `Shl` (Val 4))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val   8) `Shl` (Val 3))
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val   8) `Shl` (Val 2))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val   8) `Shl` (Val 1))
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val   8))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val   8) `Shr` (Val 1))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val   8) `Shr` (Val 2))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val   8) `Shr` (Val 3))
+                 `Seq` Ass x4 (       (a0 `BAnd` (Val   8) `Shl` (Val 4))
+                                `Xor` (a1 `BAnd` (Val   8) `Shl` (Val 3))
+                                `Xor` (a2 `BAnd` (Val   8) `Shl` (Val 2))
+                                `Xor` (a3 `BAnd` (Val   8) `Shl` (Val 1))
+                                `Xor` (a4 `BAnd` (Val   8))
+                                `Xor` (a5 `BAnd` (Val   8) `Shr` (Val 1))
+                                `Xor` (a6 `BAnd` (Val   8) `Shr` (Val 2))
+                                `Xor` (a7 `BAnd` (Val   8) `Shr` (Val 3))
                                )
-                 `Seq` Ass x5 (       (ArrayRead state (Val i0) `BAnd` (Val   4) `Shl` (Val 5))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val   4) `Shl` (Val 4))
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val   4) `Shl` (Val 3))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val   4) `Shl` (Val 2))
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val   4) `Shl` (Val 1))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val   4))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val   4) `Shr` (Val 1))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val   4) `Shr` (Val 2))
+                 `Seq` Ass x5 (       (a0 `BAnd` (Val   4) `Shl` (Val 5))
+                                `Xor` (a1 `BAnd` (Val   4) `Shl` (Val 4))
+                                `Xor` (a2 `BAnd` (Val   4) `Shl` (Val 3))
+                                `Xor` (a3 `BAnd` (Val   4) `Shl` (Val 2))
+                                `Xor` (a4 `BAnd` (Val   4) `Shl` (Val 1))
+                                `Xor` (a5 `BAnd` (Val   4))
+                                `Xor` (a6 `BAnd` (Val   4) `Shr` (Val 1))
+                                `Xor` (a7 `BAnd` (Val   4) `Shr` (Val 2))
                                )
-                 `Seq` Ass x6 (       (ArrayRead state (Val i0) `BAnd` (Val   2) `Shl` (Val 6))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val   2) `Shl` (Val 5))
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val   2) `Shl` (Val 4))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val   2) `Shl` (Val 3))
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val   2) `Shl` (Val 2))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val   2) `Shl` (Val 1))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val   2))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val   2) `Shr` (Val 1))
+                 `Seq` Ass x6 (       (a0 `BAnd` (Val   2) `Shl` (Val 6))
+                                `Xor` (a1 `BAnd` (Val   2) `Shl` (Val 5))
+                                `Xor` (a2 `BAnd` (Val   2) `Shl` (Val 4))
+                                `Xor` (a3 `BAnd` (Val   2) `Shl` (Val 3))
+                                `Xor` (a4 `BAnd` (Val   2) `Shl` (Val 2))
+                                `Xor` (a5 `BAnd` (Val   2) `Shl` (Val 1))
+                                `Xor` (a6 `BAnd` (Val   2))
+                                `Xor` (a7 `BAnd` (Val   2) `Shr` (Val 1))
                                )
-                 `Seq` Ass x7 (       (ArrayRead state (Val i0) `BAnd` (Val   1) `Shl` (Val 7))
-                                `Xor` (ArrayRead state (Val i1) `BAnd` (Val   1) `Shl` (Val 6))
-                                `Xor` (ArrayRead state (Val i2) `BAnd` (Val   1) `Shl` (Val 5))
-                                `Xor` (ArrayRead state (Val i3) `BAnd` (Val   1) `Shl` (Val 4))
-                                `Xor` (ArrayRead state (Val i4) `BAnd` (Val   1) `Shl` (Val 3))
-                                `Xor` (ArrayRead state (Val i5) `BAnd` (Val   1) `Shl` (Val 2))
-                                `Xor` (ArrayRead state (Val i6) `BAnd` (Val   1) `Shl` (Val 1))
-                                `Xor` (ArrayRead state (Val i7) `BAnd` (Val   1))
+                 `Seq` Ass x7 (       (a0 `BAnd` (Val   1) `Shl` (Val 7))
+                                `Xor` (a1 `BAnd` (Val   1) `Shl` (Val 6))
+                                `Xor` (a2 `BAnd` (Val   1) `Shl` (Val 5))
+                                `Xor` (a3 `BAnd` (Val   1) `Shl` (Val 4))
+                                `Xor` (a4 `BAnd` (Val   1) `Shl` (Val 3))
+                                `Xor` (a5 `BAnd` (Val   1) `Shl` (Val 2))
+                                `Xor` (a6 `BAnd` (Val   1) `Shl` (Val 1))
+                                `Xor` (a7 `BAnd` (Val   1))
                                )
                  `Seq` Ass y14 (Var x3  `Xor` (Var x5))
                  `Seq` Ass y13 (Var x0  `Xor` (Var x6))
@@ -415,7 +440,7 @@ sub_bytes_ct state =
                  `Seq` Ass s2  (Var t55 `Xor` (BNot $ Var t67))
 
 
-                 `Seq` AssArr state (Val i0) (       (Var s0 `BAnd` (Val 128)              )
+                 `Seq`                   f0  (       (Var s0 `BAnd` (Val 128)              )
                                                `Xor` (Var s1 `BAnd` (Val 128) `Shr` (Val 1))
                                                `Xor` (Var s2 `BAnd` (Val 128) `Shr` (Val 2))
                                                `Xor` (Var s3 `BAnd` (Val 128) `Shr` (Val 3))
@@ -424,7 +449,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val 128) `Shr` (Val 6))
                                                `Xor` (Var s7 `BAnd` (Val 128) `Shr` (Val 7))
                                              )
-                 `Seq` AssArr state (Val i1) (       (Var s0 `BAnd` (Val  64) `Shl` (Val 1))
+                 `Seq`                    f1 (       (Var s0 `BAnd` (Val  64) `Shl` (Val 1))
                                                `Xor` (Var s1 `BAnd` (Val  64)              )
                                                `Xor` (Var s2 `BAnd` (Val  64) `Shr` (Val 1))
                                                `Xor` (Var s3 `BAnd` (Val  64) `Shr` (Val 2))
@@ -433,7 +458,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val  64) `Shr` (Val 5))
                                                `Xor` (Var s7 `BAnd` (Val  64) `Shr` (Val 6))
                                              )
-                 `Seq` AssArr state (Val i2) (       (Var s0 `BAnd` (Val  32) `Shl` (Val 2))
+                 `Seq`                    f2 (       (Var s0 `BAnd` (Val  32) `Shl` (Val 2))
                                                `Xor` (Var s1 `BAnd` (Val  32) `Shl` (Val 1))
                                                `Xor` (Var s2 `BAnd` (Val  32))
                                                `Xor` (Var s3 `BAnd` (Val  32) `Shr` (Val 1))
@@ -442,7 +467,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val  32) `Shr` (Val 4))
                                                `Xor` (Var s7 `BAnd` (Val  32) `Shr` (Val 5))
                                              )
-                 `Seq` AssArr state (Val i3) (       (Var s0 `BAnd` (Val  16) `Shl` (Val 3))
+                 `Seq`                    f3 (       (Var s0 `BAnd` (Val  16) `Shl` (Val 3))
                                                `Xor` (Var s1 `BAnd` (Val  16) `Shl` (Val 2))
                                                `Xor` (Var s2 `BAnd` (Val  16) `Shl` (Val 1))
                                                `Xor` (Var s3 `BAnd` (Val  16))
@@ -451,7 +476,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val  16) `Shr` (Val 3))
                                                `Xor` (Var s7 `BAnd` (Val  16) `Shr` (Val 4))
                                              )
-                 `Seq` AssArr state (Val i4) (       (Var s0 `BAnd` (Val   8) `Shl` (Val 4))
+                 `Seq`                    f4 (       (Var s0 `BAnd` (Val   8) `Shl` (Val 4))
                                                `Xor` (Var s1 `BAnd` (Val   8) `Shl` (Val 3))
                                                `Xor` (Var s2 `BAnd` (Val   8) `Shl` (Val 2))
                                                `Xor` (Var s3 `BAnd` (Val   8) `Shl` (Val 1))
@@ -460,7 +485,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val   8) `Shr` (Val 2))
                                                `Xor` (Var s7 `BAnd` (Val   8) `Shr` (Val 3))
                                              )
-                 `Seq` AssArr state (Val i5) (       (Var s0 `BAnd` (Val   4) `Shl` (Val 5))
+                 `Seq`                    f5 (       (Var s0 `BAnd` (Val   4) `Shl` (Val 5))
                                                `Xor` (Var s1 `BAnd` (Val   4) `Shl` (Val 4))
                                                `Xor` (Var s2 `BAnd` (Val   4) `Shl` (Val 3))
                                                `Xor` (Var s3 `BAnd` (Val   4) `Shl` (Val 2))
@@ -469,7 +494,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val   4) `Shr` (Val 1))
                                                `Xor` (Var s7 `BAnd` (Val   4) `Shr` (Val 2))
                                              )
-                 `Seq` AssArr state (Val i6) (       (Var s0 `BAnd` (Val   2) `Shl` (Val 6))
+                 `Seq`                    f6 (       (Var s0 `BAnd` (Val   2) `Shl` (Val 6))
                                                `Xor` (Var s1 `BAnd` (Val   2) `Shl` (Val 5))
                                                `Xor` (Var s2 `BAnd` (Val   2) `Shl` (Val 4))
                                                `Xor` (Var s3 `BAnd` (Val   2) `Shl` (Val 3))
@@ -478,7 +503,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val   2))
                                                `Xor` (Var s7 `BAnd` (Val   2) `Shr` (Val 1))
                                              )
-                 `Seq` AssArr state (Val i7) (       (Var s0 `BAnd` (Val   1) `Shl` (Val 7))
+                 `Seq`                    f7 (       (Var s0 `BAnd` (Val   1) `Shl` (Val 7))
                                                `Xor` (Var s1 `BAnd` (Val   1) `Shl` (Val 6))
                                                `Xor` (Var s2 `BAnd` (Val   1) `Shl` (Val 5))
                                                `Xor` (Var s3 `BAnd` (Val   1) `Shl` (Val 4))
@@ -487,6 +512,7 @@ sub_bytes_ct state =
                                                `Xor` (Var s6 `BAnd` (Val   1) `Shl` (Val 1))
                                                `Xor` (Var s7 `BAnd` (Val   1))
                                              )
+
 
 shift_rows :: Array -> For
 shift_rows state =

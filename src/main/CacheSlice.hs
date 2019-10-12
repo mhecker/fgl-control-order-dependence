@@ -55,16 +55,15 @@ cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) =>
   -> Set Node
   -> Set Node
 cacheTimingSliceFor csd g n0 = \ms ->
-    -- traceShow ("ccg",         ccg) $
-    -- traceShow ("tscd", hide $ tscd') $
-    -- traceShow ("dd",   hide $ dd') $ 
-    -- traceShow ("csd",  hide $ csd') $
- -- combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms
-    -- traceShow (3, 19, path 3 19) $
-    -- traceShow (3, 20, path 3 20) $
-    traceShow (3, 22, path 3 22) $
-    traceShow (3, 23, path 3 23) $ 
-    combinedBackwardSlice3  tscd'   dd'   csd'            ms
+{-
+    let slice = combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms
+-}
+    let slice = combinedBackwardSlice3  tscd'   dd'   csd'            ms
+    in   traceShortestPath ms slice 5
+       $ traceShortestPath ms slice 6
+       $ traceShortestPath ms slice 22
+       $ traceShortestPath ms slice 23
+       $ slice
   where tscd'  =            timDFFromFromItimdomMultipleOfFastCost ccg costF
         dd'    = invert'' $ dataDependence                         ccg vars  n0
         csd'   = invert'' $ csd                                      g       n0
@@ -74,6 +73,17 @@ cacheTimingSliceFor csd g n0 = \ms ->
         (ccg, cost) = cacheCostDecisionGraph g n0
         costF n m = cost ! (n,m)
 
+
+
+
+        traceShortestPath ms slice n
+           | Set.size ms == 1 = trace
+           | otherwise        = id
+         where trace 
+                 | n ∈ slice = traceShow (m, n, path m n)
+                 | otherwise = id
+               [m] = Set.toList ms
+        
         hide = Map.filter (not . Set.null)
 
         path n m = zipWith f p (tail p)
@@ -81,7 +91,6 @@ cacheTimingSliceFor csd g n0 = \ms ->
                 f n m = (n, toDep n m, m)
 
         toDep n m = [ l | (m',l) <- lsuc depGraph n, m' == m ]
-          
         
         depGraph = (
               fromSuccMapWithEdgeAnnotation

@@ -227,6 +227,7 @@ VALID(delay)
 VALID(insensitiveDom)
 VALID(sensitiveDom)
 VALID(cache)
+VALID(crypto)
 VALID(misc)
 
 define(EXPECTED_FAILURE_DEPENDENCY, `tasty-expected-failure >= 0.11 && < 0.12')

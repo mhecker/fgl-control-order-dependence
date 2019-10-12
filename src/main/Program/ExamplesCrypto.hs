@@ -349,12 +349,12 @@ br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                                  sub_bytes state
                  `Seq`           shift_rows state
                  `Seq`           mixColumns state
-                 `Seq`           addRound state skey (Var u `Shl` (Val 2))
+                 `Seq`           addRound state skey (Var u `Shl` (Val 4))
                  `Seq`           Ass u (Var u `Plus` (Val 1))
                        )
                  `Seq` sub_bytes state
                  `Seq` shift_rows state
-                 `Seq` addRound state skey (Val num_rounds `Shl` (Val 2))
+                 `Seq` addRound state skey (Val num_rounds `Shl` (Val 4))
   where u = encryptIndexU
 
 br_aes_small_encrypt      = br_aes_small_encryptFor addRound sub_bytes shift_rows

@@ -17,4 +17,6 @@ timm             make dist/build/dod.valid.xml.bin/dod.valid.xml                
 timm             make dist/build/color.valid.xml.bin/color.valid.xml                   RTS="+RTS -M22288m  -RTS" PATTERN="-p '**/Properties/**'"
 timm             make dist/build/reducible.valid.xml.bin/reducible.valid.xml           RTS="+RTS -M22288m  -RTS" PATTERN="-p '**/Properties/**'"
 timm             make dist/build/insensitiveDom.valid.xml.bin/insensitiveDom.valid.xml RTS="+RTS -M22288m  -RTS" PATTERN="-p '**/Properties/**'"
+timm             make dist/build/cache.valid.xml.bin/cache.valid.xml                   RTS="+RTS -M22288m  -RTS" PATTERN="-p '**/Properties/**'"
+timm             make dist/build/crypto.valid.xml.bin/crypto.valid.xml                 RTS="+RTS -M22288m  -RTS" PATTERN="-p '**/Properties/**'"
 timm             make dist/build/misc.valid.xml.bin/misc.valid.xml                     RTS="+RTS -M22288m  -RTS" PATTERN="-p '**/Properties/**'"

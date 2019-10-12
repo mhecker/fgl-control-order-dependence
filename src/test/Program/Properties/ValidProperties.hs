@@ -54,6 +54,7 @@ import qualified Data.Map as Map
 import qualified Data.List as List
 import qualified Data.Tree as Tree
 
+import Data.Word
 import Data.Ord (Down(..))
 import Data.List (sortOn)
 import Data.Map ( Map, (!) )
@@ -174,6 +175,8 @@ import Data.Graph.Inductive.Query.BalancedSCC -- TODO: refactor that module into
 
 import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTraces)
 import Program.Examples (insecure, testsuite, interproceduralTestSuit, precisionCounterExamples, interestingDodWod, interestingTimingDep, syntacticCodeExamples, code2ResumptionForProgram, code2Program, interestingIsinkdomTwoFinger, interestingImdomTwoFinger, exampleTooCoarseAbstractionIsUnsound)
+import qualified ReferenceCrypto (runAES256)
+import qualified Program.ExamplesCrypto (runAES256)
 import Program.Defaults (defaultInput)
 import Program.Analysis
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannel)
@@ -227,6 +230,10 @@ cache     = defaultMain                               $ testGroup "cache"    [  
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [                      mkProp [cacheProps]]
 
 
+crypto     = defaultMain                               $ testGroup "crypto"    [                      mkProp [cryptoProps]]
+cryptoX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "crypto"    [                      mkProp [cryptoProps]]
+
+
 long     = defaultMain                               $ testGroup "long"    [ mkTest [longTests], mkProp [longProps]]
 longX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "long"    [ mkTest [longTests], mkProp [longProps]]
 
@@ -252,7 +259,7 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps, indepsProps, simonClassificationProps, newcdProps, delayProps, cacheProps]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps                              , nticdProps, ntscdProps, insensitiveDomProps, sensitiveDomProps, timingDepProps, dodProps, wodProps, colorProps, reducibleProps, indepsProps, simonClassificationProps, newcdProps, delayProps, cacheProps, cryptoProps]
   where missing = [longProps]
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, nticdTests, ntscdTests, insensitiveDomTests, sensitiveDomTests, timingDepTests, dodTests, wodTests, colorTests                , indepsTests, simonClassificationTests, newcdTests, delayTests]
@@ -4672,6 +4679,16 @@ delayTests = testGroup "(concerning  inifinite delay)" $
   ] ++
   []
 
+
+cryptoProps = testGroup "(concerning crypto example)" [
+    testProperty "aes256 example is correct"
+                $ \seed1 seed2 ->
+                    let key = moreSeeds seed1 32 :: [Word8]
+                        msg = moreSeeds seed2 16 :: [Word8]
+                    in    ReferenceCrypto.runAES256         key msg
+                       == Program.ExamplesCrypto.runAES256  key msg
+ ]
+  
 
 
 cacheProps = testGroup "(concerning cache timing)" [

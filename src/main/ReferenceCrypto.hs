@@ -45,10 +45,10 @@ encrypt secretKey msg =
     Right c -> Right $ ecbEncrypt c msg
 
 
-runAES256 :: [Word32] -> [Word32] -> [Word32]
+runAES256 :: [Word8] -> [Word8] -> [Word8]
 runAES256 key msg =
-  let packedMsg = pack $ fmap fromIntegral $ msg :: Bytes
-      packedKey = pack $ fmap fromIntegral $ key :: Bytes
+  let packedMsg = pack $ msg :: Bytes
+      packedKey = pack $ key :: Bytes
       kkey = Key packedKey :: Key AES256 Bytes
   in case encrypt kkey packedMsg of
        Left e -> error (show e)

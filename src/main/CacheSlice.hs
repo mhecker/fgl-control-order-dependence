@@ -55,15 +55,17 @@ cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) =>
   -> Set Node
   -> Set Node
 cacheTimingSliceFor csd g n0 = \ms ->
-{-
+
     let slice = combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms
--}
+    in slice
+{-
     let slice = combinedBackwardSlice3  tscd'   dd'   csd'            ms
     in   traceShortestPath ms slice 5
        $ traceShortestPath ms slice 6
        $ traceShortestPath ms slice 22
        $ traceShortestPath ms slice 23
        $ slice
+-}
   where tscd'  =            timDFFromFromItimdomMultipleOfFastCost ccg costF
         dd'    = invert'' $ dataDependence                         ccg vars  n0
         csd'   = invert'' $ csd                                      g       n0

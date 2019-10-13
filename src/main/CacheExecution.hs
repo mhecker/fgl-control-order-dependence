@@ -264,6 +264,10 @@ twoAddressCodeB r bf@(Leq x y) =
     let (loadsX, x', r' ) = twoAddressCodeV r  x
         (loadsY, y', r'') = twoAddressCodeV r' y
     in (loadsX `sseq` loadsY, Leq x' y', r'')
+twoAddressCodeB r bf@(Eeq x y) =
+    let (loadsX, x', r' ) = twoAddressCodeV r  x
+        (loadsY, y', r'') = twoAddressCodeV r' y
+    in (loadsX `sseq` loadsY, Eeq x' y', r'')
 twoAddressCodeB r bf@(And x y) =
     let (loadsX, x', r' ) = twoAddressCodeB r  x
         (loadsY, y', r'') = twoAddressCodeB r' y
@@ -613,6 +617,10 @@ cacheAwareLRUEvalB (Leq x y) = do
   xVal <- cacheAwareLRUEvalV x
   yVal <- cacheAwareLRUEvalV y
   return $ xVal <= yVal
+cacheAwareLRUEvalB (Eeq x y) = do
+  xVal <- cacheAwareLRUEvalV x
+  yVal <- cacheAwareLRUEvalV y
+  return $ xVal == yVal
 cacheAwareLRUEvalB (And b1 b2) = do
   b1Val <- cacheAwareLRUEvalB b1
   b2Val <- cacheAwareLRUEvalB b2
@@ -721,6 +729,10 @@ cacheTimeLRUEvalB :: BoolFunction -> StateT CacheTimeState [] ()
 cacheTimeLRUEvalB CTrue     = return ()
 cacheTimeLRUEvalB CFalse    = return ()
 cacheTimeLRUEvalB (Leq x y) = do
+  xVal <- cacheTimeLRUEvalV x
+  yVal <- cacheTimeLRUEvalV y
+  return ()
+cacheTimeLRUEvalB (Eeq x y) = do
   xVal <- cacheTimeLRUEvalV x
   yVal <- cacheTimeLRUEvalV y
   return ()

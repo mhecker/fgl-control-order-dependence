@@ -132,15 +132,15 @@ instance SimpleShow GlobalState where
 type ThreadLocalState = Map Var Val
 -- type CombinedState = Map Var Val
 
-data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
+data BoolFunction = CTrue   | CFalse | Leq VarFunction VarFunction | Eeq VarFunction VarFunction | And BoolFunction BoolFunction | Not BoolFunction | Or BoolFunction BoolFunction deriving (Show, Eq, Ord)
 data VarFunction   = Val Val | Var Var | Plus VarFunction VarFunction | Minus VarFunction VarFunction | Times VarFunction VarFunction | Div VarFunction VarFunction | Mod VarFunction VarFunction | Xor VarFunction VarFunction | BAnd VarFunction VarFunction | BNot VarFunction | Shl VarFunction VarFunction | Shr VarFunction VarFunction | Neg VarFunction | ArrayRead Array VarFunction | AssertRange Val Val VarFunction deriving (Show, Eq, Ord)
 
-eeq a b = (a `Leq` b) `And` (b `Leq` a)
 
 instance SimpleShow BoolFunction where
   simpleShow CTrue  = "true"
   simpleShow CFalse = "false"
   simpleShow (Leq a b) = "(" ++ simpleShow a ++ " <= " ++ simpleShow b ++ ")"
+  simpleShow (Eeq a b) = "(" ++ simpleShow a ++ " == " ++ simpleShow b ++ ")"
   simpleShow (Or  a b) = "(" ++ simpleShow a ++ " || " ++ simpleShow b ++ ")"
   simpleShow (And a b) =        simpleShow a ++ " && " ++ simpleShow b
   simpleShow (Not a  ) = "!" ++ simpleShow a
@@ -167,6 +167,7 @@ evalB :: GlobalState -> ThreadLocalState -> BoolFunction -> Bool
 evalB _  _ CTrue     = True
 evalB _  _ CFalse    = False
 evalB σg σl (Leq x y) = evalV σg σl  x <= evalV σg σl  y
+evalB σg σl (Eeq x y) = evalV σg σl  x == evalV σg σl  y
 evalB σg σl (And b1 b2) = evalB σg σl  b1 && evalB σg σl  b2
 evalB σg σl (Or  b1 b2) = evalB σg σl  b1 || evalB σg σl  b2
 evalB σg σl (Not b)     = not $ evalB σg σl  b
@@ -176,6 +177,7 @@ useB = useBFor useV
 useBFor useV CTrue       = Set.empty
 useBFor useV CFalse      = Set.empty
 useBFor useV (Leq x y)   = useV x ∪ useV y
+useBFor useV (Eeq x y)   = useV x ∪ useV y
 useBFor useV (And b1 b2) = useBFor useV b1 ∪ useBFor useV b2
 useBFor useV (Or  b1 b2) = useBFor useV b1 ∪ useBFor useV b2
 useBFor useV (Not b)     = useBFor useV b

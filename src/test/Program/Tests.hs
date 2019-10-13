@@ -123,7 +123,7 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSliceViaReach graph n0 (Set.fromList [nx])
+    putStrLn  $ show $ cacheTimingSlice graph n0 (Set.fromList [nx])
 
     
     -- putStrLn  $ show $ length $ nodes $ csGraph

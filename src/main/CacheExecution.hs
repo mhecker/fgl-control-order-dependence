@@ -6,6 +6,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 #define require assert
 #define USE_PRECISE_ARRAY_CACHELINES
+#define SKIP_INDEPENDENT_NODES_M
 module CacheExecution where
 
 import qualified Data.List as List
@@ -1291,7 +1292,11 @@ csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert''
                                         n /= m
                      ]
                  )
-    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
+    | m <- nodes graph,
+#ifdef SKIP_INDEPENDENT_NODES_M
+      mayBeCSDependent m,
+#endif
+      vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let csGraph' = cacheStateGraph'ForVarsAtMForGraph vars csGraph m :: gr (Node, CacheState) CFGEdge,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph'],
@@ -1305,7 +1310,10 @@ csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert''
    ]
   where csGraph = cacheStateGraph graph initialCacheState n0
         edgeToSuccessors0 = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)])] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
-
+#ifdef SKIP_INDEPENDENT_NODES_M
+        costs = costsFor csGraph
+        mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
+#endif         
 
 csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeDirectFromFor graph n0 m

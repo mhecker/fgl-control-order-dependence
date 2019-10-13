@@ -3441,6 +3441,22 @@ exampleArrayDataDep = toProgramIntra $ IntraGeneratedProgram
                      ) undefined undefined undefined)])
 
 
+exampleArrayArrayDataDep :: Program Gr
+exampleArrayArrayDataDep = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Skip
+               `Seq`  Ass (Global "l") (Val 0)
+               `Seq`  Ass (Global "h") (Val 255)
+               `Seq`  AssArr (Array "a") (Var $ Global "l") (Var $ Global "h")
+               `Seq`  Skip
+               -- `Seq`  Ass (Register 44) (Val 137)
+               `Seq`  Ass (Register 21) (ArrayRead (Array "a") (Val 0))
+               -- `Seq`  Ass (Register 22) (ArrayRead (Array "a") (Var $ (Register 44)))
+               -- `Seq`  Ass (Register 23) (ArrayRead (Array "a") (ArrayRead (Array "b") (Var $ (Register 44))))
+                     ) undefined undefined undefined)])
+
+
 
 
 exampleDomPaths :: Program Gr

@@ -61,7 +61,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
-import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph)
+import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, stateSets, cacheOnlyStepFor, costsFor)
 import CacheSlice (cacheTimingSliceViaReach)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
@@ -70,7 +70,7 @@ import Data.Graph.Inductive.Query.Dominators (iDom)
 import Data.Graph.Inductive.Query.TimingDependence (timingDependence, timingDependenceOld)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trcOfTrrIsTrc, withUniqueEndNode, fromSuccMap, delSuccessorEdges, delPredecessorEdges, isTransitive, removeDuplicateEdges, controlSinks, ladder, fullLadder, withoutSelfEdges, costFor, prevCondsWithSuccNode, prevCondsWithSuccNode', toSuccMap, withNodes, fromSuccMapWithEdgeAnnotation)
-import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge, newNodes)
+import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, lsuc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge, newNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.Dependence
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
@@ -4698,6 +4698,36 @@ cryptoProps = testGroup "(concerning crypto example)" [
 
 
 cacheProps = testGroup "(concerning cache timing)" [
+    testPropertySized 25 "csd only for choice nodes"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimple generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM       = csdMergeDirectOf g n0
+                        
+                        (cs, es)    = stateSets cacheOnlyStepFor g initialCacheState n0
+                        
+                        csGraph     = cacheStateGraph g initialCacheState n0
+                        costs       = costsFor csGraph
+                        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes g]
+
+                        (ccg, cost) = cacheCostDecisionGraphFor g csGraph 
+                    in  (∀) (Map.assocs $ invert'' csdM) (\(m, ns) -> 
+                          let
+                              c = (∃) (lsuc ccg m) (\(n1,l1) ->
+                                  (∃) (lsuc ccg m) (\(n2,l2) ->
+                                    (l1 == l2) ∧ (not $ n1  == n2              )))
+                              d = (∃) (lsuc g m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
+                         in let
+                                ok3 = (c == d)
+                                okc = ((not $ Set.null $ ns) → c)
+                                okd = ((not $ Set.null $ ns) → d)
+                                ok = ok3 ∧ okc ∧ okd
+                            in  if ok then ok else traceShow (ok3, "....", okc, okd) ok
+                        ),
     testPropertySized 25 "csd''''Of3 == csd''''Of4"
                 $ \generated ->
                     let pr :: Program Gr

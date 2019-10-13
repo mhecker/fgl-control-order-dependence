@@ -85,16 +85,19 @@ alignedIndicesFor min max = require (min <= max) $
 nrOfDifferentCacheLinesPerArray = length $ alignedIndices
 
 
-between :: Ord k => Map k v -> k -> k -> Map k v
-between map n m = require (n <= m) $ 
-                  let (_, right) = Map.split n map
-                      (mid, _)   = Map.split m right
-                  in mid
 
 sliceFor :: Index -> ArrayVal -> ArrayVal
-sliceFor ix array = between array (left - 1) (right + 1)
+sliceFor ix array = between array left right
   where left  = toAlignedIndex ix
         right = left + cacheLineSizeVal - 1
+
+        between :: Ord k => Map k v -> k -> k -> Map k v
+        between map n m =
+                  require (n < m) $
+                  require (Map.member n map ∧ Map.member m map) $
+                  let (  _, Just vn, right) = Map.splitLookup n map
+                      (mid, Just vm,     _) = Map.splitLookup m right
+                  in Map.insert n vn $ Map.insert m vm $ mid
 
 
 
@@ -389,7 +392,7 @@ cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = ca
         lookup :: (Val, CacheState, AccessTime )
         lookup = 
           require (consistent σ) $
-          assert (alignedIx >= ix) $
+          assert (alignedIx <= ix) $
           case removeFirstOrButLast carr cache of
             Right                               cache0 -> let { cval = CachedArraySlice vals ; vals = Map.elems $ sliceFor alignedIx (σa ! arr) } in
               (vals !! (fromIntegral $ ix - alignedIx), (carr, cval) : cache0, cacheMissTime )

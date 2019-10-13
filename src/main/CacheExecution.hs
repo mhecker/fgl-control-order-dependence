@@ -1261,7 +1261,9 @@ csdMergeOf graph n0 =  invert'' $
                                         n /= m
                      ]
                  )
-    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
+    | m <- nodes graph,
+      mayBeCSDependent m,
+      vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom graph',
       let csGraphM = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: gr (Node, AbstractCacheState) CFGEdge,
@@ -1277,6 +1279,9 @@ csdMergeOf graph n0 =  invert'' $
    ]
   where (cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
         csGraph = stateGraphForSets (cs, es) :: gr (Node, CacheState) CFGEdge
+        costs = costsFor csGraph
+        mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
+
 
 csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set CacheGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert'' $

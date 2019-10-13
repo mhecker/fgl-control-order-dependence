@@ -1053,15 +1053,19 @@ costsFor csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]
 cacheCostDecisionGraphFor :: DynGraph gr => gr CFGNode CFGEdge -> gr (Node, CacheState) CFGEdge -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraphFor g csGraph = (
       mkGraph
-        ((labNodes g) ++ ([(n,n) | n <- new]))
+        ((labNodes g) ++ ([(n,n) | n <- new ++ linNew]))
         (irrelevant ++ [ (n , m', l'  ) | ((e@(n,_,l),_), m') <- Map.assocs nodesFor, let l' = Use $ isDataDependent l ]
                     ++ [ (m', mj, NoOp) | ((e@(_,_,l),_), m') <- Map.assocs nodesFor,                          let mj = joinFor ! e ]
                     ++ [ (mj,  m, l   ) |   e@(_,m,l)         <- relevant,                                     let mj = joinFor ! e ]
+                    ++ [ (n , m', l'  ) | ((e@(n,_,l),_), m') <- Map.assocs linNodesFor, let l' = Use $ isDataDependent l ]
+                    ++ [ (m', m , l   ) |   e@(_,m,l)         <- linRelevant,                                  let m' = linJoinFor ! e ]
         ),
                   Map.fromList [ ((n ,m ), cost    ) | e@(n,m,l) <- irrelevant, let [cost] = Set.toList $ costs ! e,           assert (cost > 0) True ]
       `Map.union` Map.fromList [ ((n ,m'), cost - 2) | ((e@(n,_,l),cost), m') <- Map.assocs nodesFor,                          assert (cost > 2) True ]
       `Map.union` Map.fromList [ ((m',mj),        1) | ((e@(_,_,l),   _), m') <- Map.assocs nodesFor,                          let mj = joinFor ! e ]
       `Map.union` Map.fromList [ ((mj,m ),        1) |   e@(_,m,l)            <- relevant,                                     let mj = joinFor ! e ]
+      `Map.union` Map.fromList [ ((n ,m'), cost - 1) | ((e@(n,_,l),cost), m') <- Map.assocs linNodesFor,                       assert (cost > 1) True ]
+      `Map.union` Map.fromList [ ((m',m ),        1) |   e@(_,m,l)            <- linRelevant,                                  let m' = linJoinFor ! e ]
     )
   where
         costs = costsFor csGraph
@@ -1069,8 +1073,12 @@ cacheCostDecisionGraphFor g csGraph = (
         isRelevant e = nrSuc e > 1
         nrSuc e = Set.size $ costs ! e
 
+        isLinRelevant e@(n,m,l) =
+            (nrSuc e == 1) ∧ (not $ List.null $ isDataDependent l) ∧ (length (suc g n) == 1 )
+
         isDataDependent = isDep
           where isDep l@(AssignArray a (Val _) vf ) = isDataDepV vf
+                isDep l@(AssignArray a ix      vf ) = isDataDepV vf ++ [ name | name <- Set.toList $ useV ix ]
                 isDep l                             = isDataDepE l
 
                 arrayReadsV a@(ArrayRead _ _) = Set.singleton a
@@ -1101,12 +1109,18 @@ cacheCostDecisionGraphFor g csGraph = (
 
         nodesFor =               Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ costs ! e ] (take totalnewSplit new)
         joinFor  =               Map.fromList $ zip                     relevant                                   (drop totalnewSplit new)
-                    -- `Map.union`  (Map.fromList       [ ((e,time), | e@(n,m,l) <- irrelevant, let time = 1 ])
-        relevant   = [ e | e <- labEdges g,       isRelevant e]
-        irrelevant = [ e | e <- labEdges g, not $ isRelevant e]
+
+        linNodesFor =            Map.fromList $ zip [ (e,time) | e <-linRelevant, time <- Set.toList $ costs ! e ]                  linNew
+        linJoinFor  =            Map.fromList $ zip                  linRelevant                                                    linNew
+
+        relevant   = [ e | e <- labEdges g,       isRelevant e   , assert (not $ isLinRelevant e) True]
+        linRelevant= [ e | e <- labEdges g,       isLinRelevant e, assert (not $ isRelevant    e) True]
+        irrelevant = [ e | e <- labEdges g, not $ isRelevant e ∨ isLinRelevant e]
         totalnewSplit = sum $ fmap nrSuc relevant
         totalnewJoin  = length relevant
-        new = newNodes (totalnewSplit + totalnewJoin) g
+        totalnewLin   = length linRelevant
+        (new, linNew) = splitAt (totalnewSplit + totalnewJoin) allNew
+          where allNew = newNodes (totalnewSplit + totalnewJoin + totalnewLin) g
 
 
 cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)

@@ -76,7 +76,7 @@ instance (SimpleShow k, SimpleShow v       ) => SimpleShow (Map k v) where
 instance SimpleShow Var where
   simpleShow (Global x) = x
   simpleShow (ThreadLocal x) = x ++ " (thread local)"
-  simpleShow (Register i) = "r" ++ (show i) ++ ""
+  simpleShow (Register i) = "%" ++ (show i) ++ ""
 
 instance SimpleShow Array where
   simpleShow (Array x) = x ++ "[]"

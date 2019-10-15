@@ -257,3 +257,62 @@ compileAllToProgram threadCode procedureCode = Program {
                    [ cfg | (_,(_        ,cfg,_       ,_)) <- Map.toList $ compiledProcedureCode ]
 
         compiledProcedureCode = runGenFrom 1 $ compileAll threadCode procedureCode
+
+
+
+printIndent :: For -> [String]
+printIndent c = print 0 c
+  where indent i = concat $ take i $ repeat "\t"
+        indentTo i = fmap (indent i ++)
+
+        print i (Seq c1 c2) =
+           let c1s   = print 0 c1
+               c2s   = print 0 c2
+               cs    = c1s ++ c2s
+           in indentTo i cs
+        print i (Ass x vf)   =
+           let cs = [ simpleShow x ++ " := " ++ simpleShow vf ]
+           in indentTo i cs 
+        print i (AssArr (Array a) ix vf) =
+           let cs = [ a ++ "[" ++ simpleShow ix ++ "] := " ++ simpleShow vf ]
+           in indentTo i cs 
+        print i (If b c1 c2) =
+           let csIf   = [ "if " ++ simpleShow b ++ " then " ]
+               c1s    = print 1 c1
+               csEl   = [ "else" ]
+               c2s    = print 1 c2
+               csEn   = [ "end" ]
+               cs = csIf ++ c1s ++ csEl ++ c2s ++ csEn
+           in indentTo i cs
+        print i (ForC x c) =
+           let csFor  = [ "for " ++ show x]
+               c1s    = print 1 c
+               csEn   = [ "end" ]
+               cs = csFor ++ c1s ++ csEn
+           in indentTo i cs
+        print i (ForV x c) =
+           let csFor  = [ "for " ++ show x]
+               c1s    = print 1 c
+               csEn   = [ "end" ]
+               cs = csFor ++ c1s ++ csEn
+           in indentTo i cs
+        print i Skip =
+           let cs = [ "skip" ]
+           in indentTo i cs 
+        print i (ReadFromChannel x ch) =
+           let cs = [ simpleShow x ++ " := " ++  "read_" ++ ch ]
+           in indentTo i cs 
+        print i (PrintToChannel  vf ch) =
+           let cs = [ "print_" ++ ch ++ "(" ++ simpleShow vf  ++ ")"]
+           in indentTo i cs 
+        print i (SpawnThread t) =
+           let cs = [ "fork " ++ show t]
+           in indentTo i cs 
+        print i (CallProcedure p) =
+           let cs = [ "call " ++ show p]
+           in indentTo i cs 
+
+putStrIndent c = forM_ (printIndent c) (\s -> do
+    putStrLn s
+  )
+

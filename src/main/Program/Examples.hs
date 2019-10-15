@@ -1,5 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 800
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
+#else
+{-# OPTIONS_GHC -fno-warn-overflowed-literals #-}
+#endif
 module Program.Examples where
 
 

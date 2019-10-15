@@ -31,7 +31,8 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Basic (grev)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
-import Data.Graph.Inductive.Query.SP (sp)
+import qualified Data.Graph.Inductive.Query.SP (sp)
+
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Data.Graph.Inductive.Util (fromSuccMapWithEdgeAnnotation)
@@ -47,6 +48,13 @@ import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import CacheExecution (csdMergeDirectOf, csdMergeOf, cacheCostDecisionGraph)
 import Data.Graph.Inductive.Query.DataDependence (dataDependence)
 import Data.Graph.Inductive.Query.TSCD (timDFFromFromItimdomMultipleOfFastCost)
+
+sp :: (Real b, Graph gr) => Node -> Node -> gr a b -> Maybe Path
+#if MIN_VERSION_fgl(5,5,4)
+sp = Data.Graph.Inductive.Query.SP.sp
+#else
+sp n m g = Just $ Data.Graph.Inductive.Query.SP.sp n m g
+#endif
 
 cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) => 
     (gr CFGNode CFGEdge -> Node -> Map Node (Set Node))

@@ -51,7 +51,7 @@ cabal-version:       >=1.10
 define(COMMON_EXTENSIONS, `RankNTypes, CPP, ScopedTypeVariables, FlexibleInstances, NamedFieldPuns, GeneralizedNewtypeDeriving')dnl
 define(COMMON_GHC_FLAGS, `-O2 -rtsopts -threaded')dnl
 
-define(COMMON_DEPENDENCIES, `process >= 1.2.3, base >=4.8, deepseq, base-unicode-symbols >=0.2, containers >=0.5, ordered-containers >= 0.2.1, fgl >=5.5, fgl-arbitrary == 0.2.0.3, fgl-visualize >= 0.1.0.1, QuickCheck >=2.8, logict >=0.6, random >=1.1, MonadRandom == 0.5.1, containers-unicode-symbols == 0.3.1.1, lattices >= 1.5.0, dequeue == 0.1.12, bitwise == 0.1.1.1, cryptonite >= 0.26, memory >=0.15')dnl
+define(COMMON_DEPENDENCIES, `process >= 1.2.3, base >=4.8, deepseq, base-unicode-symbols >=0.2, containers >=0.5, ordered-containers >= 0.2.1, fgl >=5.5, fgl-arbitrary == 0.2.0.3, fgl-visualize >= 0.1.0.1, QuickCheck >=2.8, logict >=0.6, random >=1.1, MonadRandom == 0.5.1, containers-unicode-symbols == 0.3.1.1, lattices >= 1.5.0, dequeue == 0.1.12, bitwise == 0.1.1.1, cryptonite >= 0.25, memory >=0.14')dnl
 define(MAIN_DEPENDENCIES, `mtl >= 2.2, template-haskell >= 2.10, array >= 0.5, data-default-instances-containers >= 0.0.1, monad-gen == 0.3.0.1, pqueue >= 1.3.2, time >= 1.5, statistics, vector, safe')dnl
 define(TEST_DEPENDENCIES, `fgl-control-order-dependence, tasty >=0.11, tasty-quickcheck >=0.8, tasty-hunit >=0.9, tasty-ant-xml >= 1.0.5')dnl
 

@@ -115,21 +115,21 @@ aesKeySchedNKF          = Global "aesKeySchedNKF"
 mainSkey                = Array  "skey"
 mainKey                 = Array  "key"
 
-mixColumnsS = [ Global $ "mixColumnsS" ++ (show i) | i <- [0 .. 3] ]
-mixColumnsB = [ Global $ "mixColumnsB" ++ (show i) | i <- [0 .. 3] ]
-mixColumnsR = [ Global $ "mixColumnsR" ++ (show i) | i <- [0 .. 3] ]
+mixColumnsS = [ Global $ "a" ++ (show i) | i <- [0 .. 3] ]
+mixColumnsB = [ Global $ "b" ++ (show i) | i <- [0 .. 3] ]
+mixColumnsR = [ Global $ "r" ++ (show i) | i <- [0 .. 3] ]
 
-subBytesCtX = [ Global $ "subBytesCtX" ++ (show i) | i <- [0 ..  7] ]
-subBytesCtY = [ Global $ "subBytesCtY" ++ (show i) | i <- [1 .. 21] ]
-subBytesCtZ = [ Global $ "subBytesCtZ" ++ (show i) | i <- [0 .. 17] ]
-subBytesCtT = [ Global $ "subBytesCtT" ++ (show i) | i <- [0 .. 67] ]
-subBytesCtS = [ Global $ "subBytesCtS" ++ (show i) | i <- [0 .. 7] ]
+subBytesCtX = [ Global $ "x" ++ (show i) | i <- [0 ..  7] ]
+subBytesCtY = [ Global $ "y" ++ (show i) | i <- [1 .. 21] ]
+subBytesCtZ = [ Global $ "z" ++ (show i) | i <- [0 .. 17] ]
+subBytesCtT = [ Global $ "t" ++ (show i) | i <- [0 .. 67] ]
+subBytesCtS = [ Global $ "s" ++ (show i) | i <- [0 .. 7] ]
 
 
-expandKeyT = [ Global $ "expandKeyT" ++ (show i) | i <- [0 .. 3] ]
-expandKeyIndex          = Global "expandKeyIndex"
-expandKeyN            = Global "expandKeyN"
-expandKeySize         = Global "expandKeySize"
+expandKeyT = [ Global $ "w" ++ (show i) | i <- [0 .. 3] ]
+expandKeyIndex          = Global "i"
+expandKeyN            = Global "n"
+expandKeySize         = Global "skey_offset"
 
 
 shiftRowsTmp          = Global "shiftRowsTmp"

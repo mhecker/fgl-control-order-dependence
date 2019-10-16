@@ -42,6 +42,22 @@ unrolledFor unrolls n command =
 
 for  = unrolledFor 1
 
+unrolledForFromToStepUsing unrolls from to step ix command = 
+    require (from <= to)
+  $ require (n >         0)
+  $ require (n >=  unrolls)
+  $ if (unrolls == n) then
+      foldr1 Seq commands
+     else
+      foldr1 Seq commands `Seq` ForFromToStepUsing first to step ix command
+  where n = ((to - from) `div` step) + 1
+        first = from + (unrolls * step)
+        commands = [ command' i | i <- take (fromIntegral unrolls) $ [from, from+step .. ] ]
+          where command' i = Ass ix (Val i) `Seq` command
+
+forFromToStepUsing = unrolledForFromToStepUsing 1
+-- forFromToStepUsing = ForFromToStepUsing
+
 
 
 
@@ -164,14 +180,12 @@ mainInput =
 
 addRound :: Array -> Array -> VarFunction -> For
 addRound state skey offset = 
-                       Ass i (Val 0)
-                 `Seq` for 16 (
+                       forFromToStepUsing 0 15 1 i (
                                  Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp3 (Var i `Plus` offset)
                            `Seq` Ass tmp2 (ArrayRead skey (Var tmp3))
                            `Seq` Ass tmp (Var tmp `Xor` (Var tmp2))
                            `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp)
-                           `Seq` Ass i (Var i `Plus` (Val 1))
                        )
   where i = addRoundIteratorIndex
         tmp  = addRoundTmp
@@ -180,12 +194,10 @@ addRound state skey offset =
 
 sub_bytes :: Array -> For
 sub_bytes state =
-                       Ass i (Val 0)
-                 `Seq` for 16 (
+                       forFromToStepUsing 0 15 1 i (
                                  Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp2 (ArrayRead sbox (Var tmp))
                            `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp2)
-                           `Seq` Ass i (Var i `Plus` (Val 1))
                        )
   where i = subBytesIteratorIndex
         tmp  = subBytesTmp
@@ -629,10 +641,8 @@ scheduleCore_ct t0 t1 t2 t3 n =
 expandKey :: Array -> Array -> For
 expandKey skey key =
                        Ass n (Val 1)
-                 `Seq` Ass i (Val 0)
-                 `Seq` for 32 (
+                 `Seq` forFromToStepUsing 0 31 1 i (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
-                           `Seq` Ass i (Var i `Plus` (Val 1))
                        )
                  `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1], assert (size >= 0 && size <= 255) True ]
   where body size =
@@ -676,14 +686,11 @@ expandKey skey key =
 expandKey_ct :: Array -> Array -> For
 expandKey_ct skey key =
                        Ass n (Val 1)
-                 `Seq` Ass i (Val 0)
-                 `Seq` for 32 (
+                 `Seq` forFromToStepUsing 0 31 1 i (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
-                           `Seq` Ass i (Var i `Plus` (Val 1))
                        )
               -- `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1], assert (size >= 0 && size <= 255) True ]
-                 `Seq` Ass size (Val $ from $ keySize `div` 8)
-                 `Seq` for (from $ (scheduleSize256 - (keySize `div` 8)) `div` 4) ( body `Seq` (Ass size (Var size `Plus` (Val 4))))
+                 `Seq` forFromToStepUsing (from $ keySize `div` 8) (from $ scheduleSize256 - 4) 4 size body
   where body =
                        Ass t0 (ArrayRead skey (Var size `Minus` (Val 4)))
                  `Seq` Ass t1 (ArrayRead skey (Var size `Minus` (Val 3)))
@@ -724,10 +731,8 @@ expandKey_ct skey key =
 
 br_aes_small_cbcenc_run :: Array -> Array -> Array -> For
 br_aes_small_cbcenc_run skey buf iv =
-                        Ass i (Val 0)
-                 `Seq` for 16 (
+                       forFromToStepUsing 0 15 1 i (
                                  AssArr buf (Var i) (  (ArrayRead buf (Var i)) `Xor` (ArrayRead iv (Var i)))
-                           `Seq` Ass i (Var i `Plus` (Val 1))
                        )
                  `Seq` (br_aes_small_encrypt skey buf)
   where i = cbcEncRunIndex 
@@ -739,13 +744,11 @@ br_aes_small_encryptFor ::
   -> Array -> Array -> For
 br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                        addRound state skey (Val 0)
-                 `Seq` Ass u (Val 1)
-                 `Seq` for (num_rounds - 1) (
+                 `Seq` forFromToStepUsing 1 (num_rounds - 1) 1 u (
                                  sub_bytes state
                  `Seq`           shift_rows state
                  `Seq`           mixColumns state
                  `Seq`           addRound state skey (Var u `Shl` (Val 4))
-                 `Seq`           Ass u (Var u `Plus` (Val 1))
                        )
                  `Seq` sub_bytes state
                  `Seq` shift_rows state

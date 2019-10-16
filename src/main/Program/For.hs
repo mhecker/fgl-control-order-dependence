@@ -26,6 +26,7 @@ data For = If   BoolFunction For For
          | Ass  Var VarFunction
          | AssArr Array VarFunction VarFunction
          | ForC Val For
+         | ForFromToStepUsing Val Val Val Var For
          | ForV Var For
          | Seq For For
          | Skip
@@ -39,6 +40,7 @@ data For = If   BoolFunction For For
 subCommands :: For -> [For]
 subCommands c@(If _ c1 c2) = c:(subCommands c1 ++ subCommands c2)
 subCommands c@(ForC _ c1) = c:(subCommands c1)
+subCommands c@(ForFromToStepUsing _ _ _ _ c1) = c:(subCommands c1)
 subCommands c@(ForV _ c1) = c:(subCommands c1)
 subCommands c@(Seq c1 c2) = c:(subCommands c1++ subCommands c2)
 subCommands c = [c]
@@ -128,6 +130,24 @@ compile procedureOf entryOfProcedure exitOfProcedure  nStart (ForC val s) = do
             [nStart, nJoin, nInit] ++ nodesInLoop
            )
     where loopvar = ThreadLocal $ "_loopVar" ++ (show nStart)
+
+compile procedureOf entryOfProcedure exitOfProcedure  nStart (ForFromToStepUsing from to step loopvar s) =
+ if to < from then error $ show from ++ " <  " ++ show to else
+ if step <= 0 then error $ show step ++ " <= 0" else do
+  nInit <- gen
+  nLoop <- gen
+  (gLoop,nLoop',nodesInLoop)  <- compile procedureOf entryOfProcedure exitOfProcedure  nLoop s
+  nJoin <- gen
+  return $ (mkGraph [(n,n) | n <- [nStart, nInit,nLoop,nLoop',nJoin]]
+                    [(nStart, nLoop, Assign loopvar (Val from)),
+                     (nLoop',  nInit, Guard True  ((Var loopvar) `Leq` (Val $ to - 1 ))),
+                     (nLoop',  nJoin, Guard False ((Var loopvar) `Leq` (Val $ to - 1 ))),
+                     (nInit, nLoop, Assign loopvar ((Var loopvar) `Plus` (Val step)))
+                   ]
+            `mergeTwoGraphs` gLoop,
+            nJoin,
+            [nStart, nJoin, nInit] ++ nodesInLoop
+           )
 
 compile procedureOf entryOfProcedure exitOfProcedure  nStart (ForV var s) = do
   nInit <- gen
@@ -285,7 +305,13 @@ printIndent c = print 0 c
                cs = csIf ++ c1s ++ csEl ++ c2s ++ csEn
            in indentTo i cs
         print i (ForC x c) =
-           let csFor  = [ "for " ++ show x]
+           let csFor  = [ "for _ : [1.." ++ show x ++ "]"]
+               c1s    = print 1 c
+               csEn   = [ "end" ]
+               cs = csFor ++ c1s ++ csEn
+           in indentTo i cs
+        print i (ForFromToStepUsing from to step ix c) =
+           let csFor  = [ "for " ++ simpleShow ix ++ " : [" ++ show from  ++ ", " ++ show (from + step) ++ " .. " ++ show to ++ "]"]
                c1s    = print 1 c
                csEn   = [ "end" ]
                cs = csFor ++ c1s ++ csEn

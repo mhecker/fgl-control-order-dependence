@@ -202,6 +202,15 @@ sub_bytes state =
         tmp  = subBytesTmp
         tmp2 = subBytesTmp2
 
+type SubBytes4 = Var -> Var -> Var -> Var -> For
+sub_bytes_4 :: SubBytes4
+sub_bytes_4 v0 v1 v2 v3 = 
+                           Ass v0 (ArrayRead sbox (Var v0))
+                 `Seq`     Ass v1 (ArrayRead sbox (Var v1))
+                 `Seq`     Ass v2 (ArrayRead sbox (Var v2))
+                 `Seq`     Ass v3 (ArrayRead sbox (Var v3))
+
+
 
 sub_bytes_ct :: Array -> For
 sub_bytes_ct state =
@@ -210,7 +219,7 @@ sub_bytes_ct state =
   where a i = ArrayRead state (Val i)
         f i = AssArr state (Val i)
 
-sub_bytes_ct_4 :: Var -> Var -> Var -> Var -> For
+sub_bytes_ct_4 :: SubBytes4
 sub_bytes_ct_4 v0 v1 v2 v3 =
   sub_bytes_ct_8 t0 t1 t2 t3 t0 t1 t2 t3
                  f0 f1 f2 f3 f0 f1 f2 f3
@@ -605,8 +614,9 @@ keySize = 256
 num_rounds = 14
 key_len = 32 -- 32 * 8 == 256
 
+type ScheduleCore = Var -> Var -> Var -> Var -> Var -> For
 
-scheduleCore :: Var -> Var -> Var -> Var -> Var -> For
+scheduleCore :: ScheduleCore
 scheduleCore t0 t1 t2 t3 n =
                        rotate
                  `Seq` Ass t0 (ArrayRead sbox (Var t0))
@@ -622,7 +632,7 @@ scheduleCore t0 t1 t2 t3 n =
                  `Seq` Ass t3  (Var tmp)
           where tmp = rotateTmp
 
-scheduleCore_ct :: Var -> Var -> Var -> Var -> Var -> For
+scheduleCore_ct :: ScheduleCore
 scheduleCore_ct t0 t1 t2 t3 n =
                        rotate
                  `Seq` sub_bytes_ct_4 t0 t1 t2 t3
@@ -637,8 +647,8 @@ scheduleCore_ct t0 t1 t2 t3 n =
 
 
 
-expandKey :: Array -> Array -> For
-expandKey skey key =
+expandKeyFor :: ScheduleCore -> SubBytes4 -> Array -> Array -> For
+expandKeyFor scheduleCore sub_bytes_4 skey key =
                        Ass n (Val 1)
                  `Seq` forFromToStepUsing 0 31 1 i (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
@@ -657,10 +667,7 @@ expandKey skey key =
                            Skip
                        ))
                  `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val 16)) {- then -} (
-                           Ass t0 (ArrayRead sbox (Var t0))
-                 `Seq`     Ass t1 (ArrayRead sbox (Var t1))
-                 `Seq`     Ass t2 (ArrayRead sbox (Var t2))
-                 `Seq`     Ass t3 (ArrayRead sbox (Var t3))
+                           sub_bytes_4 t0 t1 t2 t3
                        ) {- else -} (
                            Skip
                        ))
@@ -683,51 +690,12 @@ expandKey skey key =
           where min = fromIntegral (minBound :: Val)
                 max = fromIntegral (maxBound :: Val)
 
+
+expandKey :: Array -> Array -> For
+expandKey = expandKeyFor scheduleCore sub_bytes_4
 
 expandKey_ct :: Array -> Array -> For
-expandKey_ct skey key =
-                       Ass n (Val 1)
-                 `Seq` forFromToStepUsing 0 31 1 i (
-                                 AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
-                       )
-              -- `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1], assert (size >= 0 && size <= 255) True ]
-                 `Seq` forFromToStepUsing (from $ keySize `div` 8) (from $ scheduleSize256 - 4) 4 size body
-  where body =
-                       Ass t0 (ArrayRead skey (Var size `Minus` (Val 4)))
-                 `Seq` Ass t1 (ArrayRead skey (Var size `Minus` (Val 3)))
-                 `Seq` Ass t2 (ArrayRead skey (Var size `Minus` (Val 2)))
-                 `Seq` Ass t3 (ArrayRead skey (Var size `Minus` (Val 1)))
-
-                 `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val  0)) {- then -} (
-                           scheduleCore_ct t0 t1 t2 t3 n
-                 `Seq`     Ass n (Var n `Plus` (Val 1))
-                       ) {- else -} (
-                           Skip
-                       ))
-                 `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val 16)) {- then -} (
-                           sub_bytes_ct_4 t0 t1 t2 t3
-                       ) {- else -} (
-                           Skip
-                       ))
-                 `Seq` AssArr skey (Var size `Plus` (Val 0)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -0 + (keySize `div` 8))) `Xor` (Var t0))
-                 `Seq` AssArr skey (Var size `Plus` (Val 1)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -1 + (keySize `div` 8))) `Xor` (Var t1))
-                 `Seq` AssArr skey (Var size `Plus` (Val 2)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -2 + (keySize `div` 8))) `Xor` (Var t2))
-                 `Seq` AssArr skey (Var size `Plus` (Val 3)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -3 + (keySize `div` 8))) `Xor` (Var t3))
-
-        i = expandKeyIndex 
-        t0 = expandKeyT !! 0
-        t1 = expandKeyT !! 1
-        t2 = expandKeyT !! 2
-        t3 = expandKeyT !! 3
-        n = expandKeyN
-
-        size = expandKeySize
-
-        from :: Int -> Val
-        from i = assert (min <= i  ∧  i <= max) $ fromIntegral i
-          where min = fromIntegral (minBound :: Val)
-                max = fromIntegral (maxBound :: Val)
-
+expandKey_ct = expandKeyFor scheduleCore_ct sub_bytes_ct_4
 
 
 br_aes_small_cbcenc_run :: Array -> Array -> Array -> For

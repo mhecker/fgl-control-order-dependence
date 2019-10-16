@@ -59,21 +59,20 @@ sp n m g = Just $ Data.Graph.Inductive.Query.SP.sp n m g
 cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) => 
     (gr CFGNode CFGEdge -> Node -> Map Node (Set Node))
   -> gr CFGNode CFGEdge
+  -> [Node]
   -> Node
   -> Set Node
   -> Set Node
-cacheTimingSliceFor csd g n0 = \ms ->
-
+cacheTimingSliceFor csd g debugNs n0 = \ms ->
+{-
     let slice = combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms
     in slice
-{-
-    let slice = combinedBackwardSlice3  tscd'   dd'   csd'            ms
-    in   traceShortestPath ms slice 5
-       $ traceShortestPath ms slice 6
-       $ traceShortestPath ms slice 22
-       $ traceShortestPath ms slice 23
-       $ slice
 -}
+
+    let slice = combinedBackwardSlice3  tscd'   dd'   csd'            ms
+        trace = foldr (.) id [ traceShortestPath ms slice n | n <- debugNs]
+    in trace slice
+
   where tscd'  =            timDFFromFromItimdomMultipleOfFastCost ccg costF
         dd'    = invert'' $ dataDependence                         ccg vars  n0
         csd'   = invert'' $ csd                                      g       n0
@@ -116,8 +115,8 @@ cacheTimingSliceFor csd g n0 = \ms ->
 data DepEdge = TSCD | DD | CSD deriving (Show, Eq, Ord)
 
 
-cacheTimingSlice         g n0 = cacheTimingSliceFor csdMergeDirectOf g n0
-cacheTimingSliceViaReach g n0 = cacheTimingSliceFor csdMergeOf       g n0
+cacheTimingSlice         g n0 = cacheTimingSliceFor csdMergeDirectOf g [] n0
+cacheTimingSliceViaReach g n0 = cacheTimingSliceFor csdMergeOf       g [] n0
 
 
 

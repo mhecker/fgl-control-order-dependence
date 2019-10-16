@@ -107,8 +107,29 @@ import qualified Data.Set as Set
 
 
 
+data Aes = Aes {
+    forMain :: For,
+    encryptStateInputNode0 :: Node,
+    keyInputNode :: Node
+  }
+
+aes_main = Aes {
+    forMain = br_aes_small_cbcenc_main mainInput Skip,
+    encryptStateInputNode0 = 274,
+    keyInputNode = 291
+  }
+
+aes_main_ct = Aes {
+    forMain = br_aes_small_cbcenc_main_ct mainInput Skip,
+    encryptStateInputNode0 = 17,
+    keyInputNode = 34
+  }
+
+
 main = let {
-         pr = for2Program $ br_aes_small_cbcenc_mainCheat_ct mainInput Skip  :: Program Gr ;
+         aes@(Aes { forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct ;
+         debugNs = [encryptStateInputNode0, keyInputNode] ;
+         pr = for2Program $ forMain :: Program Gr ;
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
@@ -123,7 +144,7 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSlice graph n0 (Set.fromList [nx])
+    putStrLn  $ show $ cacheTimingSliceFor csdMergeDirectOf graph debugNs n0 (Set.fromList [nx])
 
     
     -- putStrLn  $ show $ length $ nodes $ csGraph

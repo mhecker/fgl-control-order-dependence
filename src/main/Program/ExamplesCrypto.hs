@@ -55,8 +55,7 @@ unrolledForFromToStepUsing unrolls from to step ix command =
         commands = [ command' i | i <- take (fromIntegral unrolls) $ [from, from+step .. ] ]
           where command' i = Ass ix (Val i) `Seq` command
 
-forFromToStepUsing = unrolledForFromToStepUsing 1
--- forFromToStepUsing = ForFromToStepUsing
+forFromToStepUsing = ForFromToStepUsing
 
 
 

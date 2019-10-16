@@ -232,18 +232,10 @@ addBefore end nodeLabels graph = do
 
 
 dataDependence :: DynGraph gr => gr a CFGEdge -> Set Name -> Node -> Map Node (Set Node)
-dataDependence graph vars entry = Map.fromList [
-      (n, Set.fromList $
-          [ reachedFromN | reachedFromN <- nodes graph,
-                           let edges :: Map Name (Set (LEdge CFGEdge))
-                               edges = reaching ! reachedFromN,
-                           let nodes :: Map Name (Set (Node))
-                               nodes = fmap (\set -> Set.map (\(n,_,_) -> n) set) edges,
-                           var <- Set.toList $ use graph reachedFromN,
-                           n `Set.member` (nodes ! var)]
-      )
-     | n <- nodes graph
-    ]
+dataDependence graph vars entry = invert'' $
+    Map.fromList [ (m,
+        Set.fromList [ n | var <- Set.toList $ use graph m, Just edges <- [Map.lookup var nameMap], (n,_,_) <- Set.toList edges ])
+      | (m, nameMap) <- Map.assocs reaching ]
   where reaching :: Map Node (Map Name (Set (LEdge CFGEdge)))
         reaching = analysis (dependenceAnalysis vars) graph entry
 

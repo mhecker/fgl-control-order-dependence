@@ -643,31 +643,31 @@ expandKey skey key =
                  `Seq` forFromToStepUsing 0 31 1 i (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
                        )
-                 `Seq` foldr Seq Skip [ body size | size <- [keySize `div` 8, keySize `div` 8 + 4 .. scheduleSize256 - 1], assert (size >= 0 && size <= 255) True ]
-  where body size =
-                       Ass t0 (ArrayRead skey (Val $ from $ 0 + size - 4))
-                 `Seq` Ass t1 (ArrayRead skey (Val $ from $ 1 + size - 4))
-                 `Seq` Ass t2 (ArrayRead skey (Val $ from $ 2 + size - 4))
-                 `Seq` Ass t3 (ArrayRead skey (Val $ from $ 3 + size - 4))
+                 `Seq` forFromToStepUsing (from $ keySize `div` 8) (from $ scheduleSize256 - 4) 4 size body
+  where body =
+                       Ass t0 (ArrayRead skey (Var size `Minus` (Val 4)))
+                 `Seq` Ass t1 (ArrayRead skey (Var size `Minus` (Val 3)))
+                 `Seq` Ass t2 (ArrayRead skey (Var size `Minus` (Val 2)))
+                 `Seq` Ass t3 (ArrayRead skey (Var size `Minus` (Val 1)))
 
-                 `Seq` (if size `mod` (keySize `div` 8) == 0 then (
+                 `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val  0)) {- then -} (
                            scheduleCore t0 t1 t2 t3 n
                  `Seq`     Ass n (Var n `Plus` (Val 1))
-                       ) else (
+                       ) {- else -} (
                            Skip
                        ))
-                 `Seq` (if keySize == 256 ∧ (size `mod` (keySize `div` 8) == 16) then (
+                 `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val 16)) {- then -} (
                            Ass t0 (ArrayRead sbox (Var t0))
                  `Seq`     Ass t1 (ArrayRead sbox (Var t1))
                  `Seq`     Ass t2 (ArrayRead sbox (Var t2))
                  `Seq`     Ass t3 (ArrayRead sbox (Var t3))
-                       ) else (
+                       ) {- else -} (
                            Skip
                        ))
-                 `Seq` AssArr skey (Val $ from $ size + 0) (ArrayRead skey (Val $ from $ size + 0 - (keySize `div` 8)) `Xor` (Var t0))
-                 `Seq` AssArr skey (Val $ from $ size + 1) (ArrayRead skey (Val $ from $ size + 1 - (keySize `div` 8)) `Xor` (Var t1))
-                 `Seq` AssArr skey (Val $ from $ size + 2) (ArrayRead skey (Val $ from $ size + 2 - (keySize `div` 8)) `Xor` (Var t2))
-                 `Seq` AssArr skey (Val $ from $ size + 3) (ArrayRead skey (Val $ from $ size + 3 - (keySize `div` 8)) `Xor` (Var t3))
+                 `Seq` AssArr skey (Var size `Plus` (Val 0)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -0 + (keySize `div` 8))) `Xor` (Var t0))
+                 `Seq` AssArr skey (Var size `Plus` (Val 1)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -1 + (keySize `div` 8))) `Xor` (Var t1))
+                 `Seq` AssArr skey (Var size `Plus` (Val 2)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -2 + (keySize `div` 8))) `Xor` (Var t2))
+                 `Seq` AssArr skey (Var size `Plus` (Val 3)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -3 + (keySize `div` 8))) `Xor` (Var t3))
 
         i = expandKeyIndex 
         t0 = expandKeyT !! 0
@@ -675,6 +675,8 @@ expandKey skey key =
         t2 = expandKeyT !! 2
         t3 = expandKeyT !! 3
         n = expandKeyN
+
+        size = expandKeySize
 
         from :: Int -> Val
         from i = assert (min <= i  ∧  i <= max) $ fromIntegral i

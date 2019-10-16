@@ -1249,7 +1249,7 @@ accessReachableFrom graph = (㎲⊒) init f
 
 merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> gr (Node, Set CacheGraphNode) CFGEdge
 merged csGraph' equivs =  mkGraph nodes' edges
-  where edges =  List.nub $ fmap f $ (labEdges csGraph')
+  where edges =  Set.toList $ Set.fromList $ fmap f $ (labEdges csGraph')
           where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
                   where Just (n,_)  = lab csGraph' y
                         Just (n',_) = lab csGraph' y'

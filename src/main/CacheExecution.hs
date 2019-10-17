@@ -1005,6 +1005,29 @@ cacheStateGraph'ForVarsAtMForGraph vars g0 mm = result
           | otherwise = cache
 
 
+cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, CacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = {- assert (conved == conved') $ -} result
+  where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
+
+        (conved, conved') = (
+            Set.fromList $ fmap (conv result ) (labEdges result ),
+            Set.fromList $ fmap (conv result') (labEdges result')
+           )
+          where conv g (n, m, l) = (lab g n, lab g m, l)
+                result' = cacheStateGraph'ForVarsAtMForGraph vars (stateGraphForSets (css, es)) mm :: gr (Node, CacheState) CFGEdge
+
+        merged :: gr (Node, CacheState) CFGEdge
+        merged = mkGraph nodes' edges'
+
+        nodes' = zip [0..] [           α cs                      |  cs@(m,c)                  <- Set.toList css]
+        edges' =           [(toNode' ! α cs, toNode' ! α cs', e) | (cs@(m,c), e, cs'@(m',c')) <- Set.toList es, m /= mm]
+        toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
+
+        α cs@(n, cache)
+          | n == mm   = (mm, [ (v,undefinedCacheValue) | (v,s) <- cache, v ∈ vars])
+          | otherwise = cs
+
+
 
 
 
@@ -1061,6 +1084,13 @@ costsFor csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]
                                                  let Just (m0,_) = lab csGraph m,
                                                  fullState'@(_,time) <- cacheTimeStepFor e (cs, 0)
                       ]
+
+costsFor2 :: (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costsFor2 (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
+                                                 ((n,cache), e, (n', cache')) <- Set.toList es,
+                                                 fullState'@(_,time) <- cacheTimeStepFor e (cache, 0)
+                      ]
+
 
 cacheCostDecisionGraphFor :: DynGraph gr => gr CFGNode CFGEdge -> gr (Node, CacheState) CFGEdge -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraphFor g csGraph = (
@@ -1311,7 +1341,7 @@ csdMergeOf graph n0 =  invert'' $
 
 
 csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set CacheGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert'' $
+csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- ys,
                                         let Just (n, _) = lab csGraph'' y,
                                         -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
@@ -1324,20 +1354,19 @@ csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert''
 #endif
       vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
-      let csGraph' = cacheStateGraph'ForVarsAtMForGraph vars csGraph m :: gr (Node, CacheState) CFGEdge,
+      let csGraph' = cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m :: gr (Node, CacheState) CFGEdge,
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph'],
       let y's  = nodesToCsNodes ! m,
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
-      let equivs = mergeFromForEdgeToSuccessor edgeToSuccessors0 graph' csGraph'  idom' roots',
+      let equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots',
       let csGraph'' = merged csGraph' equivs,
       let idom'' = isinkdomOfTwoFinger8 csGraph'',
       let ys = [ y | y <- nodes csGraph'', Set.null $ idom'' ! y]
    ]
-  where csGraph = cacheStateGraph graph initialCacheState n0
-        edgeToSuccessors0 = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)])] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
+  where csGraph@(cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
 #ifdef SKIP_INDEPENDENT_NODES_M
-        costs = costsFor csGraph
+        costs = costsFor2 csGraph
         mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
 #endif         
 
@@ -1345,9 +1374,8 @@ csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeDirectFromFor graph n0 m
 
 
-mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor edgeToSuccessors0 graph' csGraph'  idom roots, csGraph')
+mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
   where   csGraph = cacheStateGraph graph initialCacheState n0
-          edgeToSuccessors0 = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)]) ] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
           
           vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars]
           graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
@@ -1400,19 +1428,17 @@ mergeFrom ::  (DynGraph gr) =>
   Map CacheGraphNode (Maybe CacheGraphNode) ->
   Set CacheGraphNode ->
   Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor edgeToSuccessors graph csGraph  idom roots
-  where edgeToSuccessors = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)]) ] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
+mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  idom roots
 
 
 
 mergeFromForEdgeToSuccessor ::  (DynGraph gr) =>
-  Map (CacheGraphNode, CFGEdge) (Set (CacheGraphNode, Node)) ->
   gr CFGNode CFGEdge ->
   gr (Node, s) CFGEdge ->
   Map CacheGraphNode (Maybe CacheGraphNode) ->
   Set CacheGraphNode ->
   Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFromForEdgeToSuccessor edgeToSuccessors0 graph csGraph idom roots = assert (result == mergeFromSlow graph csGraph idom roots) result
+mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFromSlow graph csGraph idom roots) result
   where result = (go orderToNodes init) ⊔ equivsNBase
           where (⊔) :: Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
                 (⊔) left right =  Map.unionWithKey f left right
@@ -1459,7 +1485,7 @@ mergeFromForEdgeToSuccessor edgeToSuccessors0 graph csGraph idom roots = assert 
 
         nodesToCsNodes = Map.fromList [ (n, Set.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
-        edgeToSuccessors = (∐) [ Map.fromList [ ((y,e), Set.fromList [ (x,m) ]) ] | x <- Set.toList $ roots, let Just (m,_) = lab csGraph x, (y,e) <- lpre csGraph x] `Map.union` edgeToSuccessors0
+        edgeToSuccessors = (∐) [ Map.fromList [ ((y,e), Set.fromList [ (x,m) ]) ] |  (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
 
         fromRoots = Map.mapWithKey (\n ys -> go ys Map.empty) nodesToCsNodes
           where go ysLeft fromroots

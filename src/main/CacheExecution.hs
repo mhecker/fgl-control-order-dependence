@@ -1459,17 +1459,14 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFr
                            | Set.null ysLeft = fromsucc
                            | otherwise = assert (y ∈ y's) goSuccessors ysLeft' ((Map.fromSet (const y's) y's) `Map.union` fromsucc)
                           where y = Set.findMin ysLeft
-                                es = lsuc csGraph y
+                                es = (∐) [ Map.fromList [ (e, Set.fromList [(x,m)]) ]  | (x,e) <- lsuc csGraph y, let Just (m, _) = lab csGraph x ]
+
                                 y's     = Set.insert y y's0
                                 ysLeft' = Set.delete y ysLeft'0
                                 (y's0, ysLeft'0) = Set.partition (\y' -> 
-                                                                   (∀) es (\(_,e) ->
-                                                                     (∀) (edgeToSuccessors ! (y , e)) (\(x , m ) ->
-                                                                     (∀) (edgeToSuccessors ! (y', e)) (\(x', m') ->
-                                                                          assert (m == m') $
-                                                                          (x  ∈ Map.findWithDefault Set.empty x' (fromSuccessors ! m')  ∨  x ∈ equivsNBase ! m' ! x')
-                                                                     ))
-                                                                   )
+                                                                   (∀) (lsuc csGraph y') (\(x', e') -> (∀) (es ! e') (\(x,m) -> 
+                                                                          (x  ∈ Map.findWithDefault Set.empty x' (fromSuccessors ! m)  ∨  x ∈ equivsNBase ! m ! x')
+                                                                   ))
                                                                )
                                                                ysLeft
 
@@ -1484,8 +1481,6 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFr
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
         nodesToCsNodes = Map.fromList [ (n, Set.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
-
-        edgeToSuccessors = (∐) [ Map.fromList [ ((y,e), Set.fromList [ (x,m) ]) ] |  (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]
 
         fromRoots = Map.mapWithKey (\n ys -> go ys Map.empty) nodesToCsNodes
           where go ysLeft fromroots

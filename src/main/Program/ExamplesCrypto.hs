@@ -53,7 +53,41 @@ unrolledForFromToStepUsing unrolls from to step ix command =
   where n = ((to - from) `div` step) + 1
         first = from + (unrolls * step)
         commands = [ command' i | i <- take (fromIntegral unrolls) $ [from, from+step .. ] ]
-          where command' i = Ass ix (Val i) `Seq` command
+          where command' i = Ass ix (Val i) `Seq` (vfMapF constFold $ vfMapF (subst i) $ command)
+
+                subst i v@(Var x)
+                  | x == ix   = Val i
+                  | otherwise = v
+                subst i (Plus  a b) = Plus  (subst i a) (subst i b)
+                subst i (Minus a b) = Minus (subst i a) (subst i b)
+                subst i (Mod   a b) = Mod   (subst i a) (subst i b)
+                subst i (Xor   a b) = Xor   (subst i a) (subst i b)
+                subst i (ArrayRead a ix) = ArrayRead a (subst i ix)
+                subst i vf = vf -- TODO: more cases
+
+                constFold (a `Plus` b) =
+                  let a' = constFold a
+                      b' = constFold b
+                  in folded a' b' (+) Plus
+                constFold (a `Minus` b) =
+                  let a' = constFold a
+                      b' = constFold b
+                  in folded a' b' (-) Minus
+                constFold (a `Mod` b) =
+                  let a' = constFold a
+                      b' = constFold b
+                  in folded a' b' mod Mod
+                constFold (a `Xor` b) =
+                  let a' = constFold a
+                      b' = constFold b
+                  in folded a' b' xor Xor
+                constFold (ArrayRead a ix) = 
+                  let ix' = constFold ix
+                  in ArrayRead a ix'
+                constFold vf = vf -- TODO: more cases
+
+                folded (Val a) (Val b) op _ = Val $ a `op` b
+                folded      a       b  _ op =       a `op` b
 
 forFromToStepUsing = ForFromToStepUsing
 

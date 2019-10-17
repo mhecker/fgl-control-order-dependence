@@ -342,3 +342,45 @@ putStrIndent c = forM_ (printIndent c) (\s -> do
     putStrLn s
   )
 
+
+vfMapB :: (VarFunction -> VarFunction) -> BoolFunction -> BoolFunction
+vfMapB f (Leq vf1 vf2) = Leq vf1' vf2'
+  where vf1' = f vf1
+        vf2' = f vf2
+vfMapB f (Eeq vf1 vf2) = Eeq vf1' vf2'
+  where vf1' = f vf1
+        vf2' = f vf2
+vfMapB f (And bf1 bf2) = And bf1' bf2'
+  where bf1' = vfMapB f bf1
+        bf2' = vfMapB f bf2
+vfMapB f (Or bf1 bf2) = Or bf1' bf2'
+  where bf1' = vfMapB f bf1
+        bf2' = vfMapB f bf2
+vfMapB f (Not bf) = Not bf'
+  where bf' = vfMapB f bf
+
+vfMapF :: (VarFunction -> VarFunction) -> For -> For
+vfMapF f (If bf c1 c2) = If bf' c1' c2'
+  where bf' = vfMapB f bf
+        c1' = vfMapF f c1
+        c2' = vfMapF f c2
+vfMapF f (Ass x vf) = Ass x vf'
+  where vf' = f vf
+vfMapF f (AssArr a ix vf) = AssArr a ix' vf'
+  where vf' = f vf
+        ix' = f ix
+vfMapF f (ForC i c) = ForC i c' 
+  where c' = vfMapF f c
+vfMapF f (ForFromToStepUsing from to step ix c) = (ForFromToStepUsing from to step ix c)
+  where c' = vfMapF f c
+vfMapF f (ForV x c) = ForV x c' 
+  where c' = vfMapF f c
+vfMapF f (Seq c1 c2) = Seq c1' c2'
+  where c1' = vfMapF f c1
+        c2' = vfMapF f c2
+vfMapF f (PrintToChannel vf ch) = PrintToChannel vf' ch
+  where vf' = f vf
+vfMapF f for@(ReadFromChannel _ _) = for
+vfMapF f for@(SpawnThread _)       = for
+vfMapF f for@(CallProcedure _)     = for
+vfMapF f for@(Skip)                = for

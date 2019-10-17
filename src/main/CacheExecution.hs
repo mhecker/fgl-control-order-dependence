@@ -1312,7 +1312,7 @@ csdMergeOf graph n0 =  invert'' $
 
 csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set CacheGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert'' $
-  Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
+  Map.fromList [ (m, Set.fromList [ n | y <- ys,
                                         let Just (n, _) = lab csGraph'' y,
                                         -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
                                         n /= m
@@ -1331,8 +1331,8 @@ csdMergeDirectOf graph n0 = traceShow (List.length $ nodes $ csGraph) $ invert''
       let roots' = Set.fromList y's,
       let equivs = mergeFromForEdgeToSuccessor edgeToSuccessors0 graph' csGraph'  idom' roots',
       let csGraph'' = merged csGraph' equivs,
-      let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'',
-      let ys = Set.fromList [ y | y <- nodes csGraph'', idom'' ! y == Nothing]
+      let idom'' = isinkdomOfTwoFinger8 csGraph'',
+      let ys = [ y | y <- nodes csGraph'', Set.null $ idom'' ! y]
    ]
   where csGraph = cacheStateGraph graph initialCacheState n0
         edgeToSuccessors0 = (∐) [ Map.fromList [ ((y,e), Set.fromList [(x,m)])] | (y,x,e) <- labEdges csGraph, let Just (m,_) = lab csGraph x]

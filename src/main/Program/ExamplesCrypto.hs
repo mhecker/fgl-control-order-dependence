@@ -623,7 +623,7 @@ scheduleCore t0 t1 t2 t3 n =
                  `Seq` Ass t1 (ArrayRead sbox (Var t1))
                  `Seq` Ass t2 (ArrayRead sbox (Var t2))
                  `Seq` Ass t3 (ArrayRead sbox (Var t3))
-                 `Seq` Ass t0 (Var t0 `Xor` (ArrayRead rcon (Var n)))
+                 `Seq` Ass t0 (Var t0 `Xor` (ArrayRead rcon (AssertRange 0 10 $ (Var n))))
   where rotate =
                        Ass tmp (Var t0)
                  `Seq` Ass t0  (Var t1)
@@ -636,7 +636,7 @@ scheduleCore_ct :: ScheduleCore
 scheduleCore_ct t0 t1 t2 t3 n =
                        rotate
                  `Seq` sub_bytes_ct_4 t0 t1 t2 t3
-                 `Seq` Ass t0 (Var t0 `Xor` (ArrayRead rcon (Var n)))
+                 `Seq` Ass t0 (Var t0 `Xor` (ArrayRead rcon (AssertRange 0 10 $ (Var n))))
   where rotate =
                        Ass tmp (Var t0)
                  `Seq` Ass t0  (Var t1)

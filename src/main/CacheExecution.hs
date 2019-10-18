@@ -133,6 +133,8 @@ noOpTime = 1
 guardTime :: AccessTime
 guardTime = 1
 
+initTime :: AccessTime
+initTime = 1
 
 removeFirstOrButLast = removeFirstOrButLastMaxSize cacheSize
 
@@ -712,12 +714,12 @@ cacheStepForState e@(Init _ _) = do
         (normal@(σ, tlσ,()), cache, time) <- get
         let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
         let normal' = (σ', tlσ', ())
-        return (normal', cache, time)
+        return (normal', cache, time + initTime)
 cacheStepForState e@(InitArray _ _) = do
         (normal@(σ, tlσ,()), cache, time) <- get
         let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
         let normal' = (σ', tlσ', ())
-        return (normal', cache, time)
+        return (normal', cache, time + initTime)
 cacheStepForState NoOp = do
         σ@(normal,cache,time) <- get
         let σ' = (normal, cache, time + noOpTime)
@@ -878,11 +880,11 @@ cacheTimeStepForState (AssignArray a ix vf) = do
         return σ'
 #endif
 cacheTimeStepForState (Init _ _ ) = do
-        σ <- get
-        return σ
+        (cache, time) <- get
+        return (cache, time + initTime) 
 cacheTimeStepForState (InitArray _ _ ) = do
-        σ <- get
-        return σ
+        (cache, time) <- get
+        return (cache, time + initTime) 
 cacheTimeStepForState NoOp = do
         (cache, time) <- get
         return (cache, time + noOpTime) 

@@ -4815,6 +4815,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                              ok = limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
                           in if ok then ok else
                                traceShow ("M:: ", m, "  S::", s) $
+                               traceShow ("G0 =====", g0) $
+                               traceShow ("G  =====", g ) $
                                traceShow ("G1 =====", g1) $
                                traceShow ("G2 =====", g2) $
                                traceShow (execution1, "=========", execution2) $

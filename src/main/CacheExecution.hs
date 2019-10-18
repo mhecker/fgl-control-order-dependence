@@ -1082,15 +1082,26 @@ cacheExecutionLimit limit g σ0 n0 = run σ0 n0 0
                     return $ (n, time) : trace0
 
 
-prependInitialization :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Node -> Map Name Node -> Map Name Val -> gr CFGNode CFGEdge
-prependInitialization g0 n0 newN0 varToNode state =
+prependInitialization :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Node -> Map Name Node -> Map Var Val -> Map Array ArrayVal -> gr CFGNode CFGEdge
+prependInitialization g0 n0 newN0 varToNode state stateA =
     g0 `mergeTwoGraphs` g1
   where g1 = mkGraph
                [(n,n) | n <- newN0 : Map.elems varToNode]
                (   [(newN0, if Map.null varToNode then n0 else snd $ head $ Map.assocs varToNode, NoOp)]
-                ++ [ (n,n', Assign      var          (Val $ state ! x))  | ((x@(VarName   var),n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ]
-                ++ [ (n,n', AssignArray arr  (Val 0) (Val $ state ! x))  | ((x@(ArrayName arr),n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ]
+                ++ [ (n,n', Init      var (Just $ state  ! var)) | ((VarName   var,n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ]
+                ++ [ (n,n', InitArray arr (Just $ stateA ! arr)) | ((ArrayName arr,n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ]
                )
+
+prependFakeInitialization :: DynGraph gr => gr CFGNode CFGEdge -> Node -> Node -> Map Name Node -> gr CFGNode CFGEdge
+prependFakeInitialization g0 n0 newN0 varToNode =
+    g0 `mergeTwoGraphs` g1
+  where g1 = mkGraph
+               [(n,n) | n <- newN0 : Map.elems varToNode]
+               (   [(newN0, if Map.null varToNode then n0 else snd $ head $ Map.assocs varToNode, NoOp)]
+                ++ [ (n,n', Init      var Nothing              ) | ((VarName   var,n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ]
+                ++ [ (n,n', InitArray arr Nothing              ) | ((ArrayName arr,n),(_,n')) <- zip (Map.assocs varToNode) ((tail $ Map.assocs varToNode) ++ [(undefined,n0)]) ]
+               )
+
 
 
 costsFor :: DynGraph gr =>  gr (Node, CacheState) CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)

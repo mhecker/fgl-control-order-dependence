@@ -65,12 +65,16 @@ cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) =>
   -> Set Node
 cacheTimingSliceFor csd g debugNs n0 = \ms ->
 {-
-    let slice = combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms
+       slice = combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms'
     in slice
 -}
-
-    let slice = combinedBackwardSlice3  tscd'   dd'   csd'            ms
-        trace = foldr (.) id [ traceShortestPath ms slice n | n <- debugNs]
+    require (     ms ⊆ Set.fromList (nodes g)) $
+    require (debugNS ⊆ Set.fromList (nodes g)) $
+    let ms'      = Set.fromList [ m' | (m', m) <- labNodes ccg, m ∈ ms]
+        debugNs' = Set.fromList [ n' | (n', n) <- labNodes ccg, n ∈ debugNS]
+        slice' = combinedBackwardSlice3  tscd'   dd'   csd'            ms'
+        slice  = Set.fromList [ m | m' <- Set.toList slice', let Just m = lab ccg m' ]
+        trace = foldr (.) id [ traceShortestPath ms' slice' n | n <- debugNs]
     in trace slice
 
   where tscd'  =            timDFFromFromItimdomMultipleOfFastCost ccg costF
@@ -83,7 +87,7 @@ cacheTimingSliceFor csd g debugNs n0 = \ms ->
         costF n m = cost ! (n,m)
 
 
-
+        debugNS = Set.fromList debugNs
 
         traceShortestPath ms slice n
            | Set.size ms == 1 = trace

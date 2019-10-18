@@ -61,7 +61,7 @@ import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
 import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
-import CacheExecution(twoAddressCode, prependInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, stateSets, cacheOnlyStepFor, costsFor)
+import CacheExecution(twoAddressCode, prependInitialization, prependFakeInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, stateSets, cacheOnlyStepFor, costsFor)
 import CacheSlice (cacheTimingSliceViaReach)
 
 import Data.Graph.Inductive.Arbitrary.Reducible
@@ -4762,7 +4762,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         csd'4 = csd''''Of4 g n0
                     in  csdM ⊑ csd'4,
     testPropertySized 25 "csd is sound"
-                $ \generated seed1 seed2 seed3 ->
+                $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr
                         pr = compileAllToProgram a b'
                           where (a,b) = toCodeSimpleWithArrays generated
@@ -4770,17 +4770,25 @@ cacheProps = testGroup "(concerning cache timing)" [
                         g0 = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         
-                        vars = Set.fromList [ var | n <- nodes g0, var <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName var]
-                        (newN0:new) = (newNodes ((Set.size vars) + 1) g0)
-                        varToNode = Map.fromList $ zip (Set.toList vars) new
-                        nodeToVar = Map.fromList $ zip new (Set.toList vars)
-                        prepend = prependInitialization g0 n0 newN0 varToNode
+                        vars  = Set.fromList [ var | n <- nodes g0, name@(VarName   var) <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName name]
+                        varsA = Set.fromList [ arr | n <- nodes g0, name@(ArrayName arr) <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName name]
+                        (newN0:new) = (newNodes ((Set.size vars) + (Set.size varsA) + 1) g0)
+                        varToNode = Map.fromList $ zip ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA)) new
+                        nodeToVar = Map.fromList $ zip new ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA))
 
-                        initialGlobalState1 = Map.fromList $ zip (Set.toList vars) (fmap (`rem` 32) $ moreSeeds seed1 (Set.size vars))
+                        g = prependFakeInitialization g0 n0 newN0 varToNode
+                        slicer = cacheTimingSliceViaReach g newN0
+
+
                         initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
-                        g1 = prepend initialGlobalState1
+                        prependActualInitialization = prependInitialization g0 n0 newN0 varToNode
 
-                        slicer = cacheTimingSliceViaReach g1 newN0
+                        initialGlobalState1  = Map.fromList $ zip (Set.toList vars ) (            fmap (`rem` 32)   $ moreSeeds seed1 (Set.size vars))
+                        initialGlobalState1A = Map.fromList $ zip (Set.toList varsA) (      fmap (fmap (`rem` 32))  $ vals                           )
+                          where aSeeds = moreSeeds seed4 (Set.size varsA) :: [Int]
+                                vals = fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds :: [Map Word8 Word8]
+                        g1 = prependActualInitialization initialGlobalState1 initialGlobalState1A
+
 
                         limit = 9000
                         (execution1, limited1) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
@@ -4789,11 +4797,15 @@ cacheProps = testGroup "(concerning cache timing)" [
                         ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 100]
                     in (∀) ms (\m ->
                          let s = slicer (Set.fromList [m])
-                             notInS = (Set.fromList $ Map.elems varToNode) ∖ s
-                             newValues = fmap (`rem` 32) $ moreSeeds (seed3 + m) (Set.size notInS)
-                             initialGlobalState2 = (Map.fromList $ zip (fmap (\n -> nodeToVar ! n) $ Set.toList notInS) newValues) `Map.union` initialGlobalState1
-                             g2 = prepend initialGlobalState2
-                             
+                             notInS  = (Set.map ((varToNode !) . VarName  ) vars ) ∖ s
+                             notInSA = (Set.map ((varToNode !) . ArrayName) varsA) ∖ s
+                             initialGlobalState2  = (Map.fromList $ zip [ var | n <- Set.toList notInS,  let VarName   var = nodeToVar ! n] newValues) `Map.union` initialGlobalState1
+                               where newValues =       fmap (`rem` 32)  $ moreSeeds (seed3 + m) (Set.size notInS)
+                             initialGlobalState2A = (Map.fromList $ zip [ arr | n <- Set.toList notInSA, let ArrayName arr = nodeToVar ! n] newValues) `Map.union` initialGlobalState1A
+                               where aSeeds = moreSeeds (seed4 + m) (Set.size notInSA)
+                                     newValues = fmap (fmap (`rem` 32)) $ fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds :: [Map Word8 Word8]
+                             g2 = prependActualInitialization initialGlobalState2 initialGlobalState2A
+
                              (execution2, limited2) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
                                where es = cacheExecutionLimit limit g2 initialFullState newN0
 

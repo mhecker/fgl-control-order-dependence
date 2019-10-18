@@ -1095,7 +1095,10 @@ costsFor2 (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time])
 cacheCostDecisionGraphFor :: DynGraph gr => gr CFGNode CFGEdge -> gr (Node, CacheState) CFGEdge -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraphFor g csGraph = (
       mkGraph
-        ((labNodes g) ++ ([(n,n) | n <- new ++ linNew]))
+        ((labNodes g) ++ [(nNew, n) | (nNew, n) <-  [ (m', n) | ((e@(n,_,_),_), m') <- Map.assocs nodesFor  ]
+                                                 ++ [ (mj, n) | ( e@(n,_,_)   , mj) <- Map.assocs joinFor   ]
+                                                 ++ [ (mj, n) | ( e@(n,_,_)   , mj) <- Map.assocs linJoinFor]
+                         ])
         (irrelevant ++ [ (n , m', l'  ) | ((e@(n,_,l),_), m') <- Map.assocs nodesFor, let l' = Use $ isDataDependent l ]
                     ++ [ (m', mj, NoOp) | ((e@(_,_,l),_), m') <- Map.assocs nodesFor,                          let mj = joinFor ! e ]
                     ++ [ (mj,  m, l   ) |   e@(_,m,l)         <- relevant,                                     let mj = joinFor ! e ]
@@ -1149,11 +1152,11 @@ cacheCostDecisionGraphFor g csGraph = (
 -}
                 isDataDepE l  = [ name | r@(ArrayRead a ix) <- Set.toList $ arrayReadsE  l, case ix of { Val _ -> False ; _ -> True }, name <- Set.toList $ useV ix ]
 
-        nodesFor =               Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ costs ! e ] (take totalnewSplit new)
-        joinFor  =               Map.fromList $ zip                     relevant                                   (drop totalnewSplit new)
+        nodesFor =               Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ costs ! e ] nodesNew
+        joinFor  =               Map.fromList $ zip                     relevant                                    joinNew
 
-        linNodesFor =            Map.fromList $ zip [ (e,time) | e <-linRelevant, time <- Set.toList $ costs ! e ]                  linNew
-        linJoinFor  =            Map.fromList $ zip                  linRelevant                                                    linNew
+        linNodesFor =            Map.fromList $ zip [ (e,time) | e <-linRelevant, time <- Set.toList $ costs ! e ]  linNew
+        linJoinFor  =            Map.fromList $ zip                  linRelevant                                    linNew
 
         relevant   = [ e | e <- labEdges g,       isRelevant e   , assert (not $ isLinRelevant e) True]
         linRelevant= [ e | e <- labEdges g,       isLinRelevant e, assert (not $ isRelevant    e) True]
@@ -1161,9 +1164,10 @@ cacheCostDecisionGraphFor g csGraph = (
         totalnewSplit = sum $ fmap nrSuc relevant
         totalnewJoin  = length relevant
         totalnewLin   = length linRelevant
-        (new, linNew) = splitAt (totalnewSplit + totalnewJoin) allNew
-          where allNew = newNodes (totalnewSplit + totalnewJoin + totalnewLin) g
-
+        (nodesNew, joinNew, linNew) = (left, mid, right)
+          where all = newNodes (totalnewSplit + totalnewJoin + totalnewLin) g
+                (tmp, right) = splitAt (totalnewSplit + totalnewJoin) all
+                (left,  mid) = splitAt  totalnewSplit                 tmp
 
 cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraph g n0 = cacheCostDecisionGraphFor g csGraph

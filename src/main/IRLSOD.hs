@@ -263,7 +263,7 @@ instance SimpleShow CFGEdge where
   simpleShow (Init x (Nothing)) = simpleShow x ++ " = ?"
   simpleShow (Init x (Just v )) = simpleShow x ++ " = " ++ simpleShow v
   simpleShow (InitArray (Array a) (Nothing)) = a ++ "[*] = ?"
-  simpleShow (InitArray (Array a) (Just vs)) = a ++ "[*] = " ++ simpleShow (Map.elems vs)
+  simpleShow (InitArray (Array a) (Just vs)) = a ++ "[*] = [" ++ (foldr (++) " ...]" (fmap ((++ ", ") . simpleShow) $ take 10 $ Map.elems vs))
   simpleShow (NoOp) = ""
   simpleShow e = show e
 

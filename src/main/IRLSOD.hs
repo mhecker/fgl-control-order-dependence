@@ -245,8 +245,11 @@ data CFGEdge = Guard  Bool BoolFunction
              | Print  VarFunction  OutputChannel
              | Call
              | CallSummary
-             | Use    [Name]
-             | Def    [Name]
+             | Use    [Name] -- Edge that signals a use of some names, but has no micro- or macro-architectural effetct. May only appear in "temporary helper CFG".
+             | Def    [Name] -- Edge that signals a def of some names, but has no micro- or macro-architectural effetct. May only appear in "temporary helper CFG".
+             | Init Var (Maybe Val) -- Initialization of a variable. Only used to model program input. Has *no* effect on micro-architectural state (e.g.: cache),
+                                    -- but only macro-architectural state. If the value is Just x, it may appear in executions. Otherwise it is for static analysis, only.
+             | InitArray Array (Maybe ArrayVal) --  same, but for arrays.
              | Return
              | NoOp
              | Spawn
@@ -257,6 +260,10 @@ instance SimpleShow CFGEdge where
   simpleShow (Guard False bf) = "!" ++ simpleShow bf
   simpleShow (Assign x vf)    = simpleShow x ++ " := " ++ simpleShow vf
   simpleShow (AssignArray (Array x) i vf) = x ++ "[" ++ simpleShow i ++ "] := " ++ simpleShow vf
+  simpleShow (Init x (Nothing)) = simpleShow x ++ " = ?"
+  simpleShow (Init x (Just v )) = simpleShow x ++ " = " ++ simpleShow v
+  simpleShow (InitArray (Array a) (Nothing)) = a ++ "[*] = ?"
+  simpleShow (InitArray (Array a) (Just vs)) = a ++ "[*] = " ++ simpleShow (Map.elems vs)
   simpleShow (NoOp) = ""
   simpleShow e = show e
 
@@ -275,6 +282,8 @@ useE = useEFor useV useB
 useEFor useV useB (Guard   _ bf) = useB bf
 useEFor useV useB (AssignArray a i vf) = useV i ∪ useV vf
 useEFor useV useB (Assign  _ vf) = useV vf
+useEFor useV useB (Init _ _)     = Set.empty
+useEFor useV useB (InitArray _ _)= Set.empty
 useEFor useV useB (Read    _ _)  = Set.empty
 useEFor useV useB Spawn          = Set.empty
 useEFor useV useB (Print vf _)   = useV vf
@@ -290,6 +299,8 @@ defE :: CFGEdge -> Set Name
 defE (Guard   _ _) = Set.empty
 defE (Assign  x _) = Set.singleton $ VarName x
 defE (AssignArray a _ _) = Set.singleton $ ArrayName a
+defE (Init x _)    = Set.singleton $ VarName x
+defE (InitArray a _) = Set.singleton $ ArrayName a
 defE (Read    x _) = Set.singleton $ VarName x
 defE Spawn         = Set.empty
 defE (Print   _ _) = Set.empty
@@ -369,6 +380,8 @@ fromEdge σg σl i (Guard b bf)
   | otherwise            = undefined
 fromEdge σg σl i (Assign x  vf) = Tau
 fromEdge σg σl i (AssignArray _ _ _) = Tau
+fromEdge σg σl i (Init _ _ ) = Tau
+fromEdge σg σl i (InitArray _ _) = Tau
 fromEdge σg σl i (Read   x  ch) = ReadEvent  (head $ i ! ch)   ch
 fromEdge σg σl i (Print  vf ch) = PrintEvent (evalV σg σl vf) ch
 fromEdge σg σl i (Spawn      ) = Tau
@@ -500,6 +513,9 @@ stepFor e c@(globalσ@(GlobalState {σv, σa}), tlσ, i)  = step e where
         where val = evalV globalσ tlσ vf
       step (Assign x                 vf) = [( globalσ                          , Map.insert x val             tlσ,                    i)]
         where val = evalV globalσ tlσ vf
+      step (Init x@(Global _) (Just val))= [( globalσ{σv = Map.insert x val σv},                              tlσ,                    i)]
+      step (Init x            (Just val))= [( globalσ                          , Map.insert x val             tlσ,                    i)]
+      step (Init _            (Nothing ))= undefined
       step (Read   x@(Global _)      ch) = [( globalσ{σv = Map.insert x val σv},                              tlσ, Map.adjust tail ch i)]
         where val = head $ i ! ch
       step (Read   x                 ch) = [( globalσ                          , Map.insert x (head $ i ! ch) tlσ, Map.adjust tail ch i)]
@@ -510,6 +526,8 @@ stepFor e c@(globalσ@(GlobalState {σv, σa}), tlσ, i)  = step e where
               insert a i val = Map.alter f a σa
                 where f (Nothing) = Just $ Map.insert i val $ arrayEmpty
                       f ( Just a) = Just $ Map.insert i val $ a
+      step (InitArray a (Just val))      = [( globalσ{σa = Map.insert a val σa},                              tlσ,                    i)]
+      step (InitArray a (Nothing ))      = undefined
       step (Print  x ch)                 = [c]
       step (Spawn      )                 = undefined
       step (NoOp       )                 = [c]

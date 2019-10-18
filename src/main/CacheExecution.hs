@@ -37,7 +37,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
-import           IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..))
+import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
 import Program (Program(..))
@@ -708,6 +708,16 @@ cacheStepForState (AssignArray a ix vf) = do
         cacheAwareArrayWriteLRUState a (arrayIndex iVal) vVal
         σ' <- get
         return σ'
+cacheStepForState e@(Init _ _) = do
+        (normal@(σ, tlσ,()), cache, time) <- get
+        let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
+        let normal' = (σ', tlσ', ())
+        return (normal', cache, time)
+cacheStepForState e@(InitArray _ _) = do
+        (normal@(σ, tlσ,()), cache, time) <- get
+        let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
+        let normal' = (σ', tlσ', ())
+        return (normal', cache, time)
 cacheStepForState NoOp = do
         σ@(normal,cache,time) <- get
         let σ' = (normal, cache, time + noOpTime)
@@ -867,6 +877,12 @@ cacheTimeStepForState (AssignArray a ix vf) = do
         σ' <- get
         return σ'
 #endif
+cacheTimeStepForState (Init _ _ ) = do
+        σ <- get
+        return σ
+cacheTimeStepForState (InitArray _ _ ) = do
+        σ <- get
+        return σ
 cacheTimeStepForState NoOp = do
         (cache, time) <- get
         return (cache, time + noOpTime) 

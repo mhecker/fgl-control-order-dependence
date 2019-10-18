@@ -54,8 +54,11 @@ dependenceAnalysis vars = DataflowAnalysis {
 
   transfer e@(_,_,Guard _ _)  reachingDefs = reachingDefs
   transfer e@(_,_,Assign x _) reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
+  transfer e@(_,_,Init x _)   reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
   transfer e@(_,_,AssignArray a _ _ )
                               reachingDefs =     alter  (ArrayName a) (insert        e) reachingDefs
+  transfer e@(_,_,InitArray a _)
+                              reachingDefs = Map.insert (ArrayName a) (Set.singleton e) reachingDefs                -- def *every* array cell.
   transfer e@(_,_,Read   x _) reachingDefs = Map.insert (VarName   x) (Set.singleton e) reachingDefs
   transfer e@(_,_,Def    xs)  reachingDefs = foldr ins reachingDefs xs -- For arrays, this kind of Def  are assumed to def *every* array cell.
     where ins x rs = Map.insert x (Set.singleton e) rs 

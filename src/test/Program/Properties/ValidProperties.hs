@@ -4785,8 +4785,8 @@ cacheProps = testGroup "(concerning cache timing)" [
 
                         initialGlobalState1  = Map.fromList $ zip (Set.toList vars ) (            fmap (`rem` 32)   $ moreSeeds seed1 (Set.size vars))
                         initialGlobalState1A = Map.fromList $ zip (Set.toList varsA) (      fmap (fmap (`rem` 32))  $ vals                           )
-                          where aSeeds = moreSeeds seed4 (Set.size varsA) :: [Int]
-                                vals = fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds :: [Map Word8 Word8]
+                          where aSeeds = moreSeeds seed4 (Set.size varsA)
+                                vals = fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds
                         g1 = prependActualInitialization initialGlobalState1 initialGlobalState1A
 
 
@@ -4803,7 +4803,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                                where newValues =       fmap (`rem` 32)  $ moreSeeds (seed3 + m) (Set.size notInS)
                              initialGlobalState2A = (Map.fromList $ zip [ arr | n <- Set.toList notInSA, let ArrayName arr = nodeToVar ! n] newValues) `Map.union` initialGlobalState1A
                                where aSeeds = moreSeeds (seed4 + m) (Set.size notInSA)
-                                     newValues = fmap (fmap (`rem` 32)) $ fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds :: [Map Word8 Word8]
+                                     newValues = fmap (fmap (`rem` 32)) $ fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds
                              g2 = prependActualInitialization initialGlobalState2 initialGlobalState2A
 
                              (execution2, limited2) = assert (length es == 1) $ (head es, (length $ head es) >= limit)

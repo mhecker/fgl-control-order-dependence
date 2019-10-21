@@ -4,63 +4,33 @@
 
 module Program.Properties.ValidProperties.Cache where
 
-
-import Prelude hiding (all)
-
-import Data.Graph.Inductive.Dot (showDot, fglToDotGeneric)
-import Control.Monad.Random (randomR, getStdRandom)
-
-import System.IO.Unsafe(unsafePerformIO)
-import Control.Monad.Random(evalRandIO)
+import Debug.Trace (traceShow, trace)
 import Control.Exception.Base (assert)
 
-import Algebra.Lattice
-import Unicode
-
-import Program.Properties.Util
-
-import Util(moreSeeds, invert'')
-import Test.Tasty
-import Test.Tasty.QuickCheck
-
-import Test.Tasty.Runners.AntXML
-import Test.Tasty.Ingredients.Basic
-
-import Test.QuickCheck (Testable, property)
-import Test.QuickCheck.Property (Property(..))
-
-import Data.Ord
-
-import Debug.Trace (traceShow, trace)
-
-import qualified Data.Dequeue as Dequeue
+import qualified Data.List as List
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import qualified Data.List as List
-import qualified Data.Tree as Tree
+import Data.Map (Map, (!))
 
-import Data.Word
-import Data.Ord (Down(..))
-import Data.List (sortOn)
-import Data.Map ( Map, (!) )
-import Data.Maybe(fromJust)
-
-import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
-import CacheExecution(twoAddressCode, prependInitialization, prependFakeInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, stateSets, cacheOnlyStepFor, costsFor)
-import CacheSlice (cacheTimingSliceViaReach)
+import Test.Tasty
+import Test.Tasty.QuickCheck
+import Test.Tasty.HUnit hiding (assert)
+import Test.Tasty.Runners.AntXML
 
 import Data.Graph.Inductive (mkGraph, nodes, edges, pre, suc, lsuc, emap, nmap, Node, labNodes, labEdges, grev, efilter, subgraph, delEdges, insEdge, newNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
+import Unicode
+import Util(sampleFrom, invert'', moreSeeds)
 
-import Data.Graph.Inductive.Arbitrary
-
-
+import Program.Properties.Util
 import Program (Program, tcfg, entryOf, procedureOf, mainThread, observability)
-
+import Program.For (compileAllToProgram)
 import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
 
-import Program.For (compileAllToProgram)
+import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
+import CacheExecution(twoAddressCode, prependInitialization, prependFakeInitialization, initialCacheState, cacheExecution, cacheExecutionLimit, csd''''Of3, csd''''Of4, csdMergeOf, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, stateSets, cacheOnlyStepFor, costsFor)
+import CacheSlice (cacheTimingSliceViaReach)
 
 cache     = defaultMain                               $ testGroup "cache"    [                      mkProp [cacheProps]]
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [                      mkProp [cacheProps]]

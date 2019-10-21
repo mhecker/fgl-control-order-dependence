@@ -39,10 +39,6 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 
-
-instance Show (Program gr) where
-  show p = "rofl"
-
 isAtLeastAsPreciseAs :: (Program Gr -> Bool) -> (Program Gr -> Bool) -> IntraGeneratedProgram -> Bool
 isAtLeastAsPreciseAs a1 a2 generated = a2 p ⊑ a1 p
   where p = toProgramIntra generated

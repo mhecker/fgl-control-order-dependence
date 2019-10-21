@@ -32,6 +32,9 @@ data Program gr = Program {
 }
 
 
+instance Show (Program gr) where
+  show p = "rofl"
+
 -- | generate list of labeled nodes
 genLNodes :: (Enum a) => a -> Int -> [LNode a]
 genLNodes q i = take i (zip [1..] [q..])

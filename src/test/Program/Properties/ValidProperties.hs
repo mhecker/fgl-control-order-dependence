@@ -1,21 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
-
--- #define USEUNCONNECTED
-#ifdef USEUNCONNECTED
-#define ARBITRARY(g) (g) :: (Gr () ())
-#else
-#define ARBITRARY(g) (CG _ g) :: (Connected Gr () ())
-#endif
-
-#define UNCONNECTED(g) (g) :: (Gr () ())
-#define CONNECTED(g) (CG _ g) :: (Connected Gr () ())
-#define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
-#define INTER(g) (InterGraph g) :: (InterGraph () String)
-#define INTERCFG(g) (InterCFG _ g) :: (InterCFG (Node) (Node, Node))
-#define SIMPLECFG(g) (SimpleCFG g) :: (SimpleCFG Gr)
+#include "Util.cpp"
 
 module Program.Properties.ValidProperties where
+
 
 import Prelude hiding (all)
 
@@ -28,6 +16,8 @@ import Control.Exception.Base (assert)
 
 import Algebra.Lattice
 import Unicode
+
+import Program.Properties.Util
 
 import Util(the, reachableFromIn, sampleFrom, moreSeeds, toSet, evalBfun, isReachableFromTree, reachableFromTree, foldM1, fromSet,reachableFrom, restrict, invert''', (≡), findCyclesM, treeLevel, minimalPath,  pathsUpToLength, invert'', minimalPathForReachable, more)
 import Test.Tasty
@@ -4835,9 +4825,3 @@ cacheProps = testGroup "(concerning cache timing)" [
 miscProps = testGroup "(misc)" [
     testProperty  "trcOfTrrIsTrc"                     $ trcOfTrrIsTrc
   ]
-
-
-testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
-testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
-   where MkProperty gen = property prop
-

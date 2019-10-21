@@ -3,7 +3,7 @@
 # DEBUG=defined
 
 fgl-control-order-dependence.cabal : fgl-control-order-dependence.cabal.m4
-	m4 $< > $@
+	m4 -I /usr/share/doc/m4/examples/ $< > $@
 
 ifdef PROF
 CABAL_CONFIGURE=--enable-library-profiling --enable-executable-profiling --ghc-options="-fprof-auto"

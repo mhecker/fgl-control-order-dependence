@@ -12,5 +12,5 @@ make clean
 cabal install --only-dependencies
 rm -f ghc-lock
 parallel --delay 5 --jobs 8 < jenkins_parallel.sh
-timm             make dist/build/sensitiveDom.valid.xml.bin/sensitiveDom.valid.xml     RTS="+RTS -M22288m     -RTS" PATTERN="-p '**/Properties/**'"
+timm             make dist/build/sensitivedom.valid.xml.bin/sensitivedom.valid.xml     RTS="+RTS -M22288m     -RTS" PATTERN="-p '**/Properties/**'"
 timm             make dist/build/all.invalid.xml.bin/all.invalid.xml                   RTS="+RTS -M22288m -N8 -RTS"

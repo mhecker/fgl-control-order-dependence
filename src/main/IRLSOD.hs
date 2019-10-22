@@ -81,6 +81,10 @@ instance SimpleShow Var where
 instance SimpleShow Array where
   simpleShow (Array x) = x ++ "[]"
 
+instance SimpleShow Name where
+  simpleShow (VarName x)   = simpleShow x
+  simpleShow (ArrayName a) = simpleShow a
+
 type Val = Word8
 
 centralValue :: Val
@@ -265,6 +269,7 @@ instance SimpleShow CFGEdge where
   simpleShow (InitArray (Array a) (Nothing)) = a ++ "[*] = ?"
   simpleShow (InitArray (Array a) (Just vs)) = a ++ "[*] = [" ++ (foldr (++) " ...]" (fmap ((++ ", ") . simpleShow) $ take 10 $ Map.elems vs))
   simpleShow (NoOp) = ""
+  simpleShow (Use ns) = "Use" ++ simpleShow ns
   simpleShow e = show e
 
 instance (SimpleShow Node) where

@@ -816,16 +816,6 @@ br_aes_small_encrypt_ct_precache
                              = br_aes_small_encryptFor addRound_ct_precache sub_bytes_ct_precache shift_rows
 
 
-br_aes_small_encryptCheat    = br_aes_small_encryptFor cheat3   sub_bytes    cheat1
-  where cheat1 _     = Skip
-        cheat2 _ _   = Skip
-        cheat3 _ _ _ = Skip
-br_aes_small_encryptCheat_ct = br_aes_small_encryptFor cheat3   sub_bytes_ct cheat1
-  where cheat1 _     = Skip
-        cheat2 _ _   = Skip
-        cheat3 _ _ _ = Skip
-
-
 br_aes_small_cbcenc_main :: For -> For -> For
 br_aes_small_cbcenc_main input output =
                        Skip
@@ -875,32 +865,6 @@ precacheSkey skey =
                  `Seq` Ass tmp (ArrayRead skey (Val 128))
                  `Seq` Ass tmp (ArrayRead skey (Val 192))
   where tmp = orderSkeyCacheTmp
-
-
-
-br_aes_small_cbcenc_mainCheat :: For -> For -> For
-br_aes_small_cbcenc_mainCheat input output =
-                       Skip
-                 `Seq` input
-                 `Seq` expandKeyCheat skey key
-                 `Seq` br_aes_small_encryptCheat skey state
-                 `Seq` output
-  where key = mainKey
-        skey = mainSkey
-        state = encryptState
-        expandKeyCheat _ _ = Skip
-
-br_aes_small_cbcenc_mainCheat_ct :: For -> For -> For
-br_aes_small_cbcenc_mainCheat_ct input output =
-                       Skip
-                 `Seq` input
-                 `Seq` expandKeyCheat_ct skey key
-                 `Seq` br_aes_small_encryptCheat_ct skey state
-                 `Seq` output
-  where key = mainKey
-        skey = mainSkey
-        state = encryptState
-        expandKeyCheat_ct _ _ = Skip
 
 
 ioInput :: For

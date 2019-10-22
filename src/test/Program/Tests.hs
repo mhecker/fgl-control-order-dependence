@@ -125,6 +125,12 @@ aes_main_ct = Aes {
     keyInputNode = 34
   }
 
+aes_main_ct_precache = Aes {
+    forMain = br_aes_small_cbcenc_main_ct_precache mainInput Skip,
+    encryptStateInputNode0 = 274,
+    keyInputNode = 291
+  }
+
 
 main = let {
          aes@(Aes { forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct ;

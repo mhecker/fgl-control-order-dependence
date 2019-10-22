@@ -26,7 +26,7 @@ import Program.Properties.Util
 
 
 import qualified ReferenceCrypto (runAES256)
-import qualified Program.ExamplesCrypto (runAES256, runAES256_ct)
+import qualified Program.ExamplesCrypto (runAES256, runAES256_ct, runAES256_ct_precache)
 
 crypto     = defaultMain                               $ testGroup "crypto"    [                      mkProp [cryptoProps]]
 cryptoX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "crypto"    [                      mkProp [cryptoProps]]
@@ -39,6 +39,13 @@ cryptoProps = testGroup "(concerning crypto example)" [
                         msg = moreSeeds seed2 16 :: [Word8]
                     in    ReferenceCrypto.runAES256            key msg
                        == Program.ExamplesCrypto.runAES256_ct  key msg,
+    testProperty "aes256_ct_precache example is correct"
+                $ \seed1 seed2 ->
+                    let key = moreSeeds seed1 32 :: [Word8]
+                        msg = moreSeeds seed2 16 :: [Word8]
+                    in    ReferenceCrypto.runAES256            key msg
+                       == Program.ExamplesCrypto.runAES256_ct_precache
+                                                               key msg,
     testProperty "aes256 example is correct"
                 $ \seed1 seed2 ->
                     let key = moreSeeds seed1 32 :: [Word8]

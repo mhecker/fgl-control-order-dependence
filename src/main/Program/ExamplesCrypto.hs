@@ -152,6 +152,9 @@ subBytesTmp2            = Register 8
 addRoundTmp2            = Register 9
 addRoundTmp3            = Register 10
 ioTmp                   = Register 11
+subBytesPreTmp          = Register 12
+orderSkeyCacheTmp       = Register 13
+
 encryptState            = Array  "encryptState"
 
 aesKeySchedI            = Global "aesKeySchedI"
@@ -210,31 +213,66 @@ mainInput =
 
 
 
+type AddRound = Array -> Array -> VarFunction -> For
 
-addRound :: Array -> Array -> VarFunction -> For
-addRound state skey offset = 
-                       forFromToStepUsing 0 15 1 i (
+addRoundFor :: LoadSkey -> AddRound
+addRoundFor precacheSkey state skey offset =
+                       precacheSkey skey
+                `Seq`  forFromToStepUsing 0 15 1 i (
                                  Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp3 (Var i `Plus` offset)
                            `Seq` Ass tmp2 (ArrayRead skey (Var tmp3))
                            `Seq` Ass tmp (Var tmp `Xor` (Var tmp2))
                            `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp)
                        )
+                `Seq`  precacheSkey skey
   where i = addRoundIteratorIndex
         tmp  = addRoundTmp
         tmp2 = addRoundTmp2
         tmp3 = addRoundTmp3 
 
-sub_bytes :: Array -> For
+
+addRound :: AddRound
+addRound    = addRoundFor (const Skip)
+
+addRound_ct_precache :: AddRound
+addRound_ct_precache = addRoundFor precacheSkey
+
+
+
+
+type SubBytes = Array -> For
+sub_bytes :: SubBytes
 sub_bytes state =
                        forFromToStepUsing 0 15 1 i (
-                                 Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
-                           `Seq` Ass tmp2 (ArrayRead sbox (Var tmp))
+                                 Ass tmp1 (ArrayRead state (AssertRange 0 15 $ Var i))
+                           `Seq` Ass tmp2 (ArrayRead sbox (Var tmp1))
                            `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp2)
                        )
   where i = subBytesIteratorIndex
-        tmp  = subBytesTmp
+        tmp1 = subBytesTmp
         tmp2 = subBytesTmp2
+
+
+sub_bytes_ct_precache :: Array -> For
+sub_bytes_ct_precache state =
+                           Ass tmp (ArrayRead sbox (Val   0))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val  64))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 128))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 192))
+                 `Seq` forFromToStepUsing 0 15 1 i (
+                                 Ass tmp1 (ArrayRead state (AssertRange 0 15 $ Var i))
+                           `Seq` Ass tmp2 (ArrayRead sbox (Var tmp1))
+                           `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp2)
+                       )
+                 `Seq`     Ass tmp (ArrayRead sbox (Val   0))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val  64))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 128))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 192))
+  where i = subBytesIteratorIndex
+        tmp1 = subBytesTmp
+        tmp2 = subBytesTmp2
+        tmp  = subBytesPreTmp
 
 type SubBytes4 = Var -> Var -> Var -> Var -> For
 sub_bytes_4 :: SubBytes4
@@ -244,6 +282,22 @@ sub_bytes_4 v0 v1 v2 v3 =
                  `Seq`     Ass v2 (ArrayRead sbox (Var v2))
                  `Seq`     Ass v3 (ArrayRead sbox (Var v3))
 
+
+sub_bytes_ct_precache_4 :: SubBytes4
+sub_bytes_ct_precache_4 v0 v1 v2 v3 =
+                           Ass tmp (ArrayRead sbox (Val   0))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val  64))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 128))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 192))
+                 `Seq`     Ass v0 (ArrayRead sbox (Var v0))
+                 `Seq`     Ass v1 (ArrayRead sbox (Var v1))
+                 `Seq`     Ass v2 (ArrayRead sbox (Var v2))
+                 `Seq`     Ass v3 (ArrayRead sbox (Var v3))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val   0))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val  64))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 128))
+                 `Seq`     Ass tmp (ArrayRead sbox (Val 192))
+  where tmp = subBytesPreTmp
 
 
 sub_bytes_ct :: Array -> For
@@ -569,8 +623,8 @@ sub_bytes_ct_8 a0 a1 a2 a3 a4 a5 a6 a7
                                                `Xor` (Var s7 `BAnd` (Val   1))
                                              )
 
-
-shift_rows :: Array -> For
+type ShiftRows = Array -> For
+shift_rows :: ShiftRows
 shift_rows state =
                        Ass tmp (ArrayRead state (Val 1))
                 `Seq`  AssArr state (Val  1) (ArrayRead state (Val  5))
@@ -650,13 +704,10 @@ key_len = 32 -- 32 * 8 == 256
 
 type ScheduleCore = Var -> Var -> Var -> Var -> Var -> For
 
-scheduleCore :: ScheduleCore
-scheduleCore t0 t1 t2 t3 n =
+scheduleCoreFor :: SubBytes4 -> ScheduleCore
+scheduleCoreFor sub_bytes_4 t0 t1 t2 t3 n =
                        rotate
-                 `Seq` Ass t0 (ArrayRead sbox (Var t0))
-                 `Seq` Ass t1 (ArrayRead sbox (Var t1))
-                 `Seq` Ass t2 (ArrayRead sbox (Var t2))
-                 `Seq` Ass t3 (ArrayRead sbox (Var t3))
+                 `Seq` sub_bytes_4 t0 t1 t2 t3
                  `Seq` Ass t0 (Var t0 `Xor` (ArrayRead rcon (AssertRange 0 10 $ (Var n))))
   where rotate =
                        Ass tmp (Var t0)
@@ -665,20 +716,16 @@ scheduleCore t0 t1 t2 t3 n =
                  `Seq` Ass t2  (Var t3)
                  `Seq` Ass t3  (Var tmp)
           where tmp = rotateTmp
+
+scheduleCore :: ScheduleCore
+scheduleCore    = scheduleCoreFor sub_bytes_4
 
 scheduleCore_ct :: ScheduleCore
-scheduleCore_ct t0 t1 t2 t3 n =
-                       rotate
-                 `Seq` sub_bytes_ct_4 t0 t1 t2 t3
-                 `Seq` Ass t0 (Var t0 `Xor` (ArrayRead rcon (AssertRange 0 10 $ (Var n))))
-  where rotate =
-                       Ass tmp (Var t0)
-                 `Seq` Ass t0  (Var t1)
-                 `Seq` Ass t1  (Var t2)
-                 `Seq` Ass t2  (Var t3)
-                 `Seq` Ass t3  (Var tmp)
-          where tmp = rotateTmp
+scheduleCore_ct = scheduleCoreFor sub_bytes_ct_4
 
+scheduleCore_ct_precache :: ScheduleCore
+scheduleCore_ct_precache
+                = scheduleCoreFor sub_bytes_ct_precache_4
 
 
 expandKeyFor :: ScheduleCore -> SubBytes4 -> Array -> Array -> For
@@ -726,10 +773,15 @@ expandKeyFor scheduleCore sub_bytes_4 skey key =
 
 
 expandKey :: Array -> Array -> For
-expandKey = expandKeyFor scheduleCore sub_bytes_4
+expandKey    = expandKeyFor scheduleCore             sub_bytes_4
 
 expandKey_ct :: Array -> Array -> For
-expandKey_ct = expandKeyFor scheduleCore_ct sub_bytes_ct_4
+expandKey_ct = expandKeyFor scheduleCore_ct          sub_bytes_ct_4
+
+
+expandKey_ct_precache :: Array -> Array -> For
+expandKey_ct_precache =
+               expandKeyFor scheduleCore_ct_precache sub_bytes_ct_precache_4
 
 
 br_aes_small_cbcenc_run :: Array -> Array -> Array -> For
@@ -741,9 +793,9 @@ br_aes_small_cbcenc_run skey buf iv =
   where i = cbcEncRunIndex 
 
 br_aes_small_encryptFor ::
-     (Array -> Array -> VarFunction -> For)
-  -> (Array -> For)
-  -> (Array -> For)
+     AddRound
+  -> SubBytes
+  -> ShiftRows
   -> Array -> Array -> For
 br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                        addRound state skey (Val 0)
@@ -758,8 +810,11 @@ br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
                  `Seq` addRound state skey (Val num_rounds `Shl` (Val 4))
   where u = encryptIndexU
 
-br_aes_small_encrypt         = br_aes_small_encryptFor addRound sub_bytes    shift_rows
-br_aes_small_encrypt_ct      = br_aes_small_encryptFor addRound sub_bytes_ct shift_rows
+br_aes_small_encrypt         = br_aes_small_encryptFor addRound             sub_bytes             shift_rows
+br_aes_small_encrypt_ct      = br_aes_small_encryptFor addRound             sub_bytes_ct          shift_rows
+br_aes_small_encrypt_ct_precache
+                             = br_aes_small_encryptFor addRound_ct_precache sub_bytes_ct_precache shift_rows
+
 
 br_aes_small_encryptCheat    = br_aes_small_encryptFor cheat3   sub_bytes    cheat1
   where cheat1 _     = Skip
@@ -796,6 +851,31 @@ br_aes_small_cbcenc_main_ct input output =
   where key = mainKey
         skey = mainSkey
         state = encryptState
+
+
+br_aes_small_cbcenc_main_ct_precache :: For -> For -> For
+br_aes_small_cbcenc_main_ct_precache input output =
+                       Skip
+                 `Seq` br_aes_S
+                 `Seq` simpleRcon
+                 `Seq` input
+                 `Seq` expandKey_ct_precache skey key
+                 `Seq` precacheSkey skey
+                 `Seq` br_aes_small_encrypt_ct_precache skey state
+                 `Seq` output
+  where key = mainKey
+        skey = mainSkey
+        state = encryptState
+
+type LoadSkey = Array -> For
+precacheSkey :: LoadSkey
+precacheSkey skey = 
+                       Ass tmp (ArrayRead skey (Val   0))
+                 `Seq` Ass tmp (ArrayRead skey (Val  64))
+                 `Seq` Ass tmp (ArrayRead skey (Val 128))
+                 `Seq` Ass tmp (ArrayRead skey (Val 192))
+  where tmp = orderSkeyCacheTmp
+
 
 
 br_aes_small_cbcenc_mainCheat :: For -> For -> For
@@ -866,6 +946,17 @@ runAES256_ct key msg =
           assert (length traces == 1)
         $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
   in outputs
+
+runAES256_ct_precache :: [Word8] -> [Word8] -> [Word8]
+runAES256_ct_precache key msg =
+  let program = for2Program $ br_aes_small_cbcenc_main_ct_precache ioInput ioOutput :: Program Gr
+      input = inputFor key msg
+      traces = allFinishedExecutionTraces program input
+      outputs =
+          assert (length traces == 1)
+        $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
+  in outputs
+
 
 
 runMixColumns :: [Word8] -> [Word8] -> [Word8]

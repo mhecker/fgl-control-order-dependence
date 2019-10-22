@@ -779,7 +779,7 @@ subs_ct_precache = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_
 
 type Main = For -> For -> For
 br_aes_small_cbcenc_mainFor :: SubPrograms -> Main
-br_aes_small_cbcenc_mainFor subs@(SubPrograms { initConstants }) input output =
+br_aes_small_cbcenc_mainFor subs@(SubPrograms { initConstants }) = \input output ->
                        Skip
                  `Seq` initConstants
                  `Seq` input
@@ -820,7 +820,7 @@ ioOutputKey =
 inputFor key state = Map.fromList [(stdIn, state ++ key)]
 
 runAES256For :: Main -> [Word8] -> [Word8] -> [Word8]
-runAES256For main key msg =
+runAES256For main = \key msg ->
   let program = for2Program $ main ioInput ioOutput :: Program Gr
       input = inputFor key msg
       traces = allFinishedExecutionTraces program input

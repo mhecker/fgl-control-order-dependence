@@ -155,7 +155,7 @@ ioTmp                   = Register 11
 subBytesPreTmp          = Register 12
 orderSkeyCacheTmp       = Register 13
 
-encryptState            = Array  "encryptState"
+state                   = Array  "state"
 
 aesKeySchedI            = Global "aesKeySchedI"
 aesKeySchedJ            = Global "aesKeySchedJ"
@@ -164,8 +164,8 @@ aesKeySchedNK           = Global "aesKeySchedNK"
 aesKeySchedNKF          = Global "aesKeySchedNKF"
 
 
-mainSkey                = Array  "skey"
-mainKey                 = Array  "key"
+skey                    = Array  "skey"
+key                     = Array  "key"
 
 mixColumnsS = [ Global $ "a" ++ (show i) | i <- [0 .. 3] ]
 mixColumnsB = [ Global $ "b" ++ (show i) | i <- [0 .. 3] ]
@@ -193,7 +193,7 @@ allNames = assert (length vars == (Set.size $ Set.fromList vars))
          $ assert (length arrs == (Set.size $ Set.fromList arrs))
   where vars =   [subBytesIteratorIndex, addRoundIteratorIndex, shiftRowsTmp, cbcEncRunIndex, encryptIndex, encryptIndexU, expandKeyN] ++ mixColumnsS ++ mixColumnsR ++ mixColumnsB ++ expandKeyT
              ++  [aesKeySchedI, aesKeySchedJ, aesKeySchedK, aesKeySchedNK, aesKeySchedNKF]
-        arrs = [mainSkey, mainKey]
+        arrs = [skey, key]
 
 br_aes_S :: For
 br_aes_S = assert (length sboxConst == 256) $ 
@@ -207,8 +207,8 @@ simpleRcon = assert (length rconConst == 11) $
 
 mainInput :: For
 mainInput = 
-        (foldr Seq Skip [ AssArr encryptState (Val i) (Val i) | i <- [0..15]])
-  `Seq` (foldr Seq Skip [ AssArr mainKey      (Val i) (Val i) | i <- [0..31]])
+        (foldr Seq Skip [ AssArr state (Val i) (Val i) | i <- [0..15]])
+  `Seq` (foldr Seq Skip [ AssArr key   (Val i) (Val i) | i <- [0..31]])
 
 
 
@@ -818,11 +818,6 @@ br_aes_small_cbcenc_main input output =
                  `Seq` br_aes_small_encrypt
                  `Seq` output
 
-key = mainKey
-skey = mainSkey
-state = encryptState
-
-
 br_aes_small_cbcenc_main_ct :: Main
 br_aes_small_cbcenc_main_ct input output =
                        Skip
@@ -858,23 +853,16 @@ ioInput :: For
 ioInput =
           (foldr1 Seq [ ReadFromChannel tmp stdIn `Seq` AssArr state (Val i) (Var tmp) | i <- [0..15]])
     `Seq` (foldr1 Seq [ ReadFromChannel tmp stdIn `Seq` AssArr key   (Val i) (Var tmp) | i <- [0..(key_len - 1)]])
-  where key = mainKey
-        state = encryptState
-        tmp = ioTmp
+  where tmp = ioTmp
+
 ioOutput = 
           (foldr1 Seq [ PrintToChannel  (ArrayRead state (Val i)) stdOut  | i <- [0..15]])
-  where state = encryptState
-
 
 ioOutputSkey = 
           (foldr1 Seq [ PrintToChannel  (ArrayRead skey (Val i)) stdOut  | i <- [0..239]])
-  where skey = mainSkey
-
 
 ioOutputKey = 
           (foldr1 Seq [ PrintToChannel  (ArrayRead key (Val i)) stdOut  | i <- [0..31]])
-  where key = mainKey
-
 
 inputFor key state = Map.fromList [(stdIn, state ++ key)]
 

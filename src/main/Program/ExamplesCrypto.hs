@@ -213,10 +213,10 @@ mainInput =
 
 
 
-type AddRound = Array -> Array -> VarFunction -> For
+type AddRound = VarFunction -> For
 
 addRoundFor :: LoadSkey -> AddRound
-addRoundFor precacheSkey state skey offset =
+addRoundFor precacheSkey offset =
                        precacheSkey skey
                 `Seq`  forFromToStepUsing 0 15 1 i (
                                  Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
@@ -241,9 +241,9 @@ addRound_ct_precache = addRoundFor precacheSkey
 
 
 
-type SubBytes = Array -> For
+type SubBytes = For
 sub_bytes :: SubBytes
-sub_bytes state =
+sub_bytes =
                        forFromToStepUsing 0 15 1 i (
                                  Ass tmp1 (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp2 (ArrayRead sbox (Var tmp1))
@@ -254,8 +254,8 @@ sub_bytes state =
         tmp2 = subBytesTmp2
 
 
-sub_bytes_ct_precache :: Array -> For
-sub_bytes_ct_precache state =
+sub_bytes_ct_precache :: For
+sub_bytes_ct_precache =
                            Ass tmp (ArrayRead sbox (Val   0))
                  `Seq`     Ass tmp (ArrayRead sbox (Val  64))
                  `Seq`     Ass tmp (ArrayRead sbox (Val 128))
@@ -300,8 +300,8 @@ sub_bytes_ct_precache_4 v0 v1 v2 v3 =
   where tmp = subBytesPreTmp
 
 
-sub_bytes_ct :: Array -> For
-sub_bytes_ct state =
+sub_bytes_ct :: For
+sub_bytes_ct =
           sub_bytes_ct_8 (a  0) (a  1) (a  2) (a  3) (a  4) (a  5) (a  6) (a  7)   (f  0) (f  1) (f  2) (f  3) (f  4) (f  5) (f  6) (f  7)
     `Seq` sub_bytes_ct_8 (a  8) (a  9) (a 10) (a 11) (a 12) (a 13) (a 14) (a 15)   (f  8) (f  9) (f 10) (f 11) (f 12) (f 13) (f 14) (f 15)
   where a i = ArrayRead state (Val i)
@@ -623,9 +623,9 @@ sub_bytes_ct_8 a0 a1 a2 a3 a4 a5 a6 a7
                                                `Xor` (Var s7 `BAnd` (Val   1))
                                              )
 
-type ShiftRows = Array -> For
+type ShiftRows = For
 shift_rows :: ShiftRows
-shift_rows state =
+shift_rows =
                        Ass tmp (ArrayRead state (Val 1))
                 `Seq`  AssArr state (Val  1) (ArrayRead state (Val  5))
                 `Seq`  AssArr state (Val  5) (ArrayRead state (Val  9))
@@ -650,8 +650,8 @@ shift_rows state =
 
 
 
-mixColumns :: Array -> For
-mixColumns state = 
+mixColumns :: For
+mixColumns = 
                        for  0
                  `Seq` for  4
                  `Seq` for  8
@@ -728,8 +728,8 @@ scheduleCore_ct_precache
                 = scheduleCoreFor sub_bytes_ct_precache_4
 
 
-expandKeyFor :: ScheduleCore -> SubBytes4 -> Array -> Array -> For
-expandKeyFor scheduleCore sub_bytes_4 skey key =
+expandKeyFor :: ScheduleCore -> SubBytes4 -> For
+expandKeyFor scheduleCore sub_bytes_4 =
                        Ass n (Val 1)
                  `Seq` forFromToStepUsing 0 31 1 i (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
@@ -772,42 +772,33 @@ expandKeyFor scheduleCore sub_bytes_4 skey key =
                 max = fromIntegral (maxBound :: Val)
 
 
-expandKey :: Array -> Array -> For
+expandKey :: For
 expandKey    = expandKeyFor scheduleCore             sub_bytes_4
 
-expandKey_ct :: Array -> Array -> For
+expandKey_ct :: For
 expandKey_ct = expandKeyFor scheduleCore_ct          sub_bytes_ct_4
 
 
-expandKey_ct_precache :: Array -> Array -> For
+expandKey_ct_precache :: For
 expandKey_ct_precache =
                expandKeyFor scheduleCore_ct_precache sub_bytes_ct_precache_4
-
-
-br_aes_small_cbcenc_run :: Array -> Array -> Array -> For
-br_aes_small_cbcenc_run skey buf iv =
-                       forFromToStepUsing 0 15 1 i (
-                                 AssArr buf (Var i) (  (ArrayRead buf (Var i)) `Xor` (ArrayRead iv (Var i)))
-                       )
-                 `Seq` (br_aes_small_encrypt skey buf)
-  where i = cbcEncRunIndex 
 
 br_aes_small_encryptFor ::
      AddRound
   -> SubBytes
   -> ShiftRows
-  -> Array -> Array -> For
-br_aes_small_encryptFor addRound sub_bytes shift_rows skey state =
-                       addRound state skey (Val 0)
+  -> For
+br_aes_small_encryptFor addRound sub_bytes shift_rows =
+                       addRound (Val 0)
                  `Seq` forFromToStepUsing 1 (num_rounds - 1) 1 u (
-                                 sub_bytes state
-                 `Seq`           shift_rows state
-                 `Seq`           mixColumns state
-                 `Seq`           addRound state skey (Var u `Shl` (Val 4))
+                                 sub_bytes
+                 `Seq`           shift_rows
+                 `Seq`           mixColumns
+                 `Seq`           addRound (Var u `Shl` (Val 4))
                        )
-                 `Seq` sub_bytes state
-                 `Seq` shift_rows state
-                 `Seq` addRound state skey (Val num_rounds `Shl` (Val 4))
+                 `Seq` sub_bytes
+                 `Seq` shift_rows
+                 `Seq` addRound (Val num_rounds `Shl` (Val 4))
   where u = encryptIndexU
 
 br_aes_small_encrypt         = br_aes_small_encryptFor addRound             sub_bytes             shift_rows
@@ -823,12 +814,13 @@ br_aes_small_cbcenc_main input output =
                  `Seq` br_aes_S
                  `Seq` simpleRcon
                  `Seq` input
-                 `Seq` expandKey skey key
-                 `Seq` br_aes_small_encrypt skey state
+                 `Seq` expandKey
+                 `Seq` br_aes_small_encrypt
                  `Seq` output
-  where key = mainKey
-        skey = mainSkey
-        state = encryptState
+
+key = mainKey
+skey = mainSkey
+state = encryptState
 
 
 br_aes_small_cbcenc_main_ct :: Main
@@ -836,12 +828,9 @@ br_aes_small_cbcenc_main_ct input output =
                        Skip
                  `Seq` simpleRcon
                  `Seq` input
-                 `Seq` expandKey_ct skey key
-                 `Seq` br_aes_small_encrypt_ct skey state
+                 `Seq` expandKey_ct
+                 `Seq` br_aes_small_encrypt_ct
                  `Seq` output
-  where key = mainKey
-        skey = mainSkey
-        state = encryptState
 
 
 br_aes_small_cbcenc_main_ct_precache :: Main
@@ -850,13 +839,10 @@ br_aes_small_cbcenc_main_ct_precache input output =
                  `Seq` br_aes_S
                  `Seq` simpleRcon
                  `Seq` input
-                 `Seq` expandKey_ct_precache skey key
+                 `Seq` expandKey_ct_precache
                  `Seq` precacheSkey skey
-                 `Seq` br_aes_small_encrypt_ct_precache skey state
+                 `Seq` br_aes_small_encrypt_ct_precache
                  `Seq` output
-  where key = mainKey
-        skey = mainSkey
-        state = encryptState
 
 type LoadSkey = Array -> For
 precacheSkey :: LoadSkey

@@ -816,7 +816,8 @@ br_aes_small_encrypt_ct_precache
                              = br_aes_small_encryptFor addRound_ct_precache sub_bytes_ct_precache shift_rows
 
 
-br_aes_small_cbcenc_main :: For -> For -> For
+type Main = For -> For -> For
+br_aes_small_cbcenc_main :: Main
 br_aes_small_cbcenc_main input output =
                        Skip
                  `Seq` br_aes_S
@@ -830,7 +831,7 @@ br_aes_small_cbcenc_main input output =
         state = encryptState
 
 
-br_aes_small_cbcenc_main_ct :: For -> For -> For
+br_aes_small_cbcenc_main_ct :: Main
 br_aes_small_cbcenc_main_ct input output =
                        Skip
                  `Seq` simpleRcon
@@ -843,7 +844,7 @@ br_aes_small_cbcenc_main_ct input output =
         state = encryptState
 
 
-br_aes_small_cbcenc_main_ct_precache :: For -> For -> For
+br_aes_small_cbcenc_main_ct_precache :: Main
 br_aes_small_cbcenc_main_ct_precache input output =
                        Skip
                  `Seq` br_aes_S
@@ -891,37 +892,25 @@ ioOutputKey =
 
 inputFor key state = Map.fromList [(stdIn, state ++ key)]
 
-runAES256 :: [Word8] -> [Word8] -> [Word8]
-runAES256 key msg =
-  let program = for2Program $ br_aes_small_cbcenc_main ioInput ioOutput :: Program Gr
+runAES256For :: Main -> [Word8] -> [Word8] -> [Word8]
+runAES256For main key msg =
+  let program = for2Program $ main ioInput ioOutput :: Program Gr
       input = inputFor key msg
       traces = allFinishedExecutionTraces program input
       outputs =
           assert (length traces == 1)
         $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
   in outputs
+
+runAES256 :: [Word8] -> [Word8] -> [Word8]
+runAES256    = runAES256For br_aes_small_cbcenc_main
 
 runAES256_ct :: [Word8] -> [Word8] -> [Word8]
-runAES256_ct key msg =
-  let program = for2Program $ br_aes_small_cbcenc_main_ct ioInput ioOutput :: Program Gr
-      input = inputFor key msg
-      traces = allFinishedExecutionTraces program input
-      outputs =
-          assert (length traces == 1)
-        $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
-  in outputs
+runAES256_ct = runAES256For br_aes_small_cbcenc_main_ct
 
 runAES256_ct_precache :: [Word8] -> [Word8] -> [Word8]
-runAES256_ct_precache key msg =
-  let program = for2Program $ br_aes_small_cbcenc_main_ct_precache ioInput ioOutput :: Program Gr
-      input = inputFor key msg
-      traces = allFinishedExecutionTraces program input
-      outputs =
-          assert (length traces == 1)
-        $ [ x | let [trace] = traces, (_,(_,PrintEvent x _,_),_) <- trace ]
-  in outputs
-
-
+runAES256_ct_precache =
+               runAES256For br_aes_small_cbcenc_main_ct_precache
 
 cryptoTestSuit = [
                 $(withName 'br_aes_small_cbcenc_main)

@@ -58,7 +58,7 @@ import MicroArchitecturalDependence (
     ConcreteSemantic, AbstractSemantic,
     TimeState, NormalState,
     stateGraphForSets, stateGraph, stateSets,
-    mergeFromForEdgeToSuccessor
+    mergeFromForEdgeToSuccessor, merged
   )
 
 
@@ -1100,7 +1100,7 @@ cacheCostDecisionGraphFor g csGraph = (
 cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraph g n0 = cacheCostDecisionGraphFor g csGraph
   where csGraph = cacheStateGraph g initialCacheState n0
-
+        
 
 
 cacheStateFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
@@ -1121,32 +1121,6 @@ allCacheStateFor graph csGraph n y' = fmap (const ()) cs
            where cs = assert (n == n') $ cs'
                  Just (n', cs') = lab csGraph y'
 
-
-
-
-
-
-
-
-
-
-
-
-merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
-merged csGraph' equivs =  mkGraph nodes' edges
-  where edges =  Set.toList $ Set.fromList $ fmap f $ (labEdges csGraph')
-          where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
-                  where Just (n,_)  = lab csGraph' y
-                        Just (n',_) = lab csGraph' y'
-                        equiv  = representative $ equivs ! n  ! y
-                        equiv' = representative $ equivs ! n' ! y'
-        nodes = zip [0..] (Set.toList $ Set.fromList $ [ (n, representative equiv) | (n, equivN) <- Map.assocs equivs, equiv <- Map.elems equivN ])
-        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
-
-        representative = Set.findMin -- use the first node in a equivalence class as representative
-
-        nodes' = fmap fromRep nodes
-          where fromRep (i,(n,y)) = (i, (n, equivs ! n ! y))
 
 
 csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)

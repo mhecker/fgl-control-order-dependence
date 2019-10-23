@@ -107,6 +107,21 @@ stateGraphFor α step g σ0 n0 = mkGraph nodes [(toNode ! c, toNode ! c', e) | (
 
 
 
+merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
+merged csGraph' equivs =  mkGraph nodes' edges
+  where edges =  Set.toList $ Set.fromList $ fmap f $ (labEdges csGraph')
+          where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
+                  where Just (n,_)  = lab csGraph' y
+                        Just (n',_) = lab csGraph' y'
+                        equiv  = representative $ equivs ! n  ! y
+                        equiv' = representative $ equivs ! n' ! y'
+        nodes = zip [0..] (Set.toList $ Set.fromList $ [ (n, representative equiv) | (n, equivN) <- Map.assocs equivs, equiv <- Map.elems equivN ])
+        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+        representative = Set.findMin -- use the first node in a equivalence class as representative
+
+        nodes' = fmap fromRep nodes
+          where fromRep (i,(n,y)) = (i, (n, equivs ! n ! y))
 
 
 

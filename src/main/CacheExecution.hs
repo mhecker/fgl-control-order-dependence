@@ -53,7 +53,13 @@ import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
-import MicroArchitecturalDependence (ConcreteSemantic, AbstractSemantic, TimeState, NormalState, stateGraphForSets, stateGraph, stateSets)
+import MicroArchitecturalDependence (
+    AbstractMicroArchitecturalGraphNode,
+    ConcreteSemantic, AbstractSemantic,
+    TimeState, NormalState,
+    stateGraphForSets, stateGraph, stateSets,
+    mergeFromForEdgeToSuccessor
+  )
 
 
 
@@ -1097,9 +1103,6 @@ cacheCostDecisionGraph g n0 = cacheCostDecisionGraphFor g csGraph
 
 
 
-type CacheGraphNode = Node
-
-
 cacheStateFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
            where cs = assert (n == n') $ cs'
                  Just (n', cs') = lab csGraph y'
@@ -1129,7 +1132,7 @@ allCacheStateFor graph csGraph n y' = fmap (const ()) cs
 
 
 
-merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> gr (Node, Set CacheGraphNode) CFGEdge
+merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
 merged csGraph' equivs =  mkGraph nodes' edges
   where edges =  Set.toList $ Set.fromList $ fmap f $ (labEdges csGraph')
           where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
@@ -1146,7 +1149,7 @@ merged csGraph' equivs =  mkGraph nodes' edges
           where fromRep (i,(n,y)) = (i, (n, equivs ! n ! y))
 
 
-csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set CacheGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- ys,
                                         let Just (n, _) = lab csGraph'' y,
@@ -1192,113 +1195,6 @@ mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  id
           roots = Set.fromList y's
 
 
-mergeFromSlow ::  (DynGraph gr) => gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map CacheGraphNode (Maybe CacheGraphNode) -> Set CacheGraphNode -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFromSlow graph csGraph idom roots  =  (𝝂) init f 
-  where 
-        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
-        f :: Map Node (Map CacheGraphNode (Set CacheGraphNode))
-          -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-        f equivs = -- traceShow (Map.filter (\equivs -> (∃) equivs (not . Set.null)) $ equivs, rootOf) $
-          (
-              Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) ] | y <- ys, Just r <- [Map.lookup y rootOf ]])
-                           | (n,ys) <- Map.assocs nodesToCsNodes
-              ]
-            ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys])
-                           | (n,ys) <- Map.assocs nodesToCsNodes
-              ]
-            ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' |
-                                                                   y' <- ys,
-                                                                   (∀) es (\(_,e) ->
-                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e then True else
-                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e then True else
-                                                                       let Just (m, _) = lab csGraph x
-                                                                           Just (m',_) = lab csGraph x'
-                                                                       in assert (m == m') $ 
-                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
-                                                                     ))
-                                                                   )
-                                                ]
-                                  )] | y <- ys, not $ y ∈ roots, let es = lsuc csGraph y ])
-                           | (n,ys) <- Map.assocs nodesToCsNodes,
-                             assert ((∀) ys (\y -> (∀) ys (\y' -> (Set.fromList $ fmap snd $ lsuc csGraph y) == (Set.fromList $ fmap snd $ lsuc csGraph y')))) True
-              ]
-           )
-        init = Map.fromList [ (n, Map.fromList [ (y, ysS) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes, let ysS = Set.fromList ys]
-        rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
 
-mergeFrom ::  (DynGraph gr) =>
-  gr CFGNode CFGEdge ->
-  gr (Node, s) CFGEdge ->
-  Map CacheGraphNode (Maybe CacheGraphNode) ->
-  Set CacheGraphNode ->
-  Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  idom roots
-
-
-
-mergeFromForEdgeToSuccessor ::  (DynGraph gr) =>
-  gr CFGNode CFGEdge ->
-  gr (Node, s) CFGEdge ->
-  Map CacheGraphNode (Maybe CacheGraphNode) ->
-  Set CacheGraphNode ->
-  Map Node (Map CacheGraphNode (Set CacheGraphNode))
-mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFromSlow graph csGraph idom roots) result
-  where result = (go orderToNodes init) ⊔ equivsNBase
-          where (⊔) :: Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode)) -> Map Node (Map CacheGraphNode (Set CacheGraphNode))
-                (⊔) left right =  Map.unionWithKey f left right
-                f n fromSuccessorsN  fromBaseN = Map.unionWithKey g fromSuccessorsN fromBaseN
-                g y fromSuccessorsYs fromBaseYs = {- assert (fromBaseYs ⊆ fromSuccessorsYs) $ -} fromSuccessorsYs
-        go workset fromSuccessors
-           | Map.null workset  = fromSuccessors
-           | otherwise         =
-               if changed then
-                 go (workset' `Map.union` influenced) (Map.insert n (fromSuccessorsN' ⊔ fromRootsN) fromSuccessors)
-               else
-                 go  workset'                                                                       fromSuccessors
-          where ((_,n), workset') = Map.deleteFindMin workset
-                ys = nodesToCsNodes ! n
-                fromRootsN = fromRoots ! n
-                fromSuccessorsN' = goSuccessors (ys ∖ roots) Map.empty
-                  where goSuccessors ysLeft fromsucc
-                           | Set.null ysLeft = fromsucc
-                           | otherwise = assert (y ∈ y's) goSuccessors ysLeft' ((Map.fromSet (const y's) y's) `Map.union` fromsucc)
-                          where y = Set.findMin ysLeft
-                                es = (∐) [ Map.fromList [ (e, Set.fromList [(x,m)]) ]  | (x,e) <- lsuc csGraph y, let Just (m, _) = lab csGraph x ]
-
-                                y's     = Set.insert y y's0
-                                ysLeft' = Set.delete y ysLeft'0
-                                (y's0, ysLeft'0) = Set.partition (\y' -> 
-                                                                   (∀) (lsuc csGraph y') (\(x', e') -> (∀) (es ! e') (\(x,m) -> 
-                                                                          (x  ∈ Map.findWithDefault Set.empty x' (fromSuccessors ! m)  ∨  x ∈ equivsNBase ! m ! x')
-                                                                   ))
-                                                               )
-                                                               ysLeft
-
-                changed = assert (fromSuccessorsN ⊒ fromSuccessorsN') $
-                          assert (diffSize == (fromSuccessorsN' /= fromSuccessorsN)) $ diffSize
-                  where fromSuccessorsN = fromSuccessors ! n
-                        diffSize = Map.size fromSuccessorsN /= Map.size fromSuccessorsN'
-                                 ∨ (∃) (zip (Map.toAscList fromSuccessorsN) (Map.toAscList fromSuccessorsN')) (\((y,ys), (y', y's)) -> assert (y == y') $ Set.size ys /= Set.size y's)
-                influenced = Map.fromList [ (nodesToOrder ! m, m) | m <- pre graph n]
-
-        init = Map.mapWithKey (\n ys -> Map.fromSet (const ys) ys) nodesToCsNodes
-        rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
-
-        nodesToCsNodes = Map.fromList [ (n, Set.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
-
-        fromRoots = Map.mapWithKey (\n ys -> go ys Map.empty) nodesToCsNodes
-          where go ysLeft fromroots
-                  | Set.null ysLeft = fromroots
-                  | otherwise = let mr = Map.lookup y rootOf in case mr of
-                        Nothing -> go ysLeft0                                          fromroots
-                        Just r  -> let (y's, ysLeft') = Set.partition (\y' -> Map.lookup y' rootOf == mr) ysLeft in
-                                   go ysLeft' (Map.fromSet (const y's) y's `Map.union` fromroots)
-                      where (y, ysLeft0) = Set.deleteFindMin ysLeft
-
-        equivsNBase = Map.mapWithKey (\n ys -> fromRoots ! n ⊔ (Map.fromSet Set.singleton $ ys ∖ roots)) nodesToCsNodes
-
-        order = List.reverse $ topsort graph
-        nodesToOrder = Map.fromList $ zip order [0..]
-        orderToNodes = Map.fromList $ zip [0..] order
 

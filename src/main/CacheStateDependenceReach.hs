@@ -37,8 +37,8 @@ import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, foc
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
-import MicroArchitecturalDependence (stateSets, stateGraphForSets, stateGraphFor)
-import CacheExecution (CacheGraphNode, isCachable, CacheState, initialCacheState, CachedObject(..), cachedObjectsFor, cacheOnlyStepFor, merged, mergeFrom, costsFor)
+import MicroArchitecturalDependence (AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, stateGraphFor, mergeFrom)
+import CacheExecution (isCachable, CacheState, initialCacheState, CachedObject(..), cachedObjectsFor, cacheOnlyStepFor, merged, costsFor)
 
 import Program (Program(..))
 import Program.Generator (toCodeSimple)
@@ -57,7 +57,7 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Inpu
 type AbstractCacheState = ([(CachedObject, Int)], Set CachedObject)
 
 
-nextReachable ::  Graph gr => gr (Node, s) CFGEdge  -> Map CacheGraphNode (Map Node (Set CacheGraphNode))
+nextReachable ::  Graph gr => gr (Node, s) CFGEdge  -> Map AbstractMicroArchitecturalGraphNode (Map Node (Set AbstractMicroArchitecturalGraphNode))
 nextReachable csGraph = (㎲⊒) init f
   where f nextReach = Map.fromList [ (y, Map.fromList [ (n, Set.fromList [y]) ])                    | (y,(n,_)) <- labNodes csGraph ]
                     ⊔ Map.fromList [ (y, Map.delete n $ (∐) [ nextReach ! x | x <- suc csGraph y] ) | (y,(n,_)) <- labNodes csGraph ]

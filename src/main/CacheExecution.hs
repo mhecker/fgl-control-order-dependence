@@ -1103,25 +1103,6 @@ cacheCostDecisionGraph g n0 = cacheCostDecisionGraphFor g csGraph
         
 
 
-cacheStateFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
-           where cs = assert (n == n') $ cs'
-                 Just (n', cs') = lab csGraph y'
-
-cacheStateOnFor csGraph vars y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | var <- Set.toList $ vars ]
-           where Just (_, cs) = lab csGraph y'
-
-
-
-cacheStateUnsafeFor graph csGraph n y' = Map.fromList [(var, fmap (const ()) $ List.lookup var cs) | (_,e) <- lsuc graph n, var <- Set.toList $ useE e, isCachable var ]
-           where cs = cs'
-                 Just (_, cs') = lab csGraph y'
-
-
-allCacheStateFor graph csGraph n y' = fmap (const ()) cs
-           where cs = assert (n == n') $ cs'
-                 Just (n', cs') = lab csGraph y'
-
-
 
 csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $

@@ -61,6 +61,7 @@ library
   exposed-modules:
     IRLSOD
     CacheExecution
+    CacheStateDependenceReach
     CacheSlice
     Unicode
     NNGraph

@@ -45,7 +45,9 @@ import qualified IRLSOD as IRLSOD (Input)
 
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 
-import CacheExecution (csdMergeDirectOf, csdMergeOf, cacheCostDecisionGraph)
+import CacheExecution (csdMergeDirectOf, cacheCostDecisionGraph)
+import CacheStateDependenceReach (csdMergeOf)
+
 import Data.Graph.Inductive.Query.DataDependence (dataDependence)
 import Data.Graph.Inductive.Query.TSCD (timDFFromFromItimdomMultipleOfFastCost)
 

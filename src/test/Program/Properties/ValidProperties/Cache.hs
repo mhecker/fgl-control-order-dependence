@@ -37,6 +37,7 @@ import CacheSlice (cacheTimingSliceViaReach)
 cache     = defaultMain                               $ testGroup "cache"    [                      mkProp [cacheProps]]
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [                      mkProp [cacheProps]]
 
+cacheSize = 4
 
 cacheProps = testGroup "(concerning cache timing)" [
     testPropertySized 25 "csd only for choice nodes"
@@ -47,15 +48,15 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM       = csdMergeDirectOf g n0
+                        csdM       = csdMergeDirectOf cacheSize g n0
                         
-                        (cs, es)    = stateSets cacheOnlyStepFor g initialAbstractCacheState n0
+                        (cs, es)    = stateSets (cacheOnlyStepFor cacheSize) g initialAbstractCacheState n0
                         
-                        csGraph     = cacheStateGraph g initialAbstractCacheState n0
-                        costs       = costsFor csGraph
+                        csGraph     = cacheStateGraph cacheSize g initialAbstractCacheState n0
+                        costs       = costsFor cacheSize csGraph
                         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes g]
 
-                        (ccg, cost) = cacheCostDecisionGraphFor g csGraph 
+                        (ccg, cost) = cacheCostDecisionGraphFor cacheSize g csGraph 
                     in  (∀) (Map.assocs $ invert'' csdM) (\(m, ns) -> 
                           let
                               c = (∃) (lsuc ccg m) (\(n1,l1) ->
@@ -77,8 +78,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csd'3 = csd''''Of3 g n0
-                        csd'4 = csd''''Of4 g n0
+                        csd'3 = csd''''Of3 cacheSize g n0
+                        csd'4 = csd''''Of4 cacheSize g n0
                     in  csd'3 == csd'4,
     testPropertySized 25 "csdMergeOf == csdMergeDirectOf"
                 $ \generated ->
@@ -88,8 +89,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM       = csdMergeOf g n0
-                        csdMDirect = csdMergeDirectOf g n0
+                        csdM       = csdMergeOf       cacheSize g n0
+                        csdMDirect = csdMergeDirectOf cacheSize g n0
                     in  csdM == csdMDirect,
     testPropertySized 25 "csdMergeOf ⊑ csd''''Of4"
                 $ \generated ->
@@ -99,8 +100,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM  = csdMergeOf g n0
-                        csd'4 = csd''''Of4 g n0
+                        csdM  = csdMergeOf cacheSize g n0
+                        csd'4 = csd''''Of4 cacheSize g n0
                     in  csdM ⊑ csd'4,
     testPropertySized 25 "csd is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
@@ -118,7 +119,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         nodeToVar = Map.fromList $ zip new ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA))
 
                         g = prependFakeInitialization g0 n0 newN0 varToNode
-                        slicer = cacheTimingSliceViaReach g newN0
+                        slicer = cacheTimingSliceViaReach cacheSize g newN0
 
 
                         initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
@@ -133,7 +134,7 @@ cacheProps = testGroup "(concerning cache timing)" [
 
                         limit = 9000
                         (execution1, limited1) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
-                          where es = cacheExecutionLimit limit g1 initialFullState newN0
+                          where es = cacheExecutionLimit cacheSize limit g1 initialFullState newN0
 
                         ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 100]
                     in (∀) ms (\m ->
@@ -148,7 +149,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                              g2 = prependActualInitialization initialGlobalState2 initialGlobalState2A
 
                              (execution2, limited2) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
-                               where es = cacheExecutionLimit limit g2 initialFullState newN0
+                               where es = cacheExecutionLimit cacheSize limit g2 initialFullState newN0
 
                              exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
                              exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2

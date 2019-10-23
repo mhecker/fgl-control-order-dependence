@@ -45,7 +45,7 @@ import qualified IRLSOD as IRLSOD (Input)
 
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 
-import CacheExecution (csdMergeDirectOf, cacheCostDecisionGraph)
+import CacheExecution (CacheSize, csdMergeDirectOf, cacheCostDecisionGraph)
 import CacheStateDependenceReach (csdMergeOf)
 
 import Data.Graph.Inductive.Query.DataDependence (dataDependence)
@@ -58,14 +58,15 @@ sp = Data.Graph.Inductive.Query.SP.sp
 sp n m g = Just $ Data.Graph.Inductive.Query.SP.sp n m g
 #endif
 
-cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) => 
-    (gr CFGNode CFGEdge -> Node -> Map Node (Set Node))
+cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) =>
+    CacheSize 
+  -> (CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node))
   -> gr CFGNode CFGEdge
   -> [Node]
   -> Node
   -> Set Node
   -> Set Node
-cacheTimingSliceFor csd g debugNs n0 = \ms ->
+cacheTimingSliceFor cacheSize csd g debugNs n0 = \ms ->
 {-
        slice = combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms'
     in slice
@@ -81,11 +82,11 @@ cacheTimingSliceFor csd g debugNs n0 = \ms ->
 
   where tscd'  =            timDFFromFromItimdomMultipleOfFastCost ccg costF
         dd'    = invert'' $ dataDependence                         ccg vars  n0
-        csd'   = invert'' $ csd                                      g       n0
+        csd'   = invert'' $ csd cacheSize                            g       n0
 
         vars = Set.fromList [ var | n <- nodes g, var <- Set.toList $ use g n ∪ def g n, isGlobalName var]
 
-        (ccg, cost) = cacheCostDecisionGraph g n0
+        (ccg, cost) = (cacheCostDecisionGraph cacheSize) g n0
         costF n m = cost ! (n,m)
 
 
@@ -121,8 +122,8 @@ cacheTimingSliceFor csd g debugNs n0 = \ms ->
 data DepEdge = TSCD | DD | CSD deriving (Show, Eq, Ord)
 
 
-cacheTimingSlice         g n0 = cacheTimingSliceFor csdMergeDirectOf g [] n0
-cacheTimingSliceViaReach g n0 = cacheTimingSliceFor csdMergeOf       g [] n0
+cacheTimingSlice         cacheSize g n0 = cacheTimingSliceFor cacheSize csdMergeDirectOf g [] n0
+cacheTimingSliceViaReach cacheSize g n0 = cacheTimingSliceFor cacheSize csdMergeOf       g [] n0
 
 
 

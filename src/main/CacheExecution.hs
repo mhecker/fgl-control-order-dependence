@@ -113,13 +113,7 @@ sliceFor ix array = between array left right
 
 
 
-
--- max: 32, at cacheLineSize 128
--- max:  8, at cacheLineSize  64
-cacheSize :: Int
-cacheSize = 4
-
-cacheSizeInBytes = cacheLineSize * cacheSize
+type CacheSize = Int
 
 type AccessTime = Integer
 
@@ -145,8 +139,8 @@ guardTime = 1
 initTime :: AccessTime
 initTime = 1
 
-removeFirstOrButLast      = removeFirstOrButLastMaxSize      cacheSize
-removeFirstOrButLastAssoc = removeFirstOrButLastAssocMaxSize cacheSize
+removeFirstOrButLast      = removeFirstOrButLastMaxSize
+removeFirstOrButLastAssoc = removeFirstOrButLastAssocMaxSize
 
 type ArrayBound = Val
 
@@ -339,8 +333,8 @@ twoAddressCodeV r vf@(AssertRange min max x) =
     in (loadsX, (AssertRange min max x'), r')
 
 
-consistent :: FullState -> Bool
-consistent ((GlobalState { σv, σa }, tlσ, i), cache, _) = length cache <= cacheSize && (∀) (cache) cons
+consistent :: CacheSize -> FullState -> Bool
+consistent cacheSize ((GlobalState { σv, σa }, tlσ, i), cache, _) = length cache <= cacheSize && (∀) (cache) cons
   where cons (CachedVar        var@(Global      x)      , CachedVal        val ) = val ==      σv ! var
         cons (CachedVar        var@(ThreadLocal x)      , CachedVal        val ) = val ==     tlσ ! var
         cons (CachedArrayRange arr@(Array       a) index, CachedArraySlice vals) = 
@@ -355,8 +349,8 @@ sameArrayAs a (CachedUnknownRange a'   ) = a' == a
 sameArrayAs _ _                          = False
 
 
-cacheAwareReadLRU :: Var -> FullState -> (Val, CacheState, AccessTime)
-cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var of
+cacheAwareReadLRU :: CacheSize -> Var -> FullState -> (Val, CacheState, AccessTime)
+cacheAwareReadLRU cacheSize var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ lookup     σv
     ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (tlσ ! var, cache, registerAccessTime)
     Register    _ -> assert (not $ isCachable $ VarName var) $ (tlσ ! var, cache, registerAccessTime)
@@ -364,22 +358,22 @@ cacheAwareReadLRU var σ@((GlobalState { σv }, tlσ, i), cache, _) = case var o
 
         lookup :: Map Var Val -> (Val, CacheState, AccessTime )
         lookup someσ = 
-          require (consistent σ) $
-          case removeFirstOrButLastAssoc cvar cache of
+          require (consistent cacheSize σ) $
+          case removeFirstOrButLastAssoc cacheSize cvar cache of
             Right cache0 -> let { cval = CachedVal val ; val = someσ ! var } in
               (val, (cvar, cval) : cache0, cacheMissTime )
             Left (cval@(CachedVal val), cache0) ->
               (val, (cvar, cval) : cache0, cacheHitTime  )
 
 
-cacheTimeReadLRU :: Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)
-cacheTimeReadLRU var cache = case var of
+cacheTimeReadLRU :: CacheSize -> Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)
+cacheTimeReadLRU cacheSize var cache = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ lookup
     ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
   where cvar = CachedVar var
         lookup =
-          case removeFirstOrButLast cvar cache of
+          case removeFirstOrButLast cacheSize cvar cache of
             Right                       cache0  ->
               ( cvar : cache0, cacheMissTime)
             Left                        cache0  ->
@@ -388,23 +382,23 @@ cacheTimeReadLRU var cache = case var of
 
 type Index = Val
 
-cacheAwareArrayReadLRU :: Array -> Index -> FullState -> (Val, CacheState, AccessTime)
-cacheAwareArrayReadLRU arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = case arr of
+cacheAwareArrayReadLRU :: CacheSize -> Array -> Index -> FullState -> (Val, CacheState, AccessTime)
+cacheAwareArrayReadLRU cacheSize arr ix σ@((GlobalState { σa }, tlσ, _), cache, _) = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ lookup
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         lookup :: (Val, CacheState, AccessTime )
         lookup = 
-          require (consistent σ) $
+          require (consistent cacheSize σ) $
           assert (alignedIx <= ix) $
-          case removeFirstOrButLastAssoc carr cache of
+          case removeFirstOrButLastAssoc cacheSize carr cache of
             Right                               cache0 -> let { cval = CachedArraySlice vals ; vals = Map.elems $ sliceFor alignedIx (σa ! arr) } in
               (vals !! (fromIntegral $ ix - alignedIx), (carr, cval) : cache0, cacheMissTime )
             Left (cval@(CachedArraySlice vals), cache0)->
               (vals !! (fromIntegral $ ix - alignedIx), (carr, cval) : cache0, cacheHitTime  )
 
 
-unknownranges arr cache carr hitTime missTime =
+unknownranges cacheSize arr cache carr hitTime missTime =
     require (isArray carr) $ incache ++ notincache
   where isArray (CachedArrayRange _ _) = True
         isArray (CachedUnknownRange _) = True
@@ -433,140 +427,140 @@ unknownranges arr cache carr hitTime missTime =
         mayMatch (CachedUnknownRange a) (CachedUnknownRange a') =
             a == a'
 
-cacheTimeArrayReadLRU :: Array -> Index -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
-cacheTimeArrayReadLRU arr ix cache = case arr of
+cacheTimeArrayReadLRU :: CacheSize -> Array -> Index -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
+cacheTimeArrayReadLRU cacheSize arr ix cache = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ lookup
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         lookup = 
-          case removeFirstOrButLast carr cache of
+          case removeFirstOrButLast cacheSize carr cache of
             Right _ ->
-              unknownranges arr cache carr cacheHitTime cacheMissTime
+              unknownranges cacheSize arr cache carr cacheHitTime cacheMissTime
             Left cache0 ->
               [( carr : cache0, cacheHitTime)]
 
-cacheTimeArrayReadUnknownIndexLRU :: Array -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
-cacheTimeArrayReadUnknownIndexLRU arr cache = case arr of
+cacheTimeArrayReadUnknownIndexLRU :: CacheSize -> Array -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
+cacheTimeArrayReadUnknownIndexLRU cacheSize arr cache = case arr of
     Array       a -> assert (      isCachable $ ArrayName arr) $ lookup
-  where lookup = unknownranges arr cache carr cacheHitTime cacheMissTime
+  where lookup = unknownranges cacheSize arr cache carr cacheHitTime cacheMissTime
         carr  = CachedUnknownRange arr
 
 
 
-cacheAwareReadLRUState :: Monad m => Var -> StateT FullState m Val
-cacheAwareReadLRUState var = do
+cacheAwareReadLRUState :: Monad m => CacheSize -> Var -> StateT FullState m Val
+cacheAwareReadLRUState cacheSize var = do
     σ@((globalσ,tlσ,i), cache, time) <- get
-    let (val, cache', accessTime) = cacheAwareReadLRU var σ
+    let (val, cache', accessTime) = cacheAwareReadLRU cacheSize var σ
     put ((globalσ,tlσ,i), cache', time + accessTime)
     return val
 
-cacheTimeReadLRUState :: Monad m => Var -> StateT AbstractCacheTimeState m ()
-cacheTimeReadLRUState var = do
+cacheTimeReadLRUState :: Monad m => CacheSize -> Var -> StateT AbstractCacheTimeState m ()
+cacheTimeReadLRUState cacheSize var = do
     (cache, time) <- get
-    let (cache', accessTime) = cacheTimeReadLRU var cache
+    let (cache', accessTime) = cacheTimeReadLRU cacheSize var cache
     put (cache', time + accessTime)
     return ()
 
 
-cacheTimeWriteLRU :: Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)
-cacheTimeWriteLRU var cache = case var of
+cacheTimeWriteLRU :: CacheSize -> Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)
+cacheTimeWriteLRU cacheSize var cache = case var of
     Global      _ -> assert (      isCachable $ VarName var) $ write
     ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
     Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
   where cvar = CachedVar var
         write = 
-          case removeFirstOrButLast cvar cache of
+          case removeFirstOrButLast cacheSize cvar cache of
             Right cache0      -> ( cvar : cache0, cacheWriteTime )
             Left  cache0      -> ( cvar : cache0, cacheWriteTime )
 
 
-cacheTimeWriteLRUState :: Monad m => Var -> StateT AbstractCacheTimeState m ()
-cacheTimeWriteLRUState var = do
+cacheTimeWriteLRUState :: Monad m => CacheSize -> Var -> StateT AbstractCacheTimeState m ()
+cacheTimeWriteLRUState cacheSize var = do
     (cache, time) <- get
-    let (cache', accessTime) = cacheTimeWriteLRU var cache
+    let (cache', accessTime) = cacheTimeWriteLRU cacheSize var cache
     put (cache', time + accessTime)
     return ()
 
 
-cacheAwareArrayReadLRUState :: Monad m => Array -> Index -> StateT FullState m Val
-cacheAwareArrayReadLRUState arr ix = do
+cacheAwareArrayReadLRUState :: Monad m => CacheSize ->  Array -> Index -> StateT FullState m Val
+cacheAwareArrayReadLRUState cacheSize arr ix = do
     σ@((globalσ,tlσ,i), cache, time) <- get
-    let (val, cache', accessTime) = cacheAwareArrayReadLRU arr ix σ
+    let (val, cache', accessTime) = cacheAwareArrayReadLRU cacheSize arr ix σ
     put ((globalσ,tlσ,i), cache', time + accessTime)
     return val
 
-cacheTimeArrayReadLRUState :: Array -> Index -> StateT AbstractCacheTimeState [] ()
-cacheTimeArrayReadLRUState arr ix = do
+cacheTimeArrayReadLRUState :: CacheSize -> Array -> Index -> StateT AbstractCacheTimeState [] ()
+cacheTimeArrayReadLRUState cacheSize arr ix = do
     (cache, time) <- get
-    (cache', accessTime) <- lift $ cacheTimeArrayReadLRU arr ix cache
+    (cache', accessTime) <- lift $ cacheTimeArrayReadLRU cacheSize arr ix cache
     put (cache', time + accessTime)
     return ()
     
-cacheTimeArrayReadUnknownIndexLRUState :: Array -> StateT AbstractCacheTimeState [] ()
-cacheTimeArrayReadUnknownIndexLRUState arr = do
+cacheTimeArrayReadUnknownIndexLRUState :: CacheSize -> Array -> StateT AbstractCacheTimeState [] ()
+cacheTimeArrayReadUnknownIndexLRUState cacheSize arr = do
     (cache, time) <- get
-    (cache', accessTime) <- lift $ cacheTimeArrayReadUnknownIndexLRU arr cache
+    (cache', accessTime) <- lift $ cacheTimeArrayReadUnknownIndexLRU cacheSize arr cache
     put (cache', time + accessTime)
     return ()
 
 
 
-cacheTimeArrayWriteLRU :: Array -> Index -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
-cacheTimeArrayWriteLRU arr ix cache = case arr of
+cacheTimeArrayWriteLRU :: CacheSize -> Array -> Index -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
+cacheTimeArrayWriteLRU cacheSize arr ix cache = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ write
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
         write = 
-          case removeFirstOrButLast carr cache of
-            Right _ ->  unknownranges arr cache carr cacheWriteTime cacheWriteTime
+          case removeFirstOrButLast cacheSize carr cache of
+            Right _ ->  unknownranges cacheSize arr cache carr cacheWriteTime cacheWriteTime
             Left cache0 ->  [( carr : cache0, cacheWriteTime )]
 
 
-cacheTimeArrayWriteUnknownIndexLRU :: Array -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
-cacheTimeArrayWriteUnknownIndexLRU arr cache = case arr of
+cacheTimeArrayWriteUnknownIndexLRU :: CacheSize -> Array -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
+cacheTimeArrayWriteUnknownIndexLRU cacheSize arr cache = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ write
-  where write = unknownranges arr cache carr cacheWriteTime cacheWriteTime
+  where write = unknownranges cacheSize arr cache carr cacheWriteTime cacheWriteTime
         carr  = CachedUnknownRange arr
 
 
 
-cacheTimeArrayWriteLRUState :: Array -> Index -> StateT AbstractCacheTimeState [] ()
-cacheTimeArrayWriteLRUState arr ix = do
+cacheTimeArrayWriteLRUState :: CacheSize -> Array -> Index -> StateT AbstractCacheTimeState [] ()
+cacheTimeArrayWriteLRUState cacheSize arr ix = do
     (cache, time) <- get
-    (cache', accessTime) <- lift $ cacheTimeArrayWriteLRU arr ix cache
+    (cache', accessTime) <- lift $ cacheTimeArrayWriteLRU cacheSize arr ix cache
     put (cache', time + accessTime)
     return ()
 
-cacheTimeArrayWriteUnknownIndexLRUState :: Array -> StateT AbstractCacheTimeState [] ()
-cacheTimeArrayWriteUnknownIndexLRUState arr = do
+cacheTimeArrayWriteUnknownIndexLRUState :: CacheSize -> Array -> StateT AbstractCacheTimeState [] ()
+cacheTimeArrayWriteUnknownIndexLRUState cacheSize arr = do
     (cache, time) <- get
-    (cache', accessTime) <- lift $ cacheTimeArrayWriteUnknownIndexLRU arr cache
+    (cache', accessTime) <- lift $ cacheTimeArrayWriteUnknownIndexLRU cacheSize arr cache
     put (cache', time + accessTime)
     return ()
 
 
-cacheAwareWriteLRU :: Var -> Val -> FullState -> FullState
-cacheAwareWriteLRU var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) =  case var of
+cacheAwareWriteLRU :: CacheSize -> Var -> Val -> FullState -> FullState
+cacheAwareWriteLRU cacheSize var val σ@((globalσ@(GlobalState { σv }), tlσ ,i), cache, time ) =  case var of
     Global      _ -> assert (      isCachable $ VarName var) $ let (     σv', cache', accessTime) = write      σv in ((globalσ{ σv = σv'}, tlσ , i), cache', time + accessTime)
     ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
     Register    _ -> assert (not $ isCachable $ VarName var) $ let tlσ' = Map.insert var val tlσ in                  ((globalσ           , tlσ', i), cache , time + registerAccessTime )
   where cvar = CachedVar var
         cval = CachedVal val
         write someσ = 
-          require (consistent σ) $
-          case removeFirstOrButLastAssoc cvar cache of
+          require (consistent cacheSize σ) $
+          case removeFirstOrButLastAssoc cacheSize cvar cache of
             Right cache0     -> (Map.insert var val someσ, (cvar, cval) : cache0, cacheWriteTime )
             Left (_, cache0) -> (Map.insert var val someσ, (cvar, cval) : cache0, cacheWriteTime )
 
 
-cacheAwareWriteLRUState :: Monad m => Var -> Val -> StateT FullState m ()
-cacheAwareWriteLRUState var val = do
+cacheAwareWriteLRUState :: Monad m => CacheSize -> Var -> Val -> StateT FullState m ()
+cacheAwareWriteLRUState cacheSize var val = do
     σ <- get
-    put $ cacheAwareWriteLRU var val σ
+    put $ cacheAwareWriteLRU cacheSize var val σ
     return ()
 
-cacheAwareArrayWriteLRU :: Array -> Index -> Val -> FullState -> FullState
-cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i), cache, time ) = case arr of
+cacheAwareArrayWriteLRU :: CacheSize -> Array -> Index -> Val -> FullState -> FullState
+cacheAwareArrayWriteLRU cacheSize arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i), cache, time ) = case arr of
     Array  _ -> assert (      isCachable $ ArrayName arr) $ let (     σa', cache', accessTime) = write      σa in ((globalσ{ σa = σa'}, tlσ , i), cache', time + accessTime)
   where alignedIx = toAlignedIndex ix
         carr = CachedArrayRange arr alignedIx
@@ -578,17 +572,17 @@ cacheAwareArrayWriteLRU arr ix val σ@((globalσ@(GlobalState { σa }), tlσ ,i)
                  where sliceIndex = ix - alignedIx
         write :: Map Array ArrayVal -> (Map Array ArrayVal, CacheState, TimeState )
         write someσ = 
-            require (consistent σ) $
-            case removeFirstOrButLastAssoc carr cache of
+            require (consistent cacheSize σ) $
+            case removeFirstOrButLastAssoc cacheSize carr cache of
               Right cache0     ->  (Map.alter update arr someσ, (carr, cval) : cache0, cacheWriteTime )
               Left (_, cache0) ->  (Map.alter update arr someσ, (carr, cval) : cache0, cacheWriteTime )
           where update (Nothing) = Just $ Map.insert ix val arrayEmpty
                 update (Just av) = Just $ Map.insert ix val av 
           
-cacheAwareArrayWriteLRUState :: Monad m => Array -> Index -> Val -> StateT FullState m ()
-cacheAwareArrayWriteLRUState arr ix val = do
+cacheAwareArrayWriteLRUState :: Monad m => CacheSize -> Array -> Index -> Val -> StateT FullState m ()
+cacheAwareArrayWriteLRUState cacheSize arr ix val = do
     σ <- get
-    put $ cacheAwareArrayWriteLRU arr ix val σ
+    put $ cacheAwareArrayWriteLRU cacheSize arr ix val σ
     return ()
 
 
@@ -612,79 +606,79 @@ exampleSurvey1 = ((GlobalState { σv = Map.fromList                $ [(Global "a
 
 
 
-cacheAwareLRUEvalB :: Monad m => BoolFunction -> StateT FullState m Bool
-cacheAwareLRUEvalB CTrue     = return True
-cacheAwareLRUEvalB CFalse    = return False
-cacheAwareLRUEvalB (Leq x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalB :: Monad m => CacheSize -> BoolFunction -> StateT FullState m Bool
+cacheAwareLRUEvalB cacheSize CTrue     = return True
+cacheAwareLRUEvalB cacheSize CFalse    = return False
+cacheAwareLRUEvalB cacheSize (Leq x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal <= yVal
-cacheAwareLRUEvalB (Eeq x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalB cacheSize (Eeq x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal == yVal
-cacheAwareLRUEvalB (And b1 b2) = do
-  b1Val <- cacheAwareLRUEvalB b1
-  b2Val <- cacheAwareLRUEvalB b2
+cacheAwareLRUEvalB cacheSize (And b1 b2) = do
+  b1Val <- cacheAwareLRUEvalB cacheSize b1
+  b2Val <- cacheAwareLRUEvalB cacheSize b2
   return $ b1Val && b2Val
-cacheAwareLRUEvalB (Or b1 b2) = do
-  b1Val <- cacheAwareLRUEvalB b1
-  b2Val <- cacheAwareLRUEvalB b2
+cacheAwareLRUEvalB cacheSize (Or b1 b2) = do
+  b1Val <- cacheAwareLRUEvalB cacheSize b1
+  b2Val <- cacheAwareLRUEvalB cacheSize b2
   return $ b1Val || b2Val
-cacheAwareLRUEvalB (Not b) = do
-  bVal <- cacheAwareLRUEvalB b
+cacheAwareLRUEvalB cacheSize (Not b) = do
+  bVal <- cacheAwareLRUEvalB cacheSize b
   return $ not bVal
 
-cacheAwareLRUEvalV :: Monad m => VarFunction -> StateT FullState m Val
-cacheAwareLRUEvalV (Val  x) = return x
-cacheAwareLRUEvalV (Var  x) = cacheAwareReadLRUState x
-cacheAwareLRUEvalV (ArrayRead a ix) = do
-  iVal <- cacheAwareLRUEvalV ix
-  cacheAwareArrayReadLRUState a (arrayIndex iVal)
-cacheAwareLRUEvalV (Plus  x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV :: Monad m => CacheSize -> VarFunction -> StateT FullState m Val
+cacheAwareLRUEvalV cacheSize (Val  x) = return x
+cacheAwareLRUEvalV cacheSize (Var  x) = cacheAwareReadLRUState cacheSize x
+cacheAwareLRUEvalV cacheSize (ArrayRead a ix) = do
+  iVal <- cacheAwareLRUEvalV cacheSize ix
+  cacheAwareArrayReadLRUState cacheSize a (arrayIndex iVal)
+cacheAwareLRUEvalV cacheSize (Plus  x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal + yVal
-cacheAwareLRUEvalV (Minus x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (Minus x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal - yVal
-cacheAwareLRUEvalV (Times x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (Times x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal * yVal
-cacheAwareLRUEvalV (Div x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (Div x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal `div` yVal
-cacheAwareLRUEvalV (Mod x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (Mod x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal `mod` yVal
-cacheAwareLRUEvalV (Shl x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (Shl x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal `shiftL` (fromIntegral yVal)
-cacheAwareLRUEvalV (Shr x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (Shr x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal `shiftR` (fromIntegral yVal)
-cacheAwareLRUEvalV (Xor x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (Xor x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal `xor` yVal
-cacheAwareLRUEvalV (BAnd x y) = do
-  xVal <- cacheAwareLRUEvalV x
-  yVal <- cacheAwareLRUEvalV y
+cacheAwareLRUEvalV cacheSize (BAnd x y) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
+  yVal <- cacheAwareLRUEvalV cacheSize y
   return $ xVal .&. yVal
-cacheAwareLRUEvalV (Neg x) = do
-  xVal <- cacheAwareLRUEvalV x
+cacheAwareLRUEvalV cacheSize (Neg x) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
   return $ - xVal
-cacheAwareLRUEvalV (BNot x) = do
-  xVal <- cacheAwareLRUEvalV x
+cacheAwareLRUEvalV cacheSize (BNot x) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
   return $ complement $ xVal
-cacheAwareLRUEvalV (AssertRange min max x) = do
-  xVal <- cacheAwareLRUEvalV x
+cacheAwareLRUEvalV cacheSize (AssertRange min max x) = do
+  xVal <- cacheAwareLRUEvalV cacheSize x
   return $   xVal
 
 {-
@@ -693,143 +687,143 @@ lift :: (Monad m, MonadTrans t) => m a -> t m a
 lift (cacheAwareLRUevalB bf) :: StateT FullState (State FullState) Val
 -}
 
-cacheStepForState :: CFGEdge -> StateT FullState [] FullState
-cacheStepForState (Guard b bf) = do
-        bVal <- cacheAwareLRUEvalB bf
+cacheStepForState :: CacheSize -> CFGEdge -> StateT FullState [] FullState
+cacheStepForState cacheSize (Guard b bf) = do
+        bVal <- cacheAwareLRUEvalB cacheSize bf
         σ@(normal, cache, time) <- get
         let σ' = (normal, cache, time + guardTime)
         if (b == bVal) then return σ' else lift []
-cacheStepForState (Assign x vf) = do
-        xVal <- cacheAwareLRUEvalV vf
-        cacheAwareWriteLRUState x xVal
+cacheStepForState cacheSize (Assign x vf) = do
+        xVal <- cacheAwareLRUEvalV cacheSize vf
+        cacheAwareWriteLRUState cacheSize x xVal
         σ' <- get
         return σ'
-cacheStepForState (AssignArray a ix vf) = do
-        vVal <- cacheAwareLRUEvalV vf
-        iVal <- cacheAwareLRUEvalV ix
-        cacheAwareArrayWriteLRUState a (arrayIndex iVal) vVal
+cacheStepForState cacheSize (AssignArray a ix vf) = do
+        vVal <- cacheAwareLRUEvalV cacheSize vf
+        iVal <- cacheAwareLRUEvalV cacheSize ix
+        cacheAwareArrayWriteLRUState cacheSize a (arrayIndex iVal) vVal
         σ' <- get
         return σ'
-cacheStepForState e@(Init _ _) = do
+cacheStepForState cacheSize e@(Init _ _) = do
         (normal@(σ, tlσ,()), cache, time) <- get
         let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
         let normal' = (σ', tlσ', ())
         return (normal', cache, time + initTime)
-cacheStepForState e@(InitArray _ _) = do
+cacheStepForState cacheSize e@(InitArray _ _) = do
         (normal@(σ, tlσ,()), cache, time) <- get
         let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
         let normal' = (σ', tlσ', ())
         return (normal', cache, time + initTime)
-cacheStepForState NoOp = do
+cacheStepForState cacheSize NoOp = do
         σ@(normal,cache,time) <- get
         let σ' = (normal, cache, time + noOpTime)
         put σ'
         return σ'
-cacheStepForState (Read  _ _) = undefined
-cacheStepForState (Print _ _) = undefined
-cacheStepForState (Spawn    ) = undefined
-cacheStepForState (Call     ) = undefined
-cacheStepForState (Return   ) = undefined
+cacheStepForState cacheSize (Read  _ _) = undefined
+cacheStepForState cacheSize (Print _ _) = undefined
+cacheStepForState cacheSize (Spawn    ) = undefined
+cacheStepForState cacheSize (Call     ) = undefined
+cacheStepForState cacheSize (Return   ) = undefined
 
-cacheStepFor ::  AbstractSemantic FullState
-cacheStepFor e σ = evalStateT (cacheStepForState e) σ
-
-
+cacheStepFor ::  CacheSize -> AbstractSemantic FullState
+cacheStepFor cacheSize e σ = evalStateT (cacheStepForState cacheSize e) σ
 
 
-cacheTimeLRUEvalB :: BoolFunction -> StateT AbstractCacheTimeState [] ()
-cacheTimeLRUEvalB CTrue     = return ()
-cacheTimeLRUEvalB CFalse    = return ()
-cacheTimeLRUEvalB (Leq x y) = do
-  xVal <- cacheTimeLRUEvalV x
-  yVal <- cacheTimeLRUEvalV y
+
+
+cacheTimeLRUEvalB :: CacheSize -> BoolFunction -> StateT AbstractCacheTimeState [] ()
+cacheTimeLRUEvalB cacheSize CTrue     = return ()
+cacheTimeLRUEvalB cacheSize CFalse    = return ()
+cacheTimeLRUEvalB cacheSize (Leq x y) = do
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalB (Eeq x y) = do
-  xVal <- cacheTimeLRUEvalV x
-  yVal <- cacheTimeLRUEvalV y
+cacheTimeLRUEvalB cacheSize (Eeq x y) = do
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalB (And b1 b2) = do
-  b1Val <- cacheTimeLRUEvalB b1
-  b2Val <- cacheTimeLRUEvalB b2
+cacheTimeLRUEvalB cacheSize (And b1 b2) = do
+  b1Val <- cacheTimeLRUEvalB cacheSize b1
+  b2Val <- cacheTimeLRUEvalB cacheSize b2
   return ()
-cacheTimeLRUEvalB (Or b1 b2) = do
-  b1Val <- cacheTimeLRUEvalB b1
-  b2Val <- cacheTimeLRUEvalB b2
+cacheTimeLRUEvalB cacheSize (Or b1 b2) = do
+  b1Val <- cacheTimeLRUEvalB cacheSize b1
+  b2Val <- cacheTimeLRUEvalB cacheSize b2
   return ()
-cacheTimeLRUEvalB (Not b) = do
-  bVal <- cacheTimeLRUEvalB b
+cacheTimeLRUEvalB cacheSize (Not b) = do
+  bVal <- cacheTimeLRUEvalB cacheSize b
   return ()
 
-cacheTimeLRUEvalV :: VarFunction -> StateT AbstractCacheTimeState [] ()
-cacheTimeLRUEvalV (Val  x) = return ()
-cacheTimeLRUEvalV (Var  x) = cacheTimeReadLRUState x
+cacheTimeLRUEvalV :: CacheSize -> VarFunction -> StateT AbstractCacheTimeState [] ()
+cacheTimeLRUEvalV cacheSize (Val  x) = return ()
+cacheTimeLRUEvalV cacheSize (Var  x) = cacheTimeReadLRUState cacheSize x
 {- special case for constants -}
-cacheTimeLRUEvalV (ArrayRead a ix@(Val i)) = do
-  cacheTimeLRUEvalV ix -- does nothing
-  cacheTimeArrayReadLRUState a (arrayIndex i)
+cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(Val i)) = do
+  cacheTimeLRUEvalV cacheSize ix -- does nothing
+  cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
   return ()
 {- special case for assertions -}
-cacheTimeLRUEvalV (ArrayRead a ix@(AssertRange min max i)) = do
-  cacheTimeLRUEvalV i
+cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(AssertRange min max i)) = do
+  cacheTimeLRUEvalV cacheSize i
   i <- lift $ alignedIndicesFor min max
-  cacheTimeArrayReadLRUState a (arrayIndex i)
+  cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
   return ()
 #ifdef USE_PRECISE_ARRAY_CACHELINES
-cacheTimeLRUEvalV (ArrayRead a ix) = do
-  cacheTimeLRUEvalV ix
+cacheTimeLRUEvalV cacheSize (ArrayRead a ix) = do
+  cacheTimeLRUEvalV cacheSize ix
   i <- lift alignedIndices
-  cacheTimeArrayReadLRUState a i
+  cacheTimeArrayReadLRUState cacheSize a i
   return ()
 #else
-cacheTimeLRUEvalV (ArrayRead a ix) = do
+cacheTimeLRUEvalV cacheSize (ArrayRead a ix) = do
   cacheTimeLRUEvalV ix
   cacheTimeArrayReadUnknownIndexLRUState a
   return ()
 #endif
-cacheTimeLRUEvalV (Plus  x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Plus  x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Minus x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Minus x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Times x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Times x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Div x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Div x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Mod x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Mod x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Xor x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Xor x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Shl   x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Shl   x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Shr   x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (Shr   x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (BAnd  x y) = do
-  cacheTimeLRUEvalV x
-  cacheTimeLRUEvalV y
+cacheTimeLRUEvalV cacheSize (BAnd  x y) = do
+  cacheTimeLRUEvalV cacheSize x
+  cacheTimeLRUEvalV cacheSize y
   return ()
-cacheTimeLRUEvalV (Neg x) = do
-  cacheTimeLRUEvalV x
+cacheTimeLRUEvalV cacheSize (Neg x) = do
+  cacheTimeLRUEvalV cacheSize x
   return ()
-cacheTimeLRUEvalV (BNot x) = do
-  cacheTimeLRUEvalV x
+cacheTimeLRUEvalV cacheSize (BNot x) = do
+  cacheTimeLRUEvalV cacheSize x
   return ()
-cacheTimeLRUEvalV (AssertRange min max x) = do
-  cacheTimeLRUEvalV x
+cacheTimeLRUEvalV cacheSize (AssertRange min max x) = do
+  cacheTimeLRUEvalV cacheSize x
   return ()
 
 
@@ -838,67 +832,67 @@ cacheTimeLRUEvalV (AssertRange min max x) = do
 
 
 
-cacheTimeStepForState :: CFGEdge -> StateT AbstractCacheTimeState [] AbstractCacheTimeState
-cacheTimeStepForState (Guard b bf) = do
-        cacheTimeLRUEvalB bf
+cacheTimeStepForState :: CacheSize -> CFGEdge -> StateT AbstractCacheTimeState [] AbstractCacheTimeState
+cacheTimeStepForState cacheSize (Guard b bf) = do
+        cacheTimeLRUEvalB cacheSize bf
         (cache, time) <- get
         return (cache, time + guardTime)
-cacheTimeStepForState (Assign x vf) = do
-        cacheTimeLRUEvalV vf
-        cacheTimeWriteLRUState x
+cacheTimeStepForState cacheSize (Assign x vf) = do
+        cacheTimeLRUEvalV cacheSize vf
+        cacheTimeWriteLRUState cacheSize x
         σ' <- get
         return σ'
 {- special case for constants -}
-cacheTimeStepForState (AssignArray a ix@(Val i) vf) = do
-        cacheTimeLRUEvalV vf
-        cacheTimeLRUEvalV ix -- does nothing
-        cacheTimeArrayWriteLRUState a (arrayIndex i)
+cacheTimeStepForState cacheSize (AssignArray a ix@(Val i) vf) = do
+        cacheTimeLRUEvalV cacheSize vf
+        cacheTimeLRUEvalV cacheSize ix -- does nothing
+        cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
         σ' <- get
         return σ'
 {- special case for assertions -}
-cacheTimeStepForState (AssignArray a ix@((AssertRange min max i)) vf) = do
-        cacheTimeLRUEvalV vf
-        cacheTimeLRUEvalV i
+cacheTimeStepForState cacheSize (AssignArray a ix@((AssertRange min max i)) vf) = do
+        cacheTimeLRUEvalV cacheSize vf
+        cacheTimeLRUEvalV cacheSize i
         i <- lift $ alignedIndicesFor min max
-        cacheTimeArrayWriteLRUState a (arrayIndex i)
+        cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
         σ' <- get
         return σ'
 #ifdef USE_PRECISE_ARRAY_CACHELINES
-cacheTimeStepForState (AssignArray a ix vf) = do
-        cacheTimeLRUEvalV vf
-        cacheTimeLRUEvalV ix
+cacheTimeStepForState cacheSize (AssignArray a ix vf) = do
+        cacheTimeLRUEvalV cacheSize vf
+        cacheTimeLRUEvalV cacheSize ix
         i <- lift alignedIndices
-        cacheTimeArrayWriteLRUState a i
+        cacheTimeArrayWriteLRUState cacheSize a i
         σ' <- get
         return σ'
 #else
-cacheTimeStepForState (AssignArray a ix vf) = do
+cacheTimeStepForState cacheSize (AssignArray a ix vf) = do
         cacheTimeLRUEvalV vf
         cacheTimeLRUEvalV ix
         cacheTimeArrayWriteUnknownIndexLRUState a
         σ' <- get
         return σ'
 #endif
-cacheTimeStepForState (Init _ _ ) = do
+cacheTimeStepForState cacheSize (Init _ _ ) = do
         (cache, time) <- get
         return (cache, time + initTime) 
-cacheTimeStepForState (InitArray _ _ ) = do
+cacheTimeStepForState cacheSize (InitArray _ _ ) = do
         (cache, time) <- get
         return (cache, time + initTime) 
-cacheTimeStepForState NoOp = do
+cacheTimeStepForState cacheSize NoOp = do
         (cache, time) <- get
         return (cache, time + noOpTime) 
-cacheTimeStepForState (Read  _ _) = undefined
-cacheTimeStepForState (Print _ _) = undefined
-cacheTimeStepForState (Spawn    ) = undefined
-cacheTimeStepForState (Call     ) = undefined
-cacheTimeStepForState (Return   ) = undefined
+cacheTimeStepForState cacheSize (Read  _ _) = undefined
+cacheTimeStepForState cacheSize (Print _ _) = undefined
+cacheTimeStepForState cacheSize (Spawn    ) = undefined
+cacheTimeStepForState cacheSize (Call     ) = undefined
+cacheTimeStepForState cacheSize (Return   ) = undefined
 
-cacheTimeStepFor ::  AbstractSemantic AbstractCacheTimeState
-cacheTimeStepFor e σ = evalStateT (cacheTimeStepForState e) σ
+cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState
+cacheTimeStepFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e) σ
 
-cacheOnlyStepFor ::  AbstractSemantic AbstractCacheState
-cacheOnlyStepFor e σ = fmap fst $ evalStateT (cacheTimeStepForState e) (σ, 0)
+cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState
+cacheOnlyStepFor cacheSize e σ = fmap fst $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
 
 
 
@@ -922,34 +916,34 @@ cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
 
 
 
-cacheExecutionGraph :: (Graph gr) => gr CFGNode CFGEdge -> FullState -> Node -> gr (Node, FullState) CFGEdge
-cacheExecutionGraph = stateGraph cacheStepFor
+cacheExecutionGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> FullState -> Node -> gr (Node, FullState) CFGEdge
+cacheExecutionGraph cacheSize = stateGraph (cacheStepFor cacheSize)
 
 
-cacheStateGraph :: (Graph gr) => gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
-cacheStateGraph = stateGraph cacheOnlyStepFor
+cacheStateGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize)
 
 
-cacheExecution :: (Graph gr) => gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]
-cacheExecution g σ0 n0 = run σ0 n0
+cacheExecution :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]
+cacheExecution cacheSize g σ0 n0 = run σ0 n0
   where run σ@(_,_,time) n = case try σ n of
                     [] -> [[(n, time)]]
                     ts -> ts
         try σ@(_,_,time) n = do
                     (n', e) <- lsuc g n
-                    σ' <- cacheStepFor e σ
+                    σ' <- cacheStepFor cacheSize e σ
                     trace0 <- run σ' n'
                     return $ (n, time) : trace0
 
 
-cacheExecutionLimit :: (Graph gr) => Int -> gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]
-cacheExecutionLimit limit g σ0 n0 = run σ0 n0 0
+cacheExecutionLimit :: (Graph gr) => CacheSize -> Int -> gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]
+cacheExecutionLimit cacheSize limit g σ0 n0 = run σ0 n0 0
   where run σ@(_,_,time) n i = if i >= limit then [] else case try σ n i of
                     [] -> [[(n, time)]]
                     ts -> ts
         try σ@(_,_,time) n i = do
                     (n', e) <- lsuc g n
-                    σ' <- cacheStepFor e σ
+                    σ' <- cacheStepFor cacheSize e σ
                     trace0 <- run σ' n' (i+1)
                     return $ (n, time) : trace0
 
@@ -976,23 +970,23 @@ prependFakeInitialization g0 n0 newN0 varToNode =
 
 
 
-costsFor :: DynGraph gr =>  gr (Node, AbstractCacheState) CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
-costsFor csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]  |
+costsFor :: DynGraph gr =>  CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costsFor cacheSize csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList [time]) ]  |
                                                  (n, (n0,cs)) <- labNodes csGraph,
                                                  (m, e) <- lsuc csGraph n,
                                                  let Just (m0,_) = lab csGraph m,
-                                                 fullState'@(_,time) <- cacheTimeStepFor e (cs, 0)
+                                                 fullState'@(_,time) <- cacheTimeStepFor cacheSize e (cs, 0)
                       ]
 
-costsFor2 :: (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) -> Map (Node, Node, CFGEdge) (Set AccessTime)
-costsFor2 (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
+costsFor2 :: CacheSize -> (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costsFor2 cacheSize (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
                                                  ((n,cache), e, (n', cache')) <- Set.toList es,
-                                                 fullState'@(_,time) <- cacheTimeStepFor e (cache, 0)
+                                                 fullState'@(_,time) <- cacheTimeStepFor cacheSize e (cache, 0)
                       ]
 
 
-cacheCostDecisionGraphFor :: DynGraph gr => gr CFGNode CFGEdge -> gr (Node, AbstractCacheState) CFGEdge -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
-cacheCostDecisionGraphFor g csGraph = (
+cacheCostDecisionGraphFor :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> gr (Node, AbstractCacheState) CFGEdge -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
+cacheCostDecisionGraphFor cacheSize g csGraph = (
       mkGraph
         ((labNodes g) ++ [(nNew, n) | (nNew, n) <-  [ (m', n) | ((e@(n,_,_),_), m') <- Map.assocs nodesFor  ]
                                                  ++ [ (mj, n) | ( e@(n,_,_)   , mj) <- Map.assocs joinFor   ]
@@ -1012,7 +1006,7 @@ cacheCostDecisionGraphFor g csGraph = (
       `Map.union` Map.fromList [ ((m',m ),        1) |   e@(_,m,l)            <- linRelevant,                                  let m' = linJoinFor ! e ]
     )
   where
-        costs = costsFor csGraph
+        costs = costsFor cacheSize csGraph
 
         isRelevant e = nrSuc e > 1
         nrSuc e = Set.size $ costs ! e
@@ -1068,33 +1062,34 @@ cacheCostDecisionGraphFor g csGraph = (
                 (tmp, right) = splitAt (totalnewSplit + totalnewJoin) all
                 (left,  mid) = splitAt  totalnewSplit                 tmp
 
-cacheCostDecisionGraph :: DynGraph gr => gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
-cacheCostDecisionGraph g n0 = cacheCostDecisionGraphFor g csGraph
-  where csGraph = cacheStateGraph g initialAbstractCacheState n0
+cacheCostDecisionGraph :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
+cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g csGraph
+  where csGraph = cacheStateGraph cacheSize g initialAbstractCacheState n0
         
 
 
 type AbstractCacheStateTimeEquiv = Set CachedObject
 type MergedCacheState = MergedMicroState AbstractCacheState AbstractCacheStateTimeEquiv
 
-cacheAbstraction :: MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
-cacheAbstraction = MicroArchitecturalAbstraction { 
+cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
+cacheAbstraction cacheSize = MicroArchitecturalAbstraction { 
       muGraph'For = muGraph'For,
       muInitialState = initialAbstractCacheState,
-      muStepFor = cacheOnlyStepFor,
-      muCostsFor = costsFor2
+      muStepFor = cacheOnlyStepFor cacheSize,
+      muCostsFor = costsFor2 cacheSize
     }
   where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars] ]
 
-csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdMergeDirectOf = muMergeDirectOf cacheAbstraction
+csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdMergeDirectOf cacheSize = muMergeDirectOf (cacheAbstraction cacheSize)
 
 csdGraphFromMergeDirectFor :: forall gr a a'. (DynGraph gr) =>
+  CacheSize ->
   gr CFGNode CFGEdge ->
   Node ->
   Node ->
   gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
-csdGraphFromMergeDirectFor = muGraphFromMergeDirectFor cacheAbstraction
+csdGraphFromMergeDirectFor cacheSize = muGraphFromMergeDirectFor (cacheAbstraction cacheSize)
 
 
 

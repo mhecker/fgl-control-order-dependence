@@ -89,6 +89,7 @@ library
     Program.TransitionSystem
     Program.Defaults
     Program.For
+    MicroArchitecturalDependence
     Execution
     PNI
     Program

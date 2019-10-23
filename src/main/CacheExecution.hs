@@ -53,6 +53,7 @@ import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
+import MicroArchitecturalDependence (ConcreteSemantic, AbstractSemantic, TimeState, NormalState, stateGraphForSets, stateGraph, stateSets)
 
 
 
@@ -142,12 +143,6 @@ undefinedCache = [ "_undef_" ++ (show i) | i <- [1..cacheSize]]
 undefinedCacheValue = CachedVal (0-1)
 undefinedCacheArrayValue = CachedArraySlice undefinedCacheLine
 
-type ConcreteSemantic a = CFGEdge -> a -> Maybe a
-
-type AbstractSemantic a = CFGEdge -> a -> [a]
-
-type NormalState = (GlobalState,ThreadLocalState, ())
-
 
 type ArrayBound = Val
 
@@ -193,7 +188,6 @@ cachedObjectsFor = useE
 
 type CacheState = [(CachedObject, CacheValue)]
 
-type TimeState = Integer
 
 
 type CacheTimeState = (CacheState, TimeState)
@@ -901,49 +895,6 @@ cacheOnlyStepFor e σ = fmap fst $ evalStateT (cacheTimeStepForState e) (σ, 0)
 
 
 
-
-stateSetsSlow :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
-stateSetsSlow step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList []) f
-  where f (cs, es) = (cs ∪ Set.fromList [  (n', σ') | (n, σ, e, n', σ') <- next ],
-                      es ∪ Set.fromList [ ((n,  σ ), e, (n', σ')) | (n, σ, e, n', σ') <- next ]
-                     )
-          where next = [ (n, σ, e, n', σ')  | (n,σ) <- Set.toList cs, (n',e) <- lsuc g n, σ' <- step e σ]
-
-stateSets :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
-stateSets step g σ0 n0 = {- assert (result == stateSetsSlow step g σ0 n0) $ -} result
-  where result = go (Set.fromList [(n0,σ0)]) (Set.fromList [(n0,σ0)]) (Set.fromList [])
-        go workset cs es
-         | Set.null workset = (cs, es)
-         | otherwise         = go (workset' ∪ csNew) (cs ∪ csNew) (es ∪ esNew)
-             where ((n,σ), workset') = Set.deleteFindMin workset
-                   next = [ (n, σ, e, n', σ')  | (n',e) <- lsuc g n, σ' <- step e σ]
-                   
-                   csNew = Set.fromList [ (n', σ') | (n, σ, e, n', σ') <- next, not $ (n', σ') ∈ cs ]
-                   esNew = Set.fromList [ ((n,  σ ), e, (n', σ')) | (n, σ, e, n', σ') <- next ]
-
-
-stateGraphForSets :: (Ord s, Graph gr) => (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s))) -> gr (Node, s) CFGEdge
-stateGraphForSets (cs, es) = mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es]
-  where nodes = zip [0..] (Set.toList cs)
-        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
-
-stateGraph :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> gr (Node, s) CFGEdge
-stateGraph step g σ0 n0 = stateGraphForSets (cs, es)
-  where (cs, es) = stateSets step g σ0 n0
-
-
-stateGraphFor :: (Graph gr, Ord s, Ord s') => (s -> s') ->  AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> gr (Node, s') CFGEdge
-stateGraphFor α step g σ0 n0 = mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
-  where (cs, es) = stateSets step g σ0 n0
-        cs' =  Set.map f cs
-          where f (n, s) = (n, α s)
-        es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α sn), e, (m, α sm))
-        nodes = zip [0..] (Set.toList cs')
-        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
-
-
-
 cacheStateGraph'ForVarsAtMForGraph :: forall gr. (DynGraph gr) => Set CachedObject ->  gr (Node, CacheState) CFGEdge  ->  Node -> gr (Node, CacheState) CFGEdge
 cacheStateGraph'ForVarsAtMForGraph vars g0 mm = result
   where result = subgraph (rdfs (fmap fst $ withNewIds) merged) merged
@@ -1000,8 +951,6 @@ cacheExecutionGraph = stateGraph cacheStepFor
 
 cacheStateGraph :: (Graph gr) => gr CFGNode CFGEdge -> CacheState -> Node -> gr (Node, CacheState) CFGEdge
 cacheStateGraph = stateGraph cacheOnlyStepFor
-
-
 
 
 cacheExecution :: (Graph gr) => gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]

@@ -37,7 +37,8 @@ import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, foc
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
-import CacheExecution (CacheGraphNode, isCachable, CacheState, initialCacheState, CachedObject(..), cachedObjectsFor, stateSets, stateGraphForSets, stateGraphFor, cacheOnlyStepFor, merged, mergeFrom, costsFor)
+import MicroArchitecturalDependence (stateSets, stateGraphForSets, stateGraphFor)
+import CacheExecution (CacheGraphNode, isCachable, CacheState, initialCacheState, CachedObject(..), cachedObjectsFor, cacheOnlyStepFor, merged, mergeFrom, costsFor)
 
 import Program (Program(..))
 import Program.Generator (toCodeSimple)

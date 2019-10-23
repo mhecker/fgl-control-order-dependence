@@ -193,6 +193,9 @@ cachedObjectsFor = useE
     useV (AssertRange _ _ x) = useV x
 
 type CacheState = [(CachedObject, CacheValue)]
+data MergedCacheState =
+    Merged (Set CachedObject)
+  | Unmerged CacheState deriving (Eq, Ord, Show)
 
 
 
@@ -901,41 +904,11 @@ cacheOnlyStepFor e σ = fmap fst $ evalStateT (cacheTimeStepForState e) (σ, 0)
 
 
 
-cacheStateGraph'ForVarsAtMForGraph :: forall gr. (DynGraph gr) => Set CachedObject ->  gr (Node, CacheState) CFGEdge  ->  Node -> gr (Node, CacheState) CFGEdge
-cacheStateGraph'ForVarsAtMForGraph vars g0 mm = result
-  where result = subgraph (rdfs (fmap fst $ withNewIds) merged) merged
-        merged :: gr (Node, CacheState) CFGEdge
-        merged = insEdges [ (id, oldMNodesToNew ! id', e) | edge@(id,id',e) <- mEdgesIncoming]
-               $ insNodes withNewIds
-               $ delNodes (fmap fst mNodes)
-               $ g0
-        mNodes = [ node | node@(id, (m, cache)) <- labNodes g0, m == mm ]
-        mNodeS = Set.fromList $ fmap fst $ mNodes
-        mEdgesIncoming = [ edge | edge@(id,id',e) <- labEdges g0, id' ∈ mNodeS, not $ id ∈ mNodeS ]
-
-        oldMNodesToNew = Map.fromList $ [ (id, newId) | node@(id, (m, cache)) <- mNodes, let αcache = (m, α m cache), let Just (newId,_) = List.find (\(_,αcache') -> αcache == αcache') withNewIds ]
-        new = newNodes (length abstract) g0
-        abstract   = Set.toList $ Set.fromList [ (m, α m cache)  | node@(id, (m, cache)) <- mNodes ]
-        withNewIds = zip new abstract
-
-
-        α n cache
-          | n == mm   = [ (v,undefinedCacheValue) | (v,s) <- cache, v ∈ vars]
-          | otherwise = cache
-
-
-cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, CacheState) CFGEdge
-cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = {- assert (conved == conved') $ -} result
+cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> (Set (Node, CacheState), Set ((Node, CacheState), CFGEdge, (Node, CacheState))) ->  Node -> gr (Node, MergedCacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
   where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
 
-        (conved, conved') = (
-            Set.fromList $ fmap (conv result ) (labEdges result ),
-            Set.fromList $ fmap (conv result') (labEdges result')
-           )
-          where conv g (n, m, l) = (lab g n, lab g m, l)
-                result' = cacheStateGraph'ForVarsAtMForGraph vars (stateGraphForSets (css, es)) mm :: gr (Node, CacheState) CFGEdge
-
-        merged :: gr (Node, CacheState) CFGEdge
+        merged :: gr (Node, MergedCacheState) CFGEdge
         merged = mkGraph nodes' edges'
 
         nodes' = zip [0..] [           α cs                      |  cs@(m,c)                  <- Set.toList css]
@@ -943,8 +916,8 @@ cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = {- assert (conved == con
         toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
 
         α cs@(n, cache)
-          | n == mm   = (mm, [ (v,undefinedCacheValue) | (v,s) <- cache, v ∈ vars])
-          | otherwise = cs
+          | n == mm   = (mm, Merged $ Set.fromList [ v | (v,s) <- cache, v ∈ vars])
+          | otherwise = (n,  Unmerged cache)
 
 
 
@@ -1118,7 +1091,7 @@ csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $
 #endif
       vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
-      let csGraph' = cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m :: gr (Node, CacheState) CFGEdge,
+      let csGraph' = cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m :: gr (Node, MergedCacheState) CFGEdge,
       let y's  = [ y | (y, (n', csy)) <- labNodes csGraph', m == n' ],
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
@@ -1136,13 +1109,19 @@ csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $
 csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeDirectFromFor graph n0 m
 
-
+mergeDirectFromFor :: forall gr. (DynGraph gr) =>
+  gr CFGNode CFGEdge ->
+  Node ->
+  Node ->
+  (Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)),
+   gr (Node, MergedCacheState) CFGEdge
+  )
 mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
-  where   csGraph = cacheStateGraph graph initialCacheState n0
+  where   csGraph@(cs, es) = stateSets cacheOnlyStepFor graph initialCacheState n0
           
           vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars]
           graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
-          csGraph' = cacheStateGraph'ForVarsAtMForGraph vars csGraph m
+          csGraph' = cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m
           nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph']
           y's  = nodesToCsNodes ! m
           

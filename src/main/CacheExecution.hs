@@ -7,7 +7,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 #define require assert
 #define USE_PRECISE_ARRAY_CACHELINES
-#define SKIP_INDEPENDENT_NODES_M
 module CacheExecution where
 
 import qualified Data.List as List
@@ -58,8 +57,11 @@ import MicroArchitecturalDependence (
     AbstractMicroArchitecturalGraphNode,
     ConcreteSemantic, AbstractSemantic,
     TimeState, NormalState,
+    MergedMicroState(..),
+    MicroArchitecturalAbstraction(..),
     stateGraphForSets, stateGraph, stateSets,
-    mergeFromForEdgeToSuccessor, merged
+    muMergeDirectOf,
+    mergeFromForEdgeToSuccessor, merged,
   )
 
 
@@ -1073,19 +1075,7 @@ cacheCostDecisionGraph g n0 = cacheCostDecisionGraphFor g csGraph
 
 
 type AbstractCacheStateTimeEquiv = Set CachedObject
-
-data MergedMicroState a a'  = Unmerged a | Merged a' deriving (Eq, Ord, Show)
-
 type MergedCacheState = MergedMicroState CacheState AbstractCacheStateTimeEquiv
-
-data Phantom a a' = Phantom
-
-data MicroArchitecturalAbstraction a a' = MicroArchitecturalAbstraction { 
-    muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> (Set (Node, a), Set ((Node, a), CFGEdge, (Node, a))) -> Node -> [gr (Node, MergedMicroState a a' ) CFGEdge],
-    muInitialState :: a,
-    muStepFor :: AbstractSemantic a,
-    muCostsFor :: (Set (Node, a), Set ((Node, a), CFGEdge, (Node, a))) -> Map (Node, Node, CFGEdge) (Set AccessTime)
-  }
 
 cacheAbstraction :: MicroArchitecturalAbstraction CacheState AbstractCacheStateTimeEquiv 
 cacheAbstraction = MicroArchitecturalAbstraction { 
@@ -1099,33 +1089,6 @@ cacheAbstraction = MicroArchitecturalAbstraction {
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf = muMergeDirectOf cacheAbstraction
 
-muMergeDirectOf :: forall gr a a'. (DynGraph gr, Ord a) => MicroArchitecturalAbstraction a a' -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-muMergeDirectOf mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muStepFor, muCostsFor }) graph n0 = traceShow (Set.size cs) $ invert'' $
-  Map.fromList [ (m, Set.fromList [ n | y <- ys,
-                                        let Just (n, _) = lab csGraph'' y,
-                                        -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
-                                        n /= m
-                     ]
-                 )
-    | m <- nodes graph,
-#ifdef SKIP_INDEPENDENT_NODES_M
-      mayBeCSDependent m,
-#endif
-      csGraph' <- (muGraph'For graph csGraph m ::  [gr (Node, MergedMicroState a a' ) CFGEdge]),
-      let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
-      let y's  = [ y | (y, (n', csy)) <- labNodes csGraph', m == n' ],
-      let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
-      let roots' = Set.fromList y's,
-      let equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots',
-      let csGraph'' = merged csGraph' equivs,
-      let idom'' = isinkdomOfTwoFinger8 csGraph'',
-      let ys = [ y | y <- nodes csGraph'', Set.null $ idom'' ! y]
-   ]
-  where csGraph@(cs, es)  = stateSets muStepFor graph muInitialState n0
-#ifdef SKIP_INDEPENDENT_NODES_M
-        costs = muCostsFor csGraph
-        mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
-#endif         
 
 csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeDirectFromFor graph n0 m

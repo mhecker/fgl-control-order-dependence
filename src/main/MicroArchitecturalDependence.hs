@@ -283,3 +283,33 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState
         costs = muCostsFor csGraph
         mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
 #endif         
+
+
+muGraphFromMergeDirectFor :: forall gr a a'. (DynGraph gr, Ord a) =>
+  MicroArchitecturalAbstraction a a' ->
+  gr CFGNode CFGEdge ->
+  Node ->
+  Node ->
+  gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
+muGraphFromMergeDirectFor mu graph n0 m = merged muGraph' equivs
+    where (equivs, muGraph') = mergeDirectFromFor mu graph n0 m
+
+mergeDirectFromFor :: forall gr a a'. (DynGraph gr, Ord a) =>
+  MicroArchitecturalAbstraction a a' ->
+  gr CFGNode CFGEdge ->
+  Node ->
+  Node ->
+  (Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)),
+   gr (Node, MergedMicroState a a') CFGEdge
+  )
+mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muStepFor, muCostsFor }) graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
+  where   csGraph@(cs, es) = stateSets muStepFor graph muInitialState n0
+          
+          csGraph' = head $ muGraph'For graph csGraph m 
+          graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
+          nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph']
+          y's  = nodesToCsNodes ! m
+          
+          idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
+          roots = Set.fromList y's
+

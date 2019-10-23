@@ -60,8 +60,7 @@ import MicroArchitecturalDependence (
     MergedMicroState(..),
     MicroArchitecturalAbstraction(..),
     stateGraphForSets, stateGraph, stateSets,
-    muMergeDirectOf,
-    mergeFromForEdgeToSuccessor, merged,
+    muMergeDirectOf, muGraphFromMergeDirectFor
   )
 
 
@@ -1089,29 +1088,12 @@ cacheAbstraction = MicroArchitecturalAbstraction {
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf = muMergeDirectOf cacheAbstraction
 
-
-csGraphFromMergeDirectFor graph n0 m = merged csGraph' equivs
-    where (equivs, csGraph') = mergeDirectFromFor graph n0 m
-
-mergeDirectFromFor :: forall gr. (DynGraph gr) =>
+csdGraphFromMergeDirectFor :: forall gr a a'. (DynGraph gr) =>
   gr CFGNode CFGEdge ->
   Node ->
   Node ->
-  (Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)),
-   gr (Node, MergedCacheState) CFGEdge
-  )
-mergeDirectFromFor graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
-  where   csGraph@(cs, es) = stateSets cacheOnlyStepFor graph initialCacheState n0
-          
-          vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars]
-          graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
-          csGraph' = cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m
-          nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph']
-          y's  = nodesToCsNodes ! m
-          
-          idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
-          roots = Set.fromList y's
-
+  gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
+csdGraphFromMergeDirectFor = muGraphFromMergeDirectFor cacheAbstraction
 
 
 

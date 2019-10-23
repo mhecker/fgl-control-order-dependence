@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -193,11 +194,6 @@ cachedObjectsFor = useE
     useV (AssertRange _ _ x) = useV x
 
 type CacheState = [(CachedObject, CacheValue)]
-data MergedCacheState =
-    Merged (Set CachedObject)
-  | Unmerged CacheState deriving (Eq, Ord, Show)
-
-
 
 type CacheTimeState = (CacheState, TimeState)
 type FullState = (NormalState, CacheState, TimeState)
@@ -1076,9 +1072,35 @@ cacheCostDecisionGraph g n0 = cacheCostDecisionGraphFor g csGraph
         
 
 
+type AbstractCacheStateTimeEquiv = Set CachedObject
 
-csdMergeDirectOf :: forall gr. (DynGraph gr, Show (gr (Node, CacheState) CFGEdge),  Show (gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge )) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $
+data MergedMicroState a a'  = Unmerged a | Merged a' deriving (Eq, Ord, Show)
+
+type MergedCacheState = MergedMicroState CacheState AbstractCacheStateTimeEquiv
+
+data Phantom a a' = Phantom
+
+data MicroArchitecturalAbstraction a a' = MicroArchitecturalAbstraction { 
+    muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> (Set (Node, a), Set ((Node, a), CFGEdge, (Node, a))) -> Node -> [gr (Node, MergedMicroState a a' ) CFGEdge],
+    muInitialState :: a,
+    muStepFor :: AbstractSemantic a,
+    muCostsFor :: (Set (Node, a), Set ((Node, a), CFGEdge, (Node, a))) -> Map (Node, Node, CFGEdge) (Set AccessTime)
+  }
+
+cacheAbstraction :: MicroArchitecturalAbstraction CacheState AbstractCacheStateTimeEquiv 
+cacheAbstraction = MicroArchitecturalAbstraction { 
+      muGraph'For = muGraph'For,
+      muInitialState = initialCacheState,
+      muStepFor = cacheOnlyStepFor,
+      muCostsFor = costsFor2
+    }
+  where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars] ]
+
+csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdMergeDirectOf = muMergeDirectOf cacheAbstraction
+
+muMergeDirectOf :: forall gr a a'. (DynGraph gr, Ord a) => MicroArchitecturalAbstraction a a' -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+muMergeDirectOf mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muStepFor, muCostsFor }) graph n0 = traceShow (Set.size cs) $ invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- ys,
                                         let Just (n, _) = lab csGraph'' y,
                                         -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
@@ -1089,9 +1111,8 @@ csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $
 #ifdef SKIP_INDEPENDENT_NODES_M
       mayBeCSDependent m,
 #endif
-      vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
+      csGraph' <- (muGraph'For graph csGraph m ::  [gr (Node, MergedMicroState a a' ) CFGEdge]),
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
-      let csGraph' = cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m :: gr (Node, MergedCacheState) CFGEdge,
       let y's  = [ y | (y, (n', csy)) <- labNodes csGraph', m == n' ],
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
       let roots' = Set.fromList y's,
@@ -1100,9 +1121,9 @@ csdMergeDirectOf graph n0 = traceShow (Set.size cs) $ invert'' $
       let idom'' = isinkdomOfTwoFinger8 csGraph'',
       let ys = [ y | y <- nodes csGraph'', Set.null $ idom'' ! y]
    ]
-  where csGraph@(cs, es)  = stateSets cacheOnlyStepFor graph initialCacheState n0
+  where csGraph@(cs, es)  = stateSets muStepFor graph muInitialState n0
 #ifdef SKIP_INDEPENDENT_NODES_M
-        costs = costsFor2 csGraph
+        costs = muCostsFor csGraph
         mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
 #endif         
 

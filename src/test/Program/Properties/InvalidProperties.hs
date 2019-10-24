@@ -741,7 +741,7 @@ dodTests = testGroup "(concerning decisive order dependence)" $
                    let g = mkGraph [(1,()),(4,()),(5,())] [(1,4,()),(4,1,()),(5,1,()),(5,4,())] :: Gr () ()
                        edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
                        cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> SLICE.ODEP.ntscdNTSODSlice g ms == combinedBackwardSlice g cd Map.empty ms)) @? ""
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> SLICE.ODEP.ntscdNTSODSlice g ms == combinedBackwardSlice cd Map.empty ms)) @? ""
   ] ++
   [  testCase    ( "ntscdDodSlice == ntscdNTSODSlice property strong for " ++ exampleName)
             $       let ntsod = ODEP.ntsod g
@@ -921,7 +921,7 @@ wodTests = testGroup "(concerning weak order dependence)" $
                        nticddntiodslicer = SLICE.ODEP.nticdNTIODSlice g
                        wodslicer         = SLICE.ODEP.wodTEILSlice g
                        wccslicer         = FCACD.wccSlice g
-                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticddntiodslicer ms ∨ s == wccslicer ms)) @? ""
+                   in (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms -> let s = combinedBackwardSlice cd Map.empty ms in s == wodslicer ms ∨ s == nticddntiodslicer ms ∨ s == wccslicer ms)) @? ""
   ] ++
   [  testCase    ( "myCDFromMyDom == myCD for " ++ exampleName) $
                    let  myCDFromMyDom    = NTICDUnused.myCDFromMyDom g

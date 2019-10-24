@@ -32,7 +32,9 @@ import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_mai
 
 import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
 import MicroArchitecturalDependence (stateSets)
-import CacheExecution(CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, initialCacheState, initialAbstractCacheState, cacheExecution, cacheExecutionLimit, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
+import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
+import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
+
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
 import CacheSlice (cacheTimingSliceViaReach, cacheTimingSliceFor)
 

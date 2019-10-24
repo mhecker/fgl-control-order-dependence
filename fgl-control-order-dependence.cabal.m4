@@ -61,6 +61,7 @@ library
   exposed-modules:
     IRLSOD
     CacheExecution
+    CacheStateDependence
     CacheStateDependenceReach
     CacheSlice
     Unicode

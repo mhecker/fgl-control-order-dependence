@@ -57,6 +57,7 @@ import Program.Properties.CDom
 
 import IRLSOD
 import CacheExecution
+import CacheStateDependence
 import CacheSlice
 import Execution
 import ExecutionTree

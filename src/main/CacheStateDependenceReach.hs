@@ -38,7 +38,8 @@ import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalSt
 import qualified IRLSOD as IRLSOD (Input)
 
 import MicroArchitecturalDependence (AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, stateGraphFor, mergeFrom, merged)
-import CacheExecution (CacheSize, isCachable, AbstractCacheState, initialAbstractCacheState, CachedObject(..), cachedObjectsFor, cacheOnlyStepFor, costsFor)
+import CacheExecution (CacheSize, isCachable, CachedObject(..), )
+import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, cacheOnlyStepFor, cachedObjectsFor, costsFor)
 
 import Program (Program(..))
 import Program.Generator (toCodeSimple)

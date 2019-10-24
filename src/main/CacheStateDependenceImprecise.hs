@@ -5,7 +5,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 #define require assert
-module CacheStateDependence where
+module CacheStateDependenceImprecise where
 
 import qualified Data.List as List
 
@@ -70,168 +70,39 @@ import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
-type AbstractCacheState  = [CachedObject]
-type AbstractCacheStateTimeEquiv = Set CachedObject
-type MergedCacheState = MergedMicroState AbstractCacheState AbstractCacheStateTimeEquiv
+import           CacheStateDependence        (AbstractCacheState, AbstractCacheStateTimeEquiv, MergedCacheState, AbstractCacheTimeState)
+import qualified CacheStateDependence as CSD (
+    removeFirstOrButLast, unknownranges,
+    initialAbstractCacheState, cachedObjectsFor, cacheStateGraph'ForVarsAtMForGraph2,
+    cacheTimeReadLRUState,  cacheTimeArrayReadLRUState,
+    cacheTimeWriteLRUState, cacheTimeArrayWriteLRUState
+  )
 
-type AbstractCacheTimeState = (AbstractCacheState, TimeState)
+cacheTimeArrayReadUnknownIndexLRU :: CacheSize -> Array -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
+cacheTimeArrayReadUnknownIndexLRU cacheSize arr cache = case arr of
+    Array       a -> assert (      isCachable $ ArrayName arr) $ lookup
+  where lookup = CSD.unknownranges cacheSize arr cache carr cacheHitTime cacheMissTime
+        carr  = CachedUnknownRange arr
 
-
-
-initialAbstractCacheState :: AbstractCacheState
-initialAbstractCacheState = []
-
-removeFirstOrButLast      = removeFirstOrButLastMaxSize
-
-
-cachedObjectsFor :: CFGEdge -> Set CachedObject
-cachedObjectsFor = useE
-  where 
-    useE :: CFGEdge -> Set CachedObject
-    useE = useEFor useV useB
-
-    useB :: BoolFunction -> Set CachedObject
-    useB = useBFor useV
-
-    useV :: VarFunction -> Set CachedObject
-    {- special case for constants -}
-    useV (ArrayRead a ix@(Val i)) = Set.fromList [CachedArrayRange a (toAlignedIndex $ arrayIndex i) ]
-    {- special case for assertions -}
-    useV (ArrayRead a ix@(AssertRange min max i)) =
-                                    Set.fromList [CachedArrayRange a           aligned | aligned <- alignedIndicesFor min max ]
-    useV (ArrayRead a ix        ) = Set.fromList [CachedArrayRange a           aligned | aligned <- alignedIndices ]
-                                  ∪ useV ix
-    useV (Val  x)    = Set.empty
-    useV (Var  x)    = Set.fromList [CachedVar x]
-    useV (Plus  x y) = useV x ∪ useV y
-    useV (Minus x y) = useV x ∪ useV y
-    useV (Times x y) = useV x ∪ useV y
-    useV (Div   x y) = useV x ∪ useV y
-    useV (Mod   x y) = useV x ∪ useV y
-    useV (BAnd  x y) = useV x ∪ useV y
-    useV (Shl   x y) = useV x ∪ useV y
-    useV (Shr   x y) = useV x ∪ useV y
-    useV (Xor   x y) = useV x ∪ useV y
-    useV (Neg x)     = useV x
-    useV (BNot x)    = useV x
-    useV (AssertRange _ _ x) = useV x
-
-
-
-
-cacheTimeReadLRU :: CacheSize -> Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)
-cacheTimeReadLRU cacheSize var cache = case var of
-    Global      _ -> assert (      isCachable $ VarName var) $ lookup
-    ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
-    Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime)
-  where cvar = CachedVar var
-        lookup =
-          case removeFirstOrButLast cacheSize cvar cache of
-            Right                       cache0  ->
-              ( cvar : cache0, cacheMissTime)
-            Left                        cache0  ->
-              ( cvar : cache0, cacheHitTime )
-
-
-sameArrayAs a (CachedArrayRange   a' _ ) = a' == a
-sameArrayAs a (CachedUnknownRange a'   ) = a' == a
-sameArrayAs _ _                          = False
-
-
-unknownranges cacheSize arr cache carr hitTime missTime =
-    require (isArray carr) $ incache ++ notincache
-  where isArray (CachedArrayRange _ _) = True
-        isArray (CachedUnknownRange _) = True
-        isArray _ = False
-        
-        incache = do
-              (left, carr', right) <- focus (mayMatch carr) cache
-              return $
-                ( carr' : ( left ++ right            ), hitTime)
-        notincache 
-            | length carrs < nrOfDifferentCacheLinesPerArray =
-               [( carr  : (take (cacheSize - 1) cache), missTime)]
-            | otherwise = []
-        carrs = [ carr' | carr' <- cache, sameArray carr']
-        sameArray = sameArrayAs arr
-
-        mayMatch _                      (CachedVar _) = False
-        mayMatch x@(CachedVar _)          _             = error $ "called with carr == " ++ (show x)
-        mayMatch (CachedArrayRange a i) (CachedArrayRange a' i') =
-            require (toAlignedIndex i == i   ∧  toAlignedIndex i' == i')
-          $ a == a' ∧ i == i'
-        mayMatch (CachedArrayRange a _) (CachedUnknownRange a') =
-            a == a'
-        mayMatch (CachedUnknownRange a) (CachedArrayRange a' _) =
-            a == a'
-        mayMatch (CachedUnknownRange a) (CachedUnknownRange a') =
-            a == a'
-
-
-
-cacheTimeArrayReadLRU :: CacheSize -> Array -> Index -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
-cacheTimeArrayReadLRU cacheSize arr ix cache = case arr of
-    Array       _ -> assert (      isCachable $ ArrayName arr) $ lookup
-  where alignedIx = toAlignedIndex ix
-        carr = CachedArrayRange arr alignedIx
-        lookup = 
-          case removeFirstOrButLast cacheSize carr cache of
-            Right _ ->
-              unknownranges cacheSize arr cache carr cacheHitTime cacheMissTime
-            Left cache0 ->
-              [( carr : cache0, cacheHitTime)]
-
-cacheTimeReadLRUState :: Monad m => CacheSize -> Var -> StateT AbstractCacheTimeState m ()
-cacheTimeReadLRUState cacheSize var = do
+cacheTimeArrayReadUnknownIndexLRUState :: CacheSize -> Array -> StateT AbstractCacheTimeState [] ()
+cacheTimeArrayReadUnknownIndexLRUState cacheSize arr = do
     (cache, time) <- get
-    let (cache', accessTime) = cacheTimeReadLRU cacheSize var cache
+    (cache', accessTime) <- lift $ cacheTimeArrayReadUnknownIndexLRU cacheSize arr cache
     put (cache', time + accessTime)
     return ()
 
 
-cacheTimeWriteLRU :: CacheSize -> Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)
-cacheTimeWriteLRU cacheSize var cache = case var of
-    Global      _ -> assert (      isCachable $ VarName var) $ write
-    ThreadLocal _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
-    Register    _ -> assert (not $ isCachable $ VarName var) $ (cache, registerAccessTime )
-  where cvar = CachedVar var
-        write = 
-          case removeFirstOrButLast cacheSize cvar cache of
-            Right cache0      -> ( cvar : cache0, cacheWriteTime )
-            Left  cache0      -> ( cvar : cache0, cacheWriteTime )
-
-
-
-cacheTimeWriteLRUState :: Monad m => CacheSize -> Var -> StateT AbstractCacheTimeState m ()
-cacheTimeWriteLRUState cacheSize var = do
-    (cache, time) <- get
-    let (cache', accessTime) = cacheTimeWriteLRU cacheSize var cache
-    put (cache', time + accessTime)
-    return ()
-
-cacheTimeArrayReadLRUState :: CacheSize -> Array -> Index -> StateT AbstractCacheTimeState [] ()
-cacheTimeArrayReadLRUState cacheSize arr ix = do
-    (cache, time) <- get
-    (cache', accessTime) <- lift $ cacheTimeArrayReadLRU cacheSize arr ix cache
-    put (cache', time + accessTime)
-    return ()
-
-cacheTimeArrayWriteLRU :: CacheSize -> Array -> Index -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
-cacheTimeArrayWriteLRU cacheSize arr ix cache = case arr of
+cacheTimeArrayWriteUnknownIndexLRU :: CacheSize -> Array -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
+cacheTimeArrayWriteUnknownIndexLRU cacheSize arr cache = case arr of
     Array       _ -> assert (      isCachable $ ArrayName arr) $ write
-  where alignedIx = toAlignedIndex ix
-        carr = CachedArrayRange arr alignedIx
-        write = 
-          case removeFirstOrButLast cacheSize carr cache of
-            Right _ ->  unknownranges cacheSize arr cache carr cacheWriteTime cacheWriteTime
-            Left cache0 ->  [( carr : cache0, cacheWriteTime )]
+  where write = CSD.unknownranges cacheSize arr cache carr cacheWriteTime cacheWriteTime
+        carr  = CachedUnknownRange arr
 
 
-
-cacheTimeArrayWriteLRUState :: CacheSize -> Array -> Index -> StateT AbstractCacheTimeState [] ()
-cacheTimeArrayWriteLRUState cacheSize arr ix = do
+cacheTimeArrayWriteUnknownIndexLRUState :: CacheSize -> Array -> StateT AbstractCacheTimeState [] ()
+cacheTimeArrayWriteUnknownIndexLRUState cacheSize arr = do
     (cache, time) <- get
-    (cache', accessTime) <- lift $ cacheTimeArrayWriteLRU cacheSize arr ix cache
+    (cache', accessTime) <- lift $ cacheTimeArrayWriteUnknownIndexLRU cacheSize arr cache
     put (cache', time + accessTime)
     return ()
 
@@ -262,22 +133,21 @@ cacheTimeLRUEvalB cacheSize (Not b) = do
 
 cacheTimeLRUEvalV :: CacheSize -> VarFunction -> StateT AbstractCacheTimeState [] ()
 cacheTimeLRUEvalV cacheSize (Val  x) = return ()
-cacheTimeLRUEvalV cacheSize (Var  x) = cacheTimeReadLRUState cacheSize x
+cacheTimeLRUEvalV cacheSize (Var  x) = CSD.cacheTimeReadLRUState cacheSize x
 {- special case for constants -}
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(Val i)) = do
   cacheTimeLRUEvalV cacheSize ix -- does nothing
-  cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
+  CSD.cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
   return ()
 {- special case for assertions -}
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(AssertRange min max i)) = do
   cacheTimeLRUEvalV cacheSize i
   i <- lift $ alignedIndicesFor min max
-  cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
+  CSD.cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
   return ()
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix) = do
   cacheTimeLRUEvalV cacheSize ix
-  i <- lift alignedIndices
-  cacheTimeArrayReadLRUState cacheSize a i
+  cacheTimeArrayReadUnknownIndexLRUState cacheSize a
   return ()
 cacheTimeLRUEvalV cacheSize (Plus  x y) = do
   cacheTimeLRUEvalV cacheSize x
@@ -327,10 +197,6 @@ cacheTimeLRUEvalV cacheSize (AssertRange min max x) = do
 
 
 
-
-
-
-
 cacheTimeStepForState :: CacheSize -> CFGEdge -> StateT AbstractCacheTimeState [] AbstractCacheTimeState
 cacheTimeStepForState cacheSize (Guard b bf) = do
         cacheTimeLRUEvalB cacheSize bf
@@ -338,14 +204,14 @@ cacheTimeStepForState cacheSize (Guard b bf) = do
         return (cache, time + guardTime)
 cacheTimeStepForState cacheSize (Assign x vf) = do
         cacheTimeLRUEvalV cacheSize vf
-        cacheTimeWriteLRUState cacheSize x
+        CSD.cacheTimeWriteLRUState cacheSize x
         σ' <- get
         return σ'
 {- special case for constants -}
 cacheTimeStepForState cacheSize (AssignArray a ix@(Val i) vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize ix -- does nothing
-        cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
+        CSD.cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
         σ' <- get
         return σ'
 {- special case for assertions -}
@@ -353,14 +219,13 @@ cacheTimeStepForState cacheSize (AssignArray a ix@((AssertRange min max i)) vf) 
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize i
         i <- lift $ alignedIndicesFor min max
-        cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
+        CSD.cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
         σ' <- get
         return σ'
 cacheTimeStepForState cacheSize (AssignArray a ix vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize ix
-        i <- lift alignedIndices
-        cacheTimeArrayWriteLRUState cacheSize a i
+        cacheTimeArrayWriteUnknownIndexLRUState cacheSize a
         σ' <- get
         return σ'
 cacheTimeStepForState cacheSize (Init _ _ ) = do
@@ -384,27 +249,8 @@ cacheTimeStepFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e)
 cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState
 cacheOnlyStepFor cacheSize e σ = fmap fst $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
 
-
-
 cacheStateGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize)
-
-
-
-cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) ->  Node -> gr (Node, MergedCacheState) CFGEdge
-cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
-  where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
-
-        merged :: gr (Node, MergedCacheState) CFGEdge
-        merged = mkGraph nodes' edges'
-
-        nodes' = zip [0..] [           α cs                      |  cs@(m,c)                  <- Set.toList css]
-        edges' =           [(toNode' ! α cs, toNode' ! α cs', e) | (cs@(m,c), e, cs'@(m',c')) <- Set.toList es, m /= mm]
-        toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
-
-        α cs@(n, cache)
-          | n == mm   = (mm, Merged $ Set.fromList [ v | v <- cache, v ∈ vars])
-          | otherwise = (n,  Unmerged cache)
 
 
 
@@ -502,18 +348,18 @@ cacheCostDecisionGraphFor cacheSize g csGraph = (
 
 cacheCostDecisionGraph :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g csGraph
-  where csGraph = cacheStateGraph cacheSize g initialAbstractCacheState n0
+  where csGraph = cacheStateGraph cacheSize g CSD.initialAbstractCacheState n0
 
 
 
 cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
 cacheAbstraction cacheSize = MicroArchitecturalAbstraction { 
       muGraph'For = muGraph'For,
-      muInitialState = initialAbstractCacheState,
+      muInitialState = CSD.initialAbstractCacheState,
       muStepFor = cacheOnlyStepFor cacheSize,
       muCostsFor = costsFor2 cacheSize
     }
-  where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars] ]
+  where muGraph'For graph csGraph m = [ CSD.cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = CSD.cachedObjectsFor e, not $ Set.null vars] ]
 
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf cacheSize = muMergeDirectOf (cacheAbstraction cacheSize)
@@ -525,7 +371,3 @@ csdGraphFromMergeDirectFor :: forall gr a a'. (DynGraph gr) =>
   Node ->
   gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
 csdGraphFromMergeDirectFor cacheSize = muGraphFromMergeDirectFor (cacheAbstraction cacheSize)
-
-
-
-

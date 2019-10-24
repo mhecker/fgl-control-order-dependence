@@ -62,6 +62,7 @@ library
     IRLSOD
     CacheExecution
     CacheStateDependence
+    CacheStateDependenceImprecise
     CacheStateDependenceReach
     CacheSlice
     Unicode

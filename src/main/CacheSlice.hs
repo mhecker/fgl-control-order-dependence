@@ -47,6 +47,7 @@ import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 
 import CacheExecution (CacheSize)
 import CacheStateDependence (csdMergeDirectOf, cacheCostDecisionGraph)
+import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf) 
 import CacheStateDependenceReach (csdMergeOf)
 
 import Data.Graph.Inductive.Query.DataDependence (dataDependence)
@@ -123,8 +124,9 @@ cacheTimingSliceFor cacheSize csd g debugNs n0 = \ms ->
 data DepEdge = TSCD | DD | CSD deriving (Show, Eq, Ord)
 
 
-cacheTimingSlice         cacheSize g n0 = cacheTimingSliceFor cacheSize csdMergeDirectOf g [] n0
-cacheTimingSliceViaReach cacheSize g n0 = cacheTimingSliceFor cacheSize csdMergeOf       g [] n0
+cacheTimingSlice          cacheSize g n0 = cacheTimingSliceFor cacheSize           csdMergeDirectOf g [] n0
+cacheTimingSliceImprecise cacheSize g n0 = cacheTimingSliceFor cacheSize Imprecise.csdMergeDirectOf g [] n0
+cacheTimingSliceViaReach  cacheSize g n0 = cacheTimingSliceFor cacheSize           csdMergeOf       g [] n0
 
 
 

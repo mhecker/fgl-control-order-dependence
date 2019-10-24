@@ -44,6 +44,7 @@ import Test.QuickCheck.Property (Property(..))
 import Debug.Trace (traceShow)
 
 import Data.Ord
+import qualified Data.List as List
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -60,6 +61,8 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..), runInput, observable, allChoices, isLowTimingEquivalent)
 
+import IRLSOD(Name(..), isGlobalName, globalEmpty, use, def)
+
 import Program (Program, tcfg)
 import Program.Defaults
 
@@ -75,7 +78,7 @@ import Program.CDom
 import Program.Generator (toProgram, GeneratedProgram, SimpleCFG(..), toProgramIntra)
 import Data.Graph.Inductive.Arbitrary
 
-import Data.Graph.Inductive (Node, subgraph)
+import Data.Graph.Inductive (Node, subgraph, newNodes)
 import Data.Graph.Inductive.Query.ControlDependence (controlDependenceGraphP, controlDependence)
 import Data.Graph.Inductive.Util (controlSinks)
 import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, sinkdomNaiveGfpFullTop, sinkdomOf, imdomOfTwoFinger6, isinkdomOfTwoFinger8, imdomOfTwoFinger7)
@@ -118,6 +121,15 @@ import qualified Data.Graph.Inductive.Query.TSCD        as TSCD (timingCorrectio
 import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (Reachability(..), solveTimingEquationSystem, snmTimingEquationSystem, timingF3EquationSystem, timingSolvedF3sparseDependence, timingSolvedF3dependence, ntscdTimingSlice, ptd)
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
+
+import Program (entryOf, procedureOf, mainThread)
+import MicroArchitecturalDependence (stateSets)
+import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
+import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
+import CacheSlice (cacheTimingSliceImprecise)
+
+
+
 main      = all
 
 all        = defaultMain                               $ expectFail $ tests
@@ -153,6 +165,10 @@ dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup 
 wod        = defaultMain                               $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 wodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 
+cache        = defaultMain                               $ expectFail $ testGroup "cache"       [ mkTest [cacheTests]]
+cacheX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "cache"       [ mkTest [cacheTests]]
+
+
 long        = defaultMain                               $ expectFail $ testGroup "long"     [ mkTest [longTests], mkProp [longProps]]
 longX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "long"     [ mkTest [longTests], mkProp [longProps]]
 
@@ -169,7 +185,7 @@ properties :: TestTree
 properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps, timingDepProps, insensitiveDomProps ]
   where missing = [longProps]
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests ]
+unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, cacheTests ]
   where missing = [longTests]
 
 longProps = localOption d $ testGroup "(long running)" [
@@ -940,6 +956,76 @@ wodTests = testGroup "(concerning weak order dependence)" $
   | (exampleName, g) <- myCDvsMyDom
   ] ++
   []
+
+
+
+propsCacheSize = 4
+
+cacheTests = testGroup "(concerning cache timing)" $
+  [ testCase ("csdImprecise is sound for " ++ exampleName ) $ isSound 42 17 43 18 p @? ""
+  | (exampleName, p) <- [("exampleTooCoarseAbstractionIsUnsound", exampleTooCoarseAbstractionIsUnsound)]
+  ] ++
+  []
+ where isSound :: Int -> Int -> Int -> Int -> Program Gr -> Bool
+       isSound seed1 seed2 seed3 seed4 pr = 
+                    let g0 = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        
+                        vars  = Set.fromList [ var | n <- nodes g0, name@(VarName   var) <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName name]
+                        varsA = Set.fromList [ arr | n <- nodes g0, name@(ArrayName arr) <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName name]
+                        (newN0:new) = (newNodes ((Set.size vars) + (Set.size varsA) + 1) g0)
+                        varToNode = Map.fromList $ zip ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA)) new
+                        nodeToVar = Map.fromList $ zip new ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA))
+
+                        g = prependFakeInitialization g0 n0 newN0 varToNode
+                        slicer = cacheTimingSliceImprecise propsCacheSize g newN0
+
+
+                        initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
+                        prependActualInitialization = prependInitialization g0 n0 newN0 varToNode
+
+                        initialGlobalState1  = Map.fromList $ zip (Set.toList vars ) (            fmap (`rem` 32)   $ moreSeeds seed1 (Set.size vars))
+                        initialGlobalState1A = Map.fromList $ zip (Set.toList varsA) (      fmap (fmap (`rem` 32))  $ vals                           )
+                          where aSeeds = moreSeeds seed4 (Set.size varsA)
+                                vals = fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds
+                        g1 = prependActualInitialization initialGlobalState1 initialGlobalState1A
+
+
+                        limit = 9000
+                        (execution1, limited1) = Control.Exception.Base.assert (length es == 1) $ (head es, (length $ head es) >= limit)
+                          where es = cacheExecutionLimit propsCacheSize limit g1 initialFullState newN0
+
+                        ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 100]
+                    in (∀) ms (\m ->
+                         let s = slicer (Set.fromList [m])
+                             notInS  = (Set.map ((varToNode !) . VarName  ) vars ) ∖ s
+                             notInSA = (Set.map ((varToNode !) . ArrayName) varsA) ∖ s
+                             initialGlobalState2  = (Map.fromList $ zip [ var | n <- Set.toList notInS,  let VarName   var = nodeToVar ! n] newValues) `Map.union` initialGlobalState1
+                               where newValues =       fmap (`rem` 32)  $ moreSeeds (seed3 + m) (Set.size notInS)
+                             initialGlobalState2A = (Map.fromList $ zip [ arr | n <- Set.toList notInSA, let ArrayName arr = nodeToVar ! n] newValues) `Map.union` initialGlobalState1A
+                               where aSeeds = moreSeeds (seed4 + m) (Set.size notInSA)
+                                     newValues = fmap (fmap (`rem` 32)) $ fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds
+                             g2 = prependActualInitialization initialGlobalState2 initialGlobalState2A
+
+                             (execution2, limited2) = Control.Exception.Base.assert (length es == 1) $ (head es, (length $ head es) >= limit)
+                               where es = cacheExecutionLimit propsCacheSize limit g2 initialFullState newN0
+
+                             exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
+                             exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
+
+                             ok = limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
+                          in if ok then ok else
+                               traceShow ("M:: ", m, "  S::", s) $
+                               traceShow ("G0 =====", g0) $
+                               traceShow ("G  =====", g ) $
+                               traceShow ("G1 =====", g1) $
+                               traceShow ("G2 =====", g2) $
+                               traceShow (execution1, "=========", execution2) $
+                               traceShow (exec1Obs,   "=========", exec2Obs) $
+                               traceShow (List.span (\(a,b) -> a == b) (zip exec1Obs exec2Obs)) $
+                               ok
+                        )
+
 
 
 

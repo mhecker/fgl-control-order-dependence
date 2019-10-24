@@ -36,7 +36,7 @@ import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependIniti
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
-import CacheSlice (cacheTimingSliceViaReach, cacheTimingSliceFor)
+import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceFor)
 
 cache     = defaultMain                               $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
@@ -123,7 +123,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         nodeToVar = Map.fromList $ zip new ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA))
 
                         g = prependFakeInitialization g0 n0 newN0 varToNode
-                        slicer = cacheTimingSliceViaReach propsCacheSize g newN0
+                        slicer = cacheTimingSlice propsCacheSize g newN0
 
 
                         initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)

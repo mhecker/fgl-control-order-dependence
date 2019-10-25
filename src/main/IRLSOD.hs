@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
@@ -10,6 +11,8 @@ import Algebra.Lattice
 import Data.Graph.Inductive.Graph
 
 import Control.Exception.Base (assert)
+import Control.Monad (liftM)
+import Data.Functor.Identity
 
 import GHC.Generics (Generic)
 import Control.DeepSeq
@@ -178,13 +181,23 @@ evalB σg σl (Not b)     = not $ evalB σg σl  b
 
 useB = useBFor useV
 
-useBFor useV CTrue       = Set.empty
-useBFor useV CFalse      = Set.empty
-useBFor useV (Leq x y)   = useV x ∪ useV y
-useBFor useV (Eeq x y)   = useV x ∪ useV y
-useBFor useV (And b1 b2) = useBFor useV b1 ∪ useBFor useV b2
-useBFor useV (Or  b1 b2) = useBFor useV b1 ∪ useBFor useV b2
-useBFor useV (Not b)     = useBFor useV b
+useBFor :: forall a. Ord a => (VarFunction -> Set a) -> BoolFunction -> (Set a)
+useBFor useV = runIdentity . useBForM useVM
+  where useVM = return . useV
+
+useBForM useVM CTrue       = return Set.empty
+useBForM useVM CFalse      = return Set.empty
+useBForM useVM (Leq x y)   = both useVM x y
+useBForM useVM (Eeq x y)   = both useVM x y
+useBForM useVM (And b1 b2) = both (useBForM useVM) b1 b2
+useBForM useVM (Or  b1 b2) = both (useBForM useVM) b1 b2
+useBForM useVM (Not b)     =       useBForM useVM  b
+
+both f x y = do
+  xx <- f x
+  yy <- f y
+  return $ xx ∪ yy
+
 
 evalV :: GlobalState -> ThreadLocalState -> VarFunction -> Val
 evalV σg σl vf = evalVM σg σl vf
@@ -282,23 +295,36 @@ isIntraCFGEdge Spawn   = False
 isIntraCFGEdge _       = True
 
 useE :: CFGEdge -> Set Name
-useE = useEFor useV useB
+useE (Use xs) = Set.fromList xs
+useE e = useEFor useV useB e
 
-useEFor useV useB (Guard   _ bf) = useB bf
-useEFor useV useB (AssignArray a i vf) = useV i ∪ useV vf
-useEFor useV useB (Assign  _ vf) = useV vf
-useEFor useV useB (Init _ _)     = Set.empty
-useEFor useV useB (InitArray _ _)= Set.empty
-useEFor useV useB (Read    _ _)  = Set.empty
-useEFor useV useB Spawn          = Set.empty
-useEFor useV useB (Print vf _)   = useV vf
-useEFor useV useB NoOp           = Set.empty
-useEFor useV useB (Def _)        = Set.empty
-useEFor useV useB (Use xs)       =   (∐) [ useV $ ArrayRead a (Val 0) | ArrayName a <- xs ]
-                                   ∪ (∐) [ useV $ Var v               | VarName   v <- xs ] -- == Set.fromList xs
-useEFor useV useB CallSummary    = Set.empty
-useEFor useV useB Call           = Set.empty
-useEFor useV useB Return         = Set.empty
+
+useEFor :: forall a. Ord a => (VarFunction -> Set a) -> (BoolFunction -> Set a) -> CFGEdge -> (Set a)
+useEFor useV useB = runIdentity . (useEForM useVM useBM)
+  where useVM = return . useV
+        useBM = return . useB
+
+useEForM :: (Monad m, Ord a) => (VarFunction -> m (Set a)) -> (BoolFunction -> m (Set a)) -> CFGEdge -> m (Set a)
+useEForM useVM useBM (Guard   _ bf) = useBM bf
+useEForM useVM useBM (AssignArray a i vf) = do
+  usei  <- useVM i
+  usevf <- useVM vf
+  return $ usei ∪ usevf
+useEForM useVM useBM (Assign  _ vf) = useVM vf
+useEForM useVM useBM (Init _ _)     = return $ Set.empty
+useEForM useVM useBM (InitArray _ _)= return $ Set.empty
+useEForM useVM useBM (Read    _ _)  = return $ Set.empty
+useEForM useVM useBM Spawn          = return $ Set.empty
+useEForM useVM useBM (Print vf _)   = useVM vf
+useEForM useVM useBM NoOp           = return $ Set.empty
+useEForM useVM useBM (Def _)        = return $ Set.empty
+useEForM useVM useBM (Use _)        = undefined
+-- useEForM useVM useBM (Use xs)       = return $ Set.fromList xs
+--     (∐) [ useVM $ ArrayRead a (Val 0) | ArrayName a <- xs ]
+--   ∪ (∐) [ useVM $ Var v               | VarName   v <- xs ] -- == Set.fromList xs
+useEForM useVM useBM CallSummary    = return $ Set.empty
+useEForM useVM useBM Call           = return $ Set.empty
+useEForM useVM useBM Return         = return $ Set.empty
 
 defE :: CFGEdge -> Set Name
 defE (Guard   _ _) = Set.empty

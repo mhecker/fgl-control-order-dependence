@@ -35,7 +35,7 @@ import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
 import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
-import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
+import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useEForM, useBFor, useBForM, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
 import MicroArchitecturalDependence (
@@ -84,39 +84,48 @@ initialAbstractCacheState = []
 removeFirstOrButLast      = removeFirstOrButLastMaxSize
 
 
-cachedObjectsFor :: CFGEdge -> Set CachedObject
+cachedObjectsFor :: CFGEdge -> [Set CachedObject]
 cachedObjectsFor = useE
   where 
-    useE :: CFGEdge -> Set CachedObject
-    useE = useEFor useV useB
+    useE :: CFGEdge -> [Set CachedObject]
+    useE = useEForM useV useB
 
-    useB :: BoolFunction -> Set CachedObject
-    useB = useBFor useV
+    useB :: BoolFunction -> [Set CachedObject]
+    useB = useBForM useV
 
-    useV :: VarFunction -> Set CachedObject
+    useV :: VarFunction -> [Set CachedObject]
     {- special case for constants -}
-    useV (ArrayRead a ix@(Val i)) = Set.fromList [CachedArrayRange a (toAlignedIndex $ arrayIndex i) ]
+    useV (ArrayRead a ix@(Val i)) = return $ Set.fromList [CachedArrayRange a (toAlignedIndex $ arrayIndex i) ]
     {- special case for assertions -}
-    useV (ArrayRead a ix@(AssertRange min max i)) =
-                                    Set.fromList [CachedArrayRange a           aligned | aligned <- alignedIndicesFor min max ]
-    useV (ArrayRead a ix        ) = Set.fromList [CachedArrayRange a           aligned | aligned <- alignedIndices ]
-                                  ∪ useV ix
-    useV (Val  x)    = Set.empty
-    useV (Var  x)    = Set.fromList [CachedVar x]
-    useV (Plus  x y) = useV x ∪ useV y
-    useV (Minus x y) = useV x ∪ useV y
-    useV (Times x y) = useV x ∪ useV y
-    useV (Div   x y) = useV x ∪ useV y
-    useV (Mod   x y) = useV x ∪ useV y
-    useV (BAnd  x y) = useV x ∪ useV y
-    useV (Shl   x y) = useV x ∪ useV y
-    useV (Shr   x y) = useV x ∪ useV y
-    useV (Xor   x y) = useV x ∪ useV y
+    useV (ArrayRead a ix@(AssertRange min max i)) = do
+      aligned <- alignedIndicesFor min max
+      use <- useV ix
+      return $ Set.fromList [CachedArrayRange a           aligned ] ∪ use
+    useV (ArrayRead a ix        ) = do
+      aligned <- alignedIndices
+      use <- useV ix
+      return $ Set.fromList [CachedArrayRange a           aligned ] ∪ use
+    useV (Val  x)    = [Set.empty]
+    useV (Var  x)
+      | isCachable (VarName x) = [Set.fromList [CachedVar x]]
+      | otherwise              = [Set.empty]
+    useV (Plus  x y) = both x y
+    useV (Minus x y) = both x y
+    useV (Times x y) = both x y
+    useV (Div   x y) = both x y
+    useV (Mod   x y) = both x y
+    useV (BAnd  x y) = both x y
+    useV (Shl   x y) = both x y
+    useV (Shr   x y) = both x y
+    useV (Xor   x y) = both x y
     useV (Neg x)     = useV x
     useV (BNot x)    = useV x
     useV (AssertRange _ _ x) = useV x
 
-
+    both x y = do
+      usex <- useV x
+      usey <- useV y
+      return $ usex ∪ usey
 
 
 cacheTimeReadLRU :: CacheSize -> Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)
@@ -513,7 +522,7 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muStepFor = cacheOnlyStepFor cacheSize,
       muCostsFor = costsFor2 cacheSize
     }
-  where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars] ]
+  where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, vars <- cachedObjectsFor e, not $ Set.null vars] ]
 
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf cacheSize = muMergeDirectOf (cacheAbstraction cacheSize)

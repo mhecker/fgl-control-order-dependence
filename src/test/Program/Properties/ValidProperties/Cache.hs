@@ -36,7 +36,7 @@ import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependIniti
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
-import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceFor)
+import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor)
 
 cache     = defaultMain                               $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]

@@ -359,7 +359,7 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muStepFor = cacheOnlyStepFor cacheSize,
       muCostsFor = costsFor2 cacheSize
     }
-  where muGraph'For graph csGraph m = [ CSD.cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, vars <- CSD.cachedObjectsFor e, not $ Set.null vars] ]
+  where muGraph'For graph csGraph m = [ CSD.cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = CSD.cachedObjectsFor e, not $ Set.null vars] ]
 
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf cacheSize = muMergeDirectOf (cacheAbstraction cacheSize)

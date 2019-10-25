@@ -135,7 +135,7 @@ csd''''Of3 cacheSize graph n0 =  invert'' $
                                         not $ (∀) relevant (\y' -> cacheState csGraph y' == canonicalCacheState)
                      ]
                  )
-    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, vars <- cachedObjectsFor e, not $ Set.null vars],
+    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom graph',
       let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs,es) reach :: Gr (Node, AbstractCacheStateReach) CFGEdge,
@@ -166,7 +166,7 @@ csd''''Of4 cacheSize graph n0 =  invert'' $
                                assert  (not $ (∀) relevant (\y' -> cacheState csGraph y' == canonicalCacheState)) True
                      ]
                  )
-    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, vars <- cachedObjectsFor e, not $ Set.null vars],
+    | m <- nodes graph, vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom graph',
       let csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: Gr (Node, AbstractCacheStateReach) CFGEdge,
@@ -201,7 +201,7 @@ csGraphFromMergeFor cacheSize graph n0 m = merged csGraph' equivs
 mergeFromFor cacheSize graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
     where (cs, es)  = stateSets (cacheOnlyStepFor cacheSize) graph initialAbstractCacheState n0
 
-          vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, vars <- cachedObjectsFor e, not $ Set.null vars]
+          vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars]
           graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
           reach = accessReachableFrom graph'
           csGraph = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: Gr (Node, AbstractCacheStateReach) CFGEdge
@@ -222,7 +222,7 @@ csdMergeOf cacheSize graph n0 =  invert'' $
                  )
     | m <- nodes graph,
       mayBeCSDependent m,
-      vars <- List.nub [ vars | (_,e) <- lsuc graph m, vars <- cachedObjectsFor e, not $ Set.null vars],
+      vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars],
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let reach = accessReachableFrom graph',
       let csGraphM = cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs,es) reach m :: gr (Node, AbstractCacheStateReach) CFGEdge,

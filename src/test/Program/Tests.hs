@@ -57,10 +57,7 @@ import Program.Properties.CDom
 
 import IRLSOD
 import CacheExecution
-import qualified CacheStateDependence          as CSD
-import qualified CacheStateDependenceImprecise as CSDImp
-import MicroArchitecturalDependence (MergedMicroState(..))
-
+import CacheStateDependence
 import CacheSlice
 import Execution
 import ExecutionTree
@@ -147,8 +144,8 @@ main = let {
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         csGraph = CSD.cacheStateGraph cacheSize graph CSD.initialAbstractCacheState n0 ;
-         (ccg, cost) = CSD.cacheCostDecisionGraph cacheSize graph n0
+         csGraph = cacheStateGraph cacheSize graph initialAbstractCacheState n0 ;
+         (ccg, cost) = cacheCostDecisionGraph cacheSize graph n0
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph
@@ -158,7 +155,7 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSliceFor cacheSize CSD.csdMergeDirectOf graph debugNs n0 (Set.fromList [nx])
+    putStrLn  $ show $ cacheTimingSliceFor cacheSize csdMergeDirectOf graph debugNs n0 (Set.fromList [nx])
 
     
     -- putStrLn  $ show $ length $ nodes $ csGraph

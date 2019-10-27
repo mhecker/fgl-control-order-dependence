@@ -56,8 +56,10 @@ import Program.Properties.CDom
 
 
 import IRLSOD
+import MicroArchitecturalDependence
 import CacheExecution
 import CacheStateDependence
+import qualified CacheStateDependenceImprecise as Imprecise
 import CacheSlice
 import Execution
 import ExecutionTree

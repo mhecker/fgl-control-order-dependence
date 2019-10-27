@@ -68,7 +68,19 @@ type AbstractMicroArchitecturalGraphNode = Node
 
 data MergedMicroState a a'  = Unmerged a | Merged a' deriving (Eq, Ord, Show)
 
+instance (SimpleShow a, SimpleShow a') => SimpleShow (MergedMicroState a a') where
+  simpleShow (Unmerged a) = simpleShow a
+  simpleShow (Merged a')  = simpleShow a'
+
 data MicroArchitecturalAbstraction a a' = MicroArchitecturalAbstraction {
+    muIsDependent :: forall gr. DynGraph gr =>
+         gr CFGNode CFGEdge
+      -> Set AbstractMicroArchitecturalGraphNode
+      -> Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode)
+      -> AbstractMicroArchitecturalGraphNode
+      -> Node
+      -> MergedMicroState a a'
+      -> Bool,
     muMerge :: Bool,
     muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> (Set (Node, a), Set ((Node, a), CFGEdge, (Node, a))) -> Node -> [gr (Node, MergedMicroState a a' ) CFGEdge],
     muInitialState :: a,
@@ -258,7 +270,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFr
 
 
 muMergeDirectOf :: forall gr a a'. (DynGraph gr, Ord a) => MicroArchitecturalAbstraction a a' -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-muMergeDirectOf mu@( MicroArchitecturalAbstraction { muMerge, muGraph'For, muInitialState, muStepFor, muCostsFor }) graph n0 = traceShow (Set.size cs) $ invert'' $
+muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muStepFor, muCostsFor }) graph n0 = traceShow (Set.size cs) $ invert'' $
   Map.fromList [ (m, ns) | m <- nodes graph,
 #ifdef SKIP_INDEPENDENT_NODES_M
       mayBeCSDependent m,
@@ -267,13 +279,13 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muMerge, muGraph'For, muIni
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let y's  = [ y | (y, (n', csy)) <- labNodes csGraph', m == n' ],
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
+      let roots' = Set.fromList y's,
       let ns = if muMerge then
-            let roots' = Set.fromList y's
-                equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots'
+            let equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots'
                 csGraph'' = merged csGraph' equivs
                 idom'' = isinkdomOfTwoFinger8 csGraph''
-            in Set.fromList [ n | (y, (n,_)) <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y]
-          else Set.fromList [ n | (y, (n,_)) <- labNodes csGraph' , n /= m, Nothing == idom'  ! y]
+            in Set.fromList [ n | (y, (n,_))   <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y] -- TODO: can we make this wotk with muIsDependent, too?
+          else Set.fromList [ n | (y, (n,mms)) <- labNodes csGraph' , n /= m, muIsDependent graph roots' idom' y n mms]
    ]
   where csGraph@(cs, es)  = stateSets muStepFor graph muInitialState n0
 #ifdef SKIP_INDEPENDENT_NODES_M

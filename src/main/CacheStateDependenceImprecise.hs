@@ -73,7 +73,9 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Inpu
 import           CacheStateDependence        (AbstractCacheState, AbstractCacheStateTimeEquiv, MergedCacheState, AbstractCacheTimeState)
 import qualified CacheStateDependence as CSD (
     removeFirstOrButLast, unknownranges,
-    initialAbstractCacheState, cachedObjectsFor, cacheStateGraph'ForVarsAtMForGraph2,
+    sameArrayAs,
+    initialAbstractCacheState, cachedObjectsFor,
+    cacheOnlyStepFor,
     cacheTimeReadLRUState,  cacheTimeArrayReadLRUState,
     cacheTimeWriteLRUState, cacheTimeArrayWriteLRUState
   )
@@ -352,16 +354,51 @@ cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g cs
 
 
 
+cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) ->  Node -> gr (Node, MergedCacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
+  where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
+
+        merged :: gr (Node, MergedCacheState) CFGEdge
+        merged = mkGraph nodes' edges'
+
+        nodes' = zip [0..] [           a                   |  cs@(m,c)                  <- Set.toList css,         a <- α cs             ]
+        edges' =           [(toNode' ! a, toNode' ! a', e) | (cs@(m,c), e, cs'@(m',c')) <- Set.toList es, m /= mm, a <- α cs, a' <- α cs']
+        toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
+
+        α cs@(n, cache)
+            | n == mm = relevantConcreteCombinations
+            | otherwise = [ (n,  Unmerged cache)]
+          where relevantConcreteCombinations = do
+                        cache' <- forM (List.filter relevant cache) concrete
+                        return (mm, Merged $ Set.fromList $ cache')
+
+                relevant co@(CachedVar v) = co ∈ vars
+                relevant co@(CachedArrayRange a i) = co ∈ vars
+                relevant co@(CachedUnknownRange a) = (∃) vars (CSD.sameArrayAs a)
+
+                concrete co@(CachedVar v)          = return co
+                concrete co@(CachedArrayRange a i) = return co
+                concrete co@(CachedUnknownRange a) = [CachedArrayRange a           aligned | aligned <- alignedIndices ]
+
+
+
 cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
 cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
-      muMerge = True,
+      muIsDependent = muIsDependent,
+      muMerge = False,
       muGraph'For = muGraph'For,
       muInitialState = CSD.initialAbstractCacheState,
       muStepFor = cacheOnlyStepFor cacheSize,
       muCostsFor = costsFor2 cacheSize
     }
-  where muGraph'For graph csGraph m = [ CSD.cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = CSD.cachedObjectsFor e, not $ Set.null vars] ]
-
+  where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = CSD.cachedObjectsFor e, not $ Set.null vars] ]
+        muIsDependent graph roots idom y n (Merged _) = undefined
+        muIsDependent graph roots idom y n (Unmerged cache) =
+            isChoice ∨ isImprecise
+          where isChoice    = (length $ suc graph n) > 1
+                            ∧ (idom ! y == Nothing)
+                isImprecise = (∃) (lsuc graph n) (\(_,e) -> length (CSD.cacheOnlyStepFor cacheSize e cache) > 1)
+                            ∧ (not $ maxFromTreeM idom y ∈ roots)
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf cacheSize = muMergeDirectOf (cacheAbstraction cacheSize)
 

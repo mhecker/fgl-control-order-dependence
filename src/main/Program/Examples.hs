@@ -3885,6 +3885,21 @@ interestingResumtionVsTimingAtUsed =
                                                  (Times (Var (Global "c")) (Var (Global "c")))))) undefined undefined undefined)]  )
 
 
+exampleAbstractPostdominance  :: DynGraph gr => gr () ()
+exampleAbstractPostdominance = g
+  where g = mkGraph [(0,()),(11,()),(12,()),(13,()),(21,()),(22,()),(23,())] [(0,11,()),(11,12,()),(12,13,()),(0,21,()),(21,22,()),(22,23,())]
+        abstractionM = Map.fromList [ (12, Set.fromList [12, 22]), (22, Set.fromList [12, 22]) ] `Map.union` idM
+          where idM = Map.fromList [ (n, Set.fromList [ n ]) | n <- nodes g ]
+
+
+exampleAbstractPostdominance2  :: DynGraph gr => gr () ()
+exampleAbstractPostdominance2 = g
+  where g = mkGraph [(11,()),(12,()),(13,()),(21,()),(22,()),(23,())] [(11,12,()),(11,22,()), (12,13,()),(21,22,()),(21,12,()), (22,23,())]
+        abstractionM = Map.fromList [ (12, Set.fromList [12, 22]), (22, Set.fromList [12, 22]) ] `Map.union` idM
+          where idM = Map.fromList [ (n, Set.fromList [ n ]) | n <- nodes g ]
+
+
+
 exampleTimingDepInterestingTwoFinger :: DynGraph gr => gr () ()
 exampleTimingDepInterestingTwoFinger = mkGraph [(-36,()),(-29,()),(-19,()),(39,()),(40,())] [(-36,-29,()),(-36,39,()),(-36,39,()),(-29,-19,()),(-19,39,()),(39,-19,()),(40,-36,()),(40,-29,()),(40,-19,()),(40,39,())]
 

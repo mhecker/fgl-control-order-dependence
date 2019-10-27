@@ -134,6 +134,7 @@ library
     Data.Graph.Inductive.Query.PostDominance
     Data.Graph.Inductive.Query.PostDominanceFrontiers.CEdges
     Data.Graph.Inductive.Query.PostDominanceFrontiers.Numbered
+    Data.Graph.Inductive.Query.PostDominance.Abstract
     Data.Graph.Inductive.Query.NTICD.SNM
     Data.Graph.Inductive.Query.NTICD.GraphTransformations
     Data.Graph.Inductive.Query.NTICD.Program
@@ -251,6 +252,7 @@ VALID(insensitivedom)
 VALID(sensitivedom)
 VALID(cache)
 VALID(crypto)
+VALID(abstract)
 VALID(misc)
 
 define(EXPECTED_FAILURE_DEPENDENCY, `tasty-expected-failure >= 0.11 && < 0.12')

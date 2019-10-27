@@ -353,7 +353,8 @@ cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g cs
 
 
 cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
-cacheAbstraction cacheSize = MicroArchitecturalAbstraction { 
+cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
+      muMerge = True,
       muGraph'For = muGraph'For,
       muInitialState = CSD.initialAbstractCacheState,
       muStepFor = cacheOnlyStepFor cacheSize,

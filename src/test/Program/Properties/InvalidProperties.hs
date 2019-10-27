@@ -126,6 +126,8 @@ import Program (entryOf, procedureOf, mainThread)
 import MicroArchitecturalDependence (stateSets)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
+import qualified CacheStateDependenceReach     as Reach     (csdMergeOf)
+import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf)
 import CacheSlice (cacheTimingSliceImprecise)
 
 
@@ -963,6 +965,14 @@ propsCacheSize = 4
 
 cacheTests = testGroup "(concerning cache timing)" $
   [ testCase ("csdImprecise is sound for " ++ exampleName ) $ isSound 42 17 43 18 p @? ""
+  | (exampleName, p) <- [("exampleTooCoarseAbstractionIsUnsound", exampleTooCoarseAbstractionIsUnsound)]
+  ] ++
+  [ testCase ("csdMergeOf ⊆ csdImprecise for " ++ exampleName ) $
+      let n0 = entryOf p $ procedureOf p $ mainThread p
+          g = tcfg p
+          csdM          =     Reach.csdMergeOf       propsCacheSize g n0
+          csdMImprecise = Imprecise.csdMergeDirectOf propsCacheSize g n0
+      in  csdM ⊑ csdMImprecise @? ""
   | (exampleName, p) <- [("exampleTooCoarseAbstractionIsUnsound", exampleTooCoarseAbstractionIsUnsound)]
   ] ++
   []

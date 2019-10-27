@@ -34,6 +34,7 @@ import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, de
 import MicroArchitecturalDependence (stateSets)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
+import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf)
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
 import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceFor)

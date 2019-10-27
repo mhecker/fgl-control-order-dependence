@@ -508,7 +508,7 @@ cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g cs
 
 cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
 cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
-      muIsDependent = undefined,
+      muIsDependent = muIsDependent,
       muMerge = True,
       muGraph'For = muGraph'For,
       muInitialState = initialAbstractCacheState,
@@ -516,6 +516,8 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muCostsFor = costsFor2 cacheSize
     }
   where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars] ]
+        muIsDependent graph roots idom y n (Merged _) = undefined
+        muIsDependent graph roots idom y n (Unmerged _) = idom ! y == Nothing
 
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdMergeDirectOf cacheSize = muMergeDirectOf (cacheAbstraction cacheSize)

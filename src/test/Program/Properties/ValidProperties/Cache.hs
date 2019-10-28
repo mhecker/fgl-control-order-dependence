@@ -32,13 +32,14 @@ import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleW
 import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_main_ct, br_aes_small_cbcenc_main_ct_precache, mainInput, for2Program)
 
 import IRLSOD(CFGNode, CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
-import MicroArchitecturalDependence (stateSets)
+import MicroArchitecturalDependence (stateSets, csGraphSize)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
-import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
-import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf)
+import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState)
+import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
 import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor)
+import MicroArchitecturalDependence(MicroArchitecturalAbstraction(..), stateGraphForSets)
 
 cache     = defaultMain                               $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]

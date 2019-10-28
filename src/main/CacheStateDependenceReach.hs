@@ -37,7 +37,7 @@ import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, foc
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
-import MicroArchitecturalDependence (AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, stateGraphFor, mergeFrom, merged)
+import MicroArchitecturalDependence (CsGraph, AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, mergeFrom, merged)
 import CacheExecution (CacheSize, isCachable, CachedObject(..), )
 import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, cacheOnlyStepFor, cachedObjectsFor, costsFor)
 
@@ -65,17 +65,6 @@ nextReachable csGraph = (㎲⊒) init f
         init = Map.fromList [ (y, Map.empty) | y <- nodes csGraph ]
 
 
-
-cacheStateGraphForVars :: (Graph gr) => CacheSize -> Set CachedObject -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheStateReach) CFGEdge
-cacheStateGraphForVars cacheSize vars = stateGraphFor α (cacheOnlyStepFor cacheSize)
-  where α = αFor vars
-
-αFor vars cache = (
-            [ (v,i) | (i,v) <- zip [0..] cache, v ∈ vars],
-            Set.fromList [ v |  v <- List.dropWhileEnd (\v -> not $ v ∈ vars) cache, not $ v ∈ vars]
-           )
-
-
 αForReach :: Set CachedObject -> Set Name -> AbstractCacheState -> AbstractCacheStateReach
 αForReach vars reach cache = (
             [ (v,i) | (i,v) <- zip [0..] cache, v ∈ vars],
@@ -94,13 +83,14 @@ cacheStateGraphForVars cacheSize vars = stateGraphFor α (cacheOnlyStepFor cache
   | otherwise = αForReach vars reach cache
 
 
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set CachedObject -> (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) -> Map Node (Set Name) -> gr (Node, AbstractCacheStateReach) CFGEdge
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
-  where cs' =  Set.map f cs
-          where f (n, s) = (n, α (reach !! n) s)
-        es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α (reach !! n) sn), e, (m, α (reach !! m) sm))
-        nodes = zip [0..] (Set.toList cs')
+
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState -> Map Node (Set Name) -> gr (Node, AbstractCacheStateReach) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es', (cache, e, c') <- Set.toList cacheEdges ]
+  where cs' =  Map.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
+          where f n s = α (reach !! n) s
+        es' =  Map.mapWithKey (\n ess -> Set.map (f n) ess) es
+          where f n (sn, e, (m,sm)) = (α (reach !! n) sn, e, (m, α (reach !! m) sm))
+        nodes = zip [0..] [ (n, cache) | (n, caches) <- Map.assocs cs', cache <- Set.toList caches ]
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
         α = αForReach vars
@@ -108,13 +98,13 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach =  mk
         (!!) m x = Map.findWithDefault Set.empty x m
 
 
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set CachedObject -> (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) -> Map Node (Set Name) -> Node -> gr (Node, AbstractCacheStateReach) CFGEdge
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm =  mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
-  where cs' =  Set.map f cs
-          where f (n, s) = (n, α (reach !! n) n s)
-        es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α (reach !! n) n sn), e, (m, α (reach !! m) m sm))
-        nodes = zip [0..] (Set.toList cs')
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState -> Map Node (Set Name) -> Node -> gr (Node, AbstractCacheStateReach) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es', (cache, e, c') <- Set.toList cacheEdges ]
+  where cs' =  Map.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
+          where f n s = α (reach !! n) n s
+        es' =  Map.mapWithKey (\n ess -> Set.map (f n) ess) es
+          where f n (sn, e, (m,sm)) = (α (reach !! n) n sn, e, (m, α (reach !! m) m sm))
+        nodes = zip [0..] [ (n, cache) | (n, caches) <- Map.assocs cs', cache <- Set.toList caches ]
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
         α = αForReach2 vars mm

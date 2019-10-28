@@ -82,10 +82,10 @@ data MicroArchitecturalAbstraction a a' = MicroArchitecturalAbstraction {
       -> MergedMicroState a a'
       -> Bool,
     muMerge :: Bool,
-    muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> (Set (Node, a), Set ((Node, a), CFGEdge, (Node, a))) -> Node -> [gr (Node, MergedMicroState a a' ) CFGEdge],
+    muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> CsGraph a -> Node -> [gr (Node, MergedMicroState a a' ) CFGEdge],
     muInitialState :: a,
     muStepFor :: AbstractSemantic a,
-    muCostsFor :: (Set (Node, a), Set ((Node, a), CFGEdge, (Node, a))) -> Map (Node, Node, CFGEdge) (Set TimeCost)
+    muCostsFor :: CsGraph a -> Map (Node, Node, CFGEdge) (Set TimeCost)
   }
 
 
@@ -96,41 +96,37 @@ stateSetsSlow step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList [
                      )
           where next = [ (n, σ, e, n', σ')  | (n,σ) <- Set.toList cs, (n',e) <- lsuc g n, σ' <- step e σ]
 
-stateSets :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s)))
+
+type CsGraph s =  (Map Node (Set s), Map Node (Set (s, CFGEdge, (Node, s))))
+stateSets :: forall gr s. (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> CsGraph s
 stateSets step g σ0 n0 = {- assert (result == stateSetsSlow step g σ0 n0) $ -} result
-  where result = go (Set.fromList [(n0,σ0)]) (Set.fromList [(n0,σ0)]) (Set.fromList [])
+  where result = go (Map.fromList [(n0, Set.fromList [σ0])]) (Map.fromList [(n0,Set.fromList [σ0])]) (Map.fromList [])
+        go :: Map Node (Set s) -> Map Node (Set s) -> Map Node (Set (s, CFGEdge, (Node, s))) -> (Map Node (Set s), Map Node (Set (s, CFGEdge, (Node, s))))
         go workset cs es
-         | Set.null workset = (cs, es)
-         | otherwise         = go (workset' ∪ csNew) (cs ∪ csNew) (es ∪ esNew)
-             where ((n,σ), workset') = Set.deleteFindMin workset
-                   next = [ (n, σ, e, n', σ')  | (n',e) <- lsuc g n, σ' <- step e σ]
+         | Map.null workset = (cs, es)
+         | otherwise         = go (workset'' ⊔ csNew) (cs ⊔ csNew) (es ⊔ esNew)
+             where ((n,σs), workset') = Map.deleteFindMin workset
+                   (σ, σs') = Set.deleteFindMin σs
+                   workset''
+                     | Set.null σs' =                    workset'
+                     | otherwise    = Map.insert n σs' $ workset'
+                   next = [ (e, n', σ')  | (n',e) <- lsuc g n, σ' <- step e σ]
                    
-                   csNew = Set.fromList [ (n', σ') | (n, σ, e, n', σ') <- next, not $ (n', σ') ∈ cs ]
-                   esNew = Set.fromList [ ((n,  σ ), e, (n', σ')) | (n, σ, e, n', σ') <- next ]
+                   csNew = (∐) [ Map.fromList [ (n', Set.fromList [ σ' ]) ]  | (e, n', σ') <- next, not $ old n' σ' ]
+                     where old n' σ' = case Map.lookup n' cs of
+                             Nothing -> False
+                             Just σs -> σ' ∈ σs
+                   esNew = Map.fromList [ (n, Set.fromList  [ (σ, e, (n', σ')) | (e, n', σ') <- next ] )]
 
 
-stateGraphForSets :: (Ord s, Graph gr) => (Set (Node, s), Set ((Node, s), CFGEdge, (Node, s))) -> gr (Node, s) CFGEdge
-stateGraphForSets (cs, es) = mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es]
-  where nodes = zip [0..] (Set.toList cs)
+stateGraphForSets :: (Ord s, Graph gr) => CsGraph s -> gr (Node, s) CFGEdge
+stateGraphForSets (cs, es) = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es, (cache, e, c') <- Set.toList cacheEdges ]
+  where nodes = zip [0..] [ (n, cache) | (n, caches) <- Map.assocs cs, cache <- Set.toList caches ]
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
 stateGraph :: (Graph gr, Ord s) => AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> gr (Node, s) CFGEdge
 stateGraph step g σ0 n0 = stateGraphForSets (cs, es)
   where (cs, es) = stateSets step g σ0 n0
-
-
-stateGraphFor :: (Graph gr, Ord s, Ord s') => (s -> s') ->  AbstractSemantic s -> gr CFGNode CFGEdge -> s -> Node -> gr (Node, s') CFGEdge
-stateGraphFor α step g σ0 n0 = mkGraph nodes [(toNode ! c, toNode ! c', e) | (c,e,c') <- Set.toList es']
-  where (cs, es) = stateSets step g σ0 n0
-        cs' =  Set.map f cs
-          where f (n, s) = (n, α s)
-        es' =  Set.map f es
-          where f ((n, sn), e, (m,sm)) = ((n,α sn), e, (m, α sm))
-        nodes = zip [0..] (Set.toList cs')
-        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
-
-
-
 
 
 merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
@@ -268,9 +264,11 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFr
         orderToNodes = Map.fromList $ zip [0..] order
 
 
+csGraphSize :: CsGraph s -> Int
+csGraphSize (cs, es) = Map.fold (\σs k -> Set.size σs + k) 0 cs
 
 muMergeDirectOf :: forall gr a a'. (DynGraph gr, Ord a) => MicroArchitecturalAbstraction a a' -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muStepFor, muCostsFor }) graph n0 = traceShow (Set.size cs) $ invert'' $
+muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muStepFor, muCostsFor }) graph n0 = traceShow (csGraphSize csGraph) $ invert'' $
   Map.fromList [ (m, ns) | m <- nodes graph,
 #ifdef SKIP_INDEPENDENT_NODES_M
       mayBeCSDependent m,

@@ -39,12 +39,13 @@ import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalSt
 import qualified IRLSOD as IRLSOD (Input)
 
 import MicroArchitecturalDependence (
+    CsGraph,
     AbstractMicroArchitecturalGraphNode,
     AbstractSemantic,
     TimeState,
     MergedMicroState(..),
     MicroArchitecturalAbstraction(..),
-    stateGraphForSets, stateGraph, stateSets,  stateGraphFor,
+    stateGraphForSets, stateGraph, stateSets,
     muMergeDirectOf,
     muGraphFromMergeDirectFor
   )
@@ -391,15 +392,15 @@ cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize)
 
 
 
-cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) ->  Node -> gr (Node, MergedCacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState ->  Node -> gr (Node, MergedCacheState) CFGEdge
 cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
   where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
 
         merged :: gr (Node, MergedCacheState) CFGEdge
         merged = mkGraph nodes' edges'
 
-        nodes' = zip [0..] [           α cs                      |  cs@(m,c)                  <- Set.toList css]
-        edges' =           [(toNode' ! α cs, toNode' ! α cs', e) | (cs@(m,c), e, cs'@(m',c')) <- Set.toList es, m /= mm]
+        nodes' = zip [0..] [           α cs                      | (m,σs)  <- Map.assocs css,            c                  <- Set.toList σs,  let cs = (m,c)]
+        edges' =           [(toNode' ! α cs, toNode' ! α cs', e) | (m,σes) <- Map.assocs es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c)]
         toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
 
         α cs@(n, cache)
@@ -416,9 +417,10 @@ costsFor cacheSize csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList
                                                  fullState'@(_,time) <- cacheTimeStepFor cacheSize e (cs, 0)
                       ]
 
-costsFor2 :: CacheSize -> (Set (Node, AbstractCacheState), Set ((Node, AbstractCacheState), CFGEdge, (Node, AbstractCacheState))) -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costsFor2 :: CacheSize -> CsGraph AbstractCacheState -> Map (Node, Node, CFGEdge) (Set AccessTime)
 costsFor2 cacheSize (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
-                                                 ((n,cache), e, (n', cache')) <- Set.toList es,
+                                                 (n, σes) <- Map.assocs es,
+                                                 (cache, e, (n', cache')) <- Set.toList σes,
                                                  fullState'@(_,time) <- cacheTimeStepFor cacheSize e (cache, 0)
                       ]
 

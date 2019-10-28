@@ -97,17 +97,6 @@ cacheProps = testGroup "(concerning cache timing)" [
                         csdM       = csdMergeOf       propsCacheSize g n0
                         csdMDirect = csdMergeDirectOf propsCacheSize g n0
                     in  csdM == csdMDirect,
-    testPropertySized 25 "csdMergeOf ⊑ csdMergeDirectOfImprecise"
-                $ \generated ->
-                    let pr :: Program Gr
-                        pr = compileAllToProgram a b'
-                          where (a,b) = toCodeSimple generated
-                                b' = fmap twoAddressCode b
-                        g = tcfg pr
-                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM       = csdMergeOf       propsCacheSize g n0
-                        csdMDirect = Imprecise.csdMergeDirectOf propsCacheSize g n0
-                    in  csdM ⊑ csdMDirect,
     testPropertySized 25 "csdMergeOf ⊑ csd''''Of4"
                 $ \generated ->
                     let pr :: Program Gr

@@ -9,6 +9,7 @@ import Debug.Trace (traceShow, trace)
 import Control.Exception.Base (assert)
 
 import qualified Data.List as List
+import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map (Map, (!))
@@ -30,14 +31,14 @@ import Program.For (compileAllToProgram, For(..))
 import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
 import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_main_ct, br_aes_small_cbcenc_main_ct_precache, mainInput, for2Program)
 
-import IRLSOD(CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
+import IRLSOD(CFGNode, CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
 import MicroArchitecturalDependence (stateSets)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf)
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
-import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceFor)
+import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor)
 
 cache     = defaultMain                               $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
@@ -108,12 +109,32 @@ cacheProps = testGroup "(concerning cache timing)" [
                         csdM  = csdMergeOf propsCacheSize g n0
                         csd'4 = csd''''Of4 propsCacheSize g n0
                     in  csdM ⊑ csd'4,
-    testPropertySized 25 "csd is sound"
+    testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr
                         pr = compileAllToProgram a b'
                           where (a,b) = toCodeSimpleWithArrays generated
                                 b' = fmap twoAddressCode b
+                    in isSound cacheTimingSlice pr seed1 seed2 seed3 seed4,
+    testPropertySized 25 "cacheTimingSliceImprecise is sound"
+                $ \generated seed1 seed2 seed3 seed4 ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                    in isSound cacheTimingSliceImprecise pr seed1 seed2 seed3 seed4
+  ]
+
+type Slicer =
+     CacheSize
+  -> Gr CFGNode CFGEdge
+  -> Node
+  -> Set Node
+  -> Set Node
+
+isSound :: Slicer -> Program Gr -> Int -> Int -> Int -> Int -> Bool
+isSound slicerFor pr seed1 seed2 seed3 seed4 =
+                    let
                         g0 = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         
@@ -124,7 +145,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         nodeToVar = Map.fromList $ zip new ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA))
 
                         g = prependFakeInitialization g0 n0 newN0 varToNode
-                        slicer = cacheTimingSlice propsCacheSize g newN0
+                        slicer = slicerFor propsCacheSize g newN0
 
 
                         initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
@@ -171,7 +192,6 @@ cacheProps = testGroup "(concerning cache timing)" [
                                traceShow (List.span (\(a,b) -> a == b) (zip exec1Obs exec2Obs)) $
                                ok
                         )
-  ]
 
 
 data Aes = Aes {

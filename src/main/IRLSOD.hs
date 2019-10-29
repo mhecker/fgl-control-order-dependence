@@ -53,6 +53,11 @@ instance SimpleShow Integer
 instance SimpleShow ()
   where simpleShow () = ""
 
+
+instance SimpleShow a => SimpleShow (Maybe a)
+  where simpleShow Nothing  = "_"
+        simpleShow (Just x) = simpleShow x
+
 instance (SimpleShow a,SimpleShow b) => SimpleShow (a,b) where
   simpleShow (a,b) = "(" ++ simpleShow a ++ ", " ++ simpleShow b ++ ")"
 

@@ -386,7 +386,7 @@ cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState
 cacheOnlyStepFor cacheSize e σ = fmap fst $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
 
 
-csLeq = (const . (const False))
+csLeq = Nothing
 
 cacheStateGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize) csLeq

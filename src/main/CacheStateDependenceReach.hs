@@ -141,7 +141,7 @@ csd''''Of3 cacheSize graph n0 =  invert'' $
           where Just (_,cs) = lab csGraph y'
         (cs, es)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
 
-csLeq = const . (const True)
+csLeq = Nothing
 
 csd''''Of4 :: (DynGraph gr, Show (gr (Node, AbstractCacheStateReach) CFGEdge)) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csd''''Of4 cacheSize graph n0 =  invert'' $

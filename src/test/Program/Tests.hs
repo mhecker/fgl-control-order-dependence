@@ -146,8 +146,8 @@ main = let {
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         csGraph = Imprecise.cacheStateGraph cacheSize graph initialAbstractCacheState n0 ;
-         (ccg, cost) = Imprecise.cacheCostDecisionGraph cacheSize graph n0
+         csGraph = cacheStateGraph cacheSize graph initialAbstractCacheState n0 ;
+         (ccg, cost) = cacheCostDecisionGraph cacheSize graph n0
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph

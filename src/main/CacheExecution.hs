@@ -551,7 +551,7 @@ cacheStepFor cacheSize e σ = evalStateT (cacheStepForState cacheSize e) σ
 
 
 cacheExecutionGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> FullState -> Node -> gr (Node, FullState) CFGEdge
-cacheExecutionGraph cacheSize = stateGraph (cacheStepFor cacheSize) (const . (const False))
+cacheExecutionGraph cacheSize = stateGraph (cacheStepFor cacheSize) Nothing
 
 
 cacheExecution :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> FullState -> Node -> [[(Node,TimeState)]]

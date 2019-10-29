@@ -38,7 +38,7 @@ import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCo
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
-import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor)
+import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor, cacheTimingSliceAgeSets)
 import MicroArchitecturalDependence(MicroArchitecturalAbstraction(..), stateGraphForSets)
 
 cache     = defaultMain                               $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
@@ -117,6 +117,13 @@ cacheProps = testGroup "(concerning cache timing)" [
                           where (a,b) = toCodeSimpleWithArrays generated
                                 b' = fmap twoAddressCode b
                     in isSound cacheTimingSlice pr seed1 seed2 seed3 seed4,
+    testPropertySized 25 "cacheTimingSliceAgeSets is sound"
+                $ \generated seed1 seed2 seed3 seed4 ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                    in isSound cacheTimingSliceAgeSets   pr seed1 seed2 seed3 seed4,
     testPropertySized 25 "cacheTimingSliceImprecise is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr

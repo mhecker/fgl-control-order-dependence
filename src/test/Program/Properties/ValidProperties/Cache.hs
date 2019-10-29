@@ -34,7 +34,7 @@ import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_mai
 import IRLSOD(CFGNode, CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
 import MicroArchitecturalDependence (stateSets, csGraphSize)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
-import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState)
+import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
@@ -57,7 +57,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM       = csdMergeDirectOf propsCacheSize g n0
                         
-                        (cs, es)    = stateSets (cacheOnlyStepFor propsCacheSize) g initialAbstractCacheState n0
+                        (cs, es)    = stateSets (cacheOnlyStepFor propsCacheSize) csLeq g initialAbstractCacheState n0
                         
                         csGraph     = cacheStateGraph propsCacheSize g initialAbstractCacheState n0
                         costs       = costsFor propsCacheSize csGraph

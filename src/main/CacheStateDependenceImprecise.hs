@@ -253,7 +253,22 @@ cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState
 cacheOnlyStepFor cacheSize e σ = fmap fst $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
 
 cacheStateGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
-cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize)
+cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize) csLeq
+
+
+csLeq [] [] = True
+csLeq [] _  = False
+csLeq _  [] = False
+csLeq (co : cs) (co' : cs') = leq co co'  ∧  csLeq cs cs'
+  where leq (CachedVar x) (CachedVar x') = x == x' 
+        leq (CachedVar x) _ = False
+
+        leq (CachedArrayRange a i) (CachedArrayRange a' i') = a == a' ∧ i == i'
+        leq (CachedArrayRange a i) (CachedUnknownRange a' ) = a == a'
+        leq (CachedArrayRange a i) _                        = False
+
+        leq (CachedUnknownRange a) (CachedUnknownRange a' ) = a == a'
+        leq (CachedUnknownRange a) _                        = False
 
 
 
@@ -391,11 +406,13 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muGraph'For = muGraph'For,
       muInitialState = CSD.initialAbstractCacheState,
       muStepFor = cacheOnlyStepFor cacheSize,
+      muLeq = csLeq,
       muCostsFor = costsFor2 cacheSize
     }
   where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = CSD.cachedObjectsFor e, not $ Set.null vars] ]
         muIsDependent graph roots idom y n (Merged _) = undefined
         muIsDependent graph roots idom y n (Unmerged cache) =
+            -- (if n == 11 then traceShow (y, n) $ traceShow roots $ traceShow idom else id) $
             isChoice ∨ isImprecise
           where isChoice    = (length $ suc graph n) > 1
                             ∧ (idom ! y == Nothing)

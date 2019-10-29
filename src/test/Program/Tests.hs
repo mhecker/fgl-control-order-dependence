@@ -140,14 +140,14 @@ aes_main_ct_precache = Aes {
 
 
 main = let {
-         aes@(Aes { cacheSize, forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct ;
+         aes@(Aes { cacheSize, forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct_precache ;
          debugNs = [encryptStateInputNode0, keyInputNode] ;
          pr = for2Program $ forMain :: Program Gr ;
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         csGraph = cacheStateGraph cacheSize graph initialAbstractCacheState n0 ;
-         (ccg, cost) = cacheCostDecisionGraph cacheSize graph n0
+         csGraph = Imprecise.cacheStateGraph cacheSize graph initialAbstractCacheState n0 ;
+         (ccg, cost) = Imprecise.cacheCostDecisionGraph cacheSize graph n0
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph
@@ -157,7 +157,7 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSliceFor cacheSize csdMergeDirectOf graph debugNs n0 (Set.fromList [nx])
+    putStrLn  $ show $ cacheTimingSliceFor cacheSize Imprecise.csdMergeDirectOf graph debugNs n0 (Set.fromList [nx])
 
     
     -- putStrLn  $ show $ length $ nodes $ csGraph

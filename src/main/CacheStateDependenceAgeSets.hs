@@ -113,20 +113,27 @@ defaultCache' cacheSize cobj cache = Map.insert cobj fresh $ cache'
           where ages' = Set.filter (`lt` cacheSize) $ Set.mapMonotonic (liftM (+1)) ages
 -}
 
+clean :: AbstractCacheState -> AbstractCacheState
+clean  cache = Map.mapMaybe c cache
+  where c ages = if Set.null ages ∨ ages == inf then Nothing else Just ages
+
 defaultCache' :: CacheSize -> CachedObject -> AbstractCacheState -> AbstractCacheState
-defaultCache' cacheSize cobj cache = Map.insert cobj fresh $ cache'
+defaultCache' cacheSize cobj cache = clean $ Map.insert cobj fresh $ cache'
   where cache' = incAll cacheSize cobj cache
 
-
+incAll :: CacheSize -> CachedObject -> AbstractCacheState -> AbstractCacheState
 incAll cacheSize cobj cache = cache'
   where cobjAges = case Map.lookup cobj cache of
           Nothing   -> inf
           Just ages -> ages
-        cache' = Map.mapMaybe inc cache
+        cache' = fmap inc cache
 
-        inc ages = if Set.null ages' ∨ ages' == inf then Nothing else Just ages'
-          where ages' = Set.filter (`lt` cacheSize) $ plus1 ages
-
+        inc ages = ages'
+          where ages' = filter $ plus1 ages
+                filter :: Age -> Age
+                filter = Set.map f
+                  where f Nothing  = Nothing
+                        f ja@(Just a) = if a >= cacheSize then Nothing else ja
                 plus1 ages = if infTime ∈ ages then Set.insert infTime plussed else plussed
                   where plussed = (∐) [ as a | Just a <- Set.toList ages ]
                         as a 
@@ -147,7 +154,7 @@ unknownCache' cacheSize arr indices cache = foldr ins cache' [CachedArrayRange a
 -}
 
 unknownCache' :: CacheSize -> Array -> [Index] -> AbstractCacheState -> AbstractCacheState
-unknownCache' cacheSize arr indices cache = foldr ins cache' [CachedArrayRange arr i | i <- indices]
+unknownCache' cacheSize arr indices cache = clean $ foldr ins cache' [CachedArrayRange arr i | i <- indices]
   where cache' = (∐) [ incAll cacheSize (CachedArrayRange arr i) cache | i <- indices ]
         ins cobj = Map.alter f cobj
           where f Nothing     = Just freshOrInf

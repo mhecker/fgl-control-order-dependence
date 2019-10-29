@@ -39,17 +39,18 @@ abstractProps = testGroup "(concerning abstract postdominance)" [
           let g = generatedGraph
               n = length $ nodes g
               ms
-                  | n' == 0 = Set.empty
-                  | n' /= 0 = Set.fromList [ concreteNodes !! (s `mod` n') | s <- moreSeeds seed2 (seed1 `mod` n')]
-                where concreteNodes = [ n | (n, ns) <- Map.assocs abstractionM, ns == Set.fromList [ n ] ]
-                      n' = length concreteNodes
+                  | n == 0 = Set.empty
+                  | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
 
-              takes = [ t `mod` (1 + n `div` 8) + 1 | t <- moreSeeds seed n ]
-              abstractionM = Map.fromList [ (n, ns) | ns <- go takes (nodes g), n <- Set.toList ns ]
+              available = Set.toList $ (Set.fromList (nodes g) ∖ ms)
+              takes = [ t `mod` (1 + n' `div` 4) + 1 | t <- moreSeeds seed n' ]
+                where n' = length available
+              abstractionM =  Map.fromList [ (n, ns) | ns <- go takes available, n <- Set.toList ns ]
+                           ⊔  Map.fromList [ (m, Set.fromList [m]) | m <- Set.toList ms ]
                 where go _      [] = []
                       go (t:ts) ns = (Set.fromList $ take t ns) : go ts (drop t ns)
 
-              msAbstract = Set.fromList [ ns | ns <- Map.elems abstractionM, not $ Set.null $ ns ∩ ms ]
+              msAbstract = Set.fromList [ Set.fromList [ m ] | m <- Set.toList ms ]
 
               slicePerfect  = SLICE.NTICD.wodTEILSliceViaNticd g ms
               

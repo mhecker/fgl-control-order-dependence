@@ -630,22 +630,25 @@ defs (n, cache, cache')   = Set.fromList [ (co, (n, cache)) | (co, ages) <- Map.
                                                                   Just ages -> Set.size ages' > Set.size ages
                                             ]
 
-cacheDataDepSlice :: CacheSize -> CsGraph AbstractCacheState -> Set Node -> Set Node
-cacheDataDepSlice cacheSize csGraph ms = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
+cacheDataDepSlice :: CacheSize -> CsGraph AbstractCacheState -> Node -> Set Node
+cacheDataDepSlice cacheSize csGraph m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
   where ddeps = cacheDataDep cacheSize csGraph
         csGraphG = (stateGraphForSets csGraph :: Gr (Node, AbstractCacheState) CFGEdge)
 
-        msCsGraph = [ y | (y, (m, cache)) <- labNodes csGraphG, m ∈ ms ]
+        msCsGraph  = [ y | (y, (m_, _)) <- labNodes csGraphG , m_ == m ]
+        msCsGraph' = [ y | (y, (m_, _)) <- labNodes csGraphG', m_ == m ]
 
-        csGraphG' = let { toM = subgraph (rdfs msCsGraph csGraphG) csGraphG } in foldr (flip delSuccessorEdges) toM msCsGraph
+        csGraphG' = cacheStateGraph'ForVarsAtMForGraph2 relevantCos csGraph m :: Gr (Node, MergedCacheState) CFGEdge
+
+        edges = Set.fromList [ e | y <- msCsGraph, (_,e) <- lsuc csGraphG y ]
+        relevantCos = Set.fromList [ co | e <- Set.toList edges, co <- Set.toList $ CSD.cachedObjectsFor e]
 
         isinkdom' = isinkdomOfTwoFinger8 csGraphG'
         df'       = idomToDFFast         csGraphG' isinkdom'
 
-        viaDDep = Set.fromList [ y | (y, ncache) <- labNodes csGraphG', ncache ∈ ns ]
-          where ns = Set.fromList [ (n, cacheN) | y <- msCsGraph, let Just (m, cacheM) = lab csGraphG' y,
-                                     (_,e) <- lsuc csGraphG y,
-                                     co <- Set.toList $ CSD.cachedObjectsFor e,
+        viaDDep = Set.fromList [ y' | (y', (n, Unmerged cache)) <- labNodes csGraphG', (n,cache) ∈ ns ]
+          where ns = Set.fromList [ (n, cacheN) | y <- msCsGraph, let Just (m, cacheM) = lab csGraphG y,
+                                     co <- Set.toList relevantCos,
                                      (n, cacheN) <- Set.toList $ ddeps ! (m, cacheM, co)
                      ]
 

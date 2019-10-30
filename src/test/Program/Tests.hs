@@ -140,6 +140,11 @@ aes_main_ct_precache = Aes {
   }
 
 
+initACS = AgeSets.initialAbstractCacheState
+csg     = AgeSets.cacheStateGraph
+ccdg    = AgeSets.cacheCostDecisionGraph
+csdOf   = AgeSets.csdMergeDirectOf
+
 main = let {
          aes@(Aes { cacheSize, forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct_precache ;
          debugNs = [encryptStateInputNode0, keyInputNode] ;
@@ -147,8 +152,8 @@ main = let {
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         csGraph = cacheStateGraph cacheSize graph initialAbstractCacheState n0 ;
-         (ccg, cost) = cacheCostDecisionGraph cacheSize graph n0
+         csGraph =  csg cacheSize graph initACS n0 ;
+         (ccg, cost) = ccdg cacheSize graph n0
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph
@@ -158,7 +163,7 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSliceFor cacheSize Imprecise.csdMergeDirectOf graph debugNs n0 (Set.fromList [nx])
+    putStrLn  $ show $ cacheTimingSliceFor cacheSize csdOf graph debugNs n0 (Set.fromList [nx])
 
     
     -- putStrLn  $ show $ length $ nodes $ csGraph

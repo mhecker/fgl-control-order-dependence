@@ -36,6 +36,8 @@ import MicroArchitecturalDependence (stateSets, csGraphSize)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf)
+
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
 import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor, cacheTimingSliceAgeSets)

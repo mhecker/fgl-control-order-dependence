@@ -58,7 +58,7 @@ import Program.Properties.CDom
 import IRLSOD
 import MicroArchitecturalDependence
 import CacheExecution
-import CacheStateDependence
+import qualified CacheStateDependence as Precise
 import qualified CacheStateDependenceImprecise as Imprecise
 import qualified CacheStateDependenceAgeSets as AgeSets
 import CacheSlice

@@ -39,6 +39,9 @@ import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, foc
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
+import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFast)
+import qualified Data.Graph.Inductive.Query.PostDominance (isinkdomOfTwoFinger8)
+
 import MicroArchitecturalDependence (
     CsGraph,
     AbstractMicroArchitecturalGraphNode,
@@ -447,6 +450,7 @@ costsFor2 cacheSize (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromLi
                       ]
 
 
+
 cacheCostDecisionGraphFor :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> gr (Node, AbstractCacheState) CFGEdge -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
 cacheCostDecisionGraphFor cacheSize g csGraph = (
       mkGraph
@@ -593,3 +597,63 @@ csdGraphFromMergeDirectFor cacheSize = muGraphFromMergeDirectFor (cacheAbstracti
 
 
 
+
+cacheDataDep :: CacheSize -> CsGraph AbstractCacheState -> Map (Node, AbstractCacheState, CachedObject) (Set (Node, AbstractCacheState))
+cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.fromList [ (n, cache') ]) ] | ((m, cache), deps) <- Map.assocs seesDef, (co, (n, cache')) <- Set.toList deps  ]
+  where seesDef :: Map (Node, AbstractCacheState) (Set (CachedObject, (Node, AbstractCacheState)))
+        seesDef = (㎲⊒) (Map.fromList [ ((m,cache), Set.empty) | (m, caches) <- Map.assocs cs, cache <- Set.toList caches ]) f
+          where f sees =  (∐) [ Map.fromList [ ((m, cache'), (sees ! (n, cache)  ∪  defs (n, cache, cache')) ∖ kill (n, cache, cache') ) ]
+                                      | (n, caches) <- Map.assocs cs, cache <- Set.toList caches, (cache_, e, (m, cache' )) <- Set.toList $ es ! n, cache == cache_ ]
+
+kill (n, cache, cache')   = Set.fromList [ (co, (n, cache))  | (co, ages) <- Map.assocs cache,
+                                                                assert (not $ Set.null ages) True,
+                                                                assert (not $ ages == inf) True,
+                                                                let agesM' = Map.lookup co cache',
+                                                                case agesM' of
+                                                                  Nothing -> True 
+                                                                  Just ages' -> ages == fresh
+                                            ]
+defs (n, cache, cache')   = Set.fromList [ (co, (n, cache)) | (co, ages) <- Map.assocs cache,
+                                                                assert (not $ Set.null ages) True,
+                                                                assert (not $ ages == inf) True,
+                                                                let agesM' = Map.lookup co cache',
+                                                                case agesM' of
+                                                                  Nothing -> False 
+                                                                  Just ages' -> Set.size ages' > Set.size ages
+                                            ]
+                          ∪ Set.fromList [ (co, (n, cache)) | (co, ages') <- Map.assocs cache',
+                                                                assert (not $ Set.null ages') True,
+                                                                assert (not $ ages' == inf) True,
+                                                                let agesM = Map.lookup co cache,
+                                                                case agesM of
+                                                                  Nothing -> ages' /= fresh
+                                                                  Just ages -> Set.size ages' > Set.size ages
+                                            ]
+
+cacheDataDepSlice :: CacheSize -> CsGraph AbstractCacheState -> Set Node -> Set Node
+cacheDataDepSlice cacheSize csGraph ms = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
+  where ddeps = cacheDataDep cacheSize csGraph
+        csGraphG = (stateGraphForSets csGraph :: Gr (Node, AbstractCacheState) CFGEdge)
+
+        msCsGraph = [ y | (y, (m, cache)) <- labNodes csGraphG, m ∈ ms ]
+
+        csGraphG' = let { toM = subgraph (rdfs msCsGraph csGraphG) csGraphG } in foldr (flip delSuccessorEdges) toM msCsGraph
+
+        isinkdom' = isinkdomOfTwoFinger8 csGraphG'
+        df'       = idomToDFFast         csGraphG' isinkdom'
+
+        viaDDep = Set.fromList [ y | (y, ncache) <- labNodes csGraphG', ncache ∈ ns ]
+          where ns = Set.fromList [ (n, cacheN) | y <- msCsGraph, let Just (m, cacheM) = lab csGraphG' y,
+                                     (_,e) <- lsuc csGraphG y,
+                                     co <- Set.toList $ CSD.cachedObjectsFor e,
+                                     (n, cacheN) <- Set.toList $ ddeps ! (m, cacheM, co)
+                     ]
+
+        slice = go Set.empty (Set.fromList msCsGraph ∪ viaDDep)
+          where go s workset
+                    | Set.null workset =    s
+                    | otherwise        = go s' (workset0 ∪ new)
+                 where (y, workset0) = Set.deleteFindMin workset
+                       s' =  Set.insert y s
+                       new = fromDF ∖ s'
+                       fromDF = Map.findWithDefault Set.empty y df'

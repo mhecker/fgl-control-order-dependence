@@ -630,6 +630,35 @@ defs (n, cache, cache')   = Set.fromList [ (co, (n, cache)) | (co, ages) <- Map.
                                                                   Just ages -> Set.size ages' > Set.size ages
                                             ]
 
+
+
+cacheStateGraph'ForVarsAtMForGraph3 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState ->  Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
+  where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
+
+        merged :: gr (Node, AbstractCacheState) CFGEdge
+        merged = mkGraph nodes' edges'
+
+        nodes' = zip [0..] [           a                   | (m,σs)  <- Map.assocs css,            c                  <- Set.toList σs,  let cs = (m,c), a <- α cs             ]
+        edges' =           [(toNode' ! a, toNode' ! a', e) | (m,σes) <- Map.assocs es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c), a <- α cs, a' <- α cs']
+        toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
+
+        α :: (Node, AbstractCacheState) -> [ (Node, AbstractCacheState) ]
+        α cs@(n, cache)
+            | n == mm = [  (n, fmap (Set.map (liftM (const 0))) $ restrict cache vars) ]
+            | otherwise = [ cs ]
+
+
+csdFromDataDep :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdFromDataDep cacheSize graph n0 = invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice cacheSize csGraph m]
+  where  mu = cacheAbstraction cacheSize
+         csGraph@(cs, es) = stateSets (muStepFor mu) (muLeq mu) graph (muInitialState mu) n0
+
+         costs = (muCostsFor mu) csGraph
+         mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
+
+ 
+
 cacheDataDepSlice :: CacheSize -> CsGraph AbstractCacheState -> Node -> Set Node
 cacheDataDepSlice cacheSize csGraph m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
   where ddeps = cacheDataDep cacheSize csGraph
@@ -638,7 +667,7 @@ cacheDataDepSlice cacheSize csGraph m = Set.fromList [ n | y <- Set.toList slice
         msCsGraph  = [ y | (y, (m_, _)) <- labNodes csGraphG , m_ == m ]
         msCsGraph' = [ y | (y, (m_, _)) <- labNodes csGraphG', m_ == m ]
 
-        csGraphG' = cacheStateGraph'ForVarsAtMForGraph2 relevantCos csGraph m :: Gr (Node, MergedCacheState) CFGEdge
+        csGraphG' = cacheStateGraph'ForVarsAtMForGraph3 relevantCos csGraph m :: Gr (Node, AbstractCacheState) CFGEdge
 
         edges = Set.fromList [ e | y <- msCsGraph, (_,e) <- lsuc csGraphG y ]
         relevantCos = Set.fromList [ co | e <- Set.toList edges, co <- Set.toList $ CSD.cachedObjectsFor e]
@@ -646,13 +675,18 @@ cacheDataDepSlice cacheSize csGraph m = Set.fromList [ n | y <- Set.toList slice
         isinkdom' = isinkdomOfTwoFinger8 csGraphG'
         df'       = idomToDFFast         csGraphG' isinkdom'
 
-        viaDDep = Set.fromList [ y' | (y', (n, Unmerged cache)) <- labNodes csGraphG', (n,cache) ∈ ns ]
+        viaDDep = Set.fromList [ y' | (y', (n, cache)) <- labNodes csGraphG', (n,cache) ∈ ns ]
           where ns = Set.fromList [ (n, cacheN) | y <- msCsGraph, let Just (m, cacheM) = lab csGraphG y,
                                      co <- Set.toList relevantCos,
-                                     (n, cacheN) <- Set.toList $ ddeps ! (m, cacheM, co)
+                                     let deps = Map.findWithDefault Set.empty (m, cacheM, co) ddeps,
+                             assert ((isConst (m, cacheM) co) → (Set.null $ deps)) True,
+                                     (n, cacheN) <- Set.toList $ deps
                      ]
+                isConst (m, cacheM) co = case Map.lookup co cacheM of { Nothing -> True ; Just ages -> not $ infTime ∈ ages }
 
-        slice = go Set.empty (Set.fromList msCsGraph ∪ viaDDep)
+        slice =
+                   go Set.empty (Set.fromList msCsGraph)
+              ∪ ((go Set.empty                 viaDDep))
           where go s workset
                     | Set.null workset =    s
                     | otherwise        = go s' (workset0 ∪ new)

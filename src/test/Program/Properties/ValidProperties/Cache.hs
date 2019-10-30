@@ -36,11 +36,11 @@ import MicroArchitecturalDependence (stateSets, csGraphSize)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
-import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep)
 
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
-import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor, cacheTimingSliceAgeSets)
+import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor, cacheTimingSliceAgeSets, cacheTimingSliceAgeDDeps)
 import MicroArchitecturalDependence(MicroArchitecturalAbstraction(..), stateGraphForSets)
 
 cache     = defaultMain                               $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
@@ -126,6 +126,14 @@ cacheProps = testGroup "(concerning cache timing)" [
                           where (a,b) = toCodeSimpleWithArrays generated
                                 b' = fmap twoAddressCode b
                     in isSound cacheTimingSliceAgeSets   pr seed1 seed2 seed3 seed4,
+    testPropertySized 25 "cacheTimingSliceAgeDDeps is sound"
+                $ \generated seed1 seed2 seed3 seed4 ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                    in traceShow seed1 $
+                       isSound cacheTimingSliceAgeDDeps   pr seed1 seed2 seed3 seed4,
     testPropertySized 25 "cacheTimingSliceImprecise is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr

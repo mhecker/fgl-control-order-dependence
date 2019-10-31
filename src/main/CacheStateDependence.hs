@@ -118,6 +118,13 @@ cachedObjectsFor = useE
     useV (AssertRange _ _ x) = useV x
 
 
+writtenCachedObjectsFor :: CFGEdge -> Set CachedObject
+writtenCachedObjectsFor (AssignArray a ix@(Val i)                 _) = Set.fromList [CachedArrayRange a (toAlignedIndex $ arrayIndex i) ]
+writtenCachedObjectsFor (AssignArray a ix@(AssertRange min max i) _) = Set.fromList [CachedArrayRange a  aligned                       | aligned <- alignedIndicesFor min max ]
+writtenCachedObjectsFor (AssignArray a ix                         _) = Set.fromList [CachedArrayRange a  aligned                       | aligned <- alignedIndices ]
+writtenCachedObjectsFor _ = Set.empty
+
+
 
 
 cacheTimeReadLRU :: CacheSize -> Var -> AbstractCacheState -> (AbstractCacheState, AccessTime)

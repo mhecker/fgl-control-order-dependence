@@ -132,8 +132,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         pr = compileAllToProgram a b'
                           where (a,b) = toCodeSimpleWithArrays generated
                                 b' = fmap twoAddressCode b
-                    in traceShow seed1 $
-                       isSound cacheTimingSliceAgeDDeps   pr seed1 seed2 seed3 seed4,
+                    in isSound cacheTimingSliceAgeDDeps   pr seed1 seed2 seed3 seed4,
     testPropertySized 25 "cacheTimingSliceImprecise is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr

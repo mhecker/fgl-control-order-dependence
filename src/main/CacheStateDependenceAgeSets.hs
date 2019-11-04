@@ -602,12 +602,12 @@ cacheDataDep :: CacheSize -> CsGraph AbstractCacheState -> Map (Node, AbstractCa
 cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.fromList [ (n, cache') ]) ] | ((m, cache), deps) <- Map.assocs seesDef, ((n, cache'), co) <- Set.toList deps ]
   where seesDef :: Map (Node, AbstractCacheState) (Set ((Node, AbstractCacheState), CachedObject))
         seesDef = (㎲⊒) (Map.fromList [ ((m,cache), Set.empty) | (m, caches) <- Map.assocs cs, cache <- Set.toList caches ]) f
-          where f sees =  (∐) [ Map.fromList [ ((m, cache'), (transDefs n e cache (sees ! (n, cache)) (defs (n, cache, cache'))) ∖ kill (n, cache, cache') ) ]
+          where f sees =  (∐) [ Map.fromList [ ((m, cache'), (killedFor cache' $ transDefs cacheSize n e cache cache' (sees ! (n, cache)) (defs (n, cache, cache'))) ) ]
                                       | (n, caches) <- Map.assocs cs, cache <- Set.toList caches, (cache_, e, (m, cache' )) <- Set.toList $ es ! n, cache == cache_ ]
 
-        kill = killFor id
         defs = defsFor cacheSize id
 
+{-
 killFor nodeFor  (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co)  | (co, ages) <- Map.assocs cache,
                                                                 assert (not $ Set.null ages) True,
                                                                 assert (not $ ages == inf) True,
@@ -615,7 +615,14 @@ killFor nodeFor  (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) 
                                                                 case agesM' of
                                                                   Nothing -> True 
                                                                   Just ages' -> ages == fresh
+-}
+killedFor cache' sees'  = Set.fromList [ (node, co)  | (node, co) <- Set.toList sees',
+                                                                let agesM' = Map.lookup co cache',
+                                                                case agesM' of
+                                                                  Nothing -> False
+                                                                  Just ages' -> not $ ages' == fresh
                                             ]
+
 {-
 defsFor nodeFor (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) | (co, ages) <- Map.assocs cache,
                                                                 assert (not $ Set.null ages) True,
@@ -645,6 +652,7 @@ defsFor cacheSize nodeFor (n, cache, cache')   = Set.fromList [ (nodeFor (n, cac
                                                                 assert (not $ Set.null ages') True,
                                                                 assert (not $ ages' == inf) True,
                                                                 let ages = Map.findWithDefault inf co cache,
+                                                                -- if n == 16 then traceShow (n, ages, ages') $ traceShow (pushedBack cacheSize ages) $ traceShow (readToFront ages) True else True,
                                                                 not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages]
                                             ]
 
@@ -659,9 +667,11 @@ pushedBack cacheSize = Set.map pb
 readToFront _ = fresh
 
 
-transDefs n e cache seesN defsN = {- (if n == 12 then traceShow "=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) else id) -}
+transDefs cacheSize n e cache cache' seesN defsN =
+            -- (if n `elem` [14,16,17] then traceShow "=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) else id) $
             seesN ∪ fromSeen ∪ fromDefs 
-          where fromSeen  =  Set.fromList [ (n', co)  | (n, co) <- Set.toList defsN, (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co' ]
+          where fromSeen  =  -- Set.fromList [ (n', co)  | (n, co) <- Set.toList defsN, (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co' ]
+                             Set.fromList [ (n', co)  | co <- Map.keys cache ++ Map.keys cache', let ages = Map.findWithDefault inf co cache, let ages' = Map.findWithDefault inf co cache', not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages], (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co']
                 fromDefs  =  if not $ List.null choices then defsN else Set.empty
 
                 choices = makesChoice e cache
@@ -704,17 +714,19 @@ makesChoice e cache = [ co | choices <- Set.toList $ useE e, not $ List.length c
     useV (AssertRange _ _ x) = useV x
 
 
-isConst cache co = case Map.lookup co cache of { Nothing -> True ; Just ages -> not $ infTime ∈ ages }
+isConst cache co = case Map.lookup co cache of { Nothing -> True ; Just ages -> (Set.size ages == 1) ∧ (not $ infTime ∈ ages) }
 
 
 cacheDataDepG :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map (Node, CachedObject) (Set Node)
 cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromList [ yN ]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Set.toList deps ]
   where seesDef :: Map Node (Set (Node, CachedObject))
         seesDef = (㎲⊒) (Map.fromList [ (y, Set.empty) | y <- nodes csGraphG ]) f
-          where f sees =  (∐) [ Map.fromList [ (yM, (transDefs yN e cache (sees ! yN) (defs yN (n, cache, cache'))) ∖ kill yN (n, cache, cache') ) ]
+          where f sees =  (∐) [ Map.fromList [ (yM, (killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, cache, cache'))) ) ]
                                       | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]
 
+{-
         kill yN = killFor (const yN)
+-}
         defs yN = defsFor cacheSize (const yN)
 
 
@@ -730,10 +742,12 @@ cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fr
                 seesM  = sees ! yM
                 Just (m, cache') = lab csGraphG yM
 
-                seesM' = (∐) [(transDefs yN e cache (sees ! yN) (defs yN (n, cache, cache'))) ∖ kill yN (n, cache, cache') | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
+                seesM' = (∐) [(killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, cache, cache')))  | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
                 changed = seesM /= seesM'
 
+{-
         kill yN = killFor (const yN)
+-}
         defs yN = defsFor cacheSize (const yN)
 
 

@@ -125,7 +125,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 import Program (entryOf, procedureOf, mainThread)
 import MicroArchitecturalDependence (MicroArchitecturalAbstraction(..), stateSets, csGraphSize, stateGraphForSets)
-import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
+import CacheExecution(CachedObject, initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction)
 import qualified CacheStateDependenceReach     as Reach     (csdMergeOf)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf, cacheAbstraction)
@@ -989,7 +989,7 @@ cacheProps = localOption (QuickCheckTests 1200) $ testGroup "(concerning cache t
                         g = tcfg pr
                         mu =              cacheAbstraction propsCacheSize
                         csGraph@(cs, es) =          stateSets (muStepFor mu   ) (muLeq mu   ) g (muInitialState mu   ) n0
-                        csGraphG    = (stateGraphForSets csGraph    :: Gr (Node, AbstractCacheState) CFGEdge)
+                        csGraphG    = (stateGraphForSets csGraph    :: Gr (Node, AbstractCacheState) (CFGEdge,[CachedObject]))
 
                         muImp = Imprecise.cacheAbstraction propsCacheSize
                         csGraphImp@(csImp, esImp) = stateSets (muStepFor muImp) (muLeq muImp) g (muInitialState muImp) n0

@@ -244,94 +244,97 @@ cacheTimeArrayWriteLRUState cacheSize arr ix = do
     return ()
 
 
+type AssumedConcreteCachedObject = CachedObject
 
-cacheTimeLRUEvalB :: CacheSize -> BoolFunction -> StateT AbstractCacheTimeState [] ()
-cacheTimeLRUEvalB cacheSize CTrue     = return ()
-cacheTimeLRUEvalB cacheSize CFalse    = return ()
+cacheTimeLRUEvalB :: CacheSize -> BoolFunction -> StateT AbstractCacheTimeState [] [AssumedConcreteCachedObject]
+cacheTimeLRUEvalB cacheSize CTrue     = return []
+cacheTimeLRUEvalB cacheSize CFalse    = return []
 cacheTimeLRUEvalB cacheSize (Leq x y) = do
   xVal <- cacheTimeLRUEvalV cacheSize x
   yVal <- cacheTimeLRUEvalV cacheSize y
-  return ()
+  return $ xVal ++ yVal
 cacheTimeLRUEvalB cacheSize (Eeq x y) = do
   xVal <- cacheTimeLRUEvalV cacheSize x
   yVal <- cacheTimeLRUEvalV cacheSize y
-  return ()
+  return $ xVal ++ yVal
 cacheTimeLRUEvalB cacheSize (And b1 b2) = do
   b1Val <- cacheTimeLRUEvalB cacheSize b1
   b2Val <- cacheTimeLRUEvalB cacheSize b2
-  return ()
+  return $ b1Val ++ b2Val
 cacheTimeLRUEvalB cacheSize (Or b1 b2) = do
   b1Val <- cacheTimeLRUEvalB cacheSize b1
   b2Val <- cacheTimeLRUEvalB cacheSize b2
-  return ()
+  return $ b2Val ++ b2Val
 cacheTimeLRUEvalB cacheSize (Not b) = do
   bVal <- cacheTimeLRUEvalB cacheSize b
-  return ()
+  return $ bVal
 
-cacheTimeLRUEvalV :: CacheSize -> VarFunction -> StateT AbstractCacheTimeState [] ()
-cacheTimeLRUEvalV cacheSize (Val  x) = return ()
-cacheTimeLRUEvalV cacheSize (Var  x) = cacheTimeReadLRUState cacheSize x
+cacheTimeLRUEvalV :: CacheSize -> VarFunction -> StateT AbstractCacheTimeState [] [AssumedConcreteCachedObject]
+cacheTimeLRUEvalV cacheSize (Val  x) = return []
+cacheTimeLRUEvalV cacheSize (Var  x) = do
+  cacheTimeReadLRUState cacheSize x
+  return []
 {- special case for constants -}
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(Val i)) = do
-  cacheTimeLRUEvalV cacheSize ix -- does nothing
+  [] <- cacheTimeLRUEvalV cacheSize ix -- does nothing
   cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
-  return ()
+  return []
 {- special case for assertions -}
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(AssertRange min max i)) = do
-  cacheTimeLRUEvalV cacheSize i
+  iVal <- cacheTimeLRUEvalV cacheSize i
   i <- lift $ alignedIndicesFor min max
   cacheTimeArrayReadLRUState cacheSize a (arrayIndex i)
-  return ()
+  return $ iVal ++ [CachedArrayRange a i]
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix) = do
-  cacheTimeLRUEvalV cacheSize ix
+  ixVal <- cacheTimeLRUEvalV cacheSize ix
   i <- lift alignedIndices
   cacheTimeArrayReadLRUState cacheSize a i
-  return ()
+  return $ ixVal ++ [CachedArrayRange a i]
 cacheTimeLRUEvalV cacheSize (Plus  x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Minus x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Times x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Div x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Mod x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Xor x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Shl   x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Shr   x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (BAnd  x y) = do
-  cacheTimeLRUEvalV cacheSize x
-  cacheTimeLRUEvalV cacheSize y
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  yVal <- cacheTimeLRUEvalV cacheSize y
+  return $ xVal ++ yVal
 cacheTimeLRUEvalV cacheSize (Neg x) = do
-  cacheTimeLRUEvalV cacheSize x
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  return $ xVal
 cacheTimeLRUEvalV cacheSize (BNot x) = do
-  cacheTimeLRUEvalV cacheSize x
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  return $ xVal
 cacheTimeLRUEvalV cacheSize (AssertRange min max x) = do
-  cacheTimeLRUEvalV cacheSize x
-  return ()
+  xVal <- cacheTimeLRUEvalV cacheSize x
+  return $ xVal
 
 
 
@@ -339,72 +342,72 @@ cacheTimeLRUEvalV cacheSize (AssertRange min max x) = do
 
 
 
-cacheTimeStepForState :: CacheSize -> CFGEdge -> StateT AbstractCacheTimeState [] (CFGEdge, AbstractCacheTimeState)
+cacheTimeStepForState :: CacheSize -> CFGEdge -> StateT AbstractCacheTimeState [] ((CFGEdge, [AssumedConcreteCachedObject]), AbstractCacheTimeState)
 cacheTimeStepForState cacheSize e@(Guard b bf) = do
-        cacheTimeLRUEvalB cacheSize bf
+        assumed <- cacheTimeLRUEvalB cacheSize bf
         (cache, time) <- get
-        return (e, (cache, time + guardTime))
+        return ((e, assumed), (cache, time + guardTime))
 cacheTimeStepForState cacheSize e@(Assign x vf) = do
-        cacheTimeLRUEvalV cacheSize vf
+        assumed <- cacheTimeLRUEvalV cacheSize vf
         cacheTimeWriteLRUState cacheSize x
         σ' <- get
-        return (e,σ')
+        return ((e, assumed), σ')
 {- special case for constants -}
 cacheTimeStepForState cacheSize e@(AssignArray a ix@(Val i) vf) = do
-        cacheTimeLRUEvalV cacheSize vf
-        cacheTimeLRUEvalV cacheSize ix -- does nothing
+        assumed <- cacheTimeLRUEvalV cacheSize vf
+        [] <- cacheTimeLRUEvalV cacheSize ix -- does nothing
         cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
         σ' <- get
-        return (e,σ')
+        return ((e, assumed), σ')
 {- special case for assertions -}
 cacheTimeStepForState cacheSize e@(AssignArray a ix@((AssertRange min max i)) vf) = do
-        cacheTimeLRUEvalV cacheSize vf
-        cacheTimeLRUEvalV cacheSize i
+        assumedVf <- cacheTimeLRUEvalV cacheSize vf
+        assumedI  <- cacheTimeLRUEvalV cacheSize i
         i <- lift $ alignedIndicesFor min max
         cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
         σ' <- get
-        return (e,σ')
+        return ((e, assumedVf ++ assumedI), σ')
 cacheTimeStepForState cacheSize e@(AssignArray a ix vf) = do
-        cacheTimeLRUEvalV cacheSize vf
-        cacheTimeLRUEvalV cacheSize ix
+        assumedVf <- cacheTimeLRUEvalV cacheSize vf
+        assumedIx <- cacheTimeLRUEvalV cacheSize ix
         i <- lift alignedIndices
         cacheTimeArrayWriteLRUState cacheSize a i
         σ' <- get
-        return (e,σ')
+        return ((e,assumedVf ++ assumedIx ++ [CachedArrayRange a i]), σ')
 cacheTimeStepForState cacheSize e@(Init _ _ ) = do
         (cache, time) <- get
-        return (e, (cache, time + initTime))
+        return ((e,[]), (cache, time + initTime))
 cacheTimeStepForState cacheSize e@(InitArray _ _ ) = do
         (cache, time) <- get
-        return (e, (cache, time + initTime))
+        return ((e,[]), (cache, time + initTime))
 cacheTimeStepForState cacheSize e@(NoOp) = do
         (cache, time) <- get
-        return (e,(cache, time + noOpTime))
+        return ((e,[]), (cache, time + noOpTime))
 cacheTimeStepForState cacheSize (Read  _ _) = undefined
 cacheTimeStepForState cacheSize (Print _ _) = undefined
 cacheTimeStepForState cacheSize (Spawn    ) = undefined
 cacheTimeStepForState cacheSize (Call     ) = undefined
 cacheTimeStepForState cacheSize (Return   ) = undefined
 
-cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
+cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState (CFGEdge, [AssumedConcreteCachedObject])
 cacheTimeStepFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e) σ
 
-cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
+cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState (CFGEdge, [AssumedConcreteCachedObject])
 cacheOnlyStepFor cacheSize e σ = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
   where first (e, σ) = (e, fst σ)
 
 csLeq = Nothing
 
-cacheStateGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) (CFGEdge, [AssumedConcreteCachedObject])
 cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize) csLeq
 
 
 
-cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge ->  Node -> gr (Node, MergedCacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState (CFGEdge, [AssumedConcreteCachedObject]) ->  Node -> gr (Node, MergedCacheState) (CFGEdge, [AssumedConcreteCachedObject])
 cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
   where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
 
-        merged :: gr (Node, MergedCacheState) CFGEdge
+        merged :: gr (Node, MergedCacheState) (CFGEdge, [AssumedConcreteCachedObject])
         merged = mkGraph nodes' edges'
 
         nodes' = zip [0..] [           α cs                      | (m,σs)  <- Map.assocs css,            c                  <- Set.toList σs,  let cs = (m,c)]
@@ -425,10 +428,10 @@ costsFor cacheSize csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList
                                                  (_,fullState'@(_,time)) <- cacheTimeStepFor cacheSize e (cs, 0)
                       ]
 
-costsFor2 :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costsFor2 :: CacheSize -> CsGraph AbstractCacheState (CFGEdge, [AssumedConcreteCachedObject]) -> Map (Node, Node, CFGEdge) (Set AccessTime)
 costsFor2 cacheSize (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
                                                  (n, σes) <- Map.assocs es,
-                                                 (cache, e, (n', cache')) <- Set.toList σes,
+                                                 (cache, (e,_), (n', cache')) <- Set.toList σes,
                                                  (_,fullState'@(_,time)) <- cacheTimeStepFor cacheSize e (cache, 0)
                       ]
 
@@ -511,12 +514,12 @@ cacheCostDecisionGraphFor cacheSize g csGraph = (
                 (left,  mid) = splitAt  totalnewSplit                 tmp
 
 cacheCostDecisionGraph :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
-cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g csGraph
+cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g $ emap fst $ csGraph
   where csGraph = cacheStateGraph cacheSize g initialAbstractCacheState n0
 
 
 
-cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv CFGEdge
+cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv (CFGEdge, [AssumedConcreteCachedObject])
 cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muIsDependent = muIsDependent,
       muMerge = True,
@@ -538,7 +541,7 @@ csdGraphFromMergeDirectFor :: forall gr a a'. (DynGraph gr) =>
   gr CFGNode CFGEdge ->
   Node ->
   Node ->
-  gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
+  gr (Node, Set AbstractMicroArchitecturalGraphNode) (CFGEdge, [AssumedConcreteCachedObject])
 csdGraphFromMergeDirectFor cacheSize = muGraphFromMergeDirectFor (cacheAbstraction cacheSize)
 
 

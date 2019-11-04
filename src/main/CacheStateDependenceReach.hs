@@ -139,7 +139,9 @@ csd''''Of3 cacheSize graph n0 =  invert'' $
    ]
   where cacheState csGraph y' = fmap fst $ fst $ cs
           where Just (_,cs) = lab csGraph y'
-        (cs, es)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+        (cs, es0)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+        es = fmap (Set.map f) es0
+          where f (s, (e,_), (n, s')) = (s, e, (n, s'))
 
 csLeq = Nothing
 
@@ -176,7 +178,9 @@ csd''''Of4 cacheSize graph n0 =  invert'' $
    ]
   where cacheState csGraph y' = fmap fst $ fst $ cs
           where Just (_,cs) = lab csGraph y'
-        (cs, es)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+        (cs, es0)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+        es = fmap (Set.map f) es0
+          where f (s, (e,_), (n, s')) = (s, e, (n, s'))
 
 
 accessReachableFrom :: Graph gr => gr CFGNode CFGEdge -> Map Node (Set Name)
@@ -190,7 +194,10 @@ csGraphFromMergeFor cacheSize graph n0 m = merged csGraph' equivs
     where (equivs, csGraph') = mergeFromFor cacheSize graph n0 m
 
 mergeFromFor cacheSize graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
-    where (cs, es)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+    where (cs, es0)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+          es = fmap (Set.map f) es0
+            where f (s, (e,_), (n, s')) = (s, e, (n, s'))
+
 
           vars  = head $ List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars]
           graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m
@@ -227,7 +234,10 @@ csdMergeOf cacheSize graph n0 =  invert'' $
       let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraphM'',
       let ys = Set.fromList [ y | y <- nodes csGraphM'', idom'' ! y == Nothing]
    ]
-  where (cs, es)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+  where (cs, es0)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
+        es = fmap (Set.map f) es0
+          where f (s, (e,_), (n, s')) = (s, e, (n, s'))
+
         csGraph = stateGraphForSets (cs, es) :: gr (Node, AbstractCacheState) CFGEdge
         costs = costsFor cacheSize csGraph
         mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)

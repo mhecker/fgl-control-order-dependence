@@ -508,45 +508,45 @@ lift :: (Monad m, MonadTrans t) => m a -> t m a
 lift (cacheAwareLRUevalB bf) :: StateT FullState (State FullState) Val
 -}
 
-cacheStepForState :: CacheSize -> CFGEdge -> StateT FullState [] FullState
-cacheStepForState cacheSize (Guard b bf) = do
+cacheStepForState :: CacheSize -> CFGEdge -> StateT FullState [] (CFGEdge, FullState)
+cacheStepForState cacheSize e@(Guard b bf) = do
         bVal <- cacheAwareLRUEvalB cacheSize bf
         σ@(normal, cache, time) <- get
         let σ' = (normal, cache, time + guardTime)
-        if (b == bVal) then return σ' else lift []
-cacheStepForState cacheSize (Assign x vf) = do
+        if (b == bVal) then return (e,σ') else lift []
+cacheStepForState cacheSize e@(Assign x vf) = do
         xVal <- cacheAwareLRUEvalV cacheSize vf
         cacheAwareWriteLRUState cacheSize x xVal
         σ' <- get
-        return σ'
-cacheStepForState cacheSize (AssignArray a ix vf) = do
+        return (e,σ')
+cacheStepForState cacheSize e@(AssignArray a ix vf) = do
         vVal <- cacheAwareLRUEvalV cacheSize vf
         iVal <- cacheAwareLRUEvalV cacheSize ix
         cacheAwareArrayWriteLRUState cacheSize a (arrayIndex iVal) vVal
         σ' <- get
-        return σ'
+        return (e,σ')
 cacheStepForState cacheSize e@(Init _ _) = do
         (normal@(σ, tlσ,()), cache, time) <- get
         let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
         let normal' = (σ', tlσ', ())
-        return (normal', cache, time + initTime)
+        return (e, (normal', cache, time + initTime))
 cacheStepForState cacheSize e@(InitArray _ _) = do
         (normal@(σ, tlσ,()), cache, time) <- get
         let [(σ', tlσ', _)] = stepFor e (σ, tlσ, undefined)
         let normal' = (σ', tlσ', ())
-        return (normal', cache, time + initTime)
-cacheStepForState cacheSize NoOp = do
+        return (e,(normal', cache, time + initTime))
+cacheStepForState cacheSize e@NoOp = do
         σ@(normal,cache,time) <- get
         let σ' = (normal, cache, time + noOpTime)
         put σ'
-        return σ'
+        return (e,σ')
 cacheStepForState cacheSize (Read  _ _) = undefined
 cacheStepForState cacheSize (Print _ _) = undefined
 cacheStepForState cacheSize (Spawn    ) = undefined
 cacheStepForState cacheSize (Call     ) = undefined
 cacheStepForState cacheSize (Return   ) = undefined
 
-cacheStepFor ::  CacheSize -> AbstractSemantic FullState
+cacheStepFor ::  CacheSize -> AbstractSemantic FullState CFGEdge
 cacheStepFor cacheSize e σ = evalStateT (cacheStepForState cacheSize e) σ
 
 
@@ -561,7 +561,7 @@ cacheExecution cacheSize g σ0 n0 = run σ0 n0
                     ts -> ts
         try σ@(_,_,time) n = do
                     (n', e) <- lsuc g n
-                    σ' <- cacheStepFor cacheSize e σ
+                    (_,σ') <- cacheStepFor cacheSize e σ
                     trace0 <- run σ' n'
                     return $ (n, time) : trace0
 
@@ -573,7 +573,7 @@ cacheExecutionLimit cacheSize limit g σ0 n0 = run σ0 n0 0
                     ts -> ts
         try σ@(_,_,time) n i = do
                     (n', e) <- lsuc g n
-                    σ' <- cacheStepFor cacheSize e σ
+                    (_,σ') <- cacheStepFor cacheSize e σ
                     trace0 <- run σ' n' (i+1)
                     return $ (n, time) : trace0
 

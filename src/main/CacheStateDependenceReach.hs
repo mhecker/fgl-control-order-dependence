@@ -84,7 +84,7 @@ nextReachable csGraph = (㎲⊒) init f
 
 
 
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState -> Map Node (Set Name) -> gr (Node, AbstractCacheStateReach) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge -> Map Node (Set Name) -> gr (Node, AbstractCacheStateReach) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es', (cache, e, c') <- Set.toList cacheEdges ]
   where cs' =  Map.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
           where f n s = α (reach !! n) s
@@ -98,7 +98,7 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach = mkG
         (!!) m x = Map.findWithDefault Set.empty x m
 
 
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState -> Map Node (Set Name) -> Node -> gr (Node, AbstractCacheStateReach) CFGEdge
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge -> Map Node (Set Name) -> Node -> gr (Node, AbstractCacheStateReach) CFGEdge
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es', (cache, e, c') <- Set.toList cacheEdges ]
   where cs' =  Map.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
           where f n s = α (reach !! n) n s

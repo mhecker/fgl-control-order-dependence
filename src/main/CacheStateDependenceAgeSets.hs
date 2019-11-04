@@ -374,58 +374,59 @@ cacheTimeLRUEvalV cacheSize (AssertRange min max x) = do
 
 
 
-cacheTimeStepForState :: CacheSize -> CFGEdge -> StateT AbstractCacheTimeState [] AbstractCacheTimeState
-cacheTimeStepForState cacheSize (Guard b bf) = do
+cacheTimeStepForState :: CacheSize -> CFGEdge -> StateT AbstractCacheTimeState [] (CFGEdge, AbstractCacheTimeState)
+cacheTimeStepForState cacheSize e@(Guard b bf) = do
         cacheTimeLRUEvalB cacheSize bf
         (cache, time) <- get
-        return (cache, time + guardTime)
-cacheTimeStepForState cacheSize (Assign x vf) = do
+        return (e, (cache, time + guardTime))
+cacheTimeStepForState cacheSize e@(Assign x vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeWriteLRUState cacheSize x
         σ' <- get
-        return σ'
+        return (e, σ')
 {- special case for constants -}
-cacheTimeStepForState cacheSize (AssignArray a ix@(Val i) vf) = do
+cacheTimeStepForState cacheSize e@(AssignArray a ix@(Val i) vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize ix -- does nothing
         cacheTimeArrayWriteLRUState cacheSize a (arrayIndex i)
         σ' <- get
-        return σ'
+        return (e, σ')
 {- special case for assertions -}
-cacheTimeStepForState cacheSize (AssignArray a ix@((AssertRange min max i)) vf) = do
+cacheTimeStepForState cacheSize e@(AssignArray a ix@((AssertRange min max i)) vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize i
         case alignedIndicesFor min max of
           [i]     -> cacheTimeArrayWriteLRUState             cacheSize a i
           indices -> cacheTimeArrayWriteUnknownIndexLRUState cacheSize a indices
         σ' <- get
-        return σ'
-cacheTimeStepForState cacheSize (AssignArray a ix vf) = do
+        return (e, σ')
+cacheTimeStepForState cacheSize e@(AssignArray a ix vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize ix
         cacheTimeArrayWriteUnknownIndexLRUState cacheSize a  alignedIndices
         σ' <- get
-        return σ'
-cacheTimeStepForState cacheSize (Init _ _ ) = do
+        return (e, σ')
+cacheTimeStepForState cacheSize e@(Init _ _ ) = do
         (cache, time) <- get
-        return (cache, time + initTime) 
-cacheTimeStepForState cacheSize (InitArray _ _ ) = do
+        return (e, (cache, time + initTime))
+cacheTimeStepForState cacheSize e@(InitArray _ _ ) = do
         (cache, time) <- get
-        return (cache, time + initTime) 
-cacheTimeStepForState cacheSize NoOp = do
+        return (e, (cache, time + initTime))
+cacheTimeStepForState cacheSize e@(NoOp) = do
         (cache, time) <- get
-        return (cache, time + noOpTime) 
+        return (e, (cache, time + noOpTime))
 cacheTimeStepForState cacheSize (Read  _ _) = undefined
 cacheTimeStepForState cacheSize (Print _ _) = undefined
 cacheTimeStepForState cacheSize (Spawn    ) = undefined
 cacheTimeStepForState cacheSize (Call     ) = undefined
 cacheTimeStepForState cacheSize (Return   ) = undefined
 
-cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState
+cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
 cacheTimeStepFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e) σ
 
-cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState
-cacheOnlyStepFor cacheSize e σ = fmap fst $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
+cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
+cacheOnlyStepFor cacheSize e σ = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
+  where first (e, σ) = (e, fst σ)
 
 
 csLeq = Nothing
@@ -439,14 +440,14 @@ costsFor cacheSize csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList
                                                  (n, (n0,cs)) <- labNodes csGraph,
                                                  (m, e) <- lsuc csGraph n,
                                                  let Just (m0,_) = lab csGraph m,
-                                                 fullState'@(_,time) <- cacheTimeStepFor cacheSize e (cs, 0)
+                                                 (_, fullState'@(_,time)) <- cacheTimeStepFor cacheSize e (cs, 0)
                       ]
 
-costsFor2 :: CacheSize -> CsGraph AbstractCacheState -> Map (Node, Node, CFGEdge) (Set AccessTime)
+costsFor2 :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
 costsFor2 cacheSize (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
                                                  (n, σes) <- Map.assocs es,
                                                  (cache, e, (n', cache')) <- Set.toList σes,
-                                                 fullState'@(_,time) <- cacheTimeStepFor cacheSize e (cache, 0)
+                                                 (_, fullState'@(_,time)) <- cacheTimeStepFor cacheSize e (cache, 0)
                       ]
 
 
@@ -541,7 +542,7 @@ cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g cs
 
 
 
-cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState ->  Node -> gr (Node, MergedCacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph2 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge ->  Node -> gr (Node, MergedCacheState) CFGEdge
 cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
   where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
 
@@ -598,7 +599,7 @@ csdGraphFromMergeDirectFor cacheSize = muGraphFromMergeDirectFor (cacheAbstracti
 
 
 
-cacheDataDep :: CacheSize -> CsGraph AbstractCacheState -> Map (Node, AbstractCacheState, CachedObject) (Set (Node, AbstractCacheState))
+cacheDataDep :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, AbstractCacheState, CachedObject) (Set (Node, AbstractCacheState))
 cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.fromList [ (n, cache') ]) ] | ((m, cache), deps) <- Map.assocs seesDef, ((n, cache'), co) <- Set.toList deps ]
   where seesDef :: Map (Node, AbstractCacheState) (Set ((Node, AbstractCacheState), CachedObject))
         seesDef = (㎲⊒) (Map.fromList [ ((m,cache), Set.empty) | (m, caches) <- Map.assocs cs, cache <- Set.toList caches ]) f
@@ -754,7 +755,7 @@ cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fr
 
                            
 
-cacheStateGraph'ForVarsAtMForGraph3 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState ->  Node -> gr (Node, AbstractCacheState) CFGEdge
+cacheStateGraph'ForVarsAtMForGraph3 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge ->  Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
   where result = subgraph (rdfs [ m | (m, (m',_)) <- labNodes merged, m' == mm ] merged) merged
 
@@ -783,7 +784,7 @@ csdFromDataDep cacheSize graph n0 = traceShow (csGraphSize csGraph) $
 
 
 
-cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState ->  gr (Node, AbstractCacheState) CFGEdge -> Node -> Set Node
+cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge -> Node -> Set Node
 cacheDataDepSlice cacheSize csGraph csGraphG m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
   where ddeps = cacheDataDepGWork cacheSize csGraphG
 

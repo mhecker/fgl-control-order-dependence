@@ -61,10 +61,11 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, reachable)
 import Data.Graph.Inductive.Query.Dominators (iDom)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..), runInput, observable, allChoices, isLowTimingEquivalent)
 
-import IRLSOD(Name(..), isGlobalName, globalEmpty, use, def)
+import IRLSOD(Name(..), CFGEdge, isGlobalName, globalEmpty, use, def)
 
 import Program (Program, tcfg)
 import Program.Defaults
+import Program.For (compileAllToProgram)
 
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannelFor)
 import Program.Properties.Analysis
@@ -75,7 +76,7 @@ import Execution (allFinishedExecutionTraces, someFinishedAnnotatedExecutionTrac
 import Program.Examples
 import Program.Analysis hiding (timing)
 import Program.CDom
-import Program.Generator (toProgram, GeneratedProgram, SimpleCFG(..), toProgramIntra)
+import Program.Generator (toProgram, GeneratedProgram, SimpleCFG(..), toProgramIntra, toCodeSimpleWithArrays)
 import Data.Graph.Inductive.Arbitrary
 
 import Data.Graph.Inductive (Node, subgraph, newNodes)
@@ -123,11 +124,12 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 
 import Program (entryOf, procedureOf, mainThread)
-import MicroArchitecturalDependence (stateSets)
+import MicroArchitecturalDependence (MicroArchitecturalAbstraction(..), stateSets, csGraphSize, stateGraphForSets)
 import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
-import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor)
+import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction)
 import qualified CacheStateDependenceReach     as Reach     (csdMergeOf)
-import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf)
+import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf, cacheAbstraction)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep)
 import CacheSlice (cacheTimingSliceImprecise)
 
 
@@ -167,8 +169,8 @@ dodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup 
 wod        = defaultMain                               $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 wodX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "wod"       [ mkTest [wodTests], mkProp [wodProps]]
 
-cache        = defaultMain                               $ expectFail $ testGroup "cache"       [ mkTest [cacheTests]]
-cacheX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "cache"       [ mkTest [cacheTests]]
+cache        = defaultMain                               $ expectFail $ testGroup "cache"       [ mkTest [cacheTests], mkProp [cacheProps]]
+cacheX       = defaultMainWithIngredients [antXMLRunner] $ expectFail $ testGroup "cache"       [ mkTest [cacheTests], mkProp [cacheProps]]
 
 
 long        = defaultMain                               $ expectFail $ testGroup "long"     [ mkTest [longTests], mkProp [longProps]]
@@ -184,7 +186,7 @@ tests = testGroup "Tests" [unitTests, properties]
 
 
 properties :: TestTree
-properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps, timingDepProps, insensitiveDomProps ]
+properties = testGroup "Properties" [ timingClassificationDomPathsProps, giffhornProps, cdomProps, cdomCdomProps, balancedParanthesesProps, soundnessProps, timingDepProps, insensitiveDomProps, cacheProps ]
   where missing = [longProps]
 unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [ timingClassificationDomPathsTests, giffhornTests, cdomTests, cdomCdomTests, balancedParanthesesTests, soundnessTests, precisionCounterExampleTests, cacheTests ]
@@ -962,6 +964,41 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 
 propsCacheSize = 4
+
+cacheProps = localOption (QuickCheckTests 1200) $ testGroup "(concerning cache timing)" $
+  [       testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDep"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   =         csdMergeDirectOf propsCacheSize g n0
+                        csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
+                    in  csdM ⊑ csdMAS
+  ] ++
+  [       testPropertySized 25 "imprecise csGraphs are smaller than precise"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        g = tcfg pr
+                        mu =              cacheAbstraction propsCacheSize
+                        csGraph@(cs, es) =          stateSets (muStepFor mu   ) (muLeq mu   ) g (muInitialState mu   ) n0
+                        csGraphG    = (stateGraphForSets csGraph    :: Gr (Node, AbstractCacheState) CFGEdge)
+
+                        muImp = Imprecise.cacheAbstraction propsCacheSize
+                        csGraphImp@(csImp, esImp) = stateSets (muStepFor muImp) (muLeq muImp) g (muInitialState muImp) n0
+                        csGraphImpG = (stateGraphForSets csGraphImp :: Gr (Node, AbstractCacheState) CFGEdge)
+                    in  csGraphSize csGraph >= csGraphSize csGraphImp
+  ]
+  ++
+  []
+
 
 cacheTests = testGroup "(concerning cache timing)" $
   [ testCase ("csdImprecise is sound for " ++ exampleName ) $ isSound 42 17 43 18 p @? ""

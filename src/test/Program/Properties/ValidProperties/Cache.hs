@@ -112,6 +112,17 @@ cacheProps = testGroup "(concerning cache timing)" [
                         csdM  = csdMergeOf propsCacheSize g n0
                         csd'4 = csd''''Of4 propsCacheSize g n0
                     in  csdM ⊑ csd'4,
+    testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdMergeDirectOf"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   =         csdMergeDirectOf propsCacheSize g n0
+                        csdMAS = AgeSets.csdMergeDirectOf propsCacheSize g n0
+                    in  csdM ⊑ csdMAS,
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr

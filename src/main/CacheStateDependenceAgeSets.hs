@@ -565,7 +565,7 @@ cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
 
 
 
-cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
+cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv CFGEdge
 cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muIsDependent = muIsDependent,
       muMerge = False,

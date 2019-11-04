@@ -74,7 +74,7 @@ instance (SimpleShow a, SimpleShow a') => SimpleShow (MergedMicroState a a') whe
   simpleShow (Unmerged a) = simpleShow a
   simpleShow (Merged a')  = simpleShow a'
 
-data MicroArchitecturalAbstraction a a' = MicroArchitecturalAbstraction {
+data MicroArchitecturalAbstraction a a' e = MicroArchitecturalAbstraction {
     muIsDependent :: forall gr. DynGraph gr =>
          gr CFGNode CFGEdge
       -> Set AbstractMicroArchitecturalGraphNode
@@ -84,7 +84,7 @@ data MicroArchitecturalAbstraction a a' = MicroArchitecturalAbstraction {
       -> MergedMicroState a a'
       -> Bool,
     muMerge :: Bool,
-    muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> CsGraph a -> Node -> [gr (Node, MergedMicroState a a' ) CFGEdge],
+    muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> CsGraph a -> Node -> [gr (Node, MergedMicroState a a' ) e],
     muInitialState :: a,
     muStepFor :: AbstractSemantic a,
     muLeq :: Maybe (AbstractLeq a),
@@ -162,7 +162,7 @@ stateGraph step leq g σ0 n0 = stateGraphForSets (cs, es)
   where (cs, es) = stateSets step leq g σ0 n0
 
 
-merged :: (Graph gr) => gr (Node, s) CFGEdge ->  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
+merged :: (Graph gr, Ord e) => gr (Node, s) e ->  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) e
 merged csGraph' equivs =  mkGraph nodes' edges
   where edges =  Set.toList $ Set.fromList $ fmap f $ (labEdges csGraph')
           where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
@@ -183,7 +183,7 @@ merged csGraph' equivs =  mkGraph nodes' edges
 
 
 
-mergeFromSlow ::  (DynGraph gr) => gr CFGNode CFGEdge -> gr (Node, s) CFGEdge -> Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) -> Set AbstractMicroArchitecturalGraphNode -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
+mergeFromSlow ::  (DynGraph gr, Ord e) => gr CFGNode CFGEdge -> gr (Node, s) e -> Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) -> Set AbstractMicroArchitecturalGraphNode -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
 mergeFromSlow graph csGraph idom roots  =  (𝝂) init f 
   where 
         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
@@ -231,9 +231,9 @@ mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  
 
 
 
-mergeFromForEdgeToSuccessor ::  (DynGraph gr) =>
+mergeFromForEdgeToSuccessor ::  (DynGraph gr, Ord e) =>
   gr CFGNode CFGEdge ->
-  gr (Node, s) CFGEdge ->
+  gr (Node, s) e ->
   Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
   Set AbstractMicroArchitecturalGraphNode ->
   Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
@@ -300,13 +300,14 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFr
 csGraphSize :: CsGraph s -> Int
 csGraphSize (cs, es) = Map.fold (\σs k -> Set.size σs + k) 0 cs
 
-muMergeDirectOf :: forall gr a a'. (DynGraph gr, Ord a, Show a) => MicroArchitecturalAbstraction a a' -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+muMergeDirectOf :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e) => MicroArchitecturalAbstraction a a' e -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muLeq, muStepFor, muCostsFor }) graph n0 = traceShow (csGraphSize csGraph) $ invert'' $
   Map.fromList [ (m, ns) | m <- nodes graph,
+      -- m == 31,
 #ifdef SKIP_INDEPENDENT_NODES_M
       mayBeCSDependent m,
 #endif
-      csGraph' <- (muGraph'For graph csGraph m ::  [gr (Node, MergedMicroState a a' ) CFGEdge]),
+      csGraph' <- (muGraph'For graph csGraph m ::  [gr (Node, MergedMicroState a a') e]),
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let y's  = [ y | (y, (n', csy)) <- labNodes csGraph', m == n' ],
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
@@ -325,22 +326,22 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muG
 #endif         
 
 
-muGraphFromMergeDirectFor :: forall gr a a'. (DynGraph gr, Ord a, Show a) =>
-  MicroArchitecturalAbstraction a a' ->
+muGraphFromMergeDirectFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e) =>
+  MicroArchitecturalAbstraction a a' e ->
   gr CFGNode CFGEdge ->
   Node ->
   Node ->
-  gr (Node, Set AbstractMicroArchitecturalGraphNode) CFGEdge
+  gr (Node, Set AbstractMicroArchitecturalGraphNode) e
 muGraphFromMergeDirectFor mu graph n0 m = merged muGraph' equivs
     where (equivs, muGraph') = mergeDirectFromFor mu graph n0 m
 
-mergeDirectFromFor :: forall gr a a'. (DynGraph gr, Ord a, Show a) =>
-  MicroArchitecturalAbstraction a a' ->
+mergeDirectFromFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e) =>
+  MicroArchitecturalAbstraction a a' e ->
   gr CFGNode CFGEdge ->
   Node ->
   Node ->
   (Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)),
-   gr (Node, MergedMicroState a a') CFGEdge
+   gr (Node, MergedMicroState a a') e
   )
 mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muLeq, muStepFor, muCostsFor }) graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
   where   csGraph@(cs, es) = stateSets muStepFor muLeq graph muInitialState n0

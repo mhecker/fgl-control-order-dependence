@@ -516,7 +516,7 @@ cacheCostDecisionGraph cacheSize g n0 = cacheCostDecisionGraphFor cacheSize g cs
 
 
 
-cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv 
+cacheAbstraction :: CacheSize -> MicroArchitecturalAbstraction AbstractCacheState AbstractCacheStateTimeEquiv CFGEdge
 cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muIsDependent = muIsDependent,
       muMerge = True,

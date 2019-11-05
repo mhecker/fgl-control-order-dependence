@@ -27,13 +27,13 @@ import Util(sampleFrom, invert'', moreSeeds)
 
 import Program.Properties.Util
 import Program (Program, tcfg, entryOf, exitOf, procedureOf, mainThread, observability)
-import Program.For (compileAllToProgram, For(..))
+import Program.For (compileAllToProgram, For(..), twoAddressCode)
 import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
 import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_main_ct, br_aes_small_cbcenc_main_ct_precache, mainInput, for2Program)
 
 import IRLSOD(CFGNode, CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
 import MicroArchitecturalDependence (stateSets, csGraphSize)
-import CacheExecution(initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
+import CacheExecution(initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
 import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep)

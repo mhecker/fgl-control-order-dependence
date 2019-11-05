@@ -65,7 +65,7 @@ import IRLSOD(Name(..), CFGEdge, isGlobalName, globalEmpty, use, def)
 
 import Program (Program, tcfg)
 import Program.Defaults
-import Program.For (compileAllToProgram)
+import Program.For (compileAllToProgram, twoAddressCode)
 
 import Program.Typing.FlexibleSchedulerIndependentChannels (isSecureFlexibleSchedulerIndependentChannelFor)
 import Program.Properties.Analysis
@@ -125,7 +125,7 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 
 import Program (entryOf, procedureOf, mainThread)
 import MicroArchitecturalDependence (MicroArchitecturalAbstraction(..), stateSets, csGraphSize, stateGraphForSets)
-import CacheExecution(CachedObject, initialCacheState, CacheSize, twoAddressCode, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
+import CacheExecution(CachedObject, initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction)
 import qualified CacheStateDependenceReach     as Reach     (csdMergeOf)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf, cacheAbstraction)

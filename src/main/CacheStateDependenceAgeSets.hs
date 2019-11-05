@@ -768,7 +768,8 @@ cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
 
         α :: (Node, AbstractCacheState) -> [ (Node, AbstractCacheState) ]
         α cs@(n, cache)
-            | n == mm = [  (n, fmap (Set.map (liftM (const 0))) $ restrict cache vars) ]
+            | n == mm ∧ (∀) vars (isConst cache) = [ (n, fmap (Set.map (liftM (const 0))) $ restrict cache vars) ]
+            | n == mm                            = [ (n,                                             cache     ) ]
             | otherwise = [ cs ]
 
 

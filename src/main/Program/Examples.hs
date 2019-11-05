@@ -3501,6 +3501,25 @@ exampleInteresingAgeSets6 = compileAllToProgram a b'
         b' = fmap twoAddressCode b
         generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (If (Leq (Val 127) (Neg (Var (Global "y")))) (ForC 2 (ForV (Global "z") (Seq (Seq (AssArr (Array "arrC") (Val 128) (Neg (Var (Global "z")))) (Ass (Global "c") (Plus (Var (Global "h")) (Var (Global "c"))))) (ForV (Global "x") (AssArr (Array "arrC") (Times (Var (Global "c")) (ArrayRead (Array "arrA") (Times (Var (Global "h")) (Var (Global "z"))))) (Val 127)))))) (ForV (Global "x") (Seq (Seq (AssArr (Array "arrB") (Plus (Var (Global "h")) (Var (Global "z"))) (Val 131)) (AssArr (Array "arrB") (Plus (Var (Global "x")) (Var (Global "b"))) (Plus (Var (Global "y")) (Var (Global "h"))))) (ForV (Global "y") (If (Leq (Val 127) (Val 136)) Skip Skip)))))) undefined undefined undefined)])
 
+exampleInteresingAgeSets7 :: Program Gr
+exampleInteresingAgeSets7 = compileAllToProgram a b'
+  where (a,b) = toCodeSimpleWithArrays generated
+        b' = fmap twoAddressCode b
+        generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (Seq (Seq (ForC 1 (Seq (Ass (Global "x") (Neg (Var (Global "x")))) (AssArr (Array "arrC") (Neg (Var (Global "b"))) (Neg (Var (Global "d")))))) (If (Leq (Val 127) (Val 131)) Skip (AssArr (Array "arrC") (Plus (Var (Global "c")) (Var (Global "c"))) (Val 131)))) (ForC 1 (Seq (Seq (AssArr (Array "arrC") (Val 136) (Plus (ArrayRead (Array "arrA") (Val 127)) (ArrayRead (Array "arrB") (Val 126)))) (AssArr (Array "arrC") (Times (ArrayRead (Array "arrA") (Times (ArrayRead (Array "arrB") (Val 136)) (ArrayRead (Array "arrC") (Times (Var (Global "y")) (ArrayRead (Array "arrA") (Neg (Var (Global "d")))))))) (Var (Global "b"))) (Times (Var (Global "b")) (Var (Global "c"))))) (ForC 1 (If (Leq (Val 127) (Neg (Var (Global "y")))) (Ass (Global "y") (Val 131)) (AssArr (Array "arrC") (Val 131) (Val 136)))))))) undefined undefined undefined)])
+
+
+exampleInteresingAgeSets8 :: Program Gr
+exampleInteresingAgeSets8 = compileAllToProgram a b'
+  where (a,b) = toCodeSimpleWithArrays generated
+        b' = fmap twoAddressCode b
+        generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (Seq (ForC 1 (Seq (Seq Skip Skip) (ForV (Global "e") (ForC 2 (AssArr (Array "arrB") (Neg (ArrayRead (Array "arrA") (Neg (ArrayRead (Array "arrB") (Plus (ArrayRead (Array "arrB") (Val 128)) (Var (Global "b"))))))) (Val 131)))))) (ForC 1 (Seq (Seq Skip (AssArr (Array "arrC") (Times (Var (Global "d")) (Var (Global "y"))) (Plus (Var (Global "d")) (Var (Global "h"))))) (If (Leq (Val 127) (Plus (Var (Global "y")) (Var (Global "y")))) (Ass (Global "y") (Neg (ArrayRead (Array "arrC") (Neg (Var (Global "e")))))) (Ass (Global "h") (Plus (Var (Global "h")) (Var (Global "y"))))))))) undefined undefined undefined)])
+
+exampleInteresingAgeSets9 :: Program Gr
+exampleInteresingAgeSets9 = compileAllToProgram a b'
+  where (a,b) = toCodeSimpleWithArrays generated
+        b' = fmap twoAddressCode b
+        generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (Seq (If (Leq (Val 127) (Val 128)) (If (Leq (Val 127) (Plus (Var (Global "y")) (Var (Global "d")))) Skip (AssArr (Array "arrA") (Val 128) (Val 136))) (ForV (Global "e") (If (Leq (Val 127) (Val 126)) (Ass (Global "z") (Neg (ArrayRead (Array "arrC") (Neg (ArrayRead (Array "arrA") (Plus (ArrayRead (Array "arrC") (Val 126)) (Var (Global "z")))))))) (Ass (Global "b") (Times (ArrayRead (Array "arrA") (Neg (Var (Global "z")))) (Var (Global "e"))))))) (Seq (Seq (Ass (Global "e") (Val 126)) Skip) (Seq (AssArr (Array "arrC") (Val 127) (Neg (Var (Global "z")))) Skip)))) undefined undefined undefined)])
+
 
 
 exampleDomPaths :: Program Gr

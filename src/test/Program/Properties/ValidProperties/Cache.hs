@@ -61,7 +61,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         
                         (cs, es)    = stateSets (cacheOnlyStepFor propsCacheSize) csLeq g initialAbstractCacheState n0
                         
-                        csGraph     = cacheStateGraph propsCacheSize g initialAbstractCacheState n0
+                        csGraph     = emap fst $ cacheStateGraph propsCacheSize g initialAbstractCacheState n0
                         costs       = costsFor propsCacheSize csGraph
                         nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes g]
 

@@ -622,7 +622,7 @@ cacheDataDep :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, Ab
 cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.fromList [ (n, cache') ]) ] | ((m, cache), deps) <- Map.assocs seesDef, ((n, cache'), co) <- Set.toList deps ]
   where seesDef :: Map (Node, AbstractCacheState) (Set ((Node, AbstractCacheState), CachedObject))
         seesDef = (㎲⊒) (Map.fromList [ ((m,cache), Set.empty) | (m, caches) <- Map.assocs cs, cache <- Set.toList caches ]) f
-          where f sees =  (∐) [ Map.fromList [ ((m, cache'), (killedFor cache' $ transDefs cacheSize n e cache cache' (sees ! (n, cache)) (defs (n, cache, cache'))) ) ]
+          where f sees =  (∐) [ Map.fromList [ ((m, cache'), (killedFor cache' $ transDefs cacheSize n e cache cache' (sees ! (n, cache)) (defs (n, e, cache, cache'))) ) ]
                                       | (n, caches) <- Map.assocs cs, cache <- Set.toList caches, (cache_, e, (m, cache' )) <- Set.toList $ es ! n, cache == cache_ ]
 
         defs = defsFor cacheSize id
@@ -636,7 +636,9 @@ killFor nodeFor  (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) 
                                                                   Nothing -> True 
                                                                   Just ages' -> ages == fresh
 -}
-killedFor cache' sees'  = Set.fromList [ (node, co)  | (node, co) <- Set.toList sees',
+killedFor cache' sees'  = -- traceShow "[::::::" $ traceShow result $ traceShow "::::::]" $
+    result
+  where result =Set.fromList [ (node, co)  | (node, co) <- Set.toList sees',
                                                                 let agesM' = Map.lookup co cache',
                                                                 case agesM' of
                                                                   Nothing -> False
@@ -661,8 +663,8 @@ defsFor nodeFor (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) |
                                                                   Just ages -> Set.size ages' > Set.size ages
                                             ]
 -}
-
-defsFor cacheSize nodeFor (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) | (co, ages) <- Map.assocs cache,
+{-
+defsFor cacheSize nodeFor (n, e, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) | (co, ages) <- Map.assocs cache,
                                                                 assert (not $ Set.null ages) True,
                                                                 assert (not $ ages == inf) True,
                                                                 let ages' = Map.findWithDefault inf co cache',
@@ -675,8 +677,65 @@ defsFor cacheSize nodeFor (n, cache, cache')   = Set.fromList [ (nodeFor (n, cac
                                                                 -- if n == 16 then traceShow (n, ages, ages') $ traceShow (pushedBack cacheSize ages) $ traceShow (readToFront ages) True else True,
                                                                 not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages]
                                             ]
+-}
+
+defsFor cacheSize nodeFor (n, e, cache, cache') =
+     require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+   $ assert ((List.null choices) → (Set.null result))
+   $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow "-------}" else id)
+   $ result 
+  where -- result Set.fromList [ (nodeFor (n, cache), co) | co <- Set.toList differing ]
+        -- unjoined  = Set.fromList [ cacheU | (_, cacheU) <- cacheOnlyStepsFor cacheSize e cache]
+        -- differing = Set.fromList [ co | cacheU <- Set.toList unjoined, (co, ages) <- Map.assocs cacheU,                                 Just ages /= Map.lookup co cache' ]
+        --           ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs cache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU ]
+
+        --           ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs cache, cacheS   <- selected ages cache,
+        --                                                                                            let cacheS' =   cacheOnlyStepFor  cacheSize e cacheS,
+        --                                                                                            (_, cacheSU) <- cacheOnlyStepsFor cacheSize e cacheS,
+        --                                                                                            differing
+{-
+        result = Set.fromList [ (nodeFor (n, cache), co) | (co0, ages) <- Map.assocs cache, cacheSelected  <- select cache co0 ages, co <- Set.toList $ differing cacheSelected ]
+        differing selectedCache = (if trace ∧ (case Map.lookup (CachedArrayRange (Array "arrC") 128) selectedCache of { Nothing -> True ; Just ages -> Set.size ages == 1 }) then 
+               traceShow ("aa ", selectedCache)
+               $ traceShow ("bb ", unjoined)
+               $ traceShow ("cc ", selectedCache')
+               $ traceShow ("dd ", result)  else id)
+            $ result
+          where unjoined             = Set.fromList [ cacheU | (_, cacheU) <- cacheOnlyStepsFor cacheSize e selectedCache]
+                [(_,selectedCache')] =                                        cacheOnlyStepFor  cacheSize e selectedCache
+                result = Set.fromList [ co | cacheU <- Set.toList unjoined, (co, ages) <- Map.assocs cacheU,                                         Just ages /= Map.lookup co selectedCache' ]
+                       ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs selectedCache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU         ]
+        select cache co0 ages =  [ cache'  | ma <- Set.toList ages, let cache' = case ma of { Nothing -> Map.delete co0 cache ; Just a -> Map.insert co0 (Set.singleton ma) cache } ]
+-}
+        result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cache, co <- Set.toList $ differing cacheSelected ]
+        differing selectedCache = (if trace ∧ (case Map.lookup (CachedArrayRange (Array "arrC") 128) selectedCache of { Nothing -> True ; Just ages -> Set.size ages == 1 }) then 
+               traceShow ("aa ", selectedCache)
+               $ traceShow ("bb ", unjoined)
+               $ traceShow ("cc ", selectedCache')
+               $ traceShow ("dd ", result)  else id)
+            $ result
+          where unjoined             = Set.fromList [ cacheU | (_, cacheU) <- cacheOnlyStepsFor cacheSize e selectedCache]
+                [(_,selectedCache')] =                                        cacheOnlyStepFor  cacheSize e selectedCache
+                result = Set.fromList [ co | cacheU <- Set.toList unjoined, (co, ages) <- Map.assocs cacheU,                                         Just ages /= Map.lookup co selectedCache' ]
+                       ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs selectedCache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU         ]
+        select cache co0 ages =  [ cache'  | ma <- Set.toList ages, let cache' = case ma of { Nothing -> Map.delete co0 cache ; Just a -> Map.insert co0 (Set.singleton ma) cache } ]
+
+        concrete cache = concr (Set.fromList [0..cacheSize - 1]) cache
+          where concr available cache
+                    | Map.null cache = return cache
+                    | otherwise = do
+                        ma <- Set.toList ages
+                        case ma of
+                          Nothing ->   concr               available  cache0
+                          Just a -> do
+                            cache0' <- concr (Set.delete a available) cache0
+                            return $ Map.insert co (Set.singleton ma) cache0'
+                  where ((co, ages), cache0) = Map.deleteFindMin cache
 
 
+        choices = makesChoice e cache
+
+        trace = False ∧ n == 20
 
 pushedBack cacheSize = Set.map pb
   where pb Nothing = Nothing
@@ -688,7 +747,7 @@ readToFront _ = fresh
 
 
 transDefs cacheSize n e cache cache' seesN defsN =
-            -- (if n `elem` [14,16,17] then traceShow "=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) else id) $
+            (if n `elem` [52] then traceShow "[=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) $ traceShow "==========]" else id) $
             seesN ∪ fromSeen ∪ fromDefs 
           where fromSeen  =  -- Set.fromList [ (n', co)  | (n, co) <- Set.toList defsN, (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co' ]
                              Set.fromList [ (n', co)  | co <- Map.keys cache ++ Map.keys cache', let ages = Map.findWithDefault inf co cache, let ages' = Map.findWithDefault inf co cache', not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages], (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co']
@@ -740,7 +799,7 @@ cacheDataDepG :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge 
 cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromList [ yN ]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Set.toList deps ]
   where seesDef :: Map Node (Set (Node, CachedObject))
         seesDef = (㎲⊒) (Map.fromList [ (y, Set.empty) | y <- nodes csGraphG ]) f
-          where f sees =  (∐) [ Map.fromList [ (yM, (killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, cache, cache'))) ) ]
+          where f sees =  (∐) [ Map.fromList [ (yM, (killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, e, cache, cache'))) ) ]
                                       | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]
 
 {-
@@ -761,7 +820,7 @@ cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fr
                 seesM  = sees ! yM
                 Just (m, cache') = lab csGraphG yM
 
-                seesM' = (∐) [(killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, cache, cache')))  | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
+                seesM' = (∐) [(killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, e, cache, cache')))  | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
                 changed = seesM /= seesM'
 
 {-

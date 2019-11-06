@@ -64,9 +64,6 @@ import CacheExecution (
 
 import qualified CacheStateDependence as CSD (sameArrayAs, cachedObjectsFor, writtenCachedObjectsFor)
 
-import qualified CacheStateDependenceAgeSetsJoin as Join (cacheOnlyStepFor, cacheTimeStepFor)
-
-
 import Program (Program(..))
 import Program.Generator (toCodeSimple)
 import Program.For (compileAllToProgram, For(..), subCommands)
@@ -159,6 +156,7 @@ unknownCache' cacheSize arr indices cache = foldr ins cache' [CachedArrayRange a
                 f (Just ages) = Just $ Set.insert freshTime ages
 -}
 
+{-
 unknownCache' :: CacheSize -> Array -> [Index] -> AbstractCacheState -> AbstractCacheState
 unknownCache' cacheSize arr indices cache = clean $ foldr ins cache' [CachedArrayRange arr i | i <- indices]
   where cache' = (∐) [ incAll cacheSize (CachedArrayRange arr i) cache | i <- indices ]
@@ -180,7 +178,7 @@ unknownTimes hit miss arr indices cache
         notincache cobj = case Map.lookup cobj cache of
           Nothing   -> True
           Just ages -> assert (not $ Set.null ages) $ assert (not $ ages == inf) $ False
-
+-}
 
 cacheTimeReadLRU :: CacheSize -> Var -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
 cacheTimeReadLRU cacheSize var cache = case var of
@@ -252,7 +250,7 @@ cacheTimeArrayWriteLRUState cacheSize arr ix = do
     return ()
 
 
-
+{-
 cacheTimeArrayReadUnknownIndexLRU :: CacheSize -> Array -> [Index] -> AbstractCacheState -> [(AbstractCacheState, AccessTime)]
 cacheTimeArrayReadUnknownIndexLRU cacheSize arr indices cache = case arr of
     Array       a -> assert (      isCachable $ ArrayName arr) $ liftM (cache',) times
@@ -279,7 +277,7 @@ cacheTimeArrayWriteUnknownIndexLRUState cacheSize arr indices = do
     (cache', accessTime) <- lift $ cacheTimeArrayWriteUnknownIndexLRU cacheSize arr indices cache
     put (cache', time + accessTime)
     return ()
-
+-}
 
 
 
@@ -317,13 +315,13 @@ cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(Val i)) = do
 {- special case for assertions -}
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(AssertRange min max i)) = do
   cacheTimeLRUEvalV cacheSize i
-  case alignedIndicesFor min max of
-    [i]     -> cacheTimeArrayReadLRUState             cacheSize a i
-    indices -> cacheTimeArrayReadUnknownIndexLRUState cacheSize a indices
+  i <- lift $ alignedIndicesFor min max
+  cacheTimeArrayReadLRUState cacheSize a i
   return ()
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix) = do
   cacheTimeLRUEvalV cacheSize ix
-  cacheTimeArrayReadUnknownIndexLRUState cacheSize a alignedIndices
+  i <- lift $ alignedIndices
+  cacheTimeArrayReadLRUState cacheSize a i
   return ()
 cacheTimeLRUEvalV cacheSize (Plus  x y) = do
   cacheTimeLRUEvalV cacheSize x
@@ -398,15 +396,15 @@ cacheTimeStepForState cacheSize e@(AssignArray a ix@(Val i) vf) = do
 cacheTimeStepForState cacheSize e@(AssignArray a ix@((AssertRange min max i)) vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize i
-        case alignedIndicesFor min max of
-          [i]     -> cacheTimeArrayWriteLRUState             cacheSize a i
-          indices -> cacheTimeArrayWriteUnknownIndexLRUState cacheSize a indices
+        i <- lift $ alignedIndicesFor min max
+        cacheTimeArrayWriteLRUState cacheSize a i
         σ' <- get
         return (e, σ')
 cacheTimeStepForState cacheSize e@(AssignArray a ix vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize ix
-        cacheTimeArrayWriteUnknownIndexLRUState cacheSize a  alignedIndices
+        i <- lift $ alignedIndices
+        cacheTimeArrayWriteLRUState cacheSize a i
         σ' <- get
         return (e, σ')
 cacheTimeStepForState cacheSize e@(Init _ _ ) = do
@@ -424,22 +422,31 @@ cacheTimeStepForState cacheSize (Spawn    ) = undefined
 cacheTimeStepForState cacheSize (Call     ) = undefined
 cacheTimeStepForState cacheSize (Return   ) = undefined
 
+cacheTimeStepsFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
+cacheTimeStepsFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e) σ
+
+cacheOnlyStepsFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
+cacheOnlyStepsFor cacheSize e σ = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
+  where first (e, σ) = (e, fst σ)
+
 cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
-cacheTimeStepFor cacheSize e σ = if (Set.fromList $ result) /= (Set.fromList $ Join.cacheTimeStepFor cacheSize e σ) then
-                                   error $ "cacheTimeStepFor: " ++ (show $ Set.fromList $ result) ++ " /= " ++ (show $ Set.fromList $ Join.cacheTimeStepFor cacheSize e σ) ++ "    for    " ++ (show (cacheSize, e, σ))
-                                 else
-                                   result 
-  where result = evalStateT (cacheTimeStepForState cacheSize e) σ
+cacheTimeStepFor cacheSize e σ = [ (e, (joined, time)) | (_, (_, time)) <- timed]
+  where timed  = cacheTimeStepsFor cacheSize e σ
+        joined = (∐) timed
+        (∐) l@((e, (cache, time)):xs) = foldr join cache xs
+          where join (e', (cache', time')) cache = assert (e' == e) (cache `joinNothingCache` cache')
 
 cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
-cacheOnlyStepFor cacheSize e σ = if (Set.fromList $ result) /= (Set.fromList $ Join.cacheOnlyStepFor cacheSize e σ) then
-                                   error $ "cacheOnlyStepFor: " ++ (show $ Set.fromList $ result) ++ " /= " ++ (show $ Set.fromList $ Join.cacheOnlyStepFor cacheSize e σ) ++ "    for    " ++ (show (cacheSize, e, σ))
-                                 else
-                                   result 
-  where result = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
-        first (e, σ) = (e, fst σ)
+cacheOnlyStepFor cacheSize e σ = [ (e, joined) ]
+  where untimed = cacheOnlyStepsFor cacheSize e σ
+        joined = (∐) untimed
+        (∐) l@((e,  cache       ):xs) = foldr join cache xs
+          where join (e',  cache'        ) cache = assert (e' == e) (cache `joinNothingCache` cache')
 
-
+joinNothingCache :: AbstractCacheState -> AbstractCacheState -> AbstractCacheState
+joinNothingCache cache cache' = left `Map.union` Map.intersectionWith (∪) cache cache' `Map.union` right
+  where left  = fmap (Set.insert infTime) $ Map.difference cache  cache'
+        right = fmap (Set.insert infTime) $ Map.difference cache' cache
 
 csLeq = Nothing
 

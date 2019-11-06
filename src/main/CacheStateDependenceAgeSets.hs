@@ -627,17 +627,7 @@ cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.
 
         defs = defsFor cacheSize id
 
-{-
-killFor nodeFor  (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co)  | (co, ages) <- Map.assocs cache,
-                                                                assert (not $ Set.null ages) True,
-                                                                assert (not $ ages == inf) True,
-                                                                let agesM' = Map.lookup co cache',
-                                                                case agesM' of
-                                                                  Nothing -> True 
-                                                                  Just ages' -> ages == fresh
--}
-killedFor cache' sees'  = -- traceShow "[::::::" $ traceShow result $ traceShow "::::::]" $
-    result
+killedFor cache' sees'  = result
   where result =Set.fromList [ (node, co)  | (node, co) <- Set.toList sees',
                                                                 let agesM' = Map.lookup co cache',
                                                                 case agesM' of
@@ -645,69 +635,12 @@ killedFor cache' sees'  = -- traceShow "[::::::" $ traceShow result $ traceShow 
                                                                   Just ages' -> not $ ages' == fresh
                                             ]
 
-{-
-defsFor nodeFor (n, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) | (co, ages) <- Map.assocs cache,
-                                                                assert (not $ Set.null ages) True,
-                                                                assert (not $ ages == inf) True,
-                                                                let agesM' = Map.lookup co cache',
-                                                                case agesM' of
-                                                                  Nothing -> False 
-                                                                  Just ages' -> Set.size ages' > Set.size ages
-                                            ]
-                          ∪ Set.fromList [ (nodeFor (n, cache), co) | (co, ages') <- Map.assocs cache',
-                                                                assert (not $ Set.null ages') True,
-                                                                assert (not $ ages' == inf) True,
-                                                                let agesM = Map.lookup co cache,
-                                                                case agesM of
-                                                                  Nothing -> ages' /= fresh
-                                                                  Just ages -> Set.size ages' > Set.size ages
-                                            ]
--}
-{-
-defsFor cacheSize nodeFor (n, e, cache, cache')   = Set.fromList [ (nodeFor (n, cache), co) | (co, ages) <- Map.assocs cache,
-                                                                assert (not $ Set.null ages) True,
-                                                                assert (not $ ages == inf) True,
-                                                                let ages' = Map.findWithDefault inf co cache',
-                                                                not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages]
-                                            ]
-                          ∪ Set.fromList [ (nodeFor (n, cache), co) | (co, ages') <- Map.assocs cache',
-                                                                assert (not $ Set.null ages') True,
-                                                                assert (not $ ages' == inf) True,
-                                                                let ages = Map.findWithDefault inf co cache,
-                                                                -- if n == 16 then traceShow (n, ages, ages') $ traceShow (pushedBack cacheSize ages) $ traceShow (readToFront ages) True else True,
-                                                                not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages]
-                                            ]
--}
-
 defsFor cacheSize nodeFor (n, e, cache, cache') =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    $ assert ((List.null choices) → (Set.null result))
-   $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow "-------}" else id)
+   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow "-------}" else id)
    $ result 
-  where -- result Set.fromList [ (nodeFor (n, cache), co) | co <- Set.toList differing ]
-        -- unjoined  = Set.fromList [ cacheU | (_, cacheU) <- cacheOnlyStepsFor cacheSize e cache]
-        -- differing = Set.fromList [ co | cacheU <- Set.toList unjoined, (co, ages) <- Map.assocs cacheU,                                 Just ages /= Map.lookup co cache' ]
-        --           ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs cache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU ]
-
-        --           ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs cache, cacheS   <- selected ages cache,
-        --                                                                                            let cacheS' =   cacheOnlyStepFor  cacheSize e cacheS,
-        --                                                                                            (_, cacheSU) <- cacheOnlyStepsFor cacheSize e cacheS,
-        --                                                                                            differing
-{-
-        result = Set.fromList [ (nodeFor (n, cache), co) | (co0, ages) <- Map.assocs cache, cacheSelected  <- select cache co0 ages, co <- Set.toList $ differing cacheSelected ]
-        differing selectedCache = (if trace ∧ (case Map.lookup (CachedArrayRange (Array "arrC") 128) selectedCache of { Nothing -> True ; Just ages -> Set.size ages == 1 }) then 
-               traceShow ("aa ", selectedCache)
-               $ traceShow ("bb ", unjoined)
-               $ traceShow ("cc ", selectedCache')
-               $ traceShow ("dd ", result)  else id)
-            $ result
-          where unjoined             = Set.fromList [ cacheU | (_, cacheU) <- cacheOnlyStepsFor cacheSize e selectedCache]
-                [(_,selectedCache')] =                                        cacheOnlyStepFor  cacheSize e selectedCache
-                result = Set.fromList [ co | cacheU <- Set.toList unjoined, (co, ages) <- Map.assocs cacheU,                                         Just ages /= Map.lookup co selectedCache' ]
-                       ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs selectedCache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU         ]
-        select cache co0 ages =  [ cache'  | ma <- Set.toList ages, let cache' = case ma of { Nothing -> Map.delete co0 cache ; Just a -> Map.insert co0 (Set.singleton ma) cache } ]
--}
-        result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cache, co <- Set.toList $ differing cacheSelected ]
+  where result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cache, co <- Set.toList $ differing cacheSelected ]
         differing selectedCache = (if trace ∧ (case Map.lookup (CachedArrayRange (Array "arrC") 128) selectedCache of { Nothing -> True ; Just ages -> Set.size ages == 1 }) then 
                traceShow ("aa ", selectedCache)
                $ traceShow ("bb ", unjoined)
@@ -747,7 +680,7 @@ readToFront _ = fresh
 
 
 transDefs cacheSize n e cache cache' seesN defsN =
-            (if n `elem` [52] then traceShow "[=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) $ traceShow "==========]" else id) $
+            -- (if n `elem` [52] then traceShow "[=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) $ traceShow "==========]" else id) $
             seesN ∪ fromSeen ∪ fromDefs 
           where fromSeen  =  -- Set.fromList [ (n', co)  | (n, co) <- Set.toList defsN, (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co' ]
                              Set.fromList [ (n', co)  | co <- Map.keys cache ++ Map.keys cache', let ages = Map.findWithDefault inf co cache, let ages' = Map.findWithDefault inf co cache', not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages], (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co']

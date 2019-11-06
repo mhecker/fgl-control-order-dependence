@@ -64,6 +64,9 @@ import CacheExecution (
 
 import qualified CacheStateDependence as CSD (sameArrayAs, cachedObjectsFor, writtenCachedObjectsFor)
 
+import qualified CacheStateDependenceAgeSetsJoin as Join (cacheOnlyStepFor, cacheTimeStepFor)
+
+
 import Program (Program(..))
 import Program.Generator (toCodeSimple)
 import Program.For (compileAllToProgram, For(..), subCommands)
@@ -422,11 +425,20 @@ cacheTimeStepForState cacheSize (Call     ) = undefined
 cacheTimeStepForState cacheSize (Return   ) = undefined
 
 cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
-cacheTimeStepFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e) σ
+cacheTimeStepFor cacheSize e σ = if (Set.fromList $ result) /= (Set.fromList $ Join.cacheTimeStepFor cacheSize e σ) then
+                                   error $ "cacheTimeStepFor: " ++ (show $ Set.fromList $ result) ++ " /= " ++ (show $ Set.fromList $ Join.cacheTimeStepFor cacheSize e σ) ++ "    for    " ++ (show (cacheSize, e, σ))
+                                 else
+                                   result 
+  where result = evalStateT (cacheTimeStepForState cacheSize e) σ
 
 cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
-cacheOnlyStepFor cacheSize e σ = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
-  where first (e, σ) = (e, fst σ)
+cacheOnlyStepFor cacheSize e σ = if (Set.fromList $ result) /= (Set.fromList $ Join.cacheOnlyStepFor cacheSize e σ) then
+                                   error $ "cacheOnlyStepFor: " ++ (show $ Set.fromList $ result) ++ " /= " ++ (show $ Set.fromList $ Join.cacheOnlyStepFor cacheSize e σ) ++ "    for    " ++ (show (cacheSize, e, σ))
+                                 else
+                                   result 
+  where result = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
+        first (e, σ) = (e, fst σ)
+
 
 
 csLeq = Nothing
@@ -716,7 +728,6 @@ makesChoice e cache = [ co | choices <- Set.toList $ useE e, not $ List.length c
 
 
 isConst cache co = case Map.lookup co cache of { Nothing -> True ; Just ages -> (Set.size ages == 1) ∧ (not $ infTime ∈ ages) }
-
 
 cacheDataDepG :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map (Node, CachedObject) (Set Node)
 cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromList [ yN ]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Set.toList deps ]

@@ -314,13 +314,13 @@ cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(Val i)) = do
 {- special case for assertions -}
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix@(AssertRange min max i)) = do
   cacheTimeLRUEvalV cacheSize i
-  case alignedIndicesFor min max of
-    [i]     -> cacheTimeArrayReadLRUState             cacheSize a i
-    indices -> cacheTimeArrayReadUnknownIndexLRUState cacheSize a indices
+  i <- lift $ alignedIndicesFor min max
+  cacheTimeArrayReadLRUState cacheSize a i
   return ()
 cacheTimeLRUEvalV cacheSize (ArrayRead a ix) = do
   cacheTimeLRUEvalV cacheSize ix
-  cacheTimeArrayReadUnknownIndexLRUState cacheSize a alignedIndices
+  i <- lift $ alignedIndices
+  cacheTimeArrayReadLRUState cacheSize a i
   return ()
 cacheTimeLRUEvalV cacheSize (Plus  x y) = do
   cacheTimeLRUEvalV cacheSize x
@@ -395,15 +395,15 @@ cacheTimeStepForState cacheSize e@(AssignArray a ix@(Val i) vf) = do
 cacheTimeStepForState cacheSize e@(AssignArray a ix@((AssertRange min max i)) vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize i
-        case alignedIndicesFor min max of
-          [i]     -> cacheTimeArrayWriteLRUState             cacheSize a i
-          indices -> cacheTimeArrayWriteUnknownIndexLRUState cacheSize a indices
+        i <- lift $ alignedIndicesFor min max
+        cacheTimeArrayWriteLRUState cacheSize a i
         σ' <- get
         return (e, σ')
 cacheTimeStepForState cacheSize e@(AssignArray a ix vf) = do
         cacheTimeLRUEvalV cacheSize vf
         cacheTimeLRUEvalV cacheSize ix
-        cacheTimeArrayWriteUnknownIndexLRUState cacheSize a  alignedIndices
+        i <- lift $ alignedIndices
+        cacheTimeArrayWriteLRUState cacheSize a i
         σ' <- get
         return (e, σ')
 cacheTimeStepForState cacheSize e@(Init _ _ ) = do
@@ -421,13 +421,31 @@ cacheTimeStepForState cacheSize (Spawn    ) = undefined
 cacheTimeStepForState cacheSize (Call     ) = undefined
 cacheTimeStepForState cacheSize (Return   ) = undefined
 
-cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
-cacheTimeStepFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e) σ
+cacheTimeStepsFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
+cacheTimeStepsFor cacheSize e σ = evalStateT (cacheTimeStepForState cacheSize e) σ
 
-cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
-cacheOnlyStepFor cacheSize e σ = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
+cacheOnlyStepsFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
+cacheOnlyStepsFor cacheSize e σ = fmap first $ evalStateT (cacheTimeStepForState cacheSize e) (σ, 0)
   where first (e, σ) = (e, fst σ)
 
+cacheTimeStepFor ::  CacheSize -> AbstractSemantic AbstractCacheTimeState CFGEdge
+cacheTimeStepFor cacheSize e σ = [ (e, (joined, time)) | (_, (_, time)) <- timed]
+  where timed  = cacheTimeStepsFor cacheSize e σ
+        joined = (∐) timed
+        (∐) l@((e, (cache, time)):xs) = foldr join cache xs
+          where join (e', (cache', time')) cache = assert (e' == e) (cache `joinNothingCache` cache')
+
+cacheOnlyStepFor ::  CacheSize -> AbstractSemantic AbstractCacheState CFGEdge
+cacheOnlyStepFor cacheSize e σ = [ (e, joined) ]
+  where untimed = cacheOnlyStepsFor cacheSize e σ
+        joined = (∐) untimed
+        (∐) l@((e,  cache       ):xs) = foldr join cache xs
+          where join (e',  cache'        ) cache = assert (e' == e) (cache `joinNothingCache` cache')
+
+joinNothingCache :: AbstractCacheState -> AbstractCacheState -> AbstractCacheState
+joinNothingCache cache cache' = left `Map.union` Map.intersectionWith (∪) cache cache' `Map.union` right
+  where left  = fmap (Set.insert infTime) $ Map.difference cache  cache'
+        right = fmap (Set.insert infTime) $ Map.difference cache' cache
 
 csLeq = Nothing
 

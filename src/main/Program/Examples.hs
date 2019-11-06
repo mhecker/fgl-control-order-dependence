@@ -3462,6 +3462,20 @@ exampleArrayArrayDataDep = toProgramIntra $ IntraGeneratedProgram
                      ) undefined undefined undefined)])
 
 
+exampleArrayNested :: Program Gr
+exampleArrayNested = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Skip
+               `Seq`  Ass (Global "l") (Val 0)
+               `Seq`  Ass (Global "h") (Val 255)
+               `Seq`  AssArr (Array "a") (Var $ Global "l") (Var $ Global "h")
+               `Seq`  AssArr (Array "b") (Var $ Global "h") (Var $ Global "l")
+               `Seq`  AssArr (Array "c") (ArrayRead (Array "b") (ArrayRead (Array "a") (Var $ Global "l"))) (ArrayRead (Array "c") (ArrayRead (Array "b") (Var $ Global "h")))
+               `Seq`  Skip
+                     ) undefined undefined undefined)])
+
+
 
 exampleInteresingAgeSets1 :: Program Gr
 exampleInteresingAgeSets1 = compileAllToProgram a b'

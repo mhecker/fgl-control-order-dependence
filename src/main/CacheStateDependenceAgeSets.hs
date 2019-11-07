@@ -642,7 +642,7 @@ defsFor cacheSize nodeFor (n, e, cache, cache') =
    $ assert ((List.null choices) → (Set.null result))
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow "-------}" else id)
    $ result 
-  where result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cache, co <- Set.toList $ differing cacheSelected ]
+  where result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cacheSize cache, co <- Set.toList $ differing cacheSelected ]
         differing selectedCache = (if trace ∧ (case Map.lookup (CachedArrayRange (Array "arrC") 128) selectedCache of { Nothing -> True ; Just ages -> Set.size ages == 1 }) then 
                traceShow ("aa ", selectedCache)
                $ traceShow ("bb ", unjoined)
@@ -655,7 +655,10 @@ defsFor cacheSize nodeFor (n, e, cache, cache') =
                        ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs selectedCache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU         ]
         select cache co0 ages =  [ cache'  | ma <- Set.toList ages, let cache' = case ma of { Nothing -> Map.delete co0 cache ; Just a -> Map.insert co0 (Set.singleton ma) cache } ]
 
-        concrete cache = concr (Set.fromList [0..cacheSize - 1]) cache
+        choices = makesChoice e cache
+        trace = False ∧ n == 52
+
+concrete cacheSize cache = concr (Set.fromList [0..cacheSize - 1]) cache
           where concr available cache
                     | Map.null cache = return cache
                     | otherwise = do
@@ -668,9 +671,33 @@ defsFor cacheSize nodeFor (n, e, cache, cache') =
                   where ((co, ages), cache0) = Map.deleteFindMin cache
 
 
-        choices = makesChoice e cache
 
-        trace = False ∧ n == 20
+transDefs :: forall n. Ord n => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
+transDefs cacheSize n e cache cache' seesN defsN =
+     require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
+   $ result 
+          where result   = seesN ∪ defsN ∪ fromSeen
+                fromSeen = Set.fromList [ (n', co)  | (co', n's) <- Map.assocs co'Map,
+                                                      Just ages <- [Map.lookup co' cache], Set.size ages > 1,
+                                                      let (ma, ages0) = Set.deleteFindMin ages,
+                                                      let cacheA = case ma of
+                                                            Nothing -> Map.delete co'                    cache
+                                                            Just a  -> Map.insert co' (Set.singleton ma) cache,
+
+                                                      let cacheA's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheA,
+                                                      (assumed, cacheA') <- Map.assocs          cacheA's,
+
+                                                      cacheC <- concrete cacheSize cache,
+                                                      let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC,
+                                                      let Just  cacheC'  =  Map.lookup assumed  cacheC's,
+
+                                                      co <- Map.keys cacheA' ++ Map.keys cacheC',
+                                                      Map.lookup co cacheA' /= Map.lookup co cacheC',
+                                                      n' <- Set.toList n's
+                            ]
+                co'Map :: Map CachedObject (Set n)
+                co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
 
 pushedBack cacheSize = Set.map pb
   where pb Nothing = Nothing
@@ -680,7 +707,7 @@ pushedBack cacheSize = Set.map pb
 
 readToFront _ = fresh
 
-
+{-
 transDefs cacheSize n e cache cache' seesN defsN =
             -- (if n `elem` [52] then traceShow "[=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) $ traceShow "==========]" else id) $
             seesN ∪ fromSeen ∪ fromDefs 
@@ -690,6 +717,9 @@ transDefs cacheSize n e cache cache' seesN defsN =
 
                 choices = makesChoice e cache
                 relevant = CSD.cachedObjectsFor e ∪ CSD.writtenCachedObjectsFor e
+
+-}
+
 
 makesChoice e cache = [ co | choices <- Set.toList $ useE e, not $ List.length choices == 1, co <- choices ]
   where

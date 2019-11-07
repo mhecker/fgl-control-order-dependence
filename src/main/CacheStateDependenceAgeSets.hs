@@ -12,6 +12,8 @@ import qualified Data.List as List
 
 import Data.Bits (xor, (.&.), shiftL, shiftR, complement)
 
+import Data.Maybe (isJust)
+
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 
@@ -655,14 +657,18 @@ defsFor cacheSize nodeFor (n, e, cache, cache') =
                        ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs selectedCache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU         ]
         select cache co0 ages =  [ cache'  | ma <- Set.toList ages, let cache' = case ma of { Nothing -> Map.delete co0 cache ; Just a -> Map.insert co0 (Set.singleton ma) cache } ]
 
-        choices = makesChoice e cache
+        choices = makesChoice e
         trace = False ∧ n == 52
 
+
+concrete :: CacheSize -> AbstractCacheState -> [AbstractCacheState ]
 concrete cacheSize cache = concr (Set.fromList [0..cacheSize - 1]) cache
-          where concr available cache
+
+concr :: Set Int -> AbstractCacheState -> [AbstractCacheState ]
+concr available cache
                     | Map.null cache = return cache
                     | otherwise = do
-                        ma <- Set.toList ages
+                        ma <- Set.toList (ages ∩ (Set.insert infTime $ Set.map Just available))
                         case ma of
                           Nothing ->   concr               available  cache0
                           Just a -> do
@@ -671,31 +677,72 @@ concrete cacheSize cache = concr (Set.fromList [0..cacheSize - 1]) cache
                   where ((co, ages), cache0) = Map.deleteFindMin cache
 
 
+transDefs :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
+transDefs = transDefsSlowDef
 
-transDefs :: forall n. Ord n => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
-transDefs cacheSize n e cache cache' seesN defsN =
+transDefsSlowDef :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
+transDefsSlowDef cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
    $ result 
           where result   = seesN ∪ defsN ∪ fromSeen
                 fromSeen = Set.fromList [ (n', co)  | (co', n's) <- Map.assocs co'Map,
                                                       Just ages <- [Map.lookup co' cache], Set.size ages > 1,
-                                                      let (ma, ages0) = Set.deleteFindMin ages,
-                                                      let cacheA = case ma of
-                                                            Nothing -> Map.delete co'                    cache
-                                                            Just a  -> Map.insert co' (Set.singleton ma) cache,
 
-                                                      let cacheA's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheA,
+                                                      (cacheA, cacheA's) <- caches,
+                                                      (cacheC, cacheC's) <- caches,
+                                                      Map.lookup co' cacheA /= Map.lookup co' cacheC,
+
                                                       (assumed, cacheA') <- Map.assocs          cacheA's,
-
-                                                      cacheC's <- cacheC'ss,
                                                       let Just  cacheC'  =  Map.lookup assumed  cacheC's,
 
                                                assert ((Set.fromList $ Map.keys cacheA' ++ Map.keys cacheC') ⊆ cos) True,
                                                       co <- Set.toList cos,
+                                                      Map.lookup co cacheA  == Map.lookup co cacheC,
                                                       Map.lookup co cacheA' /= Map.lookup co cacheC',
                                                       n' <- Set.toList n's
                             ]
+                co'Map :: Map CachedObject (Set n)
+                co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
+                cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
+
+                caches  = [ (cacheC, cacheC's) | cacheC <- concrete cacheSize cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
+
+
+
+
+
+
+
+
+transDefsFast :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
+transDefsFast cacheSize n e cache cache' seesN defsN =
+     require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
+   $ (let result' = transDefsSlowDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
+         error $ "transDefs " ++ (show (n, e, cache)) ++ "  :  " ++ (show $ result ∖ (seesN ∪ defsN)) ++ "    /=    " ++ (show $ result' ∖ (seesN ∪ defsN)))
+   $ result 
+          where result   = seesN ∪ defsN ∪ fromSeen
+                leq Nothing  Nothing  = True
+                leq Nothing  (Just _) = False
+                leq (Just _) Nothing  = True
+                leq (Just x) (Just y) = x <= y
+
+                lt a b = (a /= b) ∧ (a `leq` b)
+
+                fromSeen = Set.fromList [ (n', co)  | uses  <- Set.toList $ makesUses e,
+                                                      (co, ages) <- Map.assocs cache,
+                                                      let lt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault Set.empty coUse cache in
+                                                                 (∀) (agesUse) (\aU -> (∀) (ages) (\a -> aU `leq` a ))
+                                                               ),
+                                                      let gt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault Set.empty coUse cache in
+                                                                 (∀) (agesUse) (\aU -> (∀) (ages) (\a -> a  `leq` aU))
+                                                               ),
+                                                      not $ lt ∨ gt,
+                                                      coUse <- uses,
+                                                      n' <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map
+                            ]
+
                 co'Map :: Map CachedObject (Set n)
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
                 cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
@@ -724,7 +771,8 @@ transDefs cacheSize n e cache cache' seesN defsN =
 -}
 
 
-makesChoice e cache = [ co | choices <- Set.toList $ useE e, not $ List.length choices == 1, co <- choices ]
+makesChoice e = [ co | choices <- Set.toList $ makesUses e, not $ List.length choices == 1, co <- choices ]
+makesUses   e = useE e 
   where
 
     useE :: CFGEdge -> Set [CachedObject]

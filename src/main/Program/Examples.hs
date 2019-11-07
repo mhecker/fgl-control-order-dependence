@@ -3535,6 +3535,20 @@ exampleInteresingAgeSets9 = compileAllToProgram a b'
         generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (Seq (If (Leq (Val 127) (Val 128)) (If (Leq (Val 127) (Plus (Var (Global "y")) (Var (Global "d")))) Skip (AssArr (Array "arrA") (Val 128) (Val 136))) (ForV (Global "e") (If (Leq (Val 127) (Val 126)) (Ass (Global "z") (Neg (ArrayRead (Array "arrC") (Neg (ArrayRead (Array "arrA") (Plus (ArrayRead (Array "arrC") (Val 126)) (Var (Global "z")))))))) (Ass (Global "b") (Times (ArrayRead (Array "arrA") (Neg (Var (Global "z")))) (Var (Global "e"))))))) (Seq (Seq (Ass (Global "e") (Val 126)) Skip) (Seq (AssArr (Array "arrC") (Val 127) (Neg (Var (Global "z")))) Skip)))) undefined undefined undefined)])
 
 
+exampleInteresingAgeSets10 :: Program Gr
+exampleInteresingAgeSets10 = compileAllToProgram a b'
+  where (a,b) = toCodeSimpleWithArrays generated
+        b' = fmap twoAddressCode b
+        generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (ForC 2 (ForC 1 (ForC 1 (Seq (Seq (Seq Skip (AssArr (Array "arrC") (Neg (Var (Global "y"))) (Times (Var (Global "y")) (Var (Global "z"))))) (Seq Skip (AssArr (Array "arrB") (Times (Var (Global "z")) (ArrayRead (Array "arrB") (Times (Var (Global "x")) (Var (Global "b"))))) (Val 127)))) (If (Leq (Val 127) (Plus (ArrayRead (Array "arrB") (Times (Var (Global "h")) (ArrayRead (Array "arrB") (Plus (ArrayRead (Array "arrC") (Plus (Var (Global "z")) (ArrayRead (Array "arrA") (Plus (Var (Global "b")) (Var (Global "z")))))) (Var (Global "b")))))) (Var (Global "d")))) (Seq (Ass (Global "e") (Times (ArrayRead (Array "arrB") (Val 127)) (Var (Global "c")))) (AssArr (Array "arrA") (Times (Var (Global "x")) (Var (Global "z"))) (Times (Var (Global "d")) (Var (Global "h"))))) (ForC 2 (ForC 1 (AssArr (Array "arrB") (Plus (ArrayRead (Array "arrA") (Neg (Var (Global "z")))) (Var (Global "e"))) (Neg (ArrayRead (Array "arrC") (Plus (Var (Global "y")) (ArrayRead (Array "arrA") (Plus (ArrayRead (Array "arrA") (Neg (ArrayRead (Array "arrC") (Times (ArrayRead (Array "arrA") (Plus (ArrayRead (Array "arrA") (Neg (Var (Global "y")))) (Var (Global "x")))) (ArrayRead (Array "arrA") (Val 127)))))) (Var (Global "z")))))))))))))))) undefined undefined undefined)])
+
+
+exampleInteresingAgeSets11 :: Program Gr
+exampleInteresingAgeSets11 = compileAllToProgram a b'
+  where (a,b) = toCodeSimpleWithArrays generated
+        b' = fmap twoAddressCode b
+        generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (Seq (ForC 1 (ForV (Global "b") (If (Leq (Val 127) (Val 136)) (Seq (Ass (Global "e") (Plus (Var (Global "h")) (Var (Global "z")))) (Ass (Global "e") (Plus (Var (Global "x")) (Var (Global "d"))))) (If (Leq (Val 127) (Times (ArrayRead (Array "arrC") (Neg (ArrayRead (Array "arrB") (Val 131)))) (Var (Global "z")))) (AssArr (Array "arrA") (Val 136) (Neg (ArrayRead (Array "arrA") (Times (ArrayRead (Array "arrC") (Times (Var (Global "y")) (ArrayRead (Array "arrB") (Val 131)))) (ArrayRead (Array "arrC") (Plus (Var (Global "z")) (ArrayRead (Array "arrB") (Neg (ArrayRead (Array "arrC") (Neg (Var (Global "c")))))))))))) (AssArr (Array "arrC") (Neg (ArrayRead (Array "arrA") (Neg (Var (Global "z"))))) (Times (ArrayRead (Array "arrB") (Times (ArrayRead (Array "arrB") (Val 136)) (Var (Global "d")))) (Var (Global "z")))))))) (ForC 2 (If (Leq (Val 127) (Times (ArrayRead (Array "arrA") (Times (ArrayRead (Array "arrC") (Plus (ArrayRead (Array "arrA") (Plus (ArrayRead (Array "arrB") (Plus (ArrayRead (Array "arrA") (Val 131)) (ArrayRead (Array "arrC") (Val 127)))) (Var (Global "z")))) (Var (Global "z")))) (ArrayRead (Array "arrA") (Val 131)))) (Var (Global "h")))) (Seq (AssArr (Array "arrB") (Neg (Var (Global "d"))) (Neg (Var (Global "e")))) (AssArr (Array "arrA") (Times (Var (Global "h")) (Var (Global "x"))) (Neg (Var (Global "h"))))) (Seq (AssArr (Array "arrC") (Neg (Var (Global "z"))) (Times (Var (Global "c")) (Var (Global "d")))) (AssArr (Array "arrB") (Times (Var (Global "b")) (Var (Global "b"))) (Neg (Var (Global "c"))))))))) undefined undefined undefined)])
+
+
 
 exampleDomPaths :: Program Gr
 exampleDomPaths = toProgramIntra $ IntraGeneratedProgram
@@ -4479,6 +4493,21 @@ interestingTimingDep = [
               $(withName 'exampleTimingDepInterestingTwoFinger4),
               $(withName 'exampleTimingDepInterestingTwoFinger5),
               $(withName 'exampleTimingDepInterestingTwoFinger6)
+            ]
+
+interestingAgeSets :: [(String, Program Gr)]
+interestingAgeSets = [
+              $(withName 'exampleInteresingAgeSets1 ),
+              $(withName 'exampleInteresingAgeSets2 ),
+              $(withName 'exampleInteresingAgeSets3 ),
+              $(withName 'exampleInteresingAgeSets4 ),
+              $(withName 'exampleInteresingAgeSets5 ),
+              $(withName 'exampleInteresingAgeSets6 ),
+              $(withName 'exampleInteresingAgeSets7 ),
+              $(withName 'exampleInteresingAgeSets8 ),
+              $(withName 'exampleInteresingAgeSets9 ),
+              $(withName 'exampleInteresingAgeSets10),
+              $(withName 'exampleInteresingAgeSets11)
             ]
 
 jcsPaperExamples = [

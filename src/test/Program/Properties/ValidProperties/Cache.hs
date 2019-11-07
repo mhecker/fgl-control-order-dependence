@@ -29,6 +29,7 @@ import Program.Properties.Util
 import Program (Program, tcfg, entryOf, exitOf, procedureOf, mainThread, observability)
 import Program.For (compileAllToProgram, For(..), twoAddressCode)
 import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
+import Program.Examples (interestingAgeSets)
 import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_main_ct, br_aes_small_cbcenc_main_ct_precache, mainInput, for2Program)
 
 import IRLSOD(CFGNode, CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
@@ -122,6 +123,17 @@ cacheProps = testGroup "(concerning cache timing)" [
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =         csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdMergeDirectOf propsCacheSize g n0
+                    in  csdM ⊑ csdMAS,
+    testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDep"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   =         csdMergeDirectOf propsCacheSize g n0
+                        csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
                     in  csdM ⊑ csdMAS,
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
@@ -282,4 +294,13 @@ cacheTests = testGroup "(concerning cache timing)" $
     aesCase False $ aes_main_ct_precache  4,
     aesCase False $ aes_main_ct_precache  8,
     aesCase True  $ aes_main_ct_precache 12
-  ]
+  ] ++
+  [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDep for " ++ prName) $
+                    let g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   =         csdMergeDirectOf propsCacheSize g n0
+                        csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
+                    in  csdM ⊑ csdMAS @? ""
+  | (prName, pr) <- interestingAgeSets
+  ] ++
+  []

@@ -688,16 +688,19 @@ transDefs cacheSize n e cache cache' seesN defsN =
                                                       let cacheA's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheA,
                                                       (assumed, cacheA') <- Map.assocs          cacheA's,
 
-                                                      cacheC <- concrete cacheSize cache,
-                                                      let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC,
+                                                      cacheC's <- cacheC'ss,
                                                       let Just  cacheC'  =  Map.lookup assumed  cacheC's,
 
-                                                      co <- Map.keys cacheA' ++ Map.keys cacheC',
+                                               assert ((Set.fromList $ Map.keys cacheA' ++ Map.keys cacheC') ⊆ cos) True,
+                                                      co <- Set.toList cos,
                                                       Map.lookup co cacheA' /= Map.lookup co cacheC',
                                                       n' <- Set.toList n's
                             ]
                 co'Map :: Map CachedObject (Set n)
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
+                cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
+
+                cacheC'ss  = [ cacheC's | cacheC <- concrete cacheSize cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
 
 pushedBack cacheSize = Set.map pb
   where pb Nothing = Nothing

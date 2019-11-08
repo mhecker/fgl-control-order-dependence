@@ -410,7 +410,7 @@ cacheTimeStepForState cacheSize e@(AssignArray a ix vf) = do
         i <- lift $ alignedIndices
         cacheTimeArrayWriteLRUState cacheSize a i
         σ' <- get
-        return ((e, assumedVf ++ assumedIx), σ')
+        return ((e, assumedVf ++ assumedIx ++ [CachedArrayRange a i]), σ')
 cacheTimeStepForState cacheSize e@(Init _ _ ) = do
         (cache, time) <- get
         return ((e,[]), (cache, time + initTime))

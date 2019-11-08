@@ -722,20 +722,6 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
 
                                                assert ((Set.fromList $ Map.keys cacheA' ++ Map.keys cacheC') ⊆ cos) True,
                                                       co <- Set.toList cos,
-                                                      if   False
-                                                         ∧ (n == 57)
-                                                         ∧ (co == CachedVar (Global "b"))
-                                                         ∧ (cacheA == Map.fromList
-                                                            [(CachedVar (Global "b"),              Set.fromList [Just 2]),
-                                                             (CachedArrayRange (Array "arrA") 0,   Set.fromList [Just 0]),
-                                                             (CachedArrayRange (Array "arrB") 0  , Set.fromList [Just 1]),
-                                                             (CachedArrayRange (Array "arrB") 128, Set.fromList [Just 3])]) 
-                                                         ∧ (cacheC == Map.fromList
-                                                            [(CachedVar (Global "b"),              Set.fromList [Just 2]),
-                                                             (CachedArrayRange (Array "arrA") 0,   Set.fromList [Just 0]),
-                                                             (CachedArrayRange (Array "arrB") 0  , Set.fromList [Just 3]),
-                                                             (CachedArrayRange (Array "arrB") 128, Set.fromList [Just 3])])
-                                                      then traceShow "(*****" $ traceShow co' $ traceShow cacheA $ traceShow cacheC $ traceShow (co, assumed, Map.lookup co cacheA', Map.lookup co cacheC') $ traceShow "*****)" True else True,
                                                       -- if n == 57 ∧ (co == CachedVar (Global "b")) ∧ (Set.size n's > 1) then traceShow "{=======" $ traceShow (co, n's, cache) $ traceShow (cacheA, cacheA') $ traceShow (cacheC, cacheC') $ traceShow "=======}" True else True,
                                                       Map.lookup co cacheA' /= Map.lookup co cacheC',
                                                       n' <- Set.toList n's

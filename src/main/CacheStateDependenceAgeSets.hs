@@ -706,16 +706,37 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
                 fromSeen = Set.fromList [ (n', co)  | (co', n's) <- Map.assocs co'Map,
                                                       Just ages <- [Map.lookup co' cache], Set.size ages > 1,
 
+{-
                                                       (cacheA, cacheA's) <- caches,
                                                       (cacheC, cacheC's) <- caches,
                                                       Map.lookup co' cacheA /= Map.lookup co' cacheC,
+                                                      (∀) (Map.keys cache) (\co -> (co == co') ∨ (Map.lookup co cacheA  == Map.lookup co cacheC)),
+-}
+
+                                                      ((cacheA, cacheA's), (cacheC, cacheC's)) <- cachePairs co' ages,
+                                              assert (Map.lookup co' cacheA /= Map.lookup co' cacheC)                                              True,
+                                              assert ((∀) (Map.keys cache) (\co -> (co == co') ∨ (Map.lookup co cacheA  == Map.lookup co cacheC))) True,
 
                                                       (assumed, cacheA') <- Map.assocs          cacheA's,
                                                       let Just  cacheC'  =  Map.lookup assumed  cacheC's,
 
                                                assert ((Set.fromList $ Map.keys cacheA' ++ Map.keys cacheC') ⊆ cos) True,
                                                       co <- Set.toList cos,
-                                                      (∀) (Map.keys cache) (\co -> (co == co') ∨ (Map.lookup co cacheA  == Map.lookup co cacheC)),
+                                                      if   False
+                                                         ∧ (n == 57)
+                                                         ∧ (co == CachedVar (Global "b"))
+                                                         ∧ (cacheA == Map.fromList
+                                                            [(CachedVar (Global "b"),              Set.fromList [Just 2]),
+                                                             (CachedArrayRange (Array "arrA") 0,   Set.fromList [Just 0]),
+                                                             (CachedArrayRange (Array "arrB") 0  , Set.fromList [Just 1]),
+                                                             (CachedArrayRange (Array "arrB") 128, Set.fromList [Just 3])]) 
+                                                         ∧ (cacheC == Map.fromList
+                                                            [(CachedVar (Global "b"),              Set.fromList [Just 2]),
+                                                             (CachedArrayRange (Array "arrA") 0,   Set.fromList [Just 0]),
+                                                             (CachedArrayRange (Array "arrB") 0  , Set.fromList [Just 3]),
+                                                             (CachedArrayRange (Array "arrB") 128, Set.fromList [Just 3])])
+                                                      then traceShow "(*****" $ traceShow co' $ traceShow cacheA $ traceShow cacheC $ traceShow (co, assumed, Map.lookup co cacheA', Map.lookup co cacheC') $ traceShow "*****)" True else True,
+                                                      -- if n == 57 ∧ (co == CachedVar (Global "b")) ∧ (Set.size n's > 1) then traceShow "{=======" $ traceShow (co, n's, cache) $ traceShow (cacheA, cacheA') $ traceShow (cacheC, cacheC') $ traceShow "=======}" True else True,
                                                       Map.lookup co cacheA' /= Map.lookup co cacheC',
                                                       n' <- Set.toList n's
                             ]
@@ -723,7 +744,21 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
                 cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
 
+{-
                 caches  = [ (cacheC, cacheC's) | cacheC <- pseudoConcrete cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
+-}
+
+                cachePairs co' ages = [ ((cacheA, cacheA's), (cacheC, cacheC's)) | cachePC <- pseudoConcrete (Map.delete co' cache),
+                                                                                   maA <- Set.toList ages,
+                                                                                   maC <- Set.toList ages, maA /= maC,
+                                                                                   let cacheA = ins co' maA cachePC,
+                                                                                   let cacheC = ins co' maC cachePC,
+                                                                                   let cacheA's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheA,
+                                                                                   let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC
+                                      ]
+                  where ins co' ma cachePC =  case ma of
+                          Nothing ->                                   cachePC
+                          Just _  -> Map.insert co' (Set.singleton ma) cachePC
 
 
 

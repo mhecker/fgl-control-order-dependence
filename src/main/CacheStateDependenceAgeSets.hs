@@ -677,11 +677,28 @@ concr available cache
                   where ((co, ages), cache0) = Map.deleteFindMin cache
 
 
-transDefs :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
-transDefs = transDefsSlowDef
+pseudoConcrete :: AbstractCacheState -> [AbstractCacheState ]
+pseudoConcrete = pseudoConcr
 
-transDefsSlowDef :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
-transDefsSlowDef cacheSize n e cache cache' seesN defsN =
+pseudoConcr ::  AbstractCacheState -> [AbstractCacheState ]
+pseudoConcr cache
+                    | Map.null cache = return cache
+                    | otherwise = do
+                        ma <- Set.toList ages
+                        case ma of
+                          Nothing ->   pseudoConcr cache0
+                          Just a -> do
+                            cache0' <- pseudoConcr cache0
+                            return $ Map.insert co (Set.singleton ma) cache0'
+                  where ((co, ages), cache0) = Map.deleteFindMin cache
+
+
+
+transDefs :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
+transDefs = transDefsFast
+
+transDefsSlowPseudoDef :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
+transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
    $ result 
@@ -706,7 +723,7 @@ transDefsSlowDef cacheSize n e cache cache' seesN defsN =
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
                 cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
 
-                caches  = [ (cacheC, cacheC's) | cacheC <- concrete cacheSize cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
+                caches  = [ (cacheC, cacheC's) | cacheC <- pseudoConcrete cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
 
 
 
@@ -719,7 +736,7 @@ transDefsFast :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> Ab
 transDefsFast cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
-   $ (let result' = transDefsSlowDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
+   $ (let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
          error $ "transDefs " ++ (show (n, e, cache)) ++ "  :  " ++ (show $ result ∖ (seesN ∪ defsN)) ++ "    /=    " ++ (show $ result' ∖ (seesN ∪ defsN)))
    $ result 
           where result   = seesN ∪ defsN ∪ fromSeen
@@ -732,14 +749,23 @@ transDefsFast cacheSize n e cache cache' seesN defsN =
 
                 fromSeen = Set.fromList [ (n', co)  | uses  <- Set.toList $ makesUses e,
                                                       (co, ages) <- Map.assocs cache,
-                                                      let lt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault Set.empty coUse cache in
-                                                                 (∀) (agesUse) (\aU -> (∀) (ages) (\a -> aU `leq` a ))
-                                                               ),
-                                                      let gt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault Set.empty coUse cache in
-                                                                 (∀) (agesUse) (\aU -> (∀) (ages) (\a -> a  `leq` aU))
-                                                               ),
-                                                      not $ lt ∨ gt,
+
+                                                      -- let lt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in
+                                                      --            (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (aU `leq` a )))
+                                                      --          ),
+                                                      -- let gt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in
+                                                      --            (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (a  `leq` aU)))
+                                                      --          ),
+                                                      -- not $ lt ∨ gt,
+                                                      -- coUse <- uses,
+
                                                       coUse <- uses,
+                                                      let agesUse = Map.findWithDefault inf coUse cache,
+                                                      let lt =   (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (aU `leq` a ))),
+                                                      let gt =   (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (a  `leq` aU))),
+                                                      not $ lt ∨ gt,
+
+                                                      if False ∧ (n == 57) then traceShow "[:::::::::::" $ traceShow (n, co, lt, gt, ages,Map.findWithDefault Set.empty coUse co'Map) $ traceShow coUse $ traceShow cache $ traceShow "::::::::::::::]" $ True else True,
                                                       n' <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map
                             ]
 

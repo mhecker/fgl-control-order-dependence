@@ -698,7 +698,7 @@ transDefsSlowDef cacheSize n e cache cache' seesN defsN =
 
                                                assert ((Set.fromList $ Map.keys cacheA' ++ Map.keys cacheC') ⊆ cos) True,
                                                       co <- Set.toList cos,
-                                                      Map.lookup co cacheA  == Map.lookup co cacheC,
+                                                      (∀) (Map.keys cache) (\co -> (co == co') ∨ (Map.lookup co cacheA  == Map.lookup co cacheC)),
                                                       Map.lookup co cacheA' /= Map.lookup co cacheC',
                                                       n' <- Set.toList n's
                             ]
@@ -748,6 +748,8 @@ transDefsFast cacheSize n e cache cache' seesN defsN =
                 cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
 
                 cacheC'ss  = [ cacheC's | cacheC <- concrete cacheSize cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
+
+
 
 pushedBack cacheSize = Set.map pb
   where pb Nothing = Nothing

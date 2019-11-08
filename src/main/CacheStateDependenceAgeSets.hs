@@ -142,8 +142,8 @@ incAll cacheSize cobj cache = cache'
                 plus1 ages = if infTime ∈ ages then Set.insert infTime plussed else plussed
                   where plussed = (∐) [ as a | Just a <- Set.toList ages ]
                         as a 
-                          | (∀) cobjAges (       `geq` a ) = Set.fromList [ Just $ a + 1]
-                          | (∀) cobjAges (not . (`geq` a)) = Set.fromList [ Just $ a ]
+                          | (∀) (Set.delete (Just a) $ cobjAges) (       `geq` a ) = Set.fromList [ Just $ a + 1]
+                          | (∀) (Set.delete (Just a) $ cobjAges) (not . (`geq` a)) = Set.fromList [ Just $ a ]
                           | otherwise               = Set.fromList [ Just $ a, Just $ a + 1]
 
 

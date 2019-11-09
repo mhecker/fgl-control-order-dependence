@@ -693,6 +693,58 @@ pseudoConcr cache
                   where ((co, ages), cache0) = Map.deleteFindMin cache
 
 
+data TransGraphNode = Object CachedObject | ConcreteState AbstractCacheState | Result AbstractCacheState deriving (Ord, Eq, Show)
+instance SimpleShow TransGraphNode where
+  simpleShow (Object co) = simpleShow co
+  simpleShow (ConcreteState cache) = simpleShow cache
+  simpleShow (Result        cache) = simpleShow cache
+
+data TransGraphEdge = Choice (Maybe Int)  | Transition deriving (Ord, Eq, Show)
+instance SimpleShow TransGraphEdge where
+  simpleShow (Choice ma)  = simpleShow ma
+  simpleShow (Transition) = ""
+
+data TransGraphTree = Leaf AbstractCacheState | TreeNode CachedObject [(Maybe Int, TransGraphTree)] deriving (Show, Eq, Ord)
+
+-- concrCacheTransDecisionGraphs :: CacheSize -> AbstractCacheState -> [(Gr TransGraphNode TransGraphEdge, [CachedObject])]
+concrCacheTransDecisionGraphs :: CacheSize -> AbstractCacheState -> (Gr TransGraphNode TransGraphEdge)
+concrCacheTransDecisionGraphs cacheSize cache = mkGraph ns es
+  where
+        (_, ns, es) = evalState (graph tree) 0
+        
+        graph :: TransGraphTree -> State Int (Int, [(Node, TransGraphNode)], [(Node, Node, TransGraphEdge)])
+        graph (Leaf concreteCache) = do
+          id <- get
+          put (id + 1)
+          return $ (id, [(id, ConcreteState concreteCache)], [])
+        graph (TreeNode co ts) = do
+          id <- get
+          put (id + 1)
+          graphs <- forM (fmap snd ts) graph
+          let (ids0, ns0, es0) = foldr cat ([], [], []) graphs
+          return $ (
+             id,
+             (id, Object co) : ns0,
+             [(id, id0, Choice c) | (id0, c) <- zip ids0 (fmap fst ts) ] ++ es0
+           )
+
+        cat :: forall a b. (Int, [a], [b]) -> ([Int], [a], [b]) -> ([Int], [a], [b])
+        cat (id, l, r) (ids, l', r') = (id: ids, l ++ l', r ++ r')
+
+        tree = concrT (Set.fromList [0..cacheSize - 1]) cache Map.empty
+        concrT :: Set Int -> AbstractCacheState -> AbstractCacheState -> TransGraphTree
+        concrT available cache concreteCache
+                    | Map.null cache = Leaf concreteCache
+                    | otherwise = TreeNode co successors
+                  where ((co, ages), cache0) = Map.deleteFindMin cache
+                        successors = do
+                          ma <- Set.toList (ages ∩ (Set.insert infTime $ Set.map Just available))
+                          case ma of
+                            Nothing -> return $ (ma, concrT               available  cache0                                   concreteCache)
+                            Just a ->  return $ (ma, concrT (Set.delete a available) cache0 (Map.insert co (Set.singleton ma) concreteCache))
+
+
+
 
 transDefs :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
 transDefs = transDefsFast

@@ -204,7 +204,8 @@ mergeFromSlow nodesToCsNodes csGraph idom roots  =  (𝝂) init f
                                                                    let es  = Set.fromList $ fmap snd $ lsuc csGraph y ,
                                                                    y' <- Set.toList ys,
                                                                    let es' = Set.fromList $ fmap snd $ lsuc csGraph y',
-                                                                   (∀) (es ∩ es') (\e ->
+                                                                   assert (es == es') True,
+                                                                   (∀) es (\e ->
                                                                      (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e  then True else
                                                                      (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e  then True else
                                                                        let Just (m, _) = lab csGraph x
@@ -213,32 +214,9 @@ mergeFromSlow nodesToCsNodes csGraph idom roots  =  (𝝂) init f
                                                                        (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
                                                                      ))
                                                                    )
-                                                                 ∧ (∀) (es ∖ es') (\e ->
-                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e  then True else
-                                                                     (∀) (lsuc csGraph y') (\(x', ey') ->
-                                                                       let Just (m, _) = lab csGraph x
-                                                                           Just (m',_) = lab csGraph x'
-                                                                       in assert (m == m') $ 
-                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
-                                                                     ))
-                                                                   )
-                                                                 ∧ (∀) (es' ∖ es) (\e' ->
-                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e' then True else
-                                                                     (∀) (lsuc csGraph y ) (\(x , ey ) ->
-                                                                       let Just (m, _) = lab csGraph x
-                                                                           Just (m',_) = lab csGraph x'
-                                                                       in assert (m == m') $ 
-                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
-                                                                     ))
-                                                                   )
                                                 ]
                                   )] | y <- Set.toList ys, not $ y ∈ roots])
-                           | (n,ys) <- Map.assocs nodesToCsNodes,
-                             -- traceShow (Map.fromSet (\y -> Set.fromList $ fmap snd $ lsuc csGraph y) ys) True,
-                             assert ((∀) ys (\y -> (∀) ys (\y' ->  True
-                                                                 ∨ (Set.fromList $ fmap snd $ lsuc csGraph y) ⊆ (Set.fromList $ fmap snd $ lsuc csGraph y')
-                                                                 ∨ (Set.fromList $ fmap snd $ lsuc csGraph y) ⊇ (Set.fromList $ fmap snd $ lsuc csGraph y')
-                                    ))) True
+                           | (n,ys) <- Map.assocs nodesToCsNodes
               ]
            )
         init = Map.fromList [ (n, Map.fromList [ (y, ys) | y <- Set.toList ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes]

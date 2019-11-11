@@ -3576,6 +3576,13 @@ exampleInteresingAgeSets15 = compileAllToProgram a b'
         generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (ForV (Global "c") (Seq (Seq (ForC 1 (ForC 1 (AssArr (Array "arrC") (Plus (Var (Global "d")) (Var (Global "e"))) (Times (Var (Global "c")) (Var (Global "b")))))) (ForC 1 (Seq (Ass (Global "b") (Val 131)) (AssArr (Array "arrA") (Neg (Var (Global "y"))) (Val 127))))) (If (Leq (Val 127) (Times (Var (Global "d")) (Var (Global "e")))) (ForV (Global "h") (Seq (AssArr (Array "arrB") (Neg (Var (Global "z"))) (Plus (Var (Global "d")) (ArrayRead (Array "arrB") (Times (Var (Global "e")) (ArrayRead (Array "arrC") (Neg (ArrayRead (Array "arrC") (Times (ArrayRead (Array "arrB") (Neg (Var (Global "c")))) (ArrayRead (Array "arrC") (Neg (Var (Global "z")))))))))))) (Ass (Global "e") (Neg (Var (Global "d")))))) (ForV (Global "x") (ForV (Global "b") (Ass (Global "h") (Times (Var (Global "e")) (Var (Global "h")))))))))) undefined undefined undefined)])
 
 
+exampleInteresingAgeSets16 :: Program Gr
+exampleInteresingAgeSets16 = compileAllToProgram a b'
+  where (a,b) = toCodeSimpleWithArrays generated
+        b' = fmap twoAddressCode b
+        generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (ForV (Global "x") (ForC 1 (Seq (ForC 2 (ForC 2 (ForC 2 (ForV (Global "c") (ForC 2 (AssArr (Array "arrA") (Val 128) (Plus (Var (Global "z")) (ArrayRead (Array "arrC") (Plus (Var (Global "y")) (Var (Global "z"))))))))))) (Seq (ForC 1 (Seq (Ass (Global "b") (Times (Var (Global "b")) (ArrayRead (Array "arrC") (Val 127)))) Skip)) (ForC 2 (Seq (AssArr (Array "arrA") (Neg (Var (Global "h"))) (Val 128)) (AssArr (Array "arrA") (Val 127) (Val 128))))))))) undefined undefined undefined)])
+
+
 exampleDomPaths :: Program Gr
 exampleDomPaths = toProgramIntra $ IntraGeneratedProgram
     (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
@@ -4537,7 +4544,8 @@ interestingAgeSets = [
               $(withName 'exampleInteresingAgeSets12),
               $(withName 'exampleInteresingAgeSets13),
               $(withName 'exampleInteresingAgeSets14),
-              $(withName 'exampleInteresingAgeSets15)
+              $(withName 'exampleInteresingAgeSets15),
+              $(withName 'exampleInteresingAgeSets16)
               ]
 
 jcsPaperExamples = [

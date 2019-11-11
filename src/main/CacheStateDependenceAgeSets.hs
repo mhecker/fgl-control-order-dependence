@@ -819,8 +819,10 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
 
                                                assert ((Set.fromList $ Map.keys cacheA' ++ Map.keys cacheC') ⊆ cos) True,
                                                       co <- Set.toList cos,
-                                                      -- if n == 57 ∧ (co == CachedVar (Global "b")) ∧ (Set.size n's > 1) then traceShow "{=======" $ traceShow (co, n's, cache) $ traceShow (cacheA, cacheA') $ traceShow (cacheC, cacheC') $ traceShow "=======}" True else True,
+                                                      Map.lookup co cacheA /= Map.lookup co' cacheA,
+                                                      Map.lookup co cacheC /= Map.lookup co' cacheC,
                                                       Map.lookup co cacheA' /= Map.lookup co cacheC',
+                                                      -- if n == 778 ∧ (co == CachedVar (Global "z")) then traceShow "{=======" $ traceShow (co, co', n's, cache) $ traceShow (cacheA, cacheA') $ traceShow (cacheC, cacheC') $ traceShow "=======}" True else True,
                                                       n' <- Set.toList n's
                             ]
                 co'Map :: Map CachedObject (Set n)

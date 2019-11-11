@@ -162,7 +162,7 @@ stateGraph step leq g σ0 n0 = stateGraphForSets (cs, es)
   where (cs, es) = stateSets step leq g σ0 n0
 
 
-merged :: (Graph gr, Ord e) => gr (Node, s) e ->  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) e
+merged :: (Graph gr, Ord e, Ord id) => gr (id, s) e ->  Map id (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> gr (id, Set AbstractMicroArchitecturalGraphNode) e
 merged csGraph' equivs =  mkGraph nodes' edges
   where edges =  Set.toList $ Set.fromList $ fmap f $ (labEdges csGraph')
           where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
@@ -182,26 +182,49 @@ merged csGraph' equivs =  mkGraph nodes' edges
 
 
 
-
-mergeFromSlow ::  (DynGraph gr, Ord e) => gr CFGNode CFGEdge -> gr (Node, s) e -> Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) -> Set AbstractMicroArchitecturalGraphNode -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
-mergeFromSlow graph csGraph idom roots  =  (𝝂) init f 
+mergeFromSlow :: forall id e s gr. (Ord id, DynGraph gr, Show e, Ord e) =>
+  Map id (Set AbstractMicroArchitecturalGraphNode) ->
+  gr (id, s) e ->
+  Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
+  Set AbstractMicroArchitecturalGraphNode ->
+  Map id (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
+mergeFromSlow nodesToCsNodes csGraph idom roots  =  (𝝂) init f 
   where 
-        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
-        f :: Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
-          -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
+        f :: Map id (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
+          -> Map id (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
         f equivs = -- traceShow (Map.filter (\equivs -> (∃) equivs (not . Set.null)) $ equivs, rootOf) $
           (
-              Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- ys, Map.lookup y' rootOf == Just r ]) ] | y <- ys, Just r <- [Map.lookup y rootOf ]])
+              Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' | y' <- Set.toList ys, Map.lookup y' rootOf == Just r ]) ] | y <- Set.toList ys, Just r <- [Map.lookup y rootOf ]])
                            | (n,ys) <- Map.assocs nodesToCsNodes
               ]
-            ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- ys])
+            ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y ] ) ] |  y <- Set.toList ys])
                            | (n,ys) <- Map.assocs nodesToCsNodes
               ]
             ⊔ Map.fromList [ (n, (∐) [ Map.fromList [ (y, Set.fromList [ y' |
-                                                                   y' <- ys,
-                                                                   (∀) es (\(_,e) ->
-                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e then True else
-                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e then True else
+                                                                   let es  = Set.fromList $ fmap snd $ lsuc csGraph y ,
+                                                                   y' <- Set.toList ys,
+                                                                   let es' = Set.fromList $ fmap snd $ lsuc csGraph y',
+                                                                   (∀) (es ∩ es') (\e ->
+                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e  then True else
+                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e  then True else
+                                                                       let Just (m, _) = lab csGraph x
+                                                                           Just (m',_) = lab csGraph x'
+                                                                       in assert (m == m') $ 
+                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
+                                                                     ))
+                                                                   )
+                                                                 ∧ (∀) (es ∖ es') (\e ->
+                                                                     (∀) (lsuc csGraph y ) (\(x,  ey ) -> if ey  /= e  then True else
+                                                                     (∀) (lsuc csGraph y') (\(x', ey') ->
+                                                                       let Just (m, _) = lab csGraph x
+                                                                           Just (m',_) = lab csGraph x'
+                                                                       in assert (m == m') $ 
+                                                                       (∃) (equivs ! m) (\equiv -> x ∈ equiv ∧ x' ∈ equiv)
+                                                                     ))
+                                                                   )
+                                                                 ∧ (∀) (es' ∖ es) (\e' ->
+                                                                     (∀) (lsuc csGraph y') (\(x', ey') -> if ey' /= e' then True else
+                                                                     (∀) (lsuc csGraph y ) (\(x , ey ) ->
                                                                        let Just (m, _) = lab csGraph x
                                                                            Just (m',_) = lab csGraph x'
                                                                        in assert (m == m') $ 
@@ -209,12 +232,16 @@ mergeFromSlow graph csGraph idom roots  =  (𝝂) init f
                                                                      ))
                                                                    )
                                                 ]
-                                  )] | y <- ys, not $ y ∈ roots, let es = lsuc csGraph y ])
+                                  )] | y <- Set.toList ys, not $ y ∈ roots])
                            | (n,ys) <- Map.assocs nodesToCsNodes,
-                             assert ((∀) ys (\y -> (∀) ys (\y' -> (Set.fromList $ fmap snd $ lsuc csGraph y) == (Set.fromList $ fmap snd $ lsuc csGraph y')))) True
+                             -- traceShow (Map.fromSet (\y -> Set.fromList $ fmap snd $ lsuc csGraph y) ys) True,
+                             assert ((∀) ys (\y -> (∀) ys (\y' ->  True
+                                                                 ∨ (Set.fromList $ fmap snd $ lsuc csGraph y) ⊆ (Set.fromList $ fmap snd $ lsuc csGraph y')
+                                                                 ∨ (Set.fromList $ fmap snd $ lsuc csGraph y) ⊇ (Set.fromList $ fmap snd $ lsuc csGraph y')
+                                    ))) True
               ]
            )
-        init = Map.fromList [ (n, Map.fromList [ (y, ysS) | y <- ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes, let ysS = Set.fromList ys]
+        init = Map.fromList [ (n, Map.fromList [ (y, ys) | y <- Set.toList ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes]
         rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
 
@@ -231,13 +258,13 @@ mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  
 
 
 
-mergeFromForEdgeToSuccessor ::  (DynGraph gr, Ord e) =>
+mergeFromForEdgeToSuccessor ::  (DynGraph gr, Show e, Ord e) =>
   gr CFGNode CFGEdge ->
   gr (Node, s) e ->
   Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
   Set AbstractMicroArchitecturalGraphNode ->
   Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
-mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFromSlow graph csGraph idom roots) result
+mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFromSlow  nodesToCsNodes csGraph idom roots) result
   where result = (go orderToNodes init) ⊔ equivsNBase
           where (⊔) :: Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
                 (⊔) left right =  Map.unionWithKey f left right
@@ -300,7 +327,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFr
 csGraphSize :: CsGraph s e -> Int
 csGraphSize (cs, es) = Map.fold (\σs k -> Set.size σs + k) 0 cs
 
-muMergeDirectOf :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e) => MicroArchitecturalAbstraction a a' e -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+muMergeDirectOf :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Show e, Ord e) => MicroArchitecturalAbstraction a a' e -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muLeq, muStepFor, muCostsFor }) graph n0 = traceShow (csGraphSize csGraph) $ invert'' $
   Map.fromList [ (m, ns) | m <- nodes graph,
       -- m == 31,
@@ -326,7 +353,7 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muG
 #endif         
 
 
-muGraphFromMergeDirectFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e) =>
+muGraphFromMergeDirectFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e, Show e) =>
   MicroArchitecturalAbstraction a a' e ->
   gr CFGNode CFGEdge ->
   Node ->
@@ -335,7 +362,7 @@ muGraphFromMergeDirectFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord 
 muGraphFromMergeDirectFor mu graph n0 m = merged muGraph' equivs
     where (equivs, muGraph') = mergeDirectFromFor mu graph n0 m
 
-mergeDirectFromFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e) =>
+mergeDirectFromFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e, Show e) =>
   MicroArchitecturalAbstraction a a' e ->
   gr CFGNode CFGEdge ->
   Node ->

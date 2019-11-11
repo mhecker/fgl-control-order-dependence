@@ -880,7 +880,7 @@ transDefsFast :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> Ab
 transDefsFast cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
-   $ (let { result' = transDefsMegaSlowPseudoDef cacheSize n e cache cache' seesN defsN ; cacheCombNr = Map.fold (\s k -> Set.size s * k) 1 cache } in if (cacheCombNr > 100 ∧ (not $ n `elem` [414, 16, 57, 65])) ∨  result == result' then id else
+   $ (let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
          error $ "transDefs " ++ (show (n, e, cache)) ++ "  :  " ++ (show $ result ∖ (seesN ∪ defsN)) ++ "    /=    " ++ (show $ result' ∖ (seesN ∪ defsN)))
    $ result 
           where result   = seesN ∪ defsN ∪ fromSeen
@@ -916,8 +916,6 @@ transDefsFast cacheSize n e cache cache' seesN defsN =
                 co'Map :: Map CachedObject (Set n)
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
                 cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
-
-                cacheC'ss  = [ cacheC's | cacheC <- concrete cacheSize cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
 
 
 
@@ -966,7 +964,7 @@ makesUses   e = useE e
     useV (ArrayRead a ix        ) = Set.singleton [CachedArrayRange a           aligned | aligned <- alignedIndices ]
                                   ∪ useV ix
     useV (Val  x)    = Set.empty
-    useV (Var  x)    = Set.empty
+    useV (Var  x)    = Set.singleton [CachedVar x]
     useV (Plus  x y) = useV x ∪ useV y
     useV (Minus x y) = useV x ∪ useV y
     useV (Times x y) = useV x ∪ useV y

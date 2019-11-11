@@ -42,7 +42,6 @@ import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalSt
 import qualified IRLSOD as IRLSOD (Input)
 
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFast)
-import qualified Data.Graph.Inductive.Query.PostDominance (isinkdomOfTwoFinger8)
 
 import MicroArchitecturalDependence (
     CsGraph, csGraphSize,
@@ -53,6 +52,7 @@ import MicroArchitecturalDependence (
     MicroArchitecturalAbstraction(..),
     stateGraphForSets, stateGraph, stateSets,
     muMergeDirectOf,
+    merged, mergeFromSlow,
     muGraphFromMergeDirectFor
   )
 
@@ -707,16 +707,18 @@ instance SimpleShow TransGraphEdge where
 data TransGraphTree = Leaf AbstractCacheState | TreeNode CachedObject [(Maybe Int, TransGraphTree)] deriving (Show, Eq, Ord)
 
 -- concrCacheTransDecisionGraphs :: CacheSize -> AbstractCacheState -> [(Gr TransGraphNode TransGraphEdge, [CachedObject])]
-concrCacheTransDecisionGraphs :: CacheSize -> AbstractCacheState -> (Gr TransGraphNode TransGraphEdge)
-concrCacheTransDecisionGraphs cacheSize cache = mkGraph ns es
+concrCacheTransDecisionGraphs :: CacheSize -> AbstractCacheState -> [CachedObject] -> CFGEdge -> (Gr TransGraphNode TransGraphEdge)
+concrCacheTransDecisionGraphs cacheSize cache assumed e = mkGraph ns es
   where
         (_, ns, es) = evalState (graph tree) 0
         
         graph :: TransGraphTree -> State Int (Int, [(Node, TransGraphNode)], [(Node, Node, TransGraphEdge)])
         graph (Leaf concreteCache) = do
           id <- get
-          put (id + 1)
-          return $ (id, [(id, ConcreteState concreteCache)], [])
+          let idResult = id + 1
+          let result = (Map.fromList $ cacheOnlyStepsFor cacheSize e concreteCache) ! (e,assumed)
+          put (idResult + 1)
+          return $ (id, [(id, ConcreteState concreteCache), (idResult, Result result)], [(id, idResult, Transition)])
         graph (TreeNode co ts) = do
           id <- get
           put (id + 1)
@@ -738,11 +740,54 @@ concrCacheTransDecisionGraphs cacheSize cache = mkGraph ns es
                     | otherwise = TreeNode co successors
                   where ((co, ages), cache0) = Map.deleteFindMin cache
                         successors = do
-                          ma <- Set.toList (ages ∩ (Set.insert infTime $ Set.map Just available))
+                          -- ma <- Set.toList (ages ∩ (Set.insert infTime $ Set.map Just available))
+                          ma <- Set.toList  ages
                           case ma of
                             Nothing -> return $ (ma, concrT               available  cache0                                   concreteCache)
                             Just a ->  return $ (ma, concrT (Set.delete a available) cache0 (Map.insert co (Set.singleton ma) concreteCache))
 
+
+concrCacheTransDecisionGraphsForCo ::
+  CacheSize ->
+  AbstractCacheState ->
+  [CachedObject] ->
+  CFGEdge ->
+  CachedObject ->
+  (Gr (TransGraphNode, TransGraphNode) TransGraphEdge, Gr (TransGraphNode, Set Node) TransGraphEdge)
+concrCacheTransDecisionGraphsForCo cacheSize cache assumed e co = {- traceShow toNode' $ traceShow nodes' $ -} (reached, result)
+  where graph = concrCacheTransDecisionGraphs cacheSize cache assumed e
+
+        resultReached =  subgraph (rdfs [ m | (m, (Result _, Result _) ) <- labNodes coEquived] coEquived) coEquived
+        result = merged reached equivs
+            --     idom'' = isinkdomOfTwoFinger8 csGraph''
+            -- in Set.fromList [ n | (y, (n,_))   <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y] -- TODO: can we make this wotk with muIsDependent, too?
+          where nodesToCsNodes = (∐) [ Map.fromList [ (tag, Set.fromList [ y ]) ] | (y, (tag, _)) <- labNodes reached]
+                idom   = fmap fromSet $ isinkdomOfTwoFinger8 reached
+                roots  = Set.fromList [ y | (y, (Result _, Result _)) <- labNodes reached]
+                equivs = mergeFromSlow nodesToCsNodes reached idom roots
+        reached = subgraph (rdfs [ m | (m, (Result _, Result _) ) <- labNodes coEquived] coEquived) coEquived
+
+        coEquived :: Gr (TransGraphNode, TransGraphNode) TransGraphEdge
+        coEquived = mkGraph (fmap second nodes') edges'
+          where second (n, (e, l)) = (n, (tag l,l))
+                tag l@(Object co)     = l
+                tag (ConcreteState _) = (ConcreteState Map.empty)
+                tag  (Result        _) = (Result        Map.empty)
+        nodes' = zip [0..] (Set.toList $ Set.fromList $
+                           [           a                   | (n, l)     <- labNodes graph, let a  = α (n , l )]
+                           )
+        edges' =           [(toNode' ! a, toNode' ! a', e) | (n, n', e) <- labEdges graph, let (Just l) = lab graph n, let (Just l') = lab graph n',
+                                                                                           let a  = α (n , l ),
+                                                                                           let a' = α (n', l')
+                                                                                           -- traceShow (n,l,a, toNode' ! a, "====>", (n',l',a', toNode' ! a')) True
+                           ]
+        toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
+
+        α cs@(n, Object co)           = cs
+        α cs@(n, ConcreteState cache) = cs
+        α cs@(_, Result cache') = (sameId, Result $ restrict cache' (Set.singleton co))
+
+        sameId = -1
 
 
 
@@ -801,6 +846,32 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
 
 
 
+transDefsMegaSlowPseudoDef :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
+transDefsMegaSlowPseudoDef cacheSize n e cache cache' seesN defsN = (if cacheCombNr > 20 then traceShow (n, List.length $ assumeds, Map.size cache, Set.size cos, cacheCombNr) else id) $ 
+     require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
+   $ result 
+          where cacheCombNr = Map.fold (\s k -> Set.size s * k) 1 cache
+                result   = seesN ∪ defsN ∪ fromSeen
+                assumeds :: [[CachedObject]]
+                assumeds = fmap second $ cacheOnlyStepsFor cacheSize e cache
+                  where second ((e, assumed), cache) = assumed
+
+                fromSeen = Set.fromList [ (n', co)  | assumed <- assumeds,
+                                                      co <- Set.toList cos,
+                                                      let equivG = snd $ concrCacheTransDecisionGraphsForCo cacheSize cache assumed e co,
+                                                      let idom = isinkdomOfTwoFinger8 equivG,
+                                                      (y, y's) <- Map.assocs idom,
+                                                      Set.null y's,
+                                                      let n's = case lab equivG y of
+                                                                 Just (Result _, _)     ->                     Set.empty
+                                                                 Just ((Object co'), _) -> Map.findWithDefault Set.empty co' co'Map,
+                                                      n' <- Set.toList n's
+                            ]
+                co'Map :: Map CachedObject (Set n)
+                co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
+                cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
+
 
 
 
@@ -809,7 +880,7 @@ transDefsFast :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> Ab
 transDefsFast cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
-   $ (let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
+   $ (let { result' = transDefsMegaSlowPseudoDef cacheSize n e cache cache' seesN defsN ; cacheCombNr = Map.fold (\s k -> Set.size s * k) 1 cache } in if (cacheCombNr > 100 ∧ (not $ n `elem` [414, 16, 57, 65])) ∨  result == result' then id else
          error $ "transDefs " ++ (show (n, e, cache)) ++ "  :  " ++ (show $ result ∖ (seesN ∪ defsN)) ++ "    /=    " ++ (show $ result' ∖ (seesN ∪ defsN)))
    $ result 
           where result   = seesN ∪ defsN ∪ fromSeen

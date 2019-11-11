@@ -951,6 +951,7 @@ makesUses   e = useE e
     useE (AssignArray a ix@(Val i)                 vf) = useV vf ∪ Set.singleton [CachedArrayRange a (toAlignedIndex $ arrayIndex i) ]
     useE (AssignArray a ix@(AssertRange min max i) vf) = useV vf ∪ Set.singleton [CachedArrayRange a  aligned                       | aligned <- alignedIndicesFor min max ]
     useE (AssignArray a ix                         vf) = useV vf ∪ Set.singleton [CachedArrayRange a  aligned                       | aligned <- alignedIndices ]
+    useE (Assign      x vf                           ) = useV vf ∪ Set.singleton [CachedVar x]
     useE e = useEFor useV useB e
 
     useB :: BoolFunction -> Set [CachedObject]

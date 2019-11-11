@@ -143,7 +143,8 @@ aes_main_ct_precache = Aes {
 initACS = AgeSets.initialAbstractCacheState
 csg     = AgeSets.cacheStateGraph
 ccdg    = AgeSets.cacheCostDecisionGraph
-csdOf   = AgeSets.csdMergeDirectOf
+-- csdOf   = AgeSets.csdMergeDirectOf
+csdOf   = AgeSets.csdFromDataDep
 
 main = let {
          aes@(Aes { cacheSize, forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct_precache ;

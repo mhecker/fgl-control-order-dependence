@@ -880,8 +880,8 @@ transDefsFast :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> Ab
 transDefsFast cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
-   $ (let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
-         error $ "transDefs " ++ (show (n, e, cache)) ++ "  :  " ++ (show $ result ∖ (seesN ∪ defsN)) ++ "    /=    " ++ (show $ result' ∖ (seesN ∪ defsN)))
+   -- $ (let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
+   --       error $ "transDefs " ++ (show (n, e, cache)) ++ "  :  " ++ (show $ result ∖ (seesN ∪ defsN)) ++ "    /=    " ++ (show $ result' ∖ (seesN ∪ defsN)))
    $ result 
           where result   = seesN ∪ defsN ∪ fromSeen
                 leq Nothing  Nothing  = True

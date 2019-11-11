@@ -1040,7 +1040,7 @@ cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
 
 csdFromDataDep :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdFromDataDep cacheSize graph n0 = traceShow (csGraphSize csGraph) $
-    invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice cacheSize csGraph csGraphG m]
+    invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice cacheSize csGraph csGraphG ddeps m]
   where  mu = cacheAbstraction cacheSize
          csGraph@(cs, es) = stateSets (muStepFor mu) (muLeq mu) graph (muInitialState mu) n0
          csGraphG = stateGraphForSets csGraph :: Gr (Node, AbstractCacheState) CFGEdge
@@ -1048,11 +1048,11 @@ csdFromDataDep cacheSize graph n0 = traceShow (csGraphSize csGraph) $
          costs = (muCostsFor mu) csGraph
          mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
 
+         ddeps = cacheDataDepGWork cacheSize csGraphG
 
-
-cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge -> Node -> Set Node
-cacheDataDepSlice cacheSize csGraph csGraphG m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
-  where ddeps = cacheDataDepGWork cacheSize csGraphG
+cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (Set Node) -> Node -> Set Node
+cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
+  where
 
         msCsGraph  = [ y | (y, (m_, _)) <- labNodes csGraphG , m_ == m ]
         msCsGraph' = [ y | (y, (m_, _)) <- labNodes csGraphG', m_ == m ]

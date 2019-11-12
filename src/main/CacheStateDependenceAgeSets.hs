@@ -676,17 +676,30 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                 leq (Just x) (Just y) = x <= y
 
                 lt a b = (a /= b) ∧ (a `leq` b)
+{-
+                mmin Nothing  my       = my
+                mmin mx       Nothing  = mx
+                mmin (Just x) (Just y) = Just $ min x y
+-}
+                mminimum ages = case as of
+                    []             -> Nothing
+                    [Nothing]      -> Nothing
+                    (Nothing:mx:_) -> mx
+                    (mx:_)         -> mx
+                  where as = Set.toAscList ages
+
+                mmaximum ages
+                  | Set.findMin ages == Nothing = Nothing
+                  | otherwise                   = Set.findMax ages
 
                 result = Set.fromList [ (nodeFor (n, cache) , co)  | uses  <- Set.toList $ makesUses e,
-                                                      (co, ages) <- Map.assocs cache,
                                                       coUse  <- uses,
-                                                      coUse' <- uses, coUse' /= coUse,
-                                                      let agesUse  = Map.findWithDefault inf coUse  cache,
-                                                      let agesUse' = Map.findWithDefault inf coUse' cache,
-
+                                                      coUse' <- uses, coUse' /= coUse, -- TODO: optimize by sorting uses
+                                                      let agesUse  = Map.findWithDefault inf coUse  cache, let aU  = mminimum agesUse ,
+                                                      let agesUse' = Map.findWithDefault inf coUse' cache, let aU' = mmaximum agesUse',
+                                                      aU `lt` aU',
+                                                      (co, ages) <- Map.assocs cache,
                                                       a   <- Set.toList ages,
-                                                      aU  <- Set.toList agesUse ,
-                                                      aU' <- Set.toList agesUse',
                                                       aU `lt` a ∧ a `lt` aU',
                                                       if False ∧ (n == 57) then traceShow "[:::::::::::" $ traceShow (n, a, aU, aU') $ traceShow cache $ traceShow "::::::::::::::]" $ True else True
                             ]

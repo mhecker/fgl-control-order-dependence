@@ -26,21 +26,19 @@ abstractOf graph abstraction = mkGraph nodes' edges'
 type AbstractNode = Set Node
 
 
-decidingAbstractNodes :: DynGraph gr => gr a b -> Map Node AbstractNode -> Map AbstractNode (Set AbstractNode) -> Set AbstractNode
-decidingAbstractNodes graph' abstractionM sinkdom' = 
-      Set.fromList [ ns | n <- nodes graph', let ns = abstractionM ! n,
-                          (∃) (suc graph' n) (\m1 -> (∃) (suc graph' n) (\m2 -> (if ns == Set.fromList [3,4,12] then traceShow (m1,m2, (abstractionM ! m1), (abstractionM ! m2)) else id) $ 
-                            (not $ m1 == n) ∧ (not $ m2 == n) ∧ (m1 /= m2) ∧ (Set.null $ (sinkdom' ! (abstractionM ! m1)) ∩ (sinkdom' ! (abstractionM ! m2)))
-                          ))]
+decidingAbstractNodes :: DynGraph gr => gr a b -> Map Node AbstractNode -> Set AbstractNode
+decidingAbstractNodes graph abstractionM = 
+      Set.fromList [ ns | ns <- Map.elems abstractionM,
+                          (∃) ns (\n -> (∃) (suc graph n) (\m1 -> (∃) (suc graph n) (\m2 -> 
+                            (not $ m1 == n) ∧ (not $ m2 == n) ∧ (m1 /= m2)
+                          )))]
 
---abstractSlice :: (DynGraph gr, Ord b) => gr a b -> Map Node AbstractNode -> Set AbstractNode -> Set AbstractNode
-abstractSlice :: (Show a, Show b, Ord b) => Gr a b -> Map Node AbstractNode -> Set AbstractNode -> Set AbstractNode
+abstractSlice :: (DynGraph gr, Ord b) => gr a b -> Map Node AbstractNode -> Set AbstractNode -> Set AbstractNode
+-- abstractSlice :: (Show b, Ord b) => Gr a b -> Map Node AbstractNode -> Set AbstractNode -> Set AbstractNode
 abstractSlice graph abstractionM ms =
     -- traceShow deciding' $
     -- traceShow sinkdom' $
-    -- traceShow abstractGraph' $
-    -- traceShow graph' $
-    -- traceShow sinkdom'Nodes $
+    -- traceShow abstractGraph' $ 
     ms ∪ Set.fromList [ ns | (n', ns) <- labNodes abstractGraph', ns ∈ deciding',  Set.null $ sinkdom' ! n' ∩ msInAbstractGraphS ]
   where msL = Set.toList 
         abstractGraph = abstractOf graph a
@@ -56,9 +54,7 @@ abstractSlice graph abstractionM ms =
         graph' = 
           let { toMs = subgraph (rdfs msInGraph                 graph)         graph } in foldr (flip delSuccessorEdges) toMs msInGraph
 
-        deciding' = decidingAbstractNodes graph' abstractionM sinkdom'Nodes
-        sinkdom' = sinkdomNaiveGfp abstractGraph'
-        sinkdom'Nodes :: Map AbstractNode (Set AbstractNode)
-        sinkdom'Nodes = Map.fromList [ (ns, Set.fromList [ ms | m' <- Set.toList doms, let Just ms = lab abstractGraph' m' ])  | (n', ns) <- labNodes abstractGraph', let doms = sinkdom' ! n'  ]
+        deciding' = decidingAbstractNodes graph' abstractionM
+        sinkdom' = sinkdomNaiveGfp abstractGraph' 
 
 

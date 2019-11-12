@@ -907,11 +907,13 @@ transDefsFast cacheSize n e cache cache' seesN defsN =
 
                                                       coUse <- uses,
                                                       let agesUse = Map.findWithDefault inf coUse cache,
-                                                      let lt =   (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (aU `leq` a ))),
-                                                      let gt =   (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (a  `leq` aU))),
+
+                                                      a <- Set.toList ages,
+                                                      let lt =   (∀) (agesUse) (\aU -> (a == Nothing) ∨ (aU `leq` a )),
+                                                      let gt =   (∀) (agesUse) (\aU -> (a == Nothing) ∨ (a  `leq` aU)),
                                                       not $ lt ∨ gt,
 
-                                                      if False ∧ (n == 57) then traceShow "[:::::::::::" $ traceShow (n, co, lt, gt, ages,Map.findWithDefault Set.empty coUse co'Map) $ traceShow coUse $ traceShow cache $ traceShow "::::::::::::::]" $ True else True,
+                                                      -- if (n == 55) ∧ (co == CachedVar (Global "d")) then traceShow "[:::::::::::" $ traceShow (n, co, coUse, ages, agesUse) $ traceShow cache $ traceShow (seesN, defsN) $ traceShow "::::::::::::::]" $ True else True,
                                                       n' <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map
                             ]
 

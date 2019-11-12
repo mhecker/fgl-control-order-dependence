@@ -639,7 +639,11 @@ killedFor cache' sees'  = result
                                                                   Just ages' -> not $ ages' == fresh
                                             ]
 
-defsFor cacheSize nodeFor (n, e, cache, cache') =
+
+defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Set (n, CachedObject)
+defsFor = defsForFast
+
+defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    $ assert ((List.null choices) → (Set.null result))
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow "-------}" else id)
@@ -655,10 +659,46 @@ defsFor cacheSize nodeFor (n, e, cache, cache') =
                 [(_,selectedCache')] =                                        cacheOnlyStepFor  cacheSize e selectedCache
                 result = Set.fromList [ co | cacheU <- Set.toList unjoined, (co, ages) <- Map.assocs cacheU,                                         Just ages /= Map.lookup co selectedCache' ]
                        ∪ Set.fromList [ co |                                (co, ages) <- Map.assocs selectedCache', cacheU <- Set.toList unjoined,  Just ages /= Map.lookup co cacheU         ]
-        select cache co0 ages =  [ cache'  | ma <- Set.toList ages, let cache' = case ma of { Nothing -> Map.delete co0 cache ; Just a -> Map.insert co0 (Set.singleton ma) cache } ]
 
         choices = makesChoice e
         trace = False ∧ n == 52
+
+defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Set (n, CachedObject)
+defsForFast cacheSize nodeFor (n, e, cache, cache') =
+     require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
+   $ (let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in if result == result' then id else
+         error $ "defsFor " ++ (show (nodeFor (n, cache), e, cache)) ++ "  :  " ++ (show $ result) ++ "    /=    " ++ (show $ result') )
+   $ result 
+  where         leq Nothing  Nothing  = True
+                leq Nothing  (Just _) = False
+                leq (Just _) Nothing  = True
+                leq (Just x) (Just y) = x <= y
+
+                lt a b = (a /= b) ∧ (a `leq` b)
+
+                result = Set.fromList [ (nodeFor (n, cache) , co)  | uses  <- Set.toList $ makesUses e,
+                                                      (co, ages) <- Map.assocs cache,
+                                                      coUse  <- uses,
+                                                      coUse' <- uses, coUse' /= coUse,
+                                                      let agesUse  = Map.findWithDefault inf coUse  cache,
+                                                      let agesUse' = Map.findWithDefault inf coUse' cache,
+
+                                                      a   <- Set.toList ages,
+                                                      aU  <- Set.toList agesUse ,
+                                                      aU' <- Set.toList agesUse',
+                                                      aU `lt` a ∧ a `lt` aU',
+                                                      if False ∧ (n == 57) then traceShow "[:::::::::::" $ traceShow (n, a, aU, aU') $ traceShow cache $ traceShow "::::::::::::::]" $ True else True
+                            ]
+                       ∪ Set.fromList [ (nodeFor (n, cache) , coChoice) | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
+
+
+
+
+
+
+
+
 
 
 concrete :: CacheSize -> AbstractCacheState -> [AbstractCacheState ]

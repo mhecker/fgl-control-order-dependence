@@ -663,12 +663,13 @@ defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
         choices = makesChoice e
         trace = False ∧ n == 52
 
+
 defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Set (n, CachedObject)
 defsForFast cacheSize nodeFor (n, e, cache, cache') =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
-   $ (let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in if result == result' then id else
-         error $ "defsFor " ++ (show (nodeFor (n, cache), e, cache)) ++ "  :  " ++ (show $ result) ++ "    /=    " ++ (show $ result') )
+   $ (let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in if result ⊇ result' then id else
+         error $ "defsFor " ++ (show (nodeFor (n, cache), e, cache)) ++ "  :  " ++ (show $ result) ++ "    /⊇    " ++ (show $ result') )
    $ result 
   where         leq Nothing  Nothing  = True
                 leq Nothing  (Just _) = False

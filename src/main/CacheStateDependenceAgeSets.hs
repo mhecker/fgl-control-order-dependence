@@ -676,11 +676,12 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                 leq (Just x) (Just y) = x <= y
 
                 lt a b = (a /= b) ∧ (a `leq` b)
-{-
-                mmin Nothing  my       = my
-                mmin mx       Nothing  = mx
-                mmin (Just x) (Just y) = Just $ min x y
--}
+
+                ccompare Nothing  Nothing  = EQ -- OK?
+                ccompare Nothing  my       = GT
+                ccompare mx       Nothing  = LT
+                ccompare (Just x) (Just y) = compare x y 
+
                 mminimum ages = case as of
                     []             -> Nothing
                     [Nothing]      -> Nothing
@@ -692,12 +693,16 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                   | Set.findMin ages == Nothing = Nothing
                   | otherwise                   = Set.findMax ages
 
+                second (_,aU,_  ) = aU
+                third  (_,_ ,aU') = aU'
+
                 result = Set.fromList [ (nodeFor (n, cache) , co)  | uses  <- Set.toList $ makesUses e,
-                                                      coUse  <- uses,
-                                                      coUse' <- uses, coUse' /= coUse, -- TODO: optimize by sorting uses
-                                                      let agesUse  = Map.findWithDefault inf coUse  cache, let aU  = mminimum agesUse ,
-                                                      let agesUse' = Map.findWithDefault inf coUse' cache, let aU' = mmaximum agesUse',
-                                                      aU `lt` aU',
+                                                      let withMinMax = fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse  cache in (coUse, mminimum agesUse, mmaximum agesUse)) uses,
+                                                      let byMin = List.sortBy (\a b -> ccompare (second a) (second b)) withMinMax,
+                                                      (coUse', _ ,  aU') <- byMin,
+                                                      (coUse , aU,  _  ) <- takeWhile ( (`lt` aU') . second) byMin,
+                                                      coUse' /= coUse,
+                                                      assert (aU `lt` aU') True,
                                                       (co, ages) <- Map.assocs cache,
                                                       a   <- Set.toList ages,
                                                       aU `lt` a ∧ a `lt` aU',

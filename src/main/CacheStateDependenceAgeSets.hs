@@ -947,16 +947,6 @@ transDefsFast cacheSize n e cache cache' seesN defsN =
                 cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
 
 
-
-pushedBack cacheSize = Set.map pb
-  where pb Nothing = Nothing
-        pb (Just a)
-          | a + 1 == cacheSize = Nothing
-          | otherwise          = Just $ a + 1
-
-readToFront _ = fresh
-
-
 makesChoice e = [ co | choices <- Set.toList $ makesUses e, not $ List.length choices == 1, co <- choices ]
 makesUses   e = useE e 
   where

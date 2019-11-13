@@ -646,15 +646,9 @@ defsFor = defsForFast
 defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    $ assert ((List.null choices) → (Set.null result))
-   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow "-------}" else id)
    $ result 
   where result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cacheSize cache, co <- Set.toList $ differing cacheSelected ]
-        differing selectedCache = (if trace ∧ (case Map.lookup (CachedArrayRange (Array "arrC") 128) selectedCache of { Nothing -> True ; Just ages -> Set.size ages == 1 }) then 
-               traceShow ("aa ", selectedCache)
-               $ traceShow ("bb ", unjoined)
-               $ traceShow ("cc ", selectedCache')
-               $ traceShow ("dd ", result)  else id)
-            $ result
+        differing selectedCache = result
           where unjoined             = Set.fromList [ cacheU | (_, cacheU) <- cacheOnlyStepsFor cacheSize e selectedCache]
                 [(_,selectedCache')] =                                        cacheOnlyStepFor  cacheSize e selectedCache
                 result = Set.fromList [ co | cacheU <- Set.toList unjoined, (co, ages) <- Map.assocs cacheU,                                         Just ages /= Map.lookup co selectedCache' ]
@@ -667,9 +661,7 @@ defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
 defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Set (n, CachedObject)
 defsForFast cacheSize nodeFor (n, e, cache, cache') =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
-   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
-   $ (let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in if result ⊇ result' then id else
-         error $ "defsFor " ++ (show (nodeFor (n, cache), e, cache)) ++ "  :  " ++ (show $ result) ++ "    /⊇    " ++ (show $ result') )
+   $ let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in assert (result ⊇ result')
    $ result 
   where         leq Nothing  Nothing  = True
                 leq Nothing  (Just _) = False
@@ -706,8 +698,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                                                       assert (aU `lt` aU') True,
                                                       (co, ages) <- Map.assocs cache,
                                                       a   <- Set.toList ages,
-                                                      aU `lt` a ∧ a `lt` aU',
-                                                      if False ∧ (n == 57) then traceShow "[:::::::::::" $ traceShow (n, a, aU, aU') $ traceShow cache $ traceShow "::::::::::::::]" $ True else True
+                                                      aU `lt` a ∧ a `lt` aU'
                             ]
                        ∪ Set.fromList [ (nodeFor (n, cache) , coChoice) | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
 
@@ -856,18 +847,10 @@ transDefs = transDefsFast
 transDefsSlowPseudoDef :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
 transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
-   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
    $ result 
           where result   = seesN ∪ defsN ∪ fromSeen
                 fromSeen = Set.fromList [ (n', co)  | (co', n's) <- Map.assocs co'Map,
                                                       Just ages <- [Map.lookup co' cache], Set.size ages > 1,
-
-{-
-                                                      (cacheA, cacheA's) <- caches,
-                                                      (cacheC, cacheC's) <- caches,
-                                                      Map.lookup co' cacheA /= Map.lookup co' cacheC,
-                                                      (∀) (Map.keys cache) (\co -> (co == co') ∨ (Map.lookup co cacheA  == Map.lookup co cacheC)),
--}
 
                                                       ((cacheA, cacheA's), (cacheC, cacheC's)) <- cachePairs co' ages,
                                               assert (Map.lookup co' cacheA /= Map.lookup co' cacheC)                                              True,
@@ -881,16 +864,12 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
                                                       Map.lookup co cacheA /= Map.lookup co' cacheA,
                                                       Map.lookup co cacheC /= Map.lookup co' cacheC,
                                                       Map.lookup co cacheA' /= Map.lookup co cacheC',
-                                                      -- if n == 778 ∧ (co == CachedVar (Global "z")) then traceShow "{=======" $ traceShow (co, co', n's, cache) $ traceShow (cacheA, cacheA') $ traceShow (cacheC, cacheC') $ traceShow "=======}" True else True,
                                                       n' <- Set.toList n's
                             ]
                 co'Map :: Map CachedObject (Set n)
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Set.toList seesN]
                 cos = Set.fromList $ Map.keys cache ++ Map.keys cache'
 
-{-
-                caches  = [ (cacheC, cacheC's) | cacheC <- pseudoConcrete cache, let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC ]
--}
 
                 cachePairs co' ages = [ ((cacheA, cacheA's), (cacheC, cacheC's)) | cachePC <- pseudoConcrete (Map.delete co' cache),
                                                                                    maA <- Set.toList ages,
@@ -910,7 +889,6 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN =
 transDefsMegaSlowPseudoDef :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
 transDefsMegaSlowPseudoDef cacheSize n e cache cache' seesN defsN = (if cacheCombNr > 20 then traceShow (n, List.length $ assumeds, Map.size cache, Set.size cos, cacheCombNr) else id) $ 
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
-   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
    $ result 
           where cacheCombNr = Map.fold (\s k -> Set.size s * k) 1 cache
                 result   = seesN ∪ defsN ∪ fromSeen
@@ -940,9 +918,7 @@ transDefsMegaSlowPseudoDef cacheSize n e cache cache' seesN defsN = (if cacheCom
 transDefsFast :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Set (n, CachedObject) ->  Set (n, CachedObject) -> Set (n, CachedObject)
 transDefsFast cacheSize n e cache cache' seesN defsN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
-   -- $ (if trace then traceShow "{--------" $ traceShow (n, e)  $ traceShow cache $ traceShow cache' $ traceShow result $ traceShow "-------}" else id)
-   -- $ (let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN in if result == result' then id else
-   --       error $ "transDefs " ++ (show (n, e, cache)) ++ "  :  " ++ (show $ result ∖ (seesN ∪ defsN)) ++ "    /=    " ++ (show $ result' ∖ (seesN ∪ defsN)))
+   $ let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN defsN in assert (result == result')
    $ result 
           where result   = seesN ∪ defsN ∪ fromSeen
                 leq Nothing  Nothing  = True
@@ -955,15 +931,6 @@ transDefsFast cacheSize n e cache cache' seesN defsN =
                 fromSeen = Set.fromList [ (n', co)  | uses  <- Set.toList $ makesUses e,
                                                       (co, ages) <- Map.assocs cache,
 
-                                                      -- let lt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in
-                                                      --            (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (aU `leq` a )))
-                                                      --          ),
-                                                      -- let gt = (∀) uses (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in
-                                                      --            (∀) (agesUse) (\aU -> (∀) (ages) (\a -> (a == Nothing) ∨ (a  `leq` aU)))
-                                                      --          ),
-                                                      -- not $ lt ∨ gt,
-                                                      -- coUse <- uses,
-
                                                       coUse <- uses,
                                                       let agesUse = Map.findWithDefault inf coUse cache,
 
@@ -972,7 +939,6 @@ transDefsFast cacheSize n e cache cache' seesN defsN =
                                                       let gt =   (∀) (agesUse) (\aU -> (a == Nothing) ∨ (a  `leq` aU)),
                                                       not $ lt ∨ gt,
 
-                                                      -- if (n == 55) ∧ (co == CachedVar (Global "d")) then traceShow "[:::::::::::" $ traceShow (n, co, coUse, ages, agesUse) $ traceShow cache $ traceShow (seesN, defsN) $ traceShow "::::::::::::::]" $ True else True,
                                                       n' <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map
                             ]
 
@@ -989,19 +955,6 @@ pushedBack cacheSize = Set.map pb
           | otherwise          = Just $ a + 1
 
 readToFront _ = fresh
-
-{-
-transDefs cacheSize n e cache cache' seesN defsN =
-            -- (if n `elem` [52] then traceShow "[=======" $ traceShow (n, e, relevant) $ traceShow choices $ traceShow (seesN, defsN) $ traceShow (fromSeen, fromDefs) $ traceShow "==========]" else id) $
-            seesN ∪ fromSeen ∪ fromDefs 
-          where fromSeen  =  -- Set.fromList [ (n', co)  | (n, co) <- Set.toList defsN, (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co' ]
-                             Set.fromList [ (n', co)  | co <- Map.keys cache ++ Map.keys cache', let ages = Map.findWithDefault inf co cache, let ages' = Map.findWithDefault inf co cache', not $ ages' `elem` [ pushedBack cacheSize ages, readToFront ages], (n', co') <- Set.toList $ seesN, co' ∈ relevant, not $ isConst cache co']
-                fromDefs  =  if not $ List.null choices then defsN else Set.empty
-
-                choices = makesChoice e cache
-                relevant = CSD.cachedObjectsFor e ∪ CSD.writtenCachedObjectsFor e
-
--}
 
 
 makesChoice e = [ co | choices <- Set.toList $ makesUses e, not $ List.length choices == 1, co <- choices ]
@@ -1052,9 +1005,6 @@ cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromLi
           where f sees =  (∐) [ Map.fromList [ (yM, (killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, e, cache, cache'))) ) ]
                                       | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]
 
-{-
-        kill yN = killFor (const yN)
--}
         defs yN = defsFor cacheSize (const yN)
 
 
@@ -1073,9 +1023,6 @@ cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fr
                 seesM' = (∐) [(killedFor cache' $ transDefs cacheSize yN e cache cache' (sees ! yN) (defs yN (n, e, cache, cache')))  | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
                 changed = seesM /= seesM'
 
-{-
-        kill yN = killFor (const yN)
--}
         defs yN = defsFor cacheSize (const yN)
 
 

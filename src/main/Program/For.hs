@@ -288,6 +288,7 @@ twoAddressCode c = twoAddressCodeFrom r0 c
         cs = subCommands c
 
         regsIn (If bf _ _)            =  [ r | VarName (Register r) <- Set.toList $ useB bf ]
+        regsIn (ForFromToStepUsing _ _ _ _ _) = []
         regsIn (ForC _ _)             =  []
         regsIn (ForV x _ )            =  [ r |         (Register r) <- [x] ]
         regsIn (Ass x vf)             =  [ r | VarName (Register r) <- Set.toList $ useV vf ]
@@ -311,12 +312,23 @@ twoAddressCodeFrom r0  (Ass var vf)  =
     Nothing ->          (Ass var vf')
     Just ls -> ls `Seq` (Ass var vf')
 twoAddressCodeFrom r0  (AssArr arr ix vf)  =
-  let (loadsVf, vf', r) = twoAddressCodeV r0 vf
-      (loadsIx, ix', _) = twoAddressCodeV r ix
+  let (loadsVf, vf', r ) = twoAddressCodeV r0 vf
+      (loadsIx, ix', r') = twoAddressCodeV r  ix
       loads = loadsVf `sseq` loadsIx
+      r'' = r' + 1
+      ass = case ix' of
+          (Val           _ ) ->                              (right ix')
+          (Var (Register _)) ->                              (right ix')
+          (AssertRange min max (Var (Register _))) ->        (right ix')
+          _                  -> Ass (Register r' ) ix' `Seq` (right (Var $ Register r'))
+        where right ix' = case vf' of 
+                (Val           _ ) ->                              AssArr arr ix' vf'
+                (Var (Register _)) ->                              AssArr arr ix' vf'
+                _                  -> Ass (Register r'') vf' `Seq` AssArr arr ix' (Var $ Register r'')
   in case loads of
-       Nothing ->          (AssArr arr ix' vf')
-       Just ls -> ls `Seq` (AssArr arr ix' vf')
+       Nothing ->          ass
+       Just ls -> ls `Seq` ass
+twoAddressCodeFrom r0  (ForFromToStepUsing from to step ix c) = ForFromToStepUsing from to step ix (twoAddressCodeFrom r0 c)
 twoAddressCodeFrom r0  (ForC val c) = ForC val (twoAddressCodeFrom r0 c)
 twoAddressCodeFrom r0  (ForV var c) = ForV var (twoAddressCodeFrom r0 c)
 twoAddressCodeFrom r0  (Seq c1 c2 ) = Seq (twoAddressCodeFrom r0 c1) (twoAddressCodeFrom r0 c2)
@@ -355,6 +367,10 @@ sseq (Just l) (Just r) = Just (l `Seq` r)
 twoAddressCodeV :: Int -> VarFunction -> (Maybe For, VarFunction, Int)
 twoAddressCodeV r vf@(Val _) = (Nothing, vf, r)
 twoAddressCodeV r vf@(Var (Register rr)) = assert (rr < r) $ (Nothing, vf, r)
+twoAddressCodeV r (ArrayRead x (AssertRange min max ix)) =
+    let (loadsIx, ix', r' ) = twoAddressCodeV r ix
+    in (loadsIx `sseq` (Just $ Ass (Register r') (ArrayRead x (AssertRange min max ix'))), Var (Register r'), r' + 1)
+twoAddressCodeV r vf@(ArrayRead x (Val i)) = (Nothing, vf, r)
 twoAddressCodeV r (ArrayRead x ix) =
     let (loadsIx, ix', r' ) = twoAddressCodeV r ix
     in (loadsIx `sseq` (Just $ Ass (Register r') (ArrayRead x ix')), Var (Register r'), r' + 1)

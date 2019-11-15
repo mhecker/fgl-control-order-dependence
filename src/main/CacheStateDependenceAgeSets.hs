@@ -957,15 +957,19 @@ transDefsFast cacheSize n e cache cache' seesN =
 
                 lt a b = (a /= b) ∧ (a `leq` b)
 
-                fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] | uses  <- Set.toList $ makesUses e,
-                                                      (co, ages) <- Map.assocs cache,
+                fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] | uses <- allUses,
+                                                      let coUseWithMinMax =
+                                                            fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in (coUse,       mminimum agesUse, mmaximum agesUse)) uses,
+                                                      let coWithMinMax    =
+                                                            fmap (\(co, ages) ->                                                 (co   , ages, mminimum ages   , mmaximum ages   )) (Map.assocs cache),
+                                                      (co, ages, amin, amax) <- coWithMinMax,
+                                                      (coUse, aUmin, aUmax) <- coUseWithMinMax,
 
-                                                      coUse <- uses,
-                                                      let agesUse = Map.findWithDefault inf coUse cache,
+                                                      not $ (aUmax `leq` amin) ∨ (amax `leq` aUmin),
 
                                        let as = [ MinAge aa | a@(Just aa) <- Set.toList ages,
-                                                      let lt =   (∀) (agesUse) (\aU -> aU `leq` a ),
-                                                      let gt =   (∀) (agesUse) (\aU -> a  `leq` aU),
+                                                      let lt = aUmax `leq` a    ,
+                                                      let gt =    a  `leq` aUmin,
                                                       not $ lt ∨ gt
                                                 ],
                                                       not $ List.null $ as,
@@ -974,6 +978,8 @@ transDefsFast cacheSize n e cache cache' seesN =
                                                       n' <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map
                             ]
 
+
+                allUses = Set.toList $ makesUses e
                 co'Map :: Map CachedObject (Set n)
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Map.keys seesN]
 

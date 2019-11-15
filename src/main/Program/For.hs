@@ -370,7 +370,6 @@ twoAddressCodeV r vf@(Var (Register rr)) = assert (rr < r) $ (Nothing, vf, r)
 twoAddressCodeV r (ArrayRead x (AssertRange min max ix)) =
     let (loadsIx, ix', r' ) = twoAddressCodeV r ix
     in (loadsIx `sseq` (Just $ Ass (Register r') (ArrayRead x (AssertRange min max ix'))), Var (Register r'), r' + 1)
-twoAddressCodeV r vf@(ArrayRead x (Val i)) = (Nothing, vf, r)
 twoAddressCodeV r (ArrayRead x ix) =
     let (loadsIx, ix', r' ) = twoAddressCodeV r ix
     in (loadsIx `sseq` (Just $ Ass (Register r') (ArrayRead x ix')), Var (Register r'), r' + 1)

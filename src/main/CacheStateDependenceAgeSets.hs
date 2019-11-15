@@ -674,6 +674,7 @@ defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
 defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) MinAge
 defsForFast cacheSize nodeFor (n, e, cache, cache') =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+   $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
    $ let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in assert (result ⊇ result')
    $ Map.fromSet (const 0) $ result 
   where         leq Nothing  Nothing  = True

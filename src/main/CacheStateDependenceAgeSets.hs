@@ -947,15 +947,22 @@ instance BoundedJoinSemiLattice MyInteger where
 transDefsFast :: forall n. (Show n, Ord n) => CacheSize -> Node -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Map (n, CachedObject) MinAge -> Map (n, CachedObject) MinAge
 transDefsFast cacheSize n e cache cache' seesN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
-   $ let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN in assert (Map.keysSet result == result')
+   $ let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN in
+     assert ((∀) (result' ∖ (Map.keysSet result)) (\(n'Missing, coMissing) ->
+                (∃) (Map.assocs ddeps) (\(co, coUses) -> co == coMissing ∧
+                  (∃) coUses (\(coUse, min) -> (∃) (Map.findWithDefault Set.empty coUse co'Map) (\(n', minAge) -> n' == n'Missing  ∧  (min < minAge)))
+                )
+            ))
    $ result 
           where result = seesN ⊔ fromSeen
 
                 fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] |
-                                                      (co, coUses) <- Map.assocs $ cacheDepsFast cacheSize e cache, (coUse, min) <- Set.toList coUses,
+                                                      (co, coUses) <- Map.assocs ddeps , (coUse, min) <- Set.toList coUses,
                                                       (n', minAge) <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map,
                                                       not $ min < minAge
                            ]
+
+                ddeps = cacheDepsFast cacheSize e cache
 
                 co'Map :: Map CachedObject (Set (n, MinAge))
                 co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ (n', minAge) ]) ]  | ((n', co'), minAge) <- Map.assocs seesN]

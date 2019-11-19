@@ -995,7 +995,39 @@ cacheDepsFast cacheSize e cache =
                 coUseWithMinMaxs = [fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in (coUse,       mminimum agesUse, mmaximum agesUse))              uses | uses <- Set.toList $ makesUses e]
 
 
+cacheDefsFast :: CacheSize -> CFGEdge -> AbstractCacheState -> Set CachedObject
+cacheDefsFast cacheSize e cache =
+     id
+   $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
+   $ result
+  where         leq Nothing  Nothing  = True
+                leq Nothing  (Just _) = False
+                leq (Just _) Nothing  = True
+                leq (Just x) (Just y) = x <= y
 
+                lt a b = (a /= b) ∧ (a `leq` b)
+
+                second (_,aU,_  ) = aU
+                third  (_,_ ,aU') = aU'
+
+                result = Set.fromList [ co | uses  <- Set.toList $ makesUses e,
+                                                      let withMinMax = fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse  cache in (coUse, mminimum agesUse, mmaximum agesUse)) uses,
+                                                      let byMin = List.sortBy (\a b -> ccompare (second a) (second b)) withMinMax,
+                                                      (coUse', _ ,  aU') <- byMin,
+                                                      (coUse , aU,  _  ) <- takeWhile ( (`lt` aU') . second) byMin,
+                                                      coUse' /= coUse,
+                                                      assert (aU `lt` aU') True,
+                                                      (co, ages) <- Map.assocs cache,
+                                                      a   <- Set.toList ages,
+                                                      aU `lt` a ∧ a `lt` aU'
+                            ]
+                       ∪ Set.fromList [ coChoice | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
+
+cacheSlice  :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Node -> Set Node
+cacheSlice cacheSize csGraph = \yM -> undefined
+
+  where cdefs = Map.fromList [ (y, Map.fromList [ (e, cacheDefsFast cacheSize e cache) | (_,e) <- lsuc csGraph y]) | (y, (n, cache)) <- labNodes csGraph ]
+        ddeps = Map.fromList [ (y, Map.fromList [ (e, cacheDepsFast cacheSize e cache) | (_,e) <- lsuc csGraph y]) | (y, (n, cache)) <- labNodes csGraph ]
 
 
 

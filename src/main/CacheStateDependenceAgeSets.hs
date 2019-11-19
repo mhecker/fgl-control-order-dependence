@@ -634,18 +634,19 @@ cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.
 killedFor ::  forall n. (Show n, Ord n) => CacheSize -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Map (n, CachedObject) MinAge -> Map (n, CachedObject) MinAge
 killedFor cacheSize e cache cache' sees'  = result
   where result = Map.mapMaybeWithKey (\(node, co) minAge ->     let maxCo = mmaximum (Map.findWithDefault inf co    cache)
-{-
-                                                                    minAge'Fast = if (∃) (makesUses e) (\uses ->
+
+                                                                    minAge' = if (∃) (makesUses e) (\uses ->
                                                                                    let { mins = [ mminimum $ Map.findWithDefault inf coUse cache| coUse <- uses ]  ; minUse = mminimumL mins } in
                                                                                    maxCo `leq` minUse
                                                                                  ) then minAge + 1 else minAge
--}
-                                                                    minAge' = if (∃) (makesUses e) (\uses -> (∀) uses (\coUse ->
+{-
+                                                                    minAge'Slow = if (∃) (makesUses e) (\uses -> (∀) uses (\coUse ->
                                                                                    (∀) (Map.findWithDefault inf coUse cache) (\aU -> 
                                                                                    (∀) (Map.findWithDefault inf co    cache) (\a  ->
                                                                                      a `leq` aU
                                                                                    ))
                                                                                   )) then minAge + 1 else minAge
+-}
                                                                     stillValid = minAge' < MinAge cacheSize
 
                                                                     singular = case Map.lookup co cache' of

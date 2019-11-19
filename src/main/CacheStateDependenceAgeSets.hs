@@ -646,7 +646,7 @@ killedFor cacheSize e cache cache' sees'  = result
                                                                                    ))
                                                                                   )) then minAge + 1 else minAge
 -}
-                                                                    stillValid = minAge' < MinAge cacheSize
+                                                                    stillValid = minAge' <= MinAge cacheSize
 
                                                                     singular = case Map.lookup co cache' of
                                                                       Nothing -> True

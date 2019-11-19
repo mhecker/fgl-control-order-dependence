@@ -1042,20 +1042,29 @@ cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromLi
 
 cacheDataDepGWork :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map (Node, CachedObject) (Set Node)
 cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromList [ yN ]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Map.keys deps ]
-  where seesDef = go (Set.fromList $ nodes csGraphG) (Map.fromList [ (y, Map.empty) | y <- nodes csGraphG ])
+  where seesDef = go (Map.fromList $ zip [0..] orderedNodes) (Map.fromList [ (y, Map.empty) | y <- nodes csGraphG ]) (Map.fromList [ (y, 0) | y <- nodes csGraphG ])
 
-        go workset sees
-            | Set.null workset = sees
-            | otherwise = if changed then go (foldr Set.insert workset0 (suc csGraphG yM)) (Map.insert yM seesM' sees)
-                                     else go                   workset0                                          sees
-          where (yM, workset0) = Set.deleteFindMin workset
+        go workset sees count
+            | Map.null workset = traceShow (Map.fold (+) 0 count) $ traceShow count $ sees
+            | otherwise = if changed then go workset0' (Map.insert yM seesM' sees) count'
+                                     else go workset0                        sees  count'
+          where ((_,yM), workset0) = Map.deleteFindMin workset
                 seesM  = sees ! yM
                 Just (m, cache') = lab csGraphG yM
 
                 seesM' = (∐) [(killedFor cacheSize e cache cache' $ transDefs cacheSize yN e cache cache' (sees ! yN)) ⊔ (defs yN (n, e, cache, cache'))  | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
                 changed = seesM /= seesM'
 
+                workset0' = foldl (\ws (i, n) -> Map.insert i n ws) workset0 [(node2number ! m, m) | m <- suc csGraphG yM]
+
+                count' = Map.insertWith (+) yM 1 count
+
         defs yN = defsFor cacheSize (const yN)
+
+        orderedNodes = topsort csGraphG
+        node2number = Map.fromList $ zip orderedNodes [0..]
+
+
 
 
 

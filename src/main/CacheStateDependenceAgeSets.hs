@@ -980,10 +980,9 @@ cacheDepsFast cacheSize e cache =
 
                 lt a b = (a /= b) ∧ (a `leq` b)
 
-                result = (∐) [ Map.fromList [ (coUse, Set.fromList [ (co, min) ]) ] | (co, ages) <- Map.assocs cache,
+                result = Map.fromList [ (coUse, Set.fromList [ (co, min) | (co, ages) <- Map.assocs cache,
                                                       let amin = mminimum ages,
                                                       let amax = mmaximum ages,
-                                                      coUseWithMinMax <- coUseWithMinMaxs, (coUse, aUmin, aUmax) <- coUseWithMinMax,
 
                                                       not $ (aUmax `leq` amin) ∨ (amax `leq` aUmin),
 
@@ -994,7 +993,10 @@ cacheDepsFast cacheSize e cache =
                                                 ],
                                                       not $ List.null $ as,
                                                       let min = foldl1 (⊔) as
-                              ]
+                                                ]
+                                         )
+                           | coUseWithMinMax <- coUseWithMinMaxs, (coUse, aUmin, aUmax) <- coUseWithMinMax ]
+
 
                 coUseWithMinMaxs = [fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in (coUse,       mminimum agesUse, mmaximum agesUse))              uses | uses <- Set.toList $ makesUses e]
 

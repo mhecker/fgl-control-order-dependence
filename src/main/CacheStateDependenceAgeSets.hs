@@ -681,8 +681,8 @@ defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheSt
 defsForFast cacheSize nodeFor (n, e, cache, cache') =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
-   $ let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in assert (result ⊇ result')
-   $ Map.fromSet (const 0) $ result 
+   $ let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in assert (Map.keysSet result ⊇ result')
+   $ result
   where         leq Nothing  Nothing  = True
                 leq Nothing  (Just _) = False
                 leq (Just _) Nothing  = True
@@ -693,7 +693,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                 second (_,aU,_  ) = aU
                 third  (_,_ ,aU') = aU'
 
-                result = Set.fromList [ (nodeFor (n, cache) , co)  | uses  <- Set.toList $ makesUses e,
+                result = Map.fromList [ ((nodeFor (n, cache), co), MinAge 0)  | uses  <- Set.toList $ makesUses e,
                                                       let withMinMax = fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse  cache in (coUse, mminimum agesUse, mmaximum agesUse)) uses,
                                                       let byMin = List.sortBy (\a b -> ccompare (second a) (second b)) withMinMax,
                                                       (coUse', _ ,  aU') <- byMin,
@@ -701,10 +701,11 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                                                       coUse' /= coUse,
                                                       assert (aU `lt` aU') True,
                                                       (co, ages) <- Map.assocs cache,
-                                                      a   <- Set.toList ages,
-                                                      aU `lt` a ∧ a `lt` aU'
+                                                      let as = [ a  | a  <- Set.toList ages, aU `lt` a ∧ a `lt` aU' ],
+                                                      not $ List.null as,
+                                                      let (Just a) = mminimumL as
                             ]
-                       ∪ Set.fromList [ (nodeFor (n, cache) , coChoice) | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
+                       ⊔ Map.fromList [ ((nodeFor (n, cache), coChoice), MinAge 0) | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
 
 mminimumL :: Ord n => [Maybe n] -> Maybe n
 mminimumL = List.minimumBy ccompare 

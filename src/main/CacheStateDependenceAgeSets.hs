@@ -975,13 +975,14 @@ transDefsFast cacheSize n e cache cache' seesN =
                                                       not $ List.null $ as,
                                                       let min = foldl1 (⊔) as,
 
-                                                      n' <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map
+                                                      (n', minAge) <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map,
+                                                      not $ min < minAge
                             ]
 
 
                 allUses = Set.toList $ makesUses e
-                co'Map :: Map CachedObject (Set n)
-                co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ n' ]) ]  | (n', co') <- Map.keys seesN]
+                co'Map :: Map CachedObject (Set (n, MinAge))
+                co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ (n', minAge) ]) ]  | ((n', co'), minAge) <- Map.assocs seesN]
 
 
 makesChoice e = [ co | choices <- Set.toList $ makesUses e, not $ List.length choices == 1, co <- choices ]

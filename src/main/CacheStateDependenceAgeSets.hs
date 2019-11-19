@@ -949,7 +949,24 @@ transDefsFast cacheSize n e cache cache' seesN =
      require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
    $ let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN in assert (Map.keysSet result == result')
    $ result 
-          where result   = seesN ⊔ fromSeen
+          where result = seesN ⊔ fromSeen
+
+                fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] |
+                                                      (co, coUses) <- Map.assocs $ cacheDepsFast cacheSize n e cache, (coUse, min) <- Set.toList coUses,
+                                                      (n', minAge) <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map,
+                                                      not $ min < minAge
+                           ]
+
+                co'Map :: Map CachedObject (Set (n, MinAge))
+                co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ (n', minAge) ]) ]  | ((n', co'), minAge) <- Map.assocs seesN]
+
+
+
+cacheDepsFast :: CacheSize -> Node -> CFGEdge -> AbstractCacheState -> Map CachedObject (Set (CachedObject, MinAge))
+cacheDepsFast cacheSize n e cache =
+     id
+   $ result 
+          where 
                 leq Nothing  Nothing  = True
                 leq Nothing  (Just _) = False
                 leq (Just _) Nothing  = True
@@ -957,13 +974,11 @@ transDefsFast cacheSize n e cache cache' seesN =
 
                 lt a b = (a /= b) ∧ (a `leq` b)
 
-                fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] | uses <- allUses,
-                                                      let coUseWithMinMax =
-                                                            fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in (coUse,       mminimum agesUse, mmaximum agesUse)) uses,
-                                                      let coWithMinMax    =
-                                                            fmap (\(co, ages) ->                                                 (co   , ages, mminimum ages   , mmaximum ages   )) (Map.assocs cache),
-                                                      (co, ages, amin, amax) <- coWithMinMax,
-                                                      (coUse, aUmin, aUmax) <- coUseWithMinMax,
+                result = Map.mapWithKey (\co ages ->
+                           let amin = mminimum ages
+                               amax = mmaximum ages
+                           in Set.fromList [ (coUse, min) | 
+                                                      coUseWithMinMax <- coUseWithMinMaxs, (coUse, aUmin, aUmax) <- coUseWithMinMax,
 
                                                       not $ (aUmax `leq` amin) ∨ (amax `leq` aUmin),
 
@@ -973,16 +988,15 @@ transDefsFast cacheSize n e cache cache' seesN =
                                                       not $ lt ∨ gt
                                                 ],
                                                       not $ List.null $ as,
-                                                      let min = foldl1 (⊔) as,
+                                                      let min = foldl1 (⊔) as
+                               ]
+                          ) cache
 
-                                                      (n', minAge) <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map,
-                                                      not $ min < minAge
-                            ]
+                coUseWithMinMaxs = [fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse cache in (coUse,       mminimum agesUse, mmaximum agesUse))              uses | uses <- Set.toList $ makesUses e]
 
 
-                allUses = Set.toList $ makesUses e
-                co'Map :: Map CachedObject (Set (n, MinAge))
-                co'Map = (∐) [ Map.fromList [ (co', Set.fromList [ (n', minAge) ]) ]  | ((n', co'), minAge) <- Map.assocs seesN]
+
+
 
 
 makesChoice e = [ co | choices <- Set.toList $ makesUses e, not $ List.length choices == 1, co <- choices ]

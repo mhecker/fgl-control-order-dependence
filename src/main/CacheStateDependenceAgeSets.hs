@@ -635,8 +635,7 @@ killedFor ::  forall n. (Show n, Ord n) => CacheSize -> CFGEdge -> AbstractCache
 killedFor cacheSize e cache cache' sees'  = result
   where result = Map.mapMaybeWithKey (\(node, co) minAge ->     let maxCo = mmaximum (Map.findWithDefault inf co    cache)
 
-                                                                    minAge' = if (∃) (makesUses e) (\uses ->
-                                                                                   let { mins = [ mminimum $ Map.findWithDefault inf coUse cache| coUse <- uses ]  ; minUse = mminimumL mins } in
+                                                                    minAge' = if (∃) minUses (\minUse ->
                                                                                    maxCo `leq` minUse
                                                                                  ) then minAge + 1 else minAge
 {-
@@ -658,6 +657,8 @@ killedFor cacheSize e cache cache' sees'  = result
                 leq Nothing  (Just _) = False
                 leq (Just _) Nothing  = True
                 leq (Just x) (Just y) = x <= y
+
+                minUses =  [ minUse  | uses <- Set.toList $ makesUses e, let mins = [ mminimum $ Map.findWithDefault inf coUse cache| coUse <- uses ], let minUse = mminimumL mins ]
 
 
 defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) MinAge

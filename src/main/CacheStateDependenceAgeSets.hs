@@ -952,7 +952,7 @@ transDefsFast cacheSize n e cache cache' seesN =
           where result = seesN ⊔ fromSeen
 
                 fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] |
-                                                      (co, coUses) <- Map.assocs $ cacheDepsFast cacheSize n e cache, (coUse, min) <- Set.toList coUses,
+                                                      (co, coUses) <- Map.assocs $ cacheDepsFast cacheSize e cache, (coUse, min) <- Set.toList coUses,
                                                       (n', minAge) <- Set.toList $ Map.findWithDefault Set.empty coUse co'Map,
                                                       not $ min < minAge
                            ]
@@ -962,8 +962,8 @@ transDefsFast cacheSize n e cache cache' seesN =
 
 
 
-cacheDepsFast :: CacheSize -> Node -> CFGEdge -> AbstractCacheState -> Map CachedObject (Set (CachedObject, MinAge))
-cacheDepsFast cacheSize n e cache =
+cacheDepsFast :: CacheSize -> CFGEdge -> AbstractCacheState -> Map CachedObject (Set (CachedObject, MinAge))
+cacheDepsFast cacheSize e cache =
      id
    $ result 
           where 

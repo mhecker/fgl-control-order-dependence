@@ -133,7 +133,7 @@ aes_main_ct = Aes {
   }
 
 aes_main_ct_precache = Aes {
-    cacheSize = 12,
+    cacheSize = 22,
     forMain = br_aes_small_cbcenc_main_ct_precache mainInput Skip,
     encryptStateInputNode0 = 274,
     keyInputNode = 291
@@ -149,7 +149,7 @@ csdOf   = AgeSets.csdFromDataDep
 main = let {
          aes@(Aes { cacheSize, forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct_precache ;
          debugNs = [encryptStateInputNode0, keyInputNode] ;
-         pr = for2Program $ forMain :: Program Gr ;
+         pr = for2Program $ twoAddressCode $ forMain :: Program Gr ;
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;

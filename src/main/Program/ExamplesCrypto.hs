@@ -779,10 +779,11 @@ subs_ct_precache = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_
 
 type Main = For -> For -> For
 br_aes_small_cbcenc_mainFor :: SubPrograms -> Main
-br_aes_small_cbcenc_mainFor subs@(SubPrograms { initConstants }) = \input output ->
+br_aes_small_cbcenc_mainFor subs@(SubPrograms { initConstants, precacheSkey }) = \input output ->
                        Skip
                  `Seq` initConstants
                  `Seq` input
+                 `Seq` precacheSkey skey
                  `Seq` expandKeyFor subs
                  `Seq` br_aes_small_encryptFor subs
                  `Seq` output

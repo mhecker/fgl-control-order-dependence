@@ -679,18 +679,18 @@ killedFor cacheSize e cache cache' sees'  = result
 
 
                                                                     minAge' = if (∃) minUses (\minUse ->
-                                                                                   maxCo < minUse
+                                                                                   minUse == infTime  ∨  maxCo < minUse
                                                                                  ) then minAge + 1 else minAge
 
 {-
                                                                     minAge'Slow = if (∃) (makesUses e) (\uses -> (∀) uses (\coUse ->
                                                                                    (∀) (Map.findWithDefault inf coUse cache) (\aU -> 
                                                                                    (∀) (Map.findWithDefault inf co    cache) (\a  ->
-                                                                                     a < aU
+                                                                                     aU == infTime ∨ a < aU
                                                                                    ))
                                                                                   )) then minAge + 1 else minAge
 -}
-                                                                    stillValid = minAge' <= MinAge cacheSize
+                                                                    stillValid = minAge' < MinAge cacheSize
 
                                                                     singular = case Map.lookup co cache' of
                                                                       Nothing -> True

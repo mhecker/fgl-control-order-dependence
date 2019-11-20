@@ -8,6 +8,7 @@
 #define require assert
 module CacheStateDependenceAgeSets where
 
+import Data.Ord (comparing)
 import qualified Data.List as List
 
 import Data.Bits (xor, (.&.), shiftL, shiftR, complement)
@@ -20,7 +21,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import Algebra.Lattice(JoinSemiLattice(..), BoundedJoinSemiLattice(..))
+import Algebra.Lattice(JoinSemiLattice(..), BoundedJoinSemiLattice(..), MeetSemiLattice(..), BoundedMeetSemiLattice(..))
 
 import Debug.Trace (traceShow)
 import Control.Exception.Base (assert)
@@ -79,9 +80,56 @@ import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
 
-type Age = Set (Maybe Int)
+newtype Age = Age (Maybe Int) deriving (Show, Eq, SimpleShow)
 
-type AbstractCacheState  = Map CachedObject Age
+oneA :: Age
+oneA = 1
+
+toAge x = Age $ Just $ x
+
+instance Ord Age where
+  compare (Age Nothing ) (Age Nothing ) = EQ
+  compare (Age Nothing ) (Age (Just _)) = GT
+  compare (Age (Just _)) (Age Nothing ) = LT
+  compare (Age (Just x)) (Age (Just y)) = compare x y
+
+instance Num Age where
+  (Age Nothing ) + (Age Nothing ) =                    Age Nothing
+  (Age Nothing ) + (Age (Just y)) = require (y >= 0) $ Age Nothing
+  (Age (Just x)) + (Age Nothing ) = require (x >= 0) $ Age Nothing
+  (Age (Just x)) + (Age (Just y)) = require (x >= 0) $ require (y >=0) $ Age $ Just $ x + y
+
+  (Age Nothing ) * (Age Nothing ) =                    Age Nothing
+  (Age Nothing ) * (Age (Just y)) = require (y >= 0) $ Age Nothing
+  (Age (Just x)) * (Age Nothing ) = require (x >= 0) $ Age Nothing
+  (Age (Just x)) * (Age (Just y)) = require (x >= 0) $ require (y >=0) $ Age $ Just $ x * y
+
+  abs a@(Age Nothing)  =                    a
+  abs a@(Age (Just x)) = require (x >= 0) $ a
+
+  signum a@(Age Nothing)  =                    oneA
+  signum a@(Age (Just x)) = require (x >= 0) $ oneA
+
+  fromInteger = Age . Just . fromInteger
+
+  negate _ = undefined
+
+instance JoinSemiLattice Age where
+  join = max
+
+instance BoundedJoinSemiLattice Age where
+  bottom = Age $ Just 0
+
+instance MeetSemiLattice Age where
+  meet = min
+
+instance BoundedMeetSemiLattice Age where
+  top = Age Nothing
+
+
+type Ages = Set Age
+
+type AbstractCacheState  = Map CachedObject Ages
 type AbstractCacheStateTimeEquiv = Set CachedObject
 type MergedCacheState = MergedMicroState AbstractCacheState AbstractCacheStateTimeEquiv
 
@@ -92,23 +140,17 @@ type AbstractCacheTimeState = (AbstractCacheState, TimeState)
 initialAbstractCacheState :: AbstractCacheState
 initialAbstractCacheState = Map.empty
 
-freshTime = Just 0
+freshTime = Age $ Just 0
 fresh = Set.singleton freshTime
 
-infTime = Nothing
+infTime = Age $ Nothing
 inf = Set.singleton infTime
 
 freshOrInf = Set.fromList [ infTime, freshTime ]
 
-lt Nothing  x = True
-lt (Just a) x = a < x
-
-geq  Nothing x = True
-geq (Just a) x = a >= x
-
 defaultTime hit miss cobj cache = case Map.lookup cobj cache of
   Nothing   -> return miss
-  Just ages -> if Nothing ∈ ages then [miss, hit] else [hit]
+  Just ages -> if infTime ∈ ages then [miss, hit] else [hit]
 
 {-
 defaultCache' :: CacheSize -> CachedObject -> AbstractCacheState -> AbstractCacheState
@@ -128,23 +170,23 @@ defaultCache' cacheSize cobj cache = clean $ Map.insert cobj fresh $ cache'
 
 incAll :: CacheSize -> CachedObject -> AbstractCacheState -> AbstractCacheState
 incAll cacheSize cobj cache = cache'
-  where cobjAges = case Map.lookup cobj cache of
+  where cacheSizeA = toAge cacheSize
+        cobjAges = case Map.lookup cobj cache of
           Nothing   -> inf
           Just ages -> ages
         cache' = fmap inc cache
 
         inc ages = ages'
           where ages' = filter $ plus1 ages
-                filter :: Age -> Age
+                filter :: Ages -> Ages
                 filter = Set.map f
-                  where f Nothing  = Nothing
-                        f ja@(Just a) = if a >= cacheSize then Nothing else ja
+                  where f a = if a >= cacheSizeA then infTime else a
                 plus1 ages = if infTime ∈ ages then Set.insert infTime plussed else plussed
-                  where plussed = (∐) [ as a | Just a <- Set.toList ages ]
+                  where plussed = (∐) [ as a | a@(Age (Just _)) <- Set.toList ages ]
                         as a 
-                          | (∀) (Set.delete (Just a) $ cobjAges) (       `geq` a ) = Set.fromList [ Just $ a + 1]
-                          | (∀) (Set.delete (Just a) $ cobjAges) (not . (`geq` a)) = Set.fromList [ Just $ a ]
-                          | otherwise               = Set.fromList [ Just $ a, Just $ a + 1]
+                          | (∀) (Set.delete a $ cobjAges) (       >= a ) = Set.fromList [     a + 1]
+                          | (∀) (Set.delete a $ cobjAges) (not . (>= a)) = Set.fromList [ a        ]
+                          | otherwise                                     = Set.fromList [ a, a + 1]
 
 
 {-
@@ -637,14 +679,14 @@ killedFor cacheSize e cache cache' sees'  = result
 
 
                                                                     minAge' = if (∃) minUses (\minUse ->
-                                                                                   maxCo `lt` minUse
+                                                                                   maxCo < minUse
                                                                                  ) then minAge + 1 else minAge
 
 {-
                                                                     minAge'Slow = if (∃) (makesUses e) (\uses -> (∀) uses (\coUse ->
                                                                                    (∀) (Map.findWithDefault inf coUse cache) (\aU -> 
                                                                                    (∀) (Map.findWithDefault inf co    cache) (\a  ->
-                                                                                     a `lt` aU
+                                                                                     a < aU
                                                                                    ))
                                                                                   )) then minAge + 1 else minAge
 -}
@@ -655,14 +697,8 @@ killedFor cacheSize e cache cache' sees'  = result
                                                                       Just ages' -> Set.size ages' == 1
                                                                 in if (not $ singular) ∧ stillValid then Just minAge' else Nothing
                                      ) sees'
-          where leq Nothing  Nothing  = True
-                leq Nothing  (Just _) = False
-                leq (Just _) Nothing  = True
-                leq (Just x) (Just y) = x <= y
 
-                lt a b = (a /= b) ∧ (a `leq` b)
-
-                minUses =  [ minUse  | uses <- Set.toList $ makesUses e, let mins = [ mminimum $ Map.findWithDefault inf coUse cache| coUse <- uses ], let minUse = mminimumL mins ]
+        minUses =  [ minUse  | uses <- Set.toList $ makesUses e, let mins = [ mminimum $ Map.findWithDefault inf coUse cache | coUse <- uses ], let minUse = List.minimum mins ]
 
 
 defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) MinAge
@@ -689,50 +725,31 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
    $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
    $ let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in assert (Map.keysSet result ⊇ result')
    $ result
-  where         leq Nothing  Nothing  = True
-                leq Nothing  (Just _) = False
-                leq (Just _) Nothing  = True
-                leq (Just x) (Just y) = x <= y
-
-                lt a b = (a /= b) ∧ (a `leq` b)
-
+  where
                 second (_,aU,_  ) = aU
                 third  (_,_ ,aU') = aU'
 
                 result = Map.fromList [ ((nodeFor (n, cache), co), MinAge a)  | uses  <- Set.toList $ makesUses e,
                                                       let withMinMax = fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse  cache in (coUse, mminimum agesUse, mmaximum agesUse)) uses,
-                                                      let byMin = List.sortBy (\a b -> ccompare (second a) (second b)) withMinMax,
+                                                      let byMin = List.sortBy (comparing second) withMinMax,
                                                       (coUse', _ ,  aU') <- byMin,
-                                                      (coUse , aU,  _  ) <- takeWhile ( (`lt` aU') . second) byMin,
+                                                      (coUse , aU,  _  ) <- takeWhile ( (< aU') . second) byMin,
                                                       coUse' /= coUse,
-                                                      assert (aU `lt` aU') True,
+                                                      assert (aU < aU') True,
                                                       (co, ages) <- Map.assocs cache,
-                                                      let as = [ a  | a  <- Set.toList ages, aU `lt` a ∧ a `lt` aU' ],
+                                                      let as = [ a  | a  <- Set.toList ages, aU < a ∧ a < aU' ],
                                                       not $ List.null as,
-                                                      let (Just a) = mminimumL as
+                                                      let (Age (Just a)) = List.minimum as
                             ]
                        ⊔ Map.fromList [ ((nodeFor (n, cache), coChoice), MinAge 0) | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
 
-mminimumL :: Ord n => [Maybe n] -> Maybe n
-mminimumL = List.minimumBy ccompare 
+mminimum :: Ages -> Age
+mminimum ages
+ | Set.null ages = infTime
+ | otherwise     = Set.findMin ages
 
-ccompare Nothing  Nothing  = EQ -- OK?
-ccompare Nothing  my       = GT
-ccompare mx       Nothing  = LT
-ccompare (Just x) (Just y) = compare x y 
-
-  
-mminimum ages = case as of
-    []             -> Nothing
-    [Nothing]      -> Nothing
-    (Nothing:mx:_) -> mx
-    (mx:_)         -> mx
-  where as = Set.toAscList ages
-
-mmaximum ages
-    | Set.findMin ages == Nothing = Nothing
-    | otherwise                   = Set.findMax ages
-
+mmaximum :: Ages -> Age
+mmaximum = Set.findMax
 
 
 
@@ -746,10 +763,10 @@ concr :: Set Int -> AbstractCacheState -> [AbstractCacheState ]
 concr available cache
                     | Map.null cache = return cache
                     | otherwise = do
-                        ma <- Set.toList (ages ∩ (Set.insert infTime $ Set.map Just available))
+                        ma <- Set.toList (ages ∩ (Set.insert infTime $ Set.map toAge available))
                         case ma of
-                          Nothing ->   concr               available  cache0
-                          Just a -> do
+                          (Age Nothing ) ->   concr               available  cache0
+                          (Age (Just a)) -> do
                             cache0' <- concr (Set.delete a available) cache0
                             return $ Map.insert co (Set.singleton ma) cache0'
                   where ((co, ages), cache0) = Map.deleteFindMin cache
@@ -764,8 +781,8 @@ pseudoConcr cache
                     | otherwise = do
                         ma <- Set.toList ages
                         case ma of
-                          Nothing ->   pseudoConcr cache0
-                          Just a -> do
+                          (Age Nothing ) ->   pseudoConcr cache0
+                          (Age (Just a)) -> do
                             cache0' <- pseudoConcr cache0
                             return $ Map.insert co (Set.singleton ma) cache0'
                   where ((co, ages), cache0) = Map.deleteFindMin cache
@@ -777,12 +794,12 @@ instance SimpleShow TransGraphNode where
   simpleShow (ConcreteState cache) = simpleShow cache
   simpleShow (Result        cache) = simpleShow cache
 
-data TransGraphEdge = Choice (Maybe Int)  | Transition deriving (Ord, Eq, Show)
+data TransGraphEdge = Choice Age | Transition deriving (Ord, Eq, Show)
 instance SimpleShow TransGraphEdge where
   simpleShow (Choice ma)  = simpleShow ma
   simpleShow (Transition) = ""
 
-data TransGraphTree = Leaf AbstractCacheState | TreeNode CachedObject [(Maybe Int, TransGraphTree)] deriving (Show, Eq, Ord)
+data TransGraphTree = Leaf AbstractCacheState | TreeNode CachedObject [(Age, TransGraphTree)] deriving (Show, Eq, Ord)
 
 -- concrCacheTransDecisionGraphs :: CacheSize -> AbstractCacheState -> [(Gr TransGraphNode TransGraphEdge, [CachedObject])]
 concrCacheTransDecisionGraphs :: CacheSize -> AbstractCacheState -> [CachedObject] -> CFGEdge -> (Gr TransGraphNode TransGraphEdge)
@@ -821,8 +838,8 @@ concrCacheTransDecisionGraphs cacheSize cache assumed e = mkGraph ns es
                           -- ma <- Set.toList (ages ∩ (Set.insert infTime $ Set.map Just available))
                           ma <- Set.toList  ages
                           case ma of
-                            Nothing -> return $ (ma, concrT               available  cache0                                   concreteCache)
-                            Just a ->  return $ (ma, concrT (Set.delete a available) cache0 (Map.insert co (Set.singleton ma) concreteCache))
+                            (Age Nothing ) -> return $ (ma, concrT               available  cache0                                   concreteCache)
+                            (Age (Just a)) -> return $ (ma, concrT (Set.delete a available) cache0 (Map.insert co (Set.singleton ma) concreteCache))
 
 
 concrCacheTransDecisionGraphsForCo ::
@@ -909,8 +926,8 @@ transDefsSlowPseudoDef cacheSize n e cache cache' seesN =
                                                                                    let cacheC's = Map.fromList $ cacheOnlyStepsFor cacheSize e cacheC
                                       ]
                   where ins co' ma cachePC =  case ma of
-                          Nothing ->                                   cachePC
-                          Just _  -> Map.insert co' (Set.singleton ma) cachePC
+                          (Age Nothing ) ->                                   cachePC
+                          (Age (Just _)) -> Map.insert co' (Set.singleton ma) cachePC
 
 
 
@@ -977,22 +994,15 @@ cacheDepsFast cacheSize e cache =
      id
    $ result 
           where 
-                leq Nothing  Nothing  = True
-                leq Nothing  (Just _) = False
-                leq (Just _) Nothing  = True
-                leq (Just x) (Just y) = x <= y
-
-                lt a b = (a /= b) ∧ (a `leq` b)
-
                 result = Map.fromList [ (coUse, Set.fromList [ (co, min) | (co, ages) <- Map.assocs cache,
                                                       let amin = mminimum ages,
                                                       let amax = mmaximum ages,
 
-                                                      not $ (aUmax `leq` amin) ∨ (amax `leq` aUmin),
+                                                      not $ (aUmax <= amin) ∨ (amax <= aUmin),
 
-                                       let as = [ MinAge aa | a@(Just aa) <- Set.toList ages,
-                                                      let lt = aUmax `leq` a    ,
-                                                      let gt =    a  `leq` aUmin,
+                                       let as = [ MinAge aa | a@(Age (Just aa)) <- Set.toList ages,
+                                                      let lt = aUmax <= a    ,
+                                                      let gt =    a  <= aUmin,
                                                       not $ lt ∨ gt
                                                 ],
                                                       not $ List.null $ as,
@@ -1010,26 +1020,20 @@ cacheDefsFast cacheSize e cache =
      id
    $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
    $ result
-  where         leq Nothing  Nothing  = True
-                leq Nothing  (Just _) = False
-                leq (Just _) Nothing  = True
-                leq (Just x) (Just y) = x <= y
-
-                lt a b = (a /= b) ∧ (a `leq` b)
-
+  where
                 second (_,aU,_  ) = aU
                 third  (_,_ ,aU') = aU'
 
                 result = Set.fromList [ co | uses  <- Set.toList $ makesUses e,
                                                       let withMinMax = fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse  cache in (coUse, mminimum agesUse, mmaximum agesUse)) uses,
-                                                      let byMin = List.sortBy (\a b -> ccompare (second a) (second b)) withMinMax,
+                                                      let byMin = List.sortBy (comparing second) withMinMax,
                                                       (coUse', _ ,  aU') <- byMin,
-                                                      (coUse , aU,  _  ) <- takeWhile ( (`lt` aU') . second) byMin,
+                                                      (coUse , aU,  _  ) <- takeWhile ( (< aU') . second) byMin,
                                                       coUse' /= coUse,
-                                                      assert (aU `lt` aU') True,
+                                                      assert (aU < aU') True,
                                                       (co, ages) <- Map.assocs cache,
                                                       a   <- Set.toList ages,
-                                                      aU `lt` a ∧ a `lt` aU'
+                                                      aU < a ∧ a < aU'
                             ]
                        ∪ Set.fromList [ coChoice | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
 
@@ -1139,7 +1143,7 @@ cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
 
         α :: (Node, AbstractCacheState) -> [ (Node, AbstractCacheState) ]
         α cs@(n, cache)
-            | n == mm ∧ (∀) vars (isConst cache) = [ (n, fmap (Set.map (liftM (const 0))) $ restrict cache vars) ]
+            | n == mm ∧ (∀) vars (isConst cache) = [ (n, fmap (Set.map (       const 0 )) $ restrict cache vars) ]
             | n == mm                            = [ (n,                                             cache     ) ]
             | otherwise = [ cs ]
 

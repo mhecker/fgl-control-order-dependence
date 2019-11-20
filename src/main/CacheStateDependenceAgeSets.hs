@@ -729,7 +729,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                 second (_,aU,_  ) = aU
                 third  (_,_ ,aU') = aU'
 
-                result = Map.fromList [ ((nodeFor (n, cache), co), MinAge a)  | uses  <- Set.toList $ makesUses e,
+                result = (∐) [ Map.fromList [ ((nodeFor (n, cache), co), MinAge a) ] | uses  <- Set.toList $ makesUses e,
                                                       let withMinMax = fmap (\coUse -> let agesUse = Map.findWithDefault inf coUse  cache in (coUse, mminimum agesUse, mmaximum agesUse)) uses,
                                                       let byMin = List.sortBy (comparing second) withMinMax,
                                                       (coUse', _ ,  aU') <- byMin,

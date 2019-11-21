@@ -1141,8 +1141,13 @@ cacheDataDepGWork2 cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.f
         succsM = Map.fromList [ (yN, [(e, yM, cache') | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]) | yN <- nodes csGraphG ]
 
         reachesFor :: (Node, (Node, AbstractCacheState)) -> Map (Node, CachedObject) (Set Node) -> Map (Node, CachedObject) (Set Node)
-        reachesFor (yN, (n, cache)) reaches = reaches ⊔ ((∐) [ Map.fromList [ ((yN, co), Set.fromList [ yM ]) ] | (yM, co) <- Map.keys $ go2 reached reached])
+        reachesFor (yN, (n, cache)) reaches = foldl ins reaches (Map.keys $ go2 reached reached)
+
           where reached = Map.fromList [ ((yM, co), minAge) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM, ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache, cache') ]
+
+                ins reaches (yM, co) = Map.alter f (yN, co) reaches
+                  where f  Nothing   = Just $ Set.singleton yM
+                        f (Just set) = Just $ Set.insert    yM set
 
                 go2 :: Map (Node, CachedObject) MinAge -> Map (Node, CachedObject) MinAge -> Map (Node, CachedObject) MinAge
                 go2 workset reached

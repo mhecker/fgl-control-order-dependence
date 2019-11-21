@@ -1150,19 +1150,23 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
                         Just (n,cache) = lab csGraphG yN
                         succs = succsM ! yN
 
-                        new = Map.fromList [ ((yM, co ), minAge') | (e, yM, cache', minUses, _        ) <- succs,
+                        flow  = [ ((yM, co ), minAge') | (e, yM, cache', minUses, _        ) <- succs,
                                                                                Just minAge' <- [newMinAge cacheSize cache cache' minUses (undefined, co) minAge],
                                                                                isNew yM co minAge'
                               ]
-                          ⊔ Map.fromList [ ((yM, co'), min'   ) | (e, yM, cache', minUses, cacheDeps) <- succs,
+                        trans = [ ((yM, co'), min'   ) | (e, yM, cache', minUses, cacheDeps) <- succs,
                                                                                Just cos <- [Map.lookup co cacheDeps ],
                                                                                (co', min) <- Set.toList cos,
                                                                                not $ min < minAge,
                                                                                Just min' <- [newMinAge cacheSize cache cache' minUses (undefined, co') min],
                                                                                isNew yM co' min'
                               ]
-                        reached'  = reached  ⊔ new
-                        workset0' = workset0 ⊔ new 
+                        reached'  = fold ins flow $ fold ins trans $ reached
+                        workset0' = fold ins flow $ fold ins trans $ workset0
+
+                        fold f xs y0 = foldr f y0 xs
+
+                        ins (k, v) = Map.insertWith (⊔) k v
 
                         isNew yM co minAge' = case Map.lookup (yM, co) reached of
                           Nothing       -> True

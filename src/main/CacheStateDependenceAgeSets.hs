@@ -1206,7 +1206,7 @@ csdFromDataDep cacheSize graph n0 = traceShow (csGraphSize csGraph) $
 
          ddeps = cacheDataDepGWork2 cacheSize csGraphG
 
-cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (Set Node) -> Node -> Set Node
+cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (IntSet) -> Node -> Set Node
 cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
   where
 
@@ -1226,8 +1226,8 @@ cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- S
                                      co <- Set.toList relevantCos,
                                      let Just (m, cacheM) = lab csGraphG y,
                                      not $ isConst cacheM co,
-                                     let deps = Map.findWithDefault Set.empty (y,co) ddeps,
-                                     yN <- Set.toList $ deps, let Just (n, cacheN) = lab csGraphG yN
+                                     let deps = Map.findWithDefault IntSet.empty (y,co) ddeps,
+                                     yN <- IntSet.toList $ deps, let Just (n, cacheN) = lab csGraphG yN
                      ]
 
         slice =

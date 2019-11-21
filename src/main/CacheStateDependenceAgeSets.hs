@@ -24,10 +24,6 @@ import qualified Data.Set as Set
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 
-import Data.IntMap (IntMap)
-import qualified Data.IntMap as IntMap
-
-
 import Algebra.Lattice(JoinSemiLattice(..), BoundedJoinSemiLattice(..), MeetSemiLattice(..), BoundedMeetSemiLattice(..))
 
 import Debug.Trace (traceShow)
@@ -1108,8 +1104,8 @@ cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromLi
         defs yN = defsFor cacheSize (const yN)
 
 
-cacheDataDepGWork :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> IntMap (Map CachedObject IntSet)
-cacheDataDepGWork cacheSize csGraphG  = (∐) [ IntMap.fromList [ (yM, Map.fromList [(co, IntSet.fromList [ yN ])]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Map.keys deps ]
+cacheDataDepGWork :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map Node (Map CachedObject IntSet)
+cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ (yM, Map.fromList [(co, IntSet.fromList [ yN ])]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Map.keys deps ]
   where seesDef = go (Map.fromList $ zip [0..] orderedNodes) (Map.fromList [ (y, Map.empty) | y <- nodes csGraphG ])
 
         go workset sees
@@ -1131,35 +1127,35 @@ cacheDataDepGWork cacheSize csGraphG  = (∐) [ IntMap.fromList [ (yM, Map.fromL
         node2number = Map.fromList $ zip orderedNodes [0..]
 
 
-cacheDataDepGWork2 :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> IntMap (Map CachedObject IntSet)
+cacheDataDepGWork2 :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map Node (Map CachedObject IntSet)
 cacheDataDepGWork2 cacheSize csGraphG = reaches
   where defs yN = defsFor cacheSize (const yN)
 
-        reaches :: IntMap (Map CachedObject IntSet)
-        reaches = foldr reachesFor IntMap.empty (labNodes csGraphG)
+        reaches :: Map Node (Map CachedObject IntSet)
+        reaches = foldr reachesFor Map.empty (labNodes csGraphG)
 
         succsM = Map.fromList [ (yN, [(e, yM, cache', minUsesOf e cache, cacheDepsFast cacheSize e cache) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]) | (yN, (n, cache)) <- labNodes csGraphG ]
 
-        reachesFor :: (Node, (Node, AbstractCacheState)) -> IntMap (Map CachedObject IntSet) -> IntMap (Map CachedObject IntSet)
-        reachesFor (yN, (n, cache)) reaches = foldr ins reaches (IntMap.assocs $ go2 reached reached)
+        reachesFor :: (Node, (Node, AbstractCacheState)) -> Map Node (Map CachedObject IntSet) -> Map Node (Map CachedObject IntSet)
+        reachesFor (yN, (n, cache)) reaches = foldr ins reaches (Map.assocs $ go2 reached reached)
 
-          where reached = IntMap.fromList [ (yM, cos)
+          where reached = Map.fromList [ (yM, cos)
                             | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM,
                               let cos = Map.fromList [(co, minAge) | ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache, cache') ],
                               not $ Map.null cos
                           ]
 
-                ins (yM, cos) reaches = IntMap.alter f yM reaches
+                ins (yM, cos) reaches = Map.alter f yM reaches
                   where f  Nothing    = Just $         Map.map (const $ IntSet.singleton yN) cos
                         f (Just cos') = Just $ cos' ⊔ (Map.map (const $ IntSet.singleton yN) cos)
 
-                go2 ::  IntMap (Map CachedObject MinAge) ->  IntMap (Map CachedObject MinAge) ->  IntMap (Map CachedObject MinAge)
+                go2 ::  Map Node (Map CachedObject MinAge) ->  Map Node (Map CachedObject MinAge) ->  Map Node (Map CachedObject MinAge)
                 go2 workset reached
-                    | IntMap.null workset =                 reached
-                    |    Map.null cos     =  go2  workset0  reached
-                    | otherwise           =  go2  workset0' reached'
-                  where ((yN, cos), workset0) = IntMap.deleteFindMin workset
-                        ((co, minAge),  cos0) =    Map.deleteFindMin cos
+                    | Map.null workset =                 reached
+                    | Map.null cos     =  go2  workset0  reached
+                    | otherwise        =  go2  workset0' reached'
+                  where ((yN, cos), workset0) = Map.deleteFindMin workset
+                        ((co, minAge),  cos0) = Map.deleteFindMin cos
 
                         Just (n,cache) = lab csGraphG yN
                         succs = succsM ! yN
@@ -1175,15 +1171,15 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
                                                                                Just min' <- [newMinAge cacheSize cache cache' minUses (undefined, co') min],
                                                                                isNew yM co' min'
                               ]
-                        reached'  = fold ins flow $ fold ins trans $                       reached
-                        workset0' = fold ins flow $ fold ins trans $ IntMap.insert yN cos0 workset0
+                        reached'  = fold ins flow $ fold ins trans $ reached
+                        workset0' = fold ins flow $ fold ins trans $ Map.insert yN cos0 workset0
 
                         fold f xs y0 = foldr f y0 xs
 
-                        ins :: ((Node, CachedObject), MinAge) ->  IntMap (Map CachedObject MinAge) -> IntMap (Map CachedObject MinAge)
-                        ins ((yM, co), minAge') map = IntMap.insertWith (⊔) yM (Map.fromList [(co, minAge')]) map
+                        ins :: ((Node, CachedObject), MinAge) ->  Map Node (Map CachedObject MinAge) ->  Map Node (Map CachedObject MinAge)
+                        ins ((yM, co), minAge') map = Map.insertWith (⊔) yM (Map.fromList [(co, minAge')]) map
 
-                        isNew yM co minAge' = case IntMap.lookup yM reached of
+                        isNew yM co minAge' = case Map.lookup yM reached of
                           Nothing       -> True
                           Just cos -> case Map.lookup co cos of
                             Nothing -> True
@@ -1220,7 +1216,7 @@ csdFromDataDep cacheSize graph n0 = traceShow (csGraphSize csGraph) $
 
          ddeps = cacheDataDepGWork2 cacheSize csGraphG
 
-cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge -> IntMap (Map CachedObject IntSet) -> Node -> Set Node
+cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map Node (Map CachedObject IntSet) -> Node -> Set Node
 cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
   where
 
@@ -1240,8 +1236,8 @@ cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- S
                                      co <- Set.toList relevantCos,
                                      let Just (m, cacheM) = lab csGraphG y,
                                      not $ isConst cacheM co,
-                                     let deps0 = IntMap.findWithDefault    Map.empty  y ddeps,
-                                     let deps  =    Map.findWithDefault IntSet.empty co deps0,
+                                     let deps0 = Map.findWithDefault Map.empty y ddeps,
+                                     let deps  = Map.findWithDefault IntSet.empty co deps0,
                                      yN <- IntSet.toList $ deps, let Just (n, cacheN) = lab csGraphG yN
                      ]
 

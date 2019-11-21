@@ -1138,6 +1138,8 @@ cacheDataDepGWork2 cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.f
 
         cacheDepsM = Map.fromList [ ((yN, e), cacheDepsFast cacheSize  e cache) | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN ]
 
+        succsM = Map.fromList [ (yN, [(e, yM, cache') | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]) | yN <- nodes csGraphG ]
+
         reachesFor :: (Node, (Node, AbstractCacheState)) -> Map (Node, CachedObject) (Set Node) -> Map (Node, CachedObject) (Set Node)
         reachesFor (yN, (n, cache)) reaches = reaches ⊔ ((∐) [ Map.fromList [ ((yN, co), Set.fromList [ yM ]) ] | (yM, co) <- Map.keys $ go2 reached reached])
           where reached = Map.fromList [ ((yM, co), minAge) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM, ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache, cache') ]
@@ -1148,13 +1150,12 @@ cacheDataDepGWork2 cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.f
                     | otherwise        =  go2  workset0' reached'
                   where (((yN, co), minAge), workset0) = Map.deleteFindMin workset
                         Just (n,cache) = lab csGraphG yN
-                        succs = [ (e, yM, cache') | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM ]
+                        succs = succsM ! yN
 
                         new = Map.fromList [ ((yM, co ), minAge') | (e, yM, cache') <- succs,
                                                                                let minUses = minUsesM ! (yN, e),
                                                                                Just minAge' <- [newMinAge cacheSize cache cache' minUses (undefined, co) minAge],
                                                                                isNew yM co minAge'
-                                                                               -- if yM == 69 ∧ co == CachedArrayRange (Array "arrA") 128 then traceShow "{===" $ traceShow (yN, e, yM) $ traceShow (co, minAge, minAge') $ traceShow cache $ traceShow cache' $ traceShow  minUses $ traceShow "===}" $ True else True
                               ]
                             ⊔ Map.fromList [ ((yM, co'), min'   ) | (e, yM, cache') <- succs,
                                                                                let minUses = minUsesM ! (yN, e),
@@ -1163,7 +1164,6 @@ cacheDataDepGWork2 cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.f
                                                                                not $ min < minAge,
                                                                                Just min' <- [newMinAge cacheSize cache cache' minUses (undefined, co') min],
                                                                                isNew yM co' min'
-                                                                               -- if yM == 69 ∧ co' == CachedArrayRange (Array "arrA") 128 then traceShow "[---" $ traceShow (yN, e, yM) $ traceShow (co, co', minAge, min, min') $ traceShow cache $ traceShow cache' $ traceShow "---]" $ True else True
                               ]
                         reached'  = reached  ⊔ new
                         workset0' = workset0 ⊔ new 

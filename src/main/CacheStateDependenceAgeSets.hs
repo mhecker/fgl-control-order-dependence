@@ -675,9 +675,11 @@ cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.
 
 killedFor ::  forall n. (Show n, Ord n) => CacheSize -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Map (n, CachedObject) MinAge -> Map (n, CachedObject) MinAge
 killedFor cacheSize e cache cache' sees'  = result
-  where result = Map.mapMaybeWithKey (\(node, co) minAge ->     let maxCo = mmaximum (Map.findWithDefault inf co    cache)
+  where minUses = minUsesOf e cache
+        result = Map.mapMaybeWithKey (newMinAge cacheSize cache cache' minUses) sees'
 
-
+newMinAge :: CacheSize -> AbstractCacheState -> AbstractCacheState -> [Age] -> (n, CachedObject) -> MinAge -> Maybe MinAge
+newMinAge cacheSize cache cache' minUses (_, co) minAge =       let maxCo = mmaximum (Map.findWithDefault inf co    cache)
                                                                     minAge' = if (∃) minUses (\minUse ->
                                                                                    minUse == infTime  ∨  maxCo < minUse
                                                                                  ) then minAge + 1 else minAge
@@ -696,9 +698,8 @@ killedFor cacheSize e cache cache' sees'  = result
                                                                       Nothing -> True
                                                                       Just ages' -> Set.size ages' == 1
                                                                 in if (not $ singular) ∧ stillValid then Just minAge' else Nothing
-                                     ) sees'
 
-        minUses =  [ minUse  | uses <- Set.toList $ makesUses e, let mins = [ mminimum $ Map.findWithDefault inf coUse cache | coUse <- uses ], let minUse = List.minimum mins ]
+minUsesOf e cache = [ minUse  | uses <- Set.toList $ makesUses e, let mins = [ mminimum $ Map.findWithDefault inf coUse cache | coUse <- uses ], let minUse = List.minimum mins ]
 
 
 defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) MinAge
@@ -1125,10 +1126,52 @@ cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fr
         node2number = Map.fromList $ zip orderedNodes [0..]
 
 
+cacheDataDepGWork2 :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map (Node, CachedObject) (Set Node)
+cacheDataDepGWork2 cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromList [ yN ]) ] | ((yN, co), deps) <- Map.assocs reaches, yM <- Set.toList deps ]
+  where defs yN = defsFor cacheSize (const yN)
 
+        reaches :: Map (Node, CachedObject) (Set Node)
+        reaches = foldr reachesFor Map.empty (labNodes csGraphG)
 
+        minUsesM :: Map (Node, CFGEdge) [Age]
+        minUsesM   = Map.fromList [ ((yN, e), minUsesOf                e cache) | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN ]
 
-                           
+        cacheDepsM = Map.fromList [ ((yN, e), cacheDepsFast cacheSize  e cache) | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN ]
+
+        reachesFor :: (Node, (Node, AbstractCacheState)) -> Map (Node, CachedObject) (Set Node) -> Map (Node, CachedObject) (Set Node)
+        reachesFor (yN, (n, cache)) reaches = reaches ⊔ ((∐) [ Map.fromList [ ((yN, co), Set.fromList [ yM ]) ] | (yM, co) <- Map.keys $ go2 reached reached])
+          where reached = Map.fromList [ ((yM, co), minAge) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM, ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache, cache') ]
+
+                go2 :: Map (Node, CachedObject) MinAge -> Map (Node, CachedObject) MinAge -> Map (Node, CachedObject) MinAge
+                go2 workset reached
+                    | Map.null workset =                 reached
+                    | otherwise        =  go2  workset0' reached'
+                  where (((yN, co), minAge), workset0) = Map.deleteFindMin workset
+                        Just (n,cache) = lab csGraphG yN
+                        succs = [ (e, yM, cache') | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM ]
+
+                        new = Map.fromList [ ((yM, co ), minAge') | (e, yM, cache') <- succs,
+                                                                               let minUses = minUsesM ! (yN, e),
+                                                                               Just minAge' <- [newMinAge cacheSize cache cache' minUses (undefined, co) minAge],
+                                                                               isNew yM co minAge'
+                                                                               -- if yM == 69 ∧ co == CachedArrayRange (Array "arrA") 128 then traceShow "{===" $ traceShow (yN, e, yM) $ traceShow (co, minAge, minAge') $ traceShow cache $ traceShow cache' $ traceShow  minUses $ traceShow "===}" $ True else True
+                              ]
+                            ⊔ Map.fromList [ ((yM, co'), min'   ) | (e, yM, cache') <- succs,
+                                                                               let minUses = minUsesM ! (yN, e),
+                                                                               Just cos <- [Map.lookup co (cacheDepsM ! (yN, e)) ],
+                                                                               (co', min) <- Set.toList cos,
+                                                                               not $ min < minAge,
+                                                                               Just min' <- [newMinAge cacheSize cache cache' minUses (undefined, co') min],
+                                                                               isNew yM co' min'
+                                                                               -- if yM == 69 ∧ co' == CachedArrayRange (Array "arrA") 128 then traceShow "[---" $ traceShow (yN, e, yM) $ traceShow (co, co', minAge, min, min') $ traceShow cache $ traceShow cache' $ traceShow "---]" $ True else True
+                              ]
+                        reached'  = reached  ⊔ new
+                        workset0' = workset0 ⊔ new 
+
+                        isNew yM co minAge' = case Map.lookup (yM, co) reached of
+                          Nothing       -> True
+                          Just minAge'0 -> minAge' < minAge'0
+
 
 cacheStateGraph'ForVarsAtMForGraph3 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge ->  Node -> gr (Node, AbstractCacheState) CFGEdge
 cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result

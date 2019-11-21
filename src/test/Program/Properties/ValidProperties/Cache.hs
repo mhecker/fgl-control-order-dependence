@@ -37,7 +37,7 @@ import MicroArchitecturalDependence (stateSets, csGraphSize)
 import CacheExecution(initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
-import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep, cacheAbstraction, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2)
 
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
@@ -134,7 +134,22 @@ cacheProps = testGroup "(concerning cache timing)" [
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =         csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
-                    in  csdM ⊑ csdMAS,
+                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS,
+    testPropertySized 25 "cacheDataDepGWork2 == cacheDataDepGWork"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        mu = AgeSets.cacheAbstraction propsCacheSize 
+                        csGraph = stateSets (muStepFor mu) (muLeq mu) g (muInitialState mu) n0
+                        csGraphG = stateGraphForSets csGraph :: Gr (Node, AgeSets.AbstractCacheState) (CFGEdge)
+
+                        cddep  = AgeSets.cacheDataDepGWork  propsCacheSize csGraphG
+                        cddep2 = AgeSets.cacheDataDepGWork2 propsCacheSize csGraphG
+                    in  cddep == cddep2,
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr
@@ -300,7 +315,19 @@ cacheTests = testGroup "(concerning cache timing)" $
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =         csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
-                    in  csdM ⊑ csdMAS @? ""
+                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
+  | (prName, pr) <- interestingAgeSets
+  ] ++
+  [ testCase ("cacheDataDepGWork2 == cacheDataDepGWork for " ++ prName) $
+                    let g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        mu = AgeSets.cacheAbstraction propsCacheSize 
+                        csGraph = stateSets (muStepFor mu) (muLeq mu) g (muInitialState mu) n0
+                        csGraphG = stateGraphForSets csGraph :: Gr (Node, AgeSets.AbstractCacheState) (CFGEdge)
+
+                        cddep  = AgeSets.cacheDataDepGWork  propsCacheSize csGraphG
+                        cddep2 = AgeSets.cacheDataDepGWork2 propsCacheSize csGraphG
+                    in  cddep == cddep2 @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
   []

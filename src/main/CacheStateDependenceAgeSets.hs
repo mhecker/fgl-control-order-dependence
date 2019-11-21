@@ -1133,12 +1133,7 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
         reaches :: Map (Node, CachedObject) (Set Node)
         reaches = foldr reachesFor Map.empty (labNodes csGraphG)
 
-        minUsesM :: Map (Node, CFGEdge) [Age]
-        minUsesM   = Map.fromList [ ((yN, e), minUsesOf                e cache) | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN ]
-
-        cacheDepsM = Map.fromList [ ((yN, e), cacheDepsFast cacheSize  e cache) | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN ]
-
-        succsM = Map.fromList [ (yN, [(e, yM, cache') | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]) | yN <- nodes csGraphG ]
+        succsM = Map.fromList [ (yN, [(e, yM, cache', minUsesOf e cache, cacheDepsFast cacheSize e cache) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]) | (yN, (n, cache)) <- labNodes csGraphG ]
 
         reachesFor :: (Node, (Node, AbstractCacheState)) -> Map (Node, CachedObject) (Set Node) -> Map (Node, CachedObject) (Set Node)
         reachesFor (yN, (n, cache)) reaches = foldl ins reaches (Map.keys $ go2 reached reached)
@@ -1157,14 +1152,12 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
                         Just (n,cache) = lab csGraphG yN
                         succs = succsM ! yN
 
-                        new = Map.fromList [ ((yM, co ), minAge') | (e, yM, cache') <- succs,
-                                                                               let minUses = minUsesM ! (yN, e),
+                        new = Map.fromList [ ((yM, co ), minAge') | (e, yM, cache', minUses, _        ) <- succs,
                                                                                Just minAge' <- [newMinAge cacheSize cache cache' minUses (undefined, co) minAge],
                                                                                isNew yM co minAge'
                               ]
-                            ⊔ Map.fromList [ ((yM, co'), min'   ) | (e, yM, cache') <- succs,
-                                                                               let minUses = minUsesM ! (yN, e),
-                                                                               Just cos <- [Map.lookup co (cacheDepsM ! (yN, e)) ],
+                          ⊔ Map.fromList [ ((yM, co'), min'   ) | (e, yM, cache', minUses, cacheDeps) <- succs,
+                                                                               Just cos <- [Map.lookup co cacheDeps ],
                                                                                (co', min) <- Set.toList cos,
                                                                                not $ min < minAge,
                                                                                Just min' <- [newMinAge cacheSize cache cache' minUses (undefined, co') min],

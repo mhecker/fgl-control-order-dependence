@@ -1197,7 +1197,7 @@ csdFromDataDep cacheSize graph n0 = traceShow (csGraphSize csGraph) $
          costs = (muCostsFor mu) csGraph
          mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
 
-         ddeps = cacheDataDepGWork cacheSize csGraphG
+         ddeps = cacheDataDepGWork2 cacheSize csGraphG
 
 cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (Set Node) -> Node -> Set Node
 cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]

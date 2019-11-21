@@ -12,6 +12,10 @@ import Data.Map (Map, (!))
 import qualified Data.Set as Set
 import Data.Set (Set)
 
+import qualified Data.Foldable as Foldable
+import Data.Foldable (Foldable)
+
+
 import Data.Bits.Bitwise (fromListBE,fromListLE)
 import Data.Bits (testBit)
 
@@ -103,9 +107,9 @@ invert' m = Map.fromListWith (++) pairs
     where pairs = [(v, [k]) | (k, vs) <- Map.toList m, v <- vs]
 
 
-invert'' :: (Ord k, Ord v) => Map k (Set v) -> Map v (Set k)
+invert'' :: (Ord k, Ord v, Foldable s) => Map k (s v) -> Map v (Set k)
 invert'' m = Map.fromListWith (∪) pairs
-    where pairs = [(v, Set.singleton k) | (k, vs) <- Map.toList m, v <- Set.toList vs]
+    where pairs = [(v, Set.singleton k) | (k, vs) <- Map.toList m, v <- Foldable.toList vs]
 
 invert''' :: (Ord k, Ord v) => Map k (Maybe v) -> Map v (Set k)
 invert''' m = Map.fromListWith (∪) pairs

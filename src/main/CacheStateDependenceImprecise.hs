@@ -43,6 +43,7 @@ import MicroArchitecturalDependence (
     AbstractMicroArchitecturalGraphNode,
     AbstractSemantic,
     TimeState,
+    MergeMode(..),
     MergedMicroState(..),
     MicroArchitecturalAbstraction(..),
     stateGraphForSets, stateGraph, stateSets,
@@ -255,7 +256,7 @@ cacheOnlyStepFor cacheSize e σ = fmap first $ evalStateT (cacheTimeStepForState
 
 
 cacheStateGraph :: (Graph gr) => CacheSize -> gr CFGNode CFGEdge -> AbstractCacheState -> Node -> gr (Node, AbstractCacheState) CFGEdge
-cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize) (Just csLeq)
+cacheStateGraph cacheSize = stateGraph (cacheOnlyStepFor cacheSize) (Just $ AbstractLeq $ csLeq)
 
 
 csLeq [] [] = True
@@ -408,7 +409,7 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
       muGraph'For = muGraph'For,
       muInitialState = CSD.initialAbstractCacheState,
       muStepFor = cacheOnlyStepFor cacheSize,
-      muLeq = Just csLeq,
+      muLeq = Just $ AbstractLeq $ csLeq,
       muCostsFor = costsFor2 cacheSize
     }
   where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = CSD.cachedObjectsFor e, not $ Set.null vars] ]

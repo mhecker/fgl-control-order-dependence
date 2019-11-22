@@ -37,7 +37,7 @@ import MicroArchitecturalDependence (stateSets, csGraphSize)
 import CacheExecution(initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
-import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep, cacheAbstraction, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep, csdFromDataDepJoined, cacheAbstraction, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2)
 
 
 import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
@@ -315,6 +315,14 @@ cacheTests = testGroup "(concerning cache timing)" $
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =         csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
+                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
+  | (prName, pr) <- interestingAgeSets
+  ] ++
+  [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined for " ++ prName) $
+                    let g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   =         csdMergeDirectOf       propsCacheSize g n0
+                        csdMAS = AgeSets.csdFromDataDepJoined   propsCacheSize g n0
                     in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++

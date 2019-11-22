@@ -102,7 +102,7 @@ stateSetsSlow step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList [
 
 type CsGraph s e =  (Map Node (Set s), Map Node (Set (s, e, (Node, s))))
 
-data MergeMode s = AbstractLeq (AbstractLeq s) | JoinNode (s -> s -> s) (s -> s -> Bool) (s)
+data MergeMode s = AbstractLeq (AbstractLeq s) | JoinNode (s -> s -> s) (s -> s -> Bool)
 
 stateSets :: forall gr s e. (Graph gr, Ord s, Show s, Show e, Ord e) => AbstractSemantic s e -> Maybe (MergeMode s) -> gr CFGNode CFGEdge -> s -> Node -> CsGraph s e
 stateSets step (Just (AbstractLeq leq)) g σ0 n0 = filter result
@@ -135,6 +135,7 @@ stateSets step (Just (AbstractLeq leq)) g σ0 n0 = filter result
                    where new n' σ' = if σ' ∈ σs' then σ' else  σ''
                            where σs' = cs ! n'
                                  σ'' = head $ [ σ'' | σ'' <- Set.toList σs', σ' `leq` σ'' ]
+
 stateSets step Nothing g σ0 n0 = result
   where result = go (Map.fromList [(n0, Set.fromList [σ0])]) (Map.fromList [(n0,Set.fromList [σ0])]) (Map.fromList [])
         go :: Map Node (Set s) -> Map Node (Set s) -> Map Node (Set (s, e, (Node, s))) -> (Map Node (Set s), Map Node (Set (s, e, (Node, s))))
@@ -154,12 +155,12 @@ stateSets step Nothing g σ0 n0 = result
                              Just σs -> σ' ∈ σs
                    esNew = Map.fromList [ (n, Set.fromList  [ (σ, e', (n', σ')) | (e', n', σ') <- next ] )]
 
-stateSets step (Just (JoinNode (⊔) (⊑) (⊥))) g σ0 n0 = (
+stateSets step (Just (JoinNode (⊔) (⊑))) g σ0 n0 = (
            fmap Set.singleton cs,
            Map.fromList [ (n, Set.fromList [ (cs ! n, e, (n', cs ! n')) | (e, n') <- Set.toList esN ]) | (n, esN) <- Map.assocs es ]
          )
   where (cs, es) = go (Set.singleton n0)
-                      (Map.insert n0 σ0 $ Map.empty) -- Map.fromList [(n, (⊥)) | n <- nodes g ]
+                      (Map.insert n0 σ0 $ Map.empty)
                       (Map.empty)
         go :: Set Node ->  Map Node s -> Map Node (Set (e, Node)) -> (Map Node s, Map Node (Set (e, Node)))
         go workset cs es
@@ -170,12 +171,13 @@ stateSets step (Just (JoinNode (⊔) (⊑) (⊥))) g σ0 n0 = (
              where (n, workset0) = Set.deleteFindMin workset
                    σ = cs ! n
 
-                   new = [ (e', n', σ') | (n',e) <- lsuc g n, (e',σ') <- step e σ, case Map.lookup n' cs of { Nothing -> True ; Just σ'0 -> not $ σ' ⊑ σ'0 } ]
+                   all = [ (e', n', σ') | (n',e) <- lsuc g n, (e',σ') <- step e σ] 
+                   new = filter (\(_, n', σ') ->  case Map.lookup n' cs of { Nothing -> True ; Just σ'0 -> not $ σ' ⊑ σ'0 }) all
 
                    cs'       = foldr adjust cs       new
                      where adjust (e', n', σ')    = Map.insertWith (⊔) n' σ'
 
-                   es'       = foldr insert es       new
+                   es'       = foldr insert es       all
                      where insert (e', n', σ')    = Map.insertWith (∪) n (Set.singleton $ (e', n'))
 
                    workset0' = foldr insert workset0 new

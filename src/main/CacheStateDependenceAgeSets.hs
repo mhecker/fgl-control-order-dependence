@@ -52,6 +52,7 @@ import MicroArchitecturalDependence (
     AbstractMicroArchitecturalGraphNode,
     AbstractSemantic,
     TimeState,
+    MergeMode(..),
     MergedMicroState(..),
     MicroArchitecturalAbstraction(..),
     stateGraphForSets, stateGraph, stateSets,
@@ -1194,17 +1195,30 @@ cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
             | otherwise = [ cs ]
 
 
-csdFromDataDep :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdFromDataDep cacheSize graph n0 = traceShow (csGraphSize csGraph) $
+csdFromDataDepFor :: DynGraph gr => (Maybe (MergeMode AbstractCacheState)) -> CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdFromDataDepFor leq cacheSize graph n0 = traceShow (csGraphSize csGraph) $
     invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice cacheSize csGraph csGraphG ddeps m]
   where  mu = cacheAbstraction cacheSize
-         csGraph@(cs, es) = stateSets (muStepFor mu) (muLeq mu) graph (muInitialState mu) n0
+         csGraph@(cs, es) = stateSets (muStepFor mu) leq graph (muInitialState mu) n0
          csGraphG = stateGraphForSets csGraph :: Gr (Node, AbstractCacheState) CFGEdge
 
          costs = (muCostsFor mu) csGraph
          mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
 
          ddeps = cacheDataDepGWork2 cacheSize csGraphG
+
+csdFromDataDep :: DynGraph gr =>  CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdFromDataDep cacheSize = csdFromDataDepFor (muLeq $ cacheAbstraction cacheSize) cacheSize
+
+csdFromDataDepJoined :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdFromDataDepJoined = csdFromDataDepFor (Just $ JoinNode ageSetsJoin ageSetsLeq)
+
+ageSetsJoin a b = (Map.intersectionWith (∪) a b) `Map.union` (fmap (Set.insert infTime) a `Map.union` fmap (Set.insert infTime) b)
+ageSetsLeq  a b = (∀) (Map.intersectionWith (⊆) a b) (== True)
+                ∧ (∀) (Map.difference b a) (infTime ∈)
+                ∧ (∀) (Map.difference a b) (== inf)
+
+
 
 cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (IntSet) -> Node -> Set Node
 cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]

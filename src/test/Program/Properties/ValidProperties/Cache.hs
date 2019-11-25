@@ -135,6 +135,17 @@ cacheProps = testGroup "(concerning cache timing)" [
                         csdM   =         csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
                     in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS,
+    testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   =         csdMergeDirectOf     propsCacheSize g n0
+                        csdMAS = AgeSets.csdFromDataDepJoined propsCacheSize g n0
+                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS,
     testPropertySized 25 "cacheDataDepGWork2 == cacheDataDepGWork"
                 $ \generated ->
                     let pr :: Program Gr

@@ -45,7 +45,7 @@ import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, foc
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
-import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFast)
+import Data.Graph.Inductive.Query.PostDominanceFrontiers (idomToDFFast, isinkDFTwoFinger)
 
 import MicroArchitecturalDependence (
     CsGraph, csGraphSize,
@@ -80,6 +80,7 @@ import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp, sinkdo
 import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger)
 import Data.Graph.Inductive.Query.Slices.PostDominance (wodTEILSliceViaISinkDom)
+import Data.Graph.Inductive.Query.Slices.PostDominanceFrontiers (nticdNTIODSlice)
 
 import           Data.Graph.Inductive.Query.InfiniteDelay (TraceWith (..), Trace)
 import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay (Input(..))
@@ -704,6 +705,7 @@ newMinAge cacheSize cache cache' minUses (_, co) minAge =       let maxCo = mmax
                                                                 in if (not $ singular) ∧ stillValid then Just minAge' else Nothing
 
 minUsesOf e cache = [ minUse  | uses <- Set.toList $ makesUses e, let mins = [ mminimum $ Map.findWithDefault inf coUse cache | coUse <- uses ], let minUse = List.minimum mins ]
+maxUsesOf e cache = [ maxUse  | uses <- Set.toList $ makesUses e, let maxs = [ mmaximum $ Map.findWithDefault inf coUse cache | coUse <- uses ], let maxUse = List.maximum maxs ]
 
 
 defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) MinAge
@@ -747,6 +749,35 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                                                       let (Age (Just a)) = List.minimum as
                             ]
                        ⊔ Map.fromList [ ((nodeFor (n, cache), coChoice), MinAge 0) | choices <- Set.toList $ makesUses e,  not $ List.length choices == 1, coChoice <- choices ]
+
+
+type ModsFor gr =
+        CacheSize
+     -> gr (Node, AbstractCacheState) CFGEdge
+     -> CachedObject
+     -> Set Node
+modsForFast :: DynGraph gr => ModsFor gr
+modsForFast cacheSize csGraphG' co =
+      id
+    $ result
+  where
+                second (_,aU,_  ) = aU
+                third  (_,_ ,aU') = aU'
+
+                result = Set.fromList [ yN | (yN, (n, cache)) <- labNodes csGraphG',
+                                                (yN', e) <- lsuc csGraphG' yN, let Just (n', cache') = lab csGraphG' yN,
+                                                let maxUses = maxUsesOf e cache,
+                                                Just agesCo <- [ Map.lookup co cache ],
+                                                let minCo = mminimum agesCo,
+                                                (∃) maxUses (\maxUse ->   minCo < maxUse)
+                         ]
+                       ⊔ Set.fromList [ yN | (yN, (n, cache)) <- labNodes csGraphG',
+                                             not $ Map.findWithDefault inf co cache == fresh,
+                                             (yN', e) <- lsuc csGraphG' yN, let Just (n', cache') = lab csGraphG' yN,
+                                             uses <- Set.toList $ makesUses e,
+                                             co `elem` uses
+                         ]
+
 
 mminimum :: Ages -> Age
 mminimum ages
@@ -1195,12 +1226,12 @@ cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
             | otherwise = [ cs ]
 
 
-csdFromDataDepFor :: DynGraph gr => (Maybe (MergeMode AbstractCacheState)) -> CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdFromDataDepFor leq cacheSize graph n0 = traceShow (csGraphSize csGraph) $
-    invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice cacheSize csGraph csGraphG ddeps m]
+csdFromDataDepFor :: forall gr. DynGraph gr => (Maybe (MergeMode AbstractCacheState)) -> ModsFor gr -> CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
+csdFromDataDepFor leq modsFor cacheSize graph n0 = traceShow (csGraphSize csGraph) $
+    invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice modsFor cacheSize csGraph csGraphG ddeps m]
   where  mu = cacheAbstraction cacheSize
          csGraph@(cs, es) = stateSets (muStepFor mu) leq graph (muInitialState mu) n0
-         csGraphG = stateGraphForSets csGraph :: Gr (Node, AbstractCacheState) CFGEdge
+         csGraphG = stateGraphForSets csGraph :: gr (Node, AbstractCacheState) CFGEdge
 
          costs = (muCostsFor mu) csGraph
          mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
@@ -1208,10 +1239,11 @@ csdFromDataDepFor leq cacheSize graph n0 = traceShow (csGraphSize csGraph) $
          ddeps = cacheDataDepGWork2 cacheSize csGraphG
 
 csdFromDataDep :: DynGraph gr =>  CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdFromDataDep cacheSize = csdFromDataDepFor (muLeq $ cacheAbstraction cacheSize) cacheSize
+csdFromDataDep cacheSize = csdFromDataDepFor (muLeq $ cacheAbstraction cacheSize) none cacheSize
+  where none _ _ _ = Set.empty
 
 csdFromDataDepJoined :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdFromDataDepJoined = csdFromDataDepFor (Just $ JoinNode ageSetsJoin ageSetsLeq)
+csdFromDataDepJoined = csdFromDataDepFor (Just $ JoinNode ageSetsJoin ageSetsLeq) modsForFast
 
 ageSetsJoin a b = (Map.intersectionWith (∪) a b) `Map.union` (fmap (Set.insert infTime) a `Map.union` fmap (Set.insert infTime) b)
 ageSetsLeq  a b = (∀) (Map.intersectionWith (⊆) a b) (== True)
@@ -1220,9 +1252,11 @@ ageSetsLeq  a b = (∀) (Map.intersectionWith (⊆) a b) (== True)
 
 
 
-cacheDataDepSlice :: Graph gr => CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (IntSet) -> Node -> Set Node
-cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
-  where
+cacheDataDepSlice :: DynGraph gr => ModsFor gr -> CacheSize -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (IntSet) -> Node -> Set Node
+cacheDataDepSlice modsFor cacheSize csGraph csGraphG ddeps m =
+      id
+    $ result
+  where result = Set.fromList [ n | y <- Set.toList slice, let Just (n,_) = lab csGraphG' y ]
 
         msCsGraph  = [ y | (y, (m_, _)) <- labNodes csGraphG , m_ == m ]
         msCsGraph' = [ y | (y, (m_, _)) <- labNodes csGraphG', m_ == m ]
@@ -1234,6 +1268,23 @@ cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- S
 
         isinkdom' = isinkdomOfTwoFinger8 csGraphG'
         df'       = idomToDFFast         csGraphG' isinkdom'
+
+{-
+        phis = Set.fromList [ yN | (yN, yNNs) <- Map.assocs df, not $ Set.null yNNs,
+                                         let Just (n, cache') = lab csGraphG' yN,
+                                         let cache'0 = restrict cache' relevantCos,
+                                         not $ (∀) (pre csGraphG' yN) (\yN0 ->
+                                           let Just (_, cache) = lab csGraphG' yN0
+                                               cache0 = restrict cache relevantCos
+                                           in cache0 == cache'0
+                                         )
+                                    ]
+           where 
+                 df = invert'' $ isinkDFTwoFinger (grev csGraphG')
+        phiPres = Set.fromList [ yN0 | yN <- Set.toList phis, yN0 <- pre csGraphG' yN ]
+-}
+        mods = (∐) [ modsFor cacheSize csGraphG' co | co <- Set.toList relevantCos ]
+         where csGraphG' = subgraph (rdfs msCsGraph csGraphG) csGraphG
 
         viaDDep = Set.fromList [ y' | (y', (n, cache)) <- labNodes csGraphG', (n,cache) ∈ ns ]
           where ns = Set.fromList [ (n, cacheN) | y <- msCsGraph, 
@@ -1247,7 +1298,9 @@ cacheDataDepSlice cacheSize csGraph csGraphG ddeps m = Set.fromList [ n | y <- S
         slice =
                    go Set.empty (Set.fromList msCsGraph')
               ∪ ((go Set.empty                 viaDDep))
-          where go s workset
+           -- ∪ ((go Set.empty                 phiPres) ∖ phiPres)
+              ∪ ((go Set.empty                 mods) ∖ mods)
+        go s workset
                     | Set.null workset =    s
                     | otherwise        = go s' (workset0 ∪ new)
                  where (y, workset0) = Set.deleteFindMin workset

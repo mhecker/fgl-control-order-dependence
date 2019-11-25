@@ -1013,27 +1013,27 @@ transDefsFast cacheSize n e cache cache' seesN =
    $ let result' = transDefsSlowPseudoDef cacheSize n e cache cache' seesN in
      assert ((∀) (result' ∖ (Map.keysSet result)) (\(n'Missing, coMissing) ->
                 (∃) (Map.assocs seesN) (\((n', coUse), minAge) -> n' == n'Missing ∧
-                   (∃) (Map.findWithDefault Set.empty coUse ddeps) (\(co, min) -> co == coMissing ∧ (min < minAge))
+                   (∃) (Map.findWithDefault Set.empty coUse ddeps) (\(co, min, max) -> co == coMissing ∧ (max < minAge))
                 )
             ))
    $ result 
           where result = seesN ⊔ fromSeen
 
-                fromSeen = (∐) [ Map.fromList [ ((n', co), max) ] | ((n', coUse), minAge) <- Map.assocs seesN,
+                fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] | ((n', coUse), minAge) <- Map.assocs seesN,
                                                       Just cos <- [Map.lookup coUse ddeps],
-                                                      (co, max) <- Set.toList cos,
+                                                      (co, min, max) <- Set.toList cos,
                                                       not $ max < minAge
                            ]
 
                 ddeps = cacheDepsFast cacheSize e cache
 
 
-cacheDepsFast :: CacheSize -> CFGEdge -> AbstractCacheState -> Map CachedObject (Set (CachedObject, MinAge))
+cacheDepsFast :: CacheSize -> CFGEdge -> AbstractCacheState -> Map CachedObject (Set (CachedObject, MinAge, MinAge))
 cacheDepsFast cacheSize e cache =
      id
    $ result 
           where 
-                result = Map.fromList [ (coUse, Set.fromList [ (co, max) | (co, ages) <- Map.assocs cache,
+                result = Map.fromList [ (coUse, Set.fromList [ (co, min, max) | (co, ages) <- Map.assocs cache,
                                                       let amin = mminimum ages,
                                                       let amax = mmaximum ages,
 
@@ -1045,6 +1045,7 @@ cacheDepsFast cacheSize e cache =
                                                       not $ lt ∨ gt
                                                 ],
                                                       not $ List.null $ as,
+                                                      let min = foldl1 (⊔) as,
                                                       let max = foldl1 (⊓) as
                                                 ]
                                          )
@@ -1194,8 +1195,8 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
                               ]
                         trans = [ ((yM, co'), min'   ) | (e, yM, cache', minUses, cacheDeps) <- succs,
                                                                                Just cos <- [Map.lookup co cacheDeps ],
-                                                                               (co', min) <- Set.toList cos,
-                                                                               not $ min < minAge,
+                                                                               (co', min, max) <- Set.toList cos,
+                                                                               not $ max < minAge,
                                                                                Just min' <- [newMinAge cacheSize cache cache' minUses (undefined, co') min],
                                                                                isNew yM co' min'
                               ]

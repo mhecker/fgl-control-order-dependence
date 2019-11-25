@@ -134,7 +134,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =         csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
-                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS,
+                    in  csdM ⊑ csdMAS,
     testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined"
                 $ \generated ->
                     let pr :: Program Gr
@@ -145,7 +145,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =         csdMergeDirectOf     propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDepJoined propsCacheSize g n0
-                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS,
+                    in  csdM ⊑ csdMAS,
     testPropertySized 25 "cacheDataDepGWork2 == cacheDataDepGWork"
                 $ \generated ->
                     let pr :: Program Gr
@@ -326,7 +326,7 @@ cacheTests = testGroup "(concerning cache timing)" $
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =         csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
-                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
+                    in  csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
   [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined for " ++ prName) $

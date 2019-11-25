@@ -19,6 +19,13 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Data.IntSet (IntSet)
+import qualified Data.IntSet as IntSet
+
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IntMap
+
+
 import Algebra.Lattice(JoinSemiLattice(..), BoundedJoinSemiLattice(..))
 
 import Debug.Trace (traceShow)
@@ -213,6 +220,26 @@ merged csGraph' equivs =  mkGraph nodes' edges
 
 
 
+mergedI :: (Graph gr, Ord e) => gr (Node, s) e ->  IntMap (IntMap IntSet) -> gr (Node, Set AbstractMicroArchitecturalGraphNode) e
+mergedI csGraph' equivs =  mkGraph nodes' edges
+  where edges =  Set.toList $ Set.fromList $ fmap f $ (labEdges csGraph')
+          where f (y,y',e) = (toNode ! (n,equiv), toNode ! (n', equiv'), e)
+                  where Just (n,_)  = lab csGraph' y
+                        Just (n',_) = lab csGraph' y'
+                        equiv  = representative $ equivs !! n  !! y
+                        equiv' = representative $ equivs !! n' !! y'
+        nodes = zip [0..] (Set.toList $ Set.fromList $ [ (n, representative equiv) | (n, equivN) <- IntMap.toAscList equivs, equiv <- IntMap.elems equivN ])
+        toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
+
+        representative = IntSet.findMin -- use the first node in a equivalence class as representative
+
+        nodes' = fmap fromRep nodes
+          where fromRep (i,(n,y)) = (i, (n, Set.fromAscList $ IntSet.toAscList $ equivs !! n !! y))
+
+        (!!) = (IntMap.!)
+
+
+
 
 
 mergeFromSlow :: forall id e s gr. (Ord id, DynGraph gr, Show e, Ord e) =>
@@ -264,7 +291,7 @@ mergeFrom ::  (DynGraph gr) =>
   gr (Node, s) CFGEdge ->
   Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
   Set AbstractMicroArchitecturalGraphNode ->
-  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
+  IntMap (IntMap IntSet)
 mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  idom roots
 
 
@@ -274,65 +301,70 @@ mergeFromForEdgeToSuccessor ::  (DynGraph gr, Show e, Ord e) =>
   gr (Node, s) e ->
   Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
   Set AbstractMicroArchitecturalGraphNode ->
-  Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
-mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == mergeFromSlow  nodesToCsNodes csGraph idom roots) result
+  IntMap (IntMap IntSet)
+mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.fromAscList [ (n, IntMap.fromAscList [ (y, IntSet.fromAscList $ Set.toAscList ys) | (y, ys) <- Map.assocs yys ])  | (n, yys) <- Map.assocs $  mergeFromSlow  (Map.fromAscList [ (n, Set.fromAscList $ IntSet.toAscList $ ys) | (n, ys) <- IntMap.toAscList nodesToCsNodes]) csGraph idom roots]) result
   where result = (go orderToNodes init) ⊔ equivsNBase
-          where (⊔) :: Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)) -> Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
-                (⊔) left right =  Map.unionWithKey f left right
-                f n fromSuccessorsN  fromBaseN = Map.unionWithKey g fromSuccessorsN fromBaseN
+          where (⊔) :: IntMap (IntMap IntSet) -> IntMap (IntMap IntSet) -> IntMap (IntMap IntSet)
+                (⊔) left right = IntMap.unionWithKey f left right
+                f n fromSuccessorsN  fromBaseN = IntMap.unionWithKey g fromSuccessorsN fromBaseN
                 g y fromSuccessorsYs fromBaseYs = {- assert (fromBaseYs ⊆ fromSuccessorsYs) $ -} fromSuccessorsYs
+        (!!) = (IntMap.!)
+        (∈∈) = (IntSet.member)
+        (∖∖) = (IntSet.difference)
+        fromIntSet f s = IntMap.fromAscList [ (y, f y) | y <- IntSet.toAscList s]
+        rootsI = IntSet.fromAscList $ Set.toAscList $ roots
         go workset fromSuccessors
-           | Map.null workset  = fromSuccessors
+           | IntMap.null workset  = fromSuccessors
            | otherwise         =
                if changed then
-                 go (workset' `Map.union` influenced) (Map.insert n (fromSuccessorsN' ⊔ fromRootsN) fromSuccessors)
+                 go (workset' `IntMap.union` influenced) (IntMap.insert n (fromSuccessorsN' ⊔ fromRootsN) fromSuccessors)
                else
-                 go  workset'                                                                       fromSuccessors
-          where ((_,n), workset') = Map.deleteFindMin workset
-                ys = nodesToCsNodes ! n
-                fromRootsN = fromRoots ! n
-                fromSuccessorsN' = goSuccessors (ys ∖ roots) Map.empty
+                 go  workset'                                                                             fromSuccessors
+          where ((_,n), workset') = IntMap.deleteFindMin workset
+                ys = nodesToCsNodes !! n
+                fromRootsN = fromRoots !! n
+                fromSuccessorsN' = goSuccessors (ys ∖∖ rootsI) IntMap.empty
                   where goSuccessors ysLeft fromsucc
-                           | Set.null ysLeft = fromsucc
-                           | otherwise = assert (y ∈ y's) goSuccessors ysLeft' ((Map.fromSet (const y's) y's) `Map.union` fromsucc)
-                          where y = Set.findMin ysLeft
+                           | IntSet.null ysLeft = fromsucc
+                           | otherwise = assert (y ∈∈ y's) goSuccessors ysLeft' ((IntMap.fromSet (const y's) y's) `IntMap.union` fromsucc)
+                          where y = IntSet.findMin ysLeft
                                 es = (∐) [ Map.fromList [ (e, Set.fromList [(x,m)]) ]  | (x,e) <- lsuc csGraph y, let Just (m, _) = lab csGraph x ]
 
-                                y's     = Set.insert y y's0
-                                ysLeft' = Set.delete y ysLeft'0
-                                (y's0, ysLeft'0) = Set.partition (\y' -> 
+                                y's     = IntSet.insert y y's0
+                                ysLeft' = IntSet.delete y ysLeft'0
+                                (y's0, ysLeft'0) = IntSet.partition (\y' -> 
                                                                    (∀) (lsuc csGraph y') (\(x', e') -> (∀) (es ! e') (\(x,m) -> 
-                                                                          (x  ∈ Map.findWithDefault Set.empty x' (fromSuccessors ! m)  ∨  x ∈ equivsNBase ! m ! x')
+                                                                          (x  ∈∈ IntMap.findWithDefault IntSet.empty x' (fromSuccessors !! m)  ∨  (x ∈∈ (equivsNBase !! m !! x')))
                                                                    ))
                                                                )
                                                                ysLeft
 
                 changed = assert (fromSuccessorsN ⊒ fromSuccessorsN') $
                           assert (diffSize == (fromSuccessorsN' /= fromSuccessorsN)) $ diffSize
-                  where fromSuccessorsN = fromSuccessors ! n
-                        diffSize = Map.size fromSuccessorsN /= Map.size fromSuccessorsN'
-                                 ∨ (∃) (zip (Map.toAscList fromSuccessorsN) (Map.toAscList fromSuccessorsN')) (\((y,ys), (y', y's)) -> assert (y == y') $ Set.size ys /= Set.size y's)
-                influenced = Map.fromList [ (nodesToOrder ! m, m) | m <- pre graph n]
+                  where fromSuccessorsN = fromSuccessors !! n
+                        diffSize = IntMap.size fromSuccessorsN /= IntMap.size fromSuccessorsN'
+                                 ∨ (∃) (zip (IntMap.toAscList fromSuccessorsN) (IntMap.toAscList fromSuccessorsN')) (\((y,ys), (y', y's)) -> assert (y == y') $ IntSet.size ys /= IntSet.size y's)
+                influenced = IntMap.fromList [ (nodesToOrder !! m, m) | m <- pre graph n]
 
-        init = Map.mapWithKey (\n ys -> Map.fromSet (const ys) ys) nodesToCsNodes
-        rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
+        init = IntMap.mapWithKey (\n ys -> IntMap.fromSet (const ys) ys) nodesToCsNodes
+        rootOf = IntMap.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
 
-        nodesToCsNodes = Map.fromList [ (n, Set.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
+        nodesToCsNodes = IntMap.fromList [ (n, IntSet.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
-        fromRoots = Map.mapWithKey (\n ys -> go ys Map.empty) nodesToCsNodes
+        fromRoots = IntMap.mapWithKey (\n ys -> go ys IntMap.empty) nodesToCsNodes
           where go ysLeft fromroots
-                  | Set.null ysLeft = fromroots
-                  | otherwise = let mr = Map.lookup y rootOf in case mr of
+                  | IntSet.null ysLeft = fromroots
+                  | otherwise = let mr = IntMap.lookup y rootOf in case mr of
                         Nothing -> go ysLeft0                                          fromroots
-                        Just r  -> let (y's, ysLeft') = Set.partition (\y' -> Map.lookup y' rootOf == mr) ysLeft in
-                                   go ysLeft' (Map.fromSet (const y's) y's `Map.union` fromroots)
-                      where (y, ysLeft0) = Set.deleteFindMin ysLeft
+                        Just r  -> let (y's, ysLeft') = IntSet.partition (\y' -> IntMap.lookup y' rootOf == mr) ysLeft in
+                                   go ysLeft' (fromIntSet (const y's) y's `IntMap.union` fromroots)
+                      where (y, ysLeft0) = IntSet.deleteFindMin ysLeft
 
-        equivsNBase = Map.mapWithKey (\n ys -> fromRoots ! n ⊔ (Map.fromSet Set.singleton $ ys ∖ roots)) nodesToCsNodes
+        equivsNBase = IntMap.mapWithKey (\n ys -> fromRoots !! n ⊔ (fromIntSet IntSet.singleton $ (ys ∖∖ rootsI))) nodesToCsNodes
 
         order = List.reverse $ topsort graph
-        nodesToOrder = Map.fromList $ zip order [0..]
-        orderToNodes = Map.fromList $ zip [0..] order
+        nodesToOrder = IntMap.fromList $ zip order [0..]
+        orderToNodes = IntMap.fromList $ zip [0..] order
 
 
 csGraphSize :: CsGraph s e -> Int
@@ -352,7 +384,7 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muG
       let roots' = Set.fromList y's,
       let ns = if muMerge then
             let equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots'
-                csGraph'' = merged csGraph' equivs
+                csGraph'' = mergedI csGraph' equivs
                 idom'' = isinkdomOfTwoFinger8 csGraph''
             in Set.fromList [ n | (y, (n,_))   <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y] -- TODO: can we make this wotk with muIsDependent, too?
           else Set.fromList [ n | (y, (n,mms)) <- labNodes csGraph' , n /= m, muIsDependent graph roots' idom' y n mms]
@@ -370,7 +402,7 @@ muGraphFromMergeDirectFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord 
   Node ->
   Node ->
   gr (Node, Set AbstractMicroArchitecturalGraphNode) e
-muGraphFromMergeDirectFor mu graph n0 m = merged muGraph' equivs
+muGraphFromMergeDirectFor mu graph n0 m = mergedI muGraph' equivs
     where (equivs, muGraph') = mergeDirectFromFor mu graph n0 m
 
 mergeDirectFromFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e, Show e) =>
@@ -378,7 +410,7 @@ mergeDirectFromFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e, Show
   gr CFGNode CFGEdge ->
   Node ->
   Node ->
-  (Map Node (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode)),
+  (IntMap (IntMap IntSet),
    gr (Node, MergedMicroState a a') e
   )
 mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muLeq, muStepFor, muCostsFor }) graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')

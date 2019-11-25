@@ -37,7 +37,7 @@ import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, foc
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
-import MicroArchitecturalDependence (CsGraph, AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, mergeFrom, merged)
+import MicroArchitecturalDependence (CsGraph, AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, mergeFrom, mergedI)
 import CacheExecution (CacheSize, isCachable, CachedObject(..), )
 import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, cacheOnlyStepFor, cachedObjectsFor, costsFor)
 
@@ -190,7 +190,7 @@ accessReachableFrom graph = (㎲⊒) init f
         init    = Map.fromList [ (n, Set.empty) | n <- nodes graph ]
 
 
-csGraphFromMergeFor cacheSize graph n0 m = merged csGraph' equivs
+csGraphFromMergeFor cacheSize graph n0 m = mergedI csGraph' equivs
     where (equivs, csGraph') = mergeFromFor cacheSize graph n0 m
 
 mergeFromFor cacheSize graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
@@ -230,7 +230,7 @@ csdMergeOf cacheSize graph n0 =  invert'' $
       let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraphM',
       let roots' = Set.fromList y's,
       let equivs = mergeFrom graph' csGraphM' idom' roots',
-      let csGraphM'' = merged csGraphM' equivs,
+      let csGraphM'' = mergedI csGraphM' equivs,
       let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraphM'',
       let ys = Set.fromList [ y | y <- nodes csGraphM'', idom'' ! y == Nothing]
    ]

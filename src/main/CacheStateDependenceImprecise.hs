@@ -17,6 +17,9 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IntMap
+
 import Algebra.Lattice(JoinSemiLattice(..), BoundedJoinSemiLattice(..))
 
 import Debug.Trace (traceShow)
@@ -285,7 +288,7 @@ costsFor cacheSize csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList
 
 costsFor2 :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
 costsFor2 cacheSize (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
-                                                 (n, σes) <- Map.assocs es,
+                                                 (n, σes) <- IntMap.toList es,
                                                  (cache, e, (n', cache')) <- Set.toList σes,
                                                  (_,fullState'@(_,time)) <- cacheTimeStepFor cacheSize e (cache, 0)
                       ]
@@ -381,8 +384,8 @@ cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
         merged :: gr (Node, MergedCacheState) CFGEdge
         merged = mkGraph nodes' edges'
 
-        nodes' = zip [0..] [           a                   | (m,σs)  <- Map.assocs css,            c                  <- Set.toList σs,  let cs = (m,c), a <- α cs             ]
-        edges' =           [(toNode' ! a, toNode' ! a', e) | (m,σes) <- Map.assocs es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c), a <- α cs, a' <- α cs']
+        nodes' = zip [0..] [           a                   | (m,σs)  <- IntMap.toList css,            c                  <- Set.toList σs,  let cs = (m,c), a <- α cs             ]
+        edges' =           [(toNode' ! a, toNode' ! a', e) | (m,σes) <- IntMap.toList es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c), a <- α cs, a' <- α cs']
         toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
 
         α cs@(n, cache)

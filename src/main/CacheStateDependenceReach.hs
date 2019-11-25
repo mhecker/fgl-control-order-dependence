@@ -16,6 +16,10 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IntMap
+
+
 import Algebra.Lattice(JoinSemiLattice(..), BoundedJoinSemiLattice(..))
 
 import Debug.Trace (traceShow)
@@ -85,12 +89,12 @@ nextReachable csGraph = (㎲⊒) init f
 
 
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge -> Map Node (Set Name) -> gr (Node, AbstractCacheStateReach) CFGEdge
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es', (cache, e, c') <- Set.toList cacheEdges ]
-  where cs' =  Map.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- IntMap.toList es', (cache, e, c') <- Set.toList cacheEdges ]
+  where cs' =  IntMap.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
           where f n s = α (reach !! n) s
-        es' =  Map.mapWithKey (\n ess -> Set.map (f n) ess) es
+        es' =  IntMap.mapWithKey (\n ess -> Set.map (f n) ess) es
           where f n (sn, e, (m,sm)) = (α (reach !! n) sn, e, (m, α (reach !! m) sm))
-        nodes = zip [0..] [ (n, cache) | (n, caches) <- Map.assocs cs', cache <- Set.toList caches ]
+        nodes = zip [0..] [ (n, cache) | (n, caches) <- IntMap.toList cs', cache <- Set.toList caches ]
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
         α = αForReach vars
@@ -99,12 +103,12 @@ cacheStateGraphForVarsAndCacheStatesAndAccessReachable vars (cs, es) reach = mkG
 
 
 cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 :: (Graph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge -> Map Node (Set Name) -> Node -> gr (Node, AbstractCacheStateReach) CFGEdge
-cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es', (cache, e, c') <- Set.toList cacheEdges ]
-  where cs' =  Map.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
+cacheStateGraphForVarsAndCacheStatesAndAccessReachable2 vars (cs, es) reach mm = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- IntMap.toList es', (cache, e, c') <- Set.toList cacheEdges ]
+  where cs' =  IntMap.mapWithKey (\n  ss -> Set.map (f n)  ss) cs
           where f n s = α (reach !! n) n s
-        es' =  Map.mapWithKey (\n ess -> Set.map (f n) ess) es
+        es' =  IntMap.mapWithKey (\n ess -> Set.map (f n) ess) es
           where f n (sn, e, (m,sm)) = (α (reach !! n) n sn, e, (m, α (reach !! m) m sm))
-        nodes = zip [0..] [ (n, cache) | (n, caches) <- Map.assocs cs', cache <- Set.toList caches ]
+        nodes = zip [0..] [ (n, cache) | (n, caches) <- IntMap.toList cs', cache <- Set.toList caches ]
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
         α = αForReach2 vars mm

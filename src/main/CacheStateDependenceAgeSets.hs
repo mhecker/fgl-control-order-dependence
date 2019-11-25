@@ -24,6 +24,10 @@ import qualified Data.Set as Set
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IntMap
+
+
 import Algebra.Lattice(JoinSemiLattice(..), BoundedJoinSemiLattice(..), MeetSemiLattice(..), BoundedMeetSemiLattice(..))
 
 import Debug.Trace (traceShow)
@@ -515,7 +519,7 @@ costsFor cacheSize csGraph  =  (∐) [ Map.fromList [ ((n0, m0, e), Set.fromList
 
 costsFor2 :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, Node, CFGEdge) (Set AccessTime)
 costsFor2 cacheSize (css, es)  =  (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
-                                                 (n, σes) <- Map.assocs es,
+                                                 (n, σes) <- IntMap.toList es,
                                                  (cache, e, (n', cache')) <- Set.toList σes,
                                                  (_, fullState'@(_,time)) <- cacheTimeStepFor cacheSize e (cache, 0)
                       ]
@@ -619,8 +623,8 @@ cacheStateGraph'ForVarsAtMForGraph2 vars (css, es) mm = result
         merged :: gr (Node, MergedCacheState) CFGEdge
         merged = mkGraph nodes' edges'
 
-        nodes' = zip [0..] [           a                   | (m,σs)  <- Map.assocs css,            c                  <- Set.toList σs,  let cs = (m,c), a <- α cs             ]
-        edges' =           [(toNode' ! a, toNode' ! a', e) | (m,σes) <- Map.assocs es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c), a <- α cs, a' <- α cs']
+        nodes' = zip [0..] [           a                   | (m,σs)  <- IntMap.toList css,            c                  <- Set.toList σs,  let cs = (m,c), a <- α cs             ]
+        edges' =           [(toNode' ! a, toNode' ! a', e) | (m,σes) <- IntMap.toList es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c), a <- α cs, a' <- α cs']
         toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
 
         α cs@(n, cache)
@@ -672,11 +676,14 @@ csdGraphFromMergeDirectFor cacheSize = muGraphFromMergeDirectFor (cacheAbstracti
 cacheDataDep :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, AbstractCacheState, CachedObject) (Set (Node, AbstractCacheState))
 cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.fromList [ (n, cache') ]) ] | ((m, cache), deps) <- Map.assocs seesDef, ((n, cache'), co) <- Map.keys deps ]
   where seesDef :: Map (Node, AbstractCacheState) (Map ((Node, AbstractCacheState), CachedObject) MinAge)
-        seesDef = (㎲⊒) (Map.fromList [ ((m,cache), Map.empty) | (m, caches) <- Map.assocs cs, cache <- Set.toList caches ]) f
+        seesDef = (㎲⊒) (Map.fromList [ ((m,cache), Map.empty) | (m, caches) <- IntMap.toList cs, cache <- Set.toList caches ]) f
           where f sees =  (∐) [ Map.fromList [ ((m, cache'), (killedFor cacheSize e cache cache' $ transDefs cacheSize n e cache cache' (sees ! (n, cache))) ⊔ (defs (n, e, cache, cache')) ) ]
-                                      | (n, caches) <- Map.assocs cs, cache <- Set.toList caches, (cache_, e, (m, cache' )) <- Set.toList $ es ! n, cache == cache_ ]
+                                      | (n, caches) <- IntMap.toList cs, cache <- Set.toList caches, (cache_, e, (m, cache' )) <- Set.toList $ es !! n, cache == cache_ ]
 
         defs = defsFor cacheSize id
+
+        (!!) = (IntMap.!)
+
 
 killedFor ::  forall n. (Show n, Ord n) => CacheSize -> CFGEdge -> AbstractCacheState -> AbstractCacheState -> Map (n, CachedObject) MinAge -> Map (n, CachedObject) MinAge
 killedFor cacheSize e cache cache' sees'  = result
@@ -1219,8 +1226,8 @@ cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = result
         merged :: gr (Node, AbstractCacheState) CFGEdge
         merged = mkGraph nodes' edges'
 
-        nodes' = zip [0..] [           a                   | (m,σs)  <- Map.assocs css,            c                  <- Set.toList σs,  let cs = (m,c), a <- α cs             ]
-        edges' =           [(toNode' ! a, toNode' ! a', e) | (m,σes) <- Map.assocs es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c), a <- α cs, a' <- α cs']
+        nodes' = zip [0..] [           a                   | (m,σs)  <- IntMap.toList css,            c                  <- Set.toList σs,  let cs = (m,c), a <- α cs             ]
+        edges' =           [(toNode' ! a, toNode' ! a', e) | (m,σes) <- IntMap.toList es,  m /= mm,  (c, e, cs'@(m',c')) <- Set.toList σes, let cs = (m,c), a <- α cs, a' <- α cs']
         toNode' = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes'
 
         α :: (Node, AbstractCacheState) -> [ (Node, AbstractCacheState) ]

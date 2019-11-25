@@ -107,94 +107,97 @@ stateSetsSlow step g  σ0 n0 = (㎲⊒) (Set.fromList [(n0,σ0)], Set.fromList [
           where next = [ (n, σ, e', n', σ')  | (n,σ) <- Set.toList cs, (n',e) <- lsuc g n, (e',σ') <- step e σ]
 
 
-type CsGraph s e =  (Map Node (Set s), Map Node (Set (s, e, (Node, s))))
+type CsGraph s e =  (IntMap (Set s), IntMap (Set (s, e, (Node, s))))
 
 data MergeMode s = AbstractLeq (AbstractLeq s) | JoinNode (s -> s -> s) (s -> s -> Bool)
 
 stateSets :: forall gr s e. (Graph gr, Ord s, Show s, Show e, Ord e) => AbstractSemantic s e -> Maybe (MergeMode s) -> gr CFGNode CFGEdge -> s -> Node -> CsGraph s e
 stateSets step (Just (AbstractLeq leq)) g σ0 n0 = filter result
-  where result = go (Map.fromList [(n0, Set.fromList [σ0])]) (Map.fromList [(n0,Set.fromList [σ0])]) (Map.fromList [])
-        go :: Map Node (Set s) -> Map Node (Set s) -> Map Node (Set (s, e, (Node, s))) -> (Map Node (Set s), Map Node (Set (s, e, (Node, s))))
+  where result = go (IntMap.fromList [(n0, Set.fromList [σ0])]) (IntMap.fromList [(n0,Set.fromList [σ0])]) (IntMap.fromList [])
+        go :: IntMap (Set s) -> IntMap (Set s) -> IntMap (Set (s, e, (Node, s))) -> (IntMap (Set s), IntMap(Set (s, e, (Node, s))))
         go workset cs es
-         | Map.null workset = (cs, es)
+         | IntMap.null workset = (cs, es)
          | otherwise         = {- traceShow workset $ -}
                                {- traceShow "=============================" $ traceShow (Map.lookup 11 workset) $ traceShow (Map.lookup 11 cs) $ traceShow (Map.lookup 11 es) $ -}
                                go (workset'' ⊔ csNew) (cs' ⊔ csNew) (es ⊔ esNew)
-             where ((n,σs), workset') = Map.deleteFindMin workset
+             where ((n,σs), workset') = IntMap.deleteFindMin workset
                    (σ, σs') = Set.deleteFindMin σs
                    workset''
-                       | Set.null σs'' =                     workset'
-                       | otherwise     = Map.insert n σs'' $ workset'
+                       | Set.null σs'' =                        workset'
+                       | otherwise     = IntMap.insert n σs'' $ workset'
                      where σs'' = Set.filter (\σ' -> assert (σ /= σ') $ (not $ σ' `leq` σ)) σs'
-                   cs' = Map.adjust f n cs
+                   cs' = IntMap.adjust f n cs
                      where f    = Set.filter (\σ' ->        (σ' == σ) ∨ (not $ σ' `leq` σ))
                    next = [ (e', n', σ')  | (n',e) <- lsuc g n, (e',σ') <- step e σ]
                    
-                   csNew = (∐) [ Map.fromList [ (n', Set.fromList [ σ' ]) ]  | (e, n', σ') <- next, not $ old n' σ' ]
-                     where old n' σ' = case Map.lookup n' cs of
+                   csNew = (∐) [ IntMap.fromList [ (n', Set.fromList [ σ' ]) ]  | (e, n', σ') <- next, not $ old n' σ' ]
+                     where old n' σ' = case IntMap.lookup n' cs of
                              Nothing -> False
                              Just σs' -> σ' ∈ σs' ∨ ((∃) σs' (\σ'' -> σ' `leq` σ''))
-                   esNew = Map.fromList [ (n, Set.fromList  [ (σ, e', (n', σ')) | (e', n', σ') <- next ] )]
+                   esNew = IntMap.fromList [ (n, Set.fromList  [ (σ, e', (n', σ')) | (e', n', σ') <- next ] )]
 
         filter :: CsGraph s e -> CsGraph s e
-        filter (cs, es) = (cs, Map.mapWithKey f es)
-           where f n ess = Set.fromAscList $ [ (σ, e', (n', new n' σ')) | (σ, e', (n', σ')) <- Set.toAscList ess, (σ ∈ cs ! n) ]
+        filter (cs, es) = (cs, IntMap.mapWithKey f es)
+           where f n ess = Set.fromAscList $ [ (σ, e', (n', new n' σ')) | (σ, e', (n', σ')) <- Set.toAscList ess, (σ ∈ cs !! n) ]
                    where new n' σ' = if σ' ∈ σs' then σ' else  σ''
-                           where σs' = cs ! n'
+                           where σs' = cs !! n'
                                  σ'' = head $ [ σ'' | σ'' <- Set.toList σs', σ' `leq` σ'' ]
 
+        (!!) = (IntMap.!)
+
 stateSets step Nothing g σ0 n0 = result
-  where result = go (Map.fromList [(n0, Set.fromList [σ0])]) (Map.fromList [(n0,Set.fromList [σ0])]) (Map.fromList [])
-        go :: Map Node (Set s) -> Map Node (Set s) -> Map Node (Set (s, e, (Node, s))) -> (Map Node (Set s), Map Node (Set (s, e, (Node, s))))
+  where result = go (IntMap.fromList [(n0, Set.fromList [σ0])]) (IntMap.fromList [(n0,Set.fromList [σ0])]) (IntMap.fromList [])
+        go :: IntMap (Set s) -> IntMap (Set s) -> IntMap (Set (s, e, (Node, s))) -> (IntMap (Set s), IntMap (Set (s, e, (Node, s))))
         go workset cs es
-         | Map.null workset = (cs, es)
+         | IntMap.null workset = (cs, es)
          | otherwise         = go (workset'' ⊔ csNew) (cs ⊔ csNew) (es ⊔ esNew)
-             where ((n,σs), workset') = Map.deleteFindMin workset
+             where ((n,σs), workset') = IntMap.deleteFindMin workset
                    (σ, σs') = Set.deleteFindMin σs
                    workset''
-                     | Set.null σs' =                    workset'
-                     | otherwise    = Map.insert n σs' $ workset'
+                     | Set.null σs' =                       workset'
+                     | otherwise    = IntMap.insert n σs' $ workset'
                    next = [ (e', n', σ')  | (n',e) <- lsuc g n, (e',σ') <- step e σ]
                    
-                   csNew = (∐) [ Map.fromList [ (n', Set.fromList [ σ' ]) ]  | (e, n', σ') <- next, not $ old n' σ' ]
-                     where old n' σ' = case Map.lookup n' cs of
+                   csNew = (∐) [ IntMap.fromList [ (n', Set.fromList [ σ' ]) ]  | (e, n', σ') <- next, not $ old n' σ' ]
+                     where old n' σ' = case IntMap.lookup n' cs of
                              Nothing -> False
                              Just σs -> σ' ∈ σs
-                   esNew = Map.fromList [ (n, Set.fromList  [ (σ, e', (n', σ')) | (e', n', σ') <- next ] )]
+                   esNew = IntMap.fromList [ (n, Set.fromList  [ (σ, e', (n', σ')) | (e', n', σ') <- next ] )]
 
 stateSets step (Just (JoinNode (⊔) (⊑))) g σ0 n0 = (
            fmap Set.singleton cs,
-           Map.fromList [ (n, Set.fromList [ (cs ! n, e, (n', cs ! n')) | (e, n') <- Set.toList esN ]) | (n, esN) <- Map.assocs es ]
+           IntMap.fromAscList [ (n, Set.fromList [ (cs !! n, e, (n', cs !! n')) | (e, n') <- Set.toList esN ]) | (n, esN) <- IntMap.toAscList es ]
          )
-  where (cs, es) = go (Set.singleton n0)
-                      (Map.insert n0 σ0 $ Map.empty)
-                      (Map.empty)
-        go :: Set Node ->  Map Node s -> Map Node (Set (e, Node)) -> (Map Node s, Map Node (Set (e, Node)))
+  where (cs, es) = go (IntSet.singleton n0)
+                      (IntMap.insert n0 σ0 $ IntMap.empty)
+                      (IntMap.empty)
+        go :: IntSet -> IntMap s -> IntMap (Set (e, Node)) -> (IntMap s, IntMap (Set (e, Node)))
         go workset cs es
-         | Set.null workset = (cs, es)
+         | IntSet.null workset = (cs, es)
          | otherwise         =
                                -- traceShow "{=======" $  traceShow (n, workset) $ traceShow cs $ traceShow new $ traceShow "====}"
                                go workset0' cs' es'
-             where (n, workset0) = Set.deleteFindMin workset
-                   σ = cs ! n
+             where (n, workset0) = IntSet.deleteFindMin workset
+                   σ = cs !! n
 
                    all = [ (e', n', σ') | (n',e) <- lsuc g n, (e',σ') <- step e σ] 
-                   new = filter (\(_, n', σ') ->  case Map.lookup n' cs of { Nothing -> True ; Just σ'0 -> not $ σ' ⊑ σ'0 }) all
+                   new = filter (\(_, n', σ') ->  case IntMap.lookup n' cs of { Nothing -> True ; Just σ'0 -> not $ σ' ⊑ σ'0 }) all
 
                    cs'       = foldr adjust cs       new
-                     where adjust (e', n', σ')    = Map.insertWith (⊔) n' σ'
+                     where adjust (e', n', σ')    = IntMap.insertWith (⊔) n' σ'
 
                    es'       = foldr insert es       all
-                     where insert (e', n', σ')    = Map.insertWith (∪) n (Set.singleton $ (e', n'))
+                     where insert (e', n', σ')    = IntMap.insertWith (∪) n (Set.singleton $ (e', n'))
 
                    workset0' = foldr insert workset0 new
-                     where insert (e', n', σ')    = Set.insert n'
+                     where insert (e', n', σ')    = IntSet.insert n'
 
+        (!!) = (IntMap.!)
 
 
 stateGraphForSets :: (Ord s, Graph gr, Ord e) => CsGraph s e -> gr (Node, s) e
-stateGraphForSets (cs, es) = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- Map.assocs es, (cache, e, c') <- Set.toList cacheEdges ]
-  where nodes = zip [0..] [ (n, cache) | (n, caches) <- Map.assocs cs, cache <- Set.toList caches ]
+stateGraphForSets (cs, es) = mkGraph nodes [(toNode ! (n, cache), toNode ! c', e) | (n, cacheEdges) <- IntMap.toList es, (cache, e, c') <- Set.toList cacheEdges ]
+  where nodes = zip [0..] [ (n, cache) | (n, caches) <- IntMap.toList cs, cache <- Set.toList caches ]
         toNode = Map.fromList $ fmap (\(a,b) -> (b,a)) nodes
 
 stateGraph :: (Graph gr, Ord s, Show s, Show e, Ord e) => AbstractSemantic s e -> Maybe (MergeMode s) -> gr CFGNode CFGEdge -> s -> Node -> gr (Node, s) e
@@ -368,7 +371,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.
 
 
 csGraphSize :: CsGraph s e -> Int
-csGraphSize (cs, es) = Map.fold (\σs k -> Set.size σs + k) 0 cs
+csGraphSize (cs, es) = IntMap.fold (\σs k -> Set.size σs + k) 0 cs
 
 muMergeDirectOf :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Show e, Ord e) => MicroArchitecturalAbstraction a a' e -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muLeq, muStepFor, muCostsFor }) graph n0 = traceShow (csGraphSize csGraph) $ invert'' $

@@ -999,6 +999,9 @@ newtype MinAge = MinAge Int deriving (Show, Eq, Ord, Num, Enum, Real, Integral)
 instance JoinSemiLattice MinAge where
   join = min
 
+instance MeetSemiLattice MinAge where
+  meet = max
+
 {-
 instance BoundedJoinSemiLattice MyInteger where
   bottom = 0
@@ -1016,10 +1019,10 @@ transDefsFast cacheSize n e cache cache' seesN =
    $ result 
           where result = seesN ⊔ fromSeen
 
-                fromSeen = (∐) [ Map.fromList [ ((n', co), min) ] | ((n', coUse), minAge) <- Map.assocs seesN,
+                fromSeen = (∐) [ Map.fromList [ ((n', co), max) ] | ((n', coUse), minAge) <- Map.assocs seesN,
                                                       Just cos <- [Map.lookup coUse ddeps],
-                                                      (co, min) <- Set.toList cos,
-                                                      not $ min < minAge
+                                                      (co, max) <- Set.toList cos,
+                                                      not $ max < minAge
                            ]
 
                 ddeps = cacheDepsFast cacheSize e cache
@@ -1030,7 +1033,7 @@ cacheDepsFast cacheSize e cache =
      id
    $ result 
           where 
-                result = Map.fromList [ (coUse, Set.fromList [ (co, min) | (co, ages) <- Map.assocs cache,
+                result = Map.fromList [ (coUse, Set.fromList [ (co, max) | (co, ages) <- Map.assocs cache,
                                                       let amin = mminimum ages,
                                                       let amax = mmaximum ages,
 
@@ -1042,7 +1045,7 @@ cacheDepsFast cacheSize e cache =
                                                       not $ lt ∨ gt
                                                 ],
                                                       not $ List.null $ as,
-                                                      let min = foldl1 (⊔) as
+                                                      let max = foldl1 (⊓) as
                                                 ]
                                          )
                            | coUseWithMinMax <- coUseWithMinMaxs, (coUse, aUmin, aUmax) <- coUseWithMinMax ]

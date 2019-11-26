@@ -714,7 +714,6 @@ scheduleCoreFor (SubPrograms { sub_bytes_4 }) t0 t1 t2 t3 n =
 expandKeyFor :: SubPrograms -> For
 expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheSkey }) =
                        precacheSkey skey
-                 `Seq` precacheSkey sbox
                  `Seq` precacheSkey state
                  `Seq` precacheSkey rcon
                  `Seq` Ass n (Val 1)

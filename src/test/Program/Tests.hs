@@ -164,7 +164,7 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSliceFor cacheSize csdOf ccdg graph debugNs n0 (Set.fromList [nx])
+    putStrLn  $ show $ cacheTimingSliceFor cacheSize (both csdOf ccdg) graph debugNs n0 (Set.fromList [nx])
 
     
     -- putStrLn  $ show $ length $ nodes $ csGraph

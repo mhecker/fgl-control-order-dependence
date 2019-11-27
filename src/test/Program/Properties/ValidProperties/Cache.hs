@@ -306,8 +306,8 @@ aesCase expectCT  aes@(Aes { name, cacheSize, forMain, encryptStateInputNode0, k
         n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
         nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
 
-        slice = cacheTimingSliceFor cacheSize csdMergeDirectOf cacheCostDecisionGraph graph ns n0 (Set.fromList [nx])
-
+        slice = cacheTimingSliceFor cacheSize (both csdMergeDirectOf cacheCostDecisionGraph) graph ns n0 (Set.fromList [nx])
+          where both f1 f2 cacheSize g n0  = (f1 cacheSize g n0, f2 cacheSize g n0)
 cacheTests = testGroup "(concerning cache timing)" $
   [ aesCase False $ aes_main              4,
     -- aesCase False $ aes_main              8,

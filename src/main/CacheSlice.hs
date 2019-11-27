@@ -63,14 +63,13 @@ sp n m g = Just $ Data.Graph.Inductive.Query.SP.sp n m g
 
 cacheTimingSliceFor :: forall gr. (Show (gr CFGNode CFGEdge), DynGraph gr) =>
     CacheSize 
-  -> (CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node))
-  -> (CacheSize -> gr CFGNode CFGEdge -> Node -> (gr CFGNode CFGEdge, Map (Node, Node) Integer))
+  -> (CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), (gr CFGNode CFGEdge, Map (Node, Node) Integer)))
   -> gr CFGNode CFGEdge
   -> [Node]
   -> Node
   -> Set Node
   -> Set Node
-cacheTimingSliceFor cacheSize csd ccgCost g debugNs n0 = \ms ->
+cacheTimingSliceFor cacheSize csdAndCcgCost g debugNs n0 = \ms ->
 {-
        slice = combinedBackwardSlice  (tscd' ⊔ dd' ⊔ csd') Map.empty ms'
     in slice
@@ -86,11 +85,11 @@ cacheTimingSliceFor cacheSize csd ccgCost g debugNs n0 = \ms ->
 
   where tscd'  =            timDFFromFromItimdomMultipleOfFastCost ccg costF
         dd'    = invert'' $ dataDependence                         ccg vars  n0
-        csd'   = invert'' $ csd cacheSize                            g       n0
+        csd'   = invert'' $ csd
 
         vars = Set.fromList [ var | n <- nodes g, var <- Set.toList $ use g n ∪ def g n, isGlobalName var]
 
-        (ccg, cost) = ccgCost cacheSize g n0
+        (csd, (ccg, cost)) = csdAndCcgCost cacheSize g n0
         costF n m = cost ! (n,m)
 
 
@@ -125,12 +124,13 @@ cacheTimingSliceFor cacheSize csd ccgCost g debugNs n0 = \ms ->
 
 data DepEdge = TSCD | DD | CSD deriving (Show, Eq, Ord)
 
+both f1 f2 cacheSize g n0  = (f1 cacheSize g n0, f2 cacheSize g n0)
 
-cacheTimingSlice          cacheSize g n0 = cacheTimingSliceFor cacheSize           csdMergeDirectOf           cacheCostDecisionGraph g [] n0
-cacheTimingSliceAgeSets   cacheSize g n0 = cacheTimingSliceFor cacheSize  AgeSets.csdMergeDirectOf    AgeSets.cacheCostDecisionGraph g [] n0
-cacheTimingSliceAgeDDeps  cacheSize g n0 = cacheTimingSliceFor cacheSize  AgeSets.csdFromDataDep      AgeSets.cacheCostDecisionGraph g [] n0
-cacheTimingSliceImprecise cacheSize g n0 = cacheTimingSliceFor cacheSize Imprecise.csdMergeDirectOf Imprecise.cacheCostDecisionGraph g [] n0
-cacheTimingSliceViaReach  cacheSize g n0 = cacheTimingSliceFor cacheSize           csdMergeOf                 cacheCostDecisionGraph g [] n0
+cacheTimingSlice          cacheSize g n0 = cacheTimingSliceFor cacheSize  (both           csdMergeDirectOf           cacheCostDecisionGraph) g [] n0
+cacheTimingSliceAgeSets   cacheSize g n0 = cacheTimingSliceFor cacheSize  (both   AgeSets.csdMergeDirectOf   AgeSets.cacheCostDecisionGraph) g [] n0
+cacheTimingSliceAgeDDeps  cacheSize g n0 = cacheTimingSliceFor cacheSize  (both   AgeSets.csdFromDataDep     AgeSets.cacheCostDecisionGraph) g [] n0
+cacheTimingSliceImprecise cacheSize g n0 = cacheTimingSliceFor cacheSize  (both Imprecise.csdMergeDirectOf Imprecise.cacheCostDecisionGraph) g [] n0
+cacheTimingSliceViaReach  cacheSize g n0 = cacheTimingSliceFor cacheSize  (both           csdMergeOf                 cacheCostDecisionGraph) g [] n0
 
 
 

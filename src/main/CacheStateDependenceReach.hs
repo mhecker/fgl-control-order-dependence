@@ -41,9 +41,9 @@ import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, foc
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
-import MicroArchitecturalDependence (CsGraph, AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, mergeFrom, mergedI)
+import MicroArchitecturalDependence (Costs, CsGraph, AbstractMicroArchitecturalGraphNode, stateSets, stateGraphForSets, mergeFrom, mergedI, edgeCostsFor, MicroArchitecturalAbstraction(..))
 import CacheExecution (CacheSize, isCachable, CachedObject(..), )
-import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, cacheOnlyStepFor, cachedObjectsFor, costsFor)
+import CacheStateDependence(AbstractCacheState, AssumedConcreteCachedObject, initialAbstractCacheState, cacheOnlyStepFor, cacheTimeStepFor, cachedObjectsFor)
 
 import Program (Program(..))
 import Program.Generator (toCodeSimple)
@@ -214,8 +214,9 @@ mergeFromFor cacheSize graph n0 m = (mergeFrom graph' csGraph' idom roots, csGra
           idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
           roots = Set.fromList y's
 
-csdMergeOf :: forall gr. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-csdMergeOf cacheSize graph n0 =  invert'' $
+
+csdMergeOf :: forall gr. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState (CFGEdge, [AssumedConcreteCachedObject]))
+csdMergeOf cacheSize graph n0 =  let { result = invert'' $
   Map.fromList [ (m, Set.fromList [ n | y <- Set.toList ys,
                                         let Just (n, _) = lab csGraphM'' y,
                                         -- (if (n == 7 ∧ m == 17) then traceShow (vars,y,y's, "KKKKKK", csGraph, g'') else id) True,
@@ -237,11 +238,21 @@ csdMergeOf cacheSize graph n0 =  invert'' $
       let csGraphM'' = mergedI csGraphM' equivs,
       let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraphM'',
       let ys = Set.fromList [ y | y <- nodes csGraphM'', idom'' ! y == Nothing]
-   ]
+   ] } in (result, costs, (cs, es0))
   where (cs, es0)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
         es = fmap (Set.map f) es0
           where f (s, (e,_), (n, s')) = (s, e, (n, s'))
 
-        csGraph = stateGraphForSets (cs, es) :: gr (Node, AbstractCacheState) CFGEdge
-        costs = costsFor cacheSize csGraph
+        costs = edgeCostsFor mu (cs, es0)
         mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
+
+        mu = MicroArchitecturalAbstraction {
+          muToCFGEdge = fst,
+          muTimeStepFor = (cacheTimeStepFor cacheSize),
+          muIsDependent = undefined,
+          muMerge = undefined,
+          muGraph'For = undefined,
+          muInitialState = undefined,
+          muStepFor = undefined,
+          muLeq = undefined
+         }

@@ -81,6 +81,8 @@ instance (SimpleShow a, SimpleShow a') => SimpleShow (MergedMicroState a a') whe
   simpleShow (Unmerged a) = simpleShow a
   simpleShow (Merged a')  = simpleShow a'
 
+type Costs =  Map (Node, Node, CFGEdge) (Set TimeCost)
+
 data MicroArchitecturalAbstraction a a' e = MicroArchitecturalAbstraction {
     muIsDependent :: forall gr. DynGraph gr =>
          gr CFGNode CFGEdge
@@ -93,10 +95,102 @@ data MicroArchitecturalAbstraction a a' e = MicroArchitecturalAbstraction {
     muMerge :: Bool,
     muGraph'For :: forall gr. DynGraph gr => gr CFGNode CFGEdge -> CsGraph a e -> Node -> [gr (Node, MergedMicroState a a' ) e],
     muInitialState :: a,
-    muStepFor :: AbstractSemantic a e,
-    muLeq :: Maybe (MergeMode a),
-    muCostsFor :: CsGraph a e -> Map (Node, Node, CFGEdge) (Set TimeCost)
+    muStepFor     :: AbstractSemantic a e,
+    muTimeStepFor :: AbstractSemantic (a, TimeState) e,
+    muToCFGEdge :: e -> CFGEdge,
+    muLeq :: Maybe (MergeMode a)
   }
+
+
+ 
+
+edgeCostsFor ::  forall a a' e. MicroArchitecturalAbstraction a a' e -> CsGraph a e -> Map (Node, Node, CFGEdge) (Set TimeCost)
+edgeCostsFor mu@(MicroArchitecturalAbstraction { muToCFGEdge, muTimeStepFor }) (css, es)  =
+                      (∐) [ Map.fromList [ ((n, n', e), Set.fromList [time]) ]  |
+                                                 (n, σes) <- IntMap.toList es,
+                                                 (s, ee, (n', s')) <- Set.toList σes, let e = muToCFGEdge ee,
+                                                 (_,fullState'@(_,time)) <- muTimeStepFor e (s, 0)
+                      ]
+
+
+cacheCostDecisionGraphFor :: DynGraph gr => gr CFGNode CFGEdge -> CsGraph a e -> Costs -> (gr CFGNode CFGEdge, Map (Node, Node) Integer)
+cacheCostDecisionGraphFor g csGraph edgeCosts = (
+      mkGraph
+        ((labNodes g) ++ [(nNew, n) | (nNew, n) <-  [ (m', n) | ((e@(n,_,_),_), m') <- Map.assocs nodesFor  ]
+                                                 ++ [ (mj, n) | ( e@(n,_,_)   , mj) <- Map.assocs joinFor   ]
+                                                 ++ [ (mj, n) | ( e@(n,_,_)   , mj) <- Map.assocs linJoinFor]
+                         ])
+        (irrelevant ++ [ (n , m', l'  ) | ((e@(n,_,l),_), m') <- Map.assocs nodesFor, let l' = Use $ isDataDependent l ]
+                    ++ [ (m', mj, NoOp) | ((e@(_,_,l),_), m') <- Map.assocs nodesFor,                          let mj = joinFor ! e ]
+                    ++ [ (mj,  m, l   ) |   e@(_,m,l)         <- relevant,                                     let mj = joinFor ! e ]
+                    ++ [ (n , m', l'  ) | ((e@(n,_,l),_), m') <- Map.assocs linNodesFor, let l' = Use $ isDataDependent l ]
+                    ++ [ (m', m , l   ) |   e@(_,m,l)         <- linRelevant,                                  let m' = linJoinFor ! e ]
+        ),
+                  Map.fromList [ ((n ,m ), cost    ) | e@(n,m,l) <- irrelevant, let [cost] = Set.toList $ costs ! e,           assert (cost > 0) True ]
+      `Map.union` Map.fromList [ ((n ,m'), cost - 2) | ((e@(n,_,l),cost), m') <- Map.assocs nodesFor,                          assert (cost > 2) True ]
+      `Map.union` Map.fromList [ ((m',mj),        1) | ((e@(_,_,l),   _), m') <- Map.assocs nodesFor,                          let mj = joinFor ! e ]
+      `Map.union` Map.fromList [ ((mj,m ),        1) |   e@(_,m,l)            <- relevant,                                     let mj = joinFor ! e ]
+      `Map.union` Map.fromList [ ((n ,m'), cost - 1) | ((e@(n,_,l),cost), m') <- Map.assocs linNodesFor,                       assert (cost > 1) True ]
+      `Map.union` Map.fromList [ ((m',m ),        1) |   e@(_,m,l)            <- linRelevant,                                  let m' = linJoinFor ! e ]
+    )
+  where
+        costs = edgeCosts
+        isRelevant e = nrSuc e > 1
+
+        nrSuc e = Set.size $ costs ! e
+
+        isLinRelevant e@(n,m,l) =
+            (nrSuc e == 1) ∧ (not $ List.null $ isDataDependent l) ∧ (length (suc g n) == 1 )
+
+        nodesFor =               Map.fromList $ zip [ (e,time) | e <-   relevant, time <- Set.toList $ costs ! e ] nodesNew
+        joinFor  =               Map.fromList $ zip                     relevant                                    joinNew
+
+        linNodesFor =            Map.fromList $ zip [ (e,time) | e <-linRelevant, time <- Set.toList $ costs ! e ]  linNew
+        linJoinFor  =            Map.fromList $ zip                  linRelevant                                    linNew
+
+        relevant   = [ e | e <- labEdges g,       isRelevant e   , assert (not $ isLinRelevant e) True]
+        linRelevant= [ e | e <- labEdges g,       isLinRelevant e, assert (not $ isRelevant    e) True]
+        irrelevant = [ e | e <- labEdges g, not $ isRelevant e ∨ isLinRelevant e]
+        totalnewSplit = sum $ fmap nrSuc relevant
+        totalnewJoin  = length relevant
+        totalnewLin   = length linRelevant
+        (nodesNew, joinNew, linNew) = (left, mid, right)
+          where all = newNodes (totalnewSplit + totalnewJoin + totalnewLin) g
+                (tmp, right) = splitAt (totalnewSplit + totalnewJoin) all
+                (left,  mid) = splitAt  totalnewSplit                 tmp
+
+
+
+isDataDependent = isDep
+          where isDep l@(AssignArray a (Val _) vf ) = isDataDepV vf
+                isDep l@(AssignArray a ix      vf ) = isDataDepV vf ++ [ name | name <- Set.toList $ useV ix ]
+                isDep l                             = isDataDepE l
+
+                arrayReadsV a@(ArrayRead _ _) = Set.singleton a
+                arrayReadsV   (Val  x)    = Set.empty
+                arrayReadsV   (Var  x)    = Set.empty
+                arrayReadsV   (Plus  x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Minus x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Times x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Div   x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Mod   x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Shl   x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Shr   x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Xor   x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (BAnd  x y) = arrayReadsV x ∪ arrayReadsV y
+                arrayReadsV   (Neg x)     = arrayReadsV x
+                arrayReadsV   (BNot x)    = arrayReadsV x
+                arrayReadsV   (AssertRange min max x) = arrayReadsV x
+
+                arrayReadsB = useBFor arrayReadsV
+                arrayReadsE = useEFor arrayReadsV arrayReadsB
+
+
+                isDataDepV vf = [ name | r@(ArrayRead a ix) <- Set.toList $ arrayReadsV vf, case ix of { Val _ -> False ; _ -> True }, name <- Set.toList $ useV ix ]
+{- unused
+                isDataDepB bf = not $ List.null $ [ r | r@(ArrayRead a ix) <- Set.toList $ arrayReadsB bf, case ix of { Val _ -> False ; _ -> True } ]
+-}
+                isDataDepE l  = [ name | r@(ArrayRead a ix) <- Set.toList $ arrayReadsE  l, case ix of { Val _ -> False ; _ -> True }, name <- Set.toList $ useV ix ]
 
 
 stateSetsSlow :: (Graph gr, Ord s, Ord e) => AbstractSemantic s e -> gr CFGNode CFGEdge -> s -> Node -> (Set (Node, s), Set ((Node, s), e, (Node, s)))
@@ -373,10 +467,9 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.
 csGraphSize :: CsGraph s e -> Int
 csGraphSize (cs, es) = IntMap.fold (\σs k -> Set.size σs + k) 0 cs
 
-muMergeDirectOf :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Show e, Ord e) => MicroArchitecturalAbstraction a a' e -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
-muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muLeq, muStepFor, muCostsFor }) graph n0 = traceShow (csGraphSize csGraph) $ invert'' $
-  Map.fromList [ (m, ns) | m <- nodes graph,
-      -- m == 31,
+muMergeDirectOf :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Show e, Ord e) => MicroArchitecturalAbstraction a a' e -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph a e)
+muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muLeq, muStepFor }) graph n0 =
+    let { result = Map.fromList [ (m, ns) | m <- nodes graph,
 #ifdef SKIP_INDEPENDENT_NODES_M
       mayBeCSDependent m,
 #endif
@@ -391,11 +484,13 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muG
                 idom'' = isinkdomOfTwoFinger8 csGraph''
             in Set.fromList [ n | (y, (n,_))   <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y] -- TODO: can we make this wotk with muIsDependent, too?
           else Set.fromList [ n | (y, (n,mms)) <- labNodes csGraph' , n /= m, muIsDependent graph roots' idom' y n mms]
-   ]
-  where csGraph@(cs, es)  = stateSets muStepFor muLeq graph muInitialState n0
+   ] } in traceShow (csGraphSize csGraph) $
+          (invert'' result, edgeCosts, csGraph)
+  where 
+        csGraph@(cs, es)  = stateSets muStepFor muLeq graph muInitialState n0
 #ifdef SKIP_INDEPENDENT_NODES_M
-        costs = muCostsFor csGraph
-        mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
+        edgeCosts = edgeCostsFor mu csGraph
+        mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (edgeCosts ! (m,n,l)) > 1)
 #endif         
 
 
@@ -416,7 +511,7 @@ mergeDirectFromFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e, Show
   (IntMap (IntMap IntSet),
    gr (Node, MergedMicroState a a') e
   )
-mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muLeq, muStepFor, muCostsFor }) graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
+mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muLeq, muStepFor }) graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
   where   csGraph@(cs, es) = stateSets muStepFor muLeq graph muInitialState n0
           
           csGraph' = head $ muGraph'For graph csGraph m 

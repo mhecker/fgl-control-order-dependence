@@ -109,8 +109,6 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-
-
 data Aes = Aes {
     cacheSize :: CacheSize,
     forMain :: For,
@@ -140,12 +138,6 @@ aes_main_ct_precache = Aes {
   }
 
 
-initACS = AgeSets.initialAbstractCacheState
-csg     = AgeSets.cacheStateGraph
-ccdg    = AgeSets.cacheCostDecisionGraph
--- csdOf   = AgeSets.csdMergeDirectOf
-csdOf   = AgeSets.csdFromDataDep
-
 main = let {
          aes@(Aes { cacheSize, forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct_precache ;
          debugNs = [encryptStateInputNode0, keyInputNode] ;
@@ -153,8 +145,7 @@ main = let {
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         csGraph =  csg cacheSize graph initACS n0 ;
-         (ccg, cost) = ccdg cacheSize graph n0
+         results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSet.allFromDataDepJoined cacheSize) graph n0 ;
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph
@@ -164,7 +155,7 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSliceFor cacheSize (both csdOf ccdg) graph debugNs n0 (Set.fromList [nx])
+    putStrLn  $ show $ cacheTimingSliceFor cacheSize results graph debugNs n0 (Set.fromList [nx])
 
     
     -- putStrLn  $ show $ length $ nodes $ csGraph

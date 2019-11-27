@@ -33,15 +33,15 @@ import Program.Examples (interestingAgeSets)
 import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_main_ct, br_aes_small_cbcenc_main_ct_precache, mainInput, for2Program)
 
 import IRLSOD(CFGNode, CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
-import MicroArchitecturalDependence (stateSets, csGraphSize)
+import MicroArchitecturalDependence (stateSets, csGraphSize, edgeCostsFor, muMergeDirectOf, cacheCostDecisionGraphFor)
 import CacheExecution(initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
-import CacheStateDependence(initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction, AbstractCacheState, csLeq)
+import qualified CacheStateDependence          as Precise (initialAbstractCacheState, csdMergeDirectOf, cacheStateGraph, cacheOnlyStepFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
 import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep, csdFromDataDepJoined, cacheAbstraction, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2)
 
 
-import CacheStateDependenceReach(csd''''Of3, csd''''Of4, csdMergeOf)
-import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor, cacheTimingSliceAgeSets, cacheTimingSliceAgeDDeps)
+import qualified CacheStateDependenceReach     as Reach (csd''''Of3, csd''''Of4, csdMergeOf)
+import CacheSlice (cacheTimingSliceViaReach, cacheTimingSlice, cacheTimingSliceImprecise, cacheTimingSliceFor, cacheTimingSliceAgeSets, cacheTimingSliceAgeDDeps, fromMu)
 import MicroArchitecturalDependence(MicroArchitecturalAbstraction(..), stateGraphForSets)
 
 cache     = defaultMain                               $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
@@ -58,21 +58,17 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM       = csdMergeDirectOf propsCacheSize g n0
-                        
-                        (cs, es)    = stateSets (cacheOnlyStepFor propsCacheSize) csLeq g initialAbstractCacheState n0
-                        
-                        csGraph     = emap fst $ cacheStateGraph propsCacheSize g initialAbstractCacheState n0
-                        costs       = costsFor propsCacheSize csGraph
-                        nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes g]
 
-                        (ccg, cost) = cacheCostDecisionGraphFor propsCacheSize g csGraph 
+                        mu = Precise.cacheAbstraction propsCacheSize
+                        (csdM, edgeCosts, csGraph@(cs, es)) = muMergeDirectOf mu g n0
+                        (ccg, costs) = cacheCostDecisionGraphFor g csGraph edgeCosts
+
                     in  (∀) (Map.assocs $ invert'' csdM) (\(m, ns) -> 
                           let
                               c = (∃) (lsuc ccg m) (\(n1,l1) ->
                                   (∃) (lsuc ccg m) (\(n2,l2) ->
                                     (l1 == l2) ∧ (not $ n1  == n2              )))
-                              d = (∃) (lsuc g m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
+                              d = (∃) (lsuc g m) (\(n,l) -> Set.size (edgeCosts ! (m,n,l)) > 1)
                          in let
                                 ok3 = (c == d)
                                 okc = ((not $ Set.null $ ns) → c)
@@ -88,8 +84,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csd'3 = csd''''Of3 propsCacheSize g n0
-                        csd'4 = csd''''Of4 propsCacheSize g n0
+                        csd'3 = Reach.csd''''Of3 propsCacheSize g n0
+                        csd'4 = Reach.csd''''Of4 propsCacheSize g n0
                     in  csd'3 == csd'4,
     testPropertySized 25 "csdMergeOf == csdMergeDirectOf"
                 $ \generated ->
@@ -99,8 +95,9 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM       = csdMergeOf       propsCacheSize g n0
-                        csdMDirect = csdMergeDirectOf propsCacheSize g n0
+
+                        csdM       = first $   Reach.csdMergeOf       propsCacheSize g n0 where first (x,_,_) = x
+                        csdMDirect =         Precise.csdMergeDirectOf propsCacheSize g n0
                     in  csdM == csdMDirect,
     testPropertySized 25 "csdMergeOf ⊑ csd''''Of4"
                 $ \generated ->
@@ -110,8 +107,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM  = csdMergeOf propsCacheSize g n0
-                        csd'4 = csd''''Of4 propsCacheSize g n0
+                        csdM  = first $ Reach.csdMergeOf propsCacheSize g n0 where first (x,_,_) = x
+                        csd'4 =         Reach.csd''''Of4 propsCacheSize g n0
                     in  csdM ⊑ csd'4,
     testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdMergeDirectOf"
                 $ \generated ->
@@ -121,7 +118,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   =         csdMergeDirectOf propsCacheSize g n0
+                        csdM   = Precise.csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdMergeDirectOf propsCacheSize g n0
                     in  csdM ⊑ csdMAS,
     testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDep"
@@ -132,7 +129,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   =         csdMergeDirectOf propsCacheSize g n0
+                        csdM   = Precise.csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
                     in  csdM ⊑ csdMAS,
     testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined"
@@ -143,7 +140,7 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   =         csdMergeDirectOf     propsCacheSize g n0
+                        csdM   = Precise.csdMergeDirectOf     propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDepJoined propsCacheSize g n0
                     in  csdM ⊑ csdMAS,
     testPropertySized 25 "cacheDataDepGWork2 == cacheDataDepGWork"
@@ -306,8 +303,8 @@ aesCase expectCT  aes@(Aes { name, cacheSize, forMain, encryptStateInputNode0, k
         n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
         nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
 
-        slice = cacheTimingSliceFor cacheSize (both csdMergeDirectOf cacheCostDecisionGraph) graph ns n0 (Set.fromList [nx])
-          where both f1 f2 cacheSize g n0  = (f1 cacheSize g n0, f2 cacheSize g n0)
+        slice = cacheTimingSliceFor cacheSize (fromMu (Precise.cacheAbstraction cacheSize) graph n0) graph ns n0 (Set.fromList [nx])
+
 cacheTests = testGroup "(concerning cache timing)" $
   [ aesCase False $ aes_main              4,
     -- aesCase False $ aes_main              8,
@@ -324,7 +321,7 @@ cacheTests = testGroup "(concerning cache timing)" $
   [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDep for " ++ prName) $
                     let g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   =         csdMergeDirectOf propsCacheSize g n0
+                        csdM   = Precise.csdMergeDirectOf propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
                     in  csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets
@@ -332,7 +329,7 @@ cacheTests = testGroup "(concerning cache timing)" $
   [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined for " ++ prName) $
                     let g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   =         csdMergeDirectOf       propsCacheSize g n0
+                        csdM   = Precise.csdMergeDirectOf       propsCacheSize g n0
                         csdMAS = AgeSets.csdFromDataDepJoined   propsCacheSize g n0
                     in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets

@@ -145,7 +145,7 @@ main = let {
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSet.allFromDataDepJoined cacheSize) graph n0 ;
+         results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSets.allFromDataDepJoined cacheSize) graph n0 ;
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph

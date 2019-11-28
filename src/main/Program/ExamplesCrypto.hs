@@ -218,8 +218,8 @@ mainInput =
 type AddRound = VarFunction -> For
 
 addRoundFor :: SubPrograms -> AddRound
-addRoundFor (SubPrograms { precacheSkey }) offset =
-                       precacheSkey skey
+addRoundFor (SubPrograms { precacheArray }) offset =
+                       precacheArray wholeArray skey
                 `Seq`  forFromToStepUsing 0 15 1 i (
                                  Ass tmp  (ArrayRead state (AssertRange 0 15 $ Var i))
                            `Seq` Ass tmp3 (Var i `Plus` offset)
@@ -227,7 +227,7 @@ addRoundFor (SubPrograms { precacheSkey }) offset =
                            `Seq` Ass tmp (Var tmp `Xor` (Var tmp2))
                            `Seq` AssArr state (AssertRange 0 15 $ Var i) (Var tmp)
                        )
-                `Seq`  precacheSkey skey
+                `Seq`  precacheArray wholeArray skey
   where i = addRoundIteratorIndex
         tmp  = addRoundTmp
         tmp2 = addRoundTmp2
@@ -712,20 +712,20 @@ scheduleCoreFor (SubPrograms { sub_bytes_4 }) t0 t1 t2 t3 n =
           where tmp = rotateTmp
 
 expandKeyFor :: SubPrograms -> For
-expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheSkey }) =
-                       precacheSkey skey
-                 `Seq` precacheSkey state
-                 `Seq` precacheSkey rcon
+expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheArray, precacheVar }) =
+                       precacheArray wholeArray skey
+                 `Seq` precacheArray wholeArray state
+                 `Seq` precacheArray [0] rcon
                  `Seq` Ass n (Val 1)
                  `Seq` forFromToStepUsing 0 31 1 i (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
                        )
                  `Seq` forFromToStepUsing (from $ keySize `div` 8) (from $ scheduleSize256 - 4) 4 size body
   where body =
-                       precacheSkey skey
-                 `Seq` precacheSkey sbox
-                 `Seq` precacheSkey state
-                 `Seq` precacheSkey rcon
+                       precacheArray wholeArray skey
+                 `Seq` precacheArray wholeArray sbox
+                 `Seq` precacheArray wholeArray state
+                 `Seq` precacheArray [0] rcon
                  `Seq` Ass t0 (ArrayRead skey (Var size `Minus` (Val 4)))
                  `Seq` Ass t1 (ArrayRead skey (Var size `Minus` (Val 3)))
                  `Seq` Ass t2 (ArrayRead skey (Var size `Minus` (Val 2)))
@@ -737,15 +737,15 @@ expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheSkey }) =
                        ) {- else -} (
                            Skip
                        ))
-                 `Seq` precacheSkey sbox
-                 `Seq` precacheSkey skey
+                 `Seq` precacheArray wholeArray sbox
+                 `Seq` precacheArray wholeArray skey
                  `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val 16)) {- then -} (
                            sub_bytes_4 t0 t1 t2 t3
                        ) {- else -} (
                            Skip
                        ))
-                 `Seq` precacheSkey sbox
-                 `Seq` precacheSkey skey
+                 `Seq` precacheArray wholeArray sbox
+                 `Seq` precacheArray wholeArray skey
                  `Seq` AssArr skey (Var size `Plus` (Val 0)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -0 + (keySize `div` 8))) `Xor` (Var t0))
                  `Seq` AssArr skey (Var size `Plus` (Val 1)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -1 + (keySize `div` 8))) `Xor` (Var t1))
                  `Seq` AssArr skey (Var size `Plus` (Val 2)) (ArrayRead skey (Var size  `Minus` (Val $ from $ -2 + (keySize `div` 8))) `Xor` (Var t2))
@@ -781,23 +781,23 @@ br_aes_small_encryptFor subs@(SubPrograms { sub_bytes }) =
 data SubPrograms = SubPrograms {
     initConstants :: For,
     sub_bytes :: SubBytes,
-    precacheSkey :: PrecacheSkey,
+    precacheArray :: PrecacheArray,
     precacheVar :: PrecacheVar,
     sub_bytes_4 :: SubBytes4
   }
 
-subs_            = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_bytes = sub_bytes_,            sub_bytes_4 = sub_bytes_4_,            precacheSkey = const Skip, precacheVar = const Skip }
-subs_ct          = SubPrograms { initConstants =                simpleRcon, sub_bytes = sub_bytes_ct,          sub_bytes_4 = sub_bytes_4_ct,          precacheSkey = const Skip, precacheVar = const Skip}
-subs_ct_precache = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_bytes = sub_bytes_ct_precache, sub_bytes_4 = sub_bytes_4_ct_precache, precacheSkey = precacheSkey_ct_precache, precacheVar = pprecacheVar }
+subs_            = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_bytes = sub_bytes_,            sub_bytes_4 = sub_bytes_4_,            precacheArray = const $ const Skip, precacheVar = const Skip }
+subs_ct          = SubPrograms { initConstants =                simpleRcon, sub_bytes = sub_bytes_ct,          sub_bytes_4 = sub_bytes_4_ct,          precacheArray = const $ const Skip, precacheVar = const Skip}
+subs_ct_precache = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_bytes = sub_bytes_ct_precache, sub_bytes_4 = sub_bytes_4_ct_precache, precacheArray = precacheArray_ct_precache, precacheVar = pprecacheVar }
 
 type Main = For -> For -> For
 br_aes_small_cbcenc_mainFor :: SubPrograms -> Main
-br_aes_small_cbcenc_mainFor subs@(SubPrograms { initConstants, precacheSkey }) = \input output ->
+br_aes_small_cbcenc_mainFor subs@(SubPrograms { initConstants, precacheArray }) = \input output ->
                        Skip
                  `Seq` initConstants
                  `Seq` input
                  `Seq` expandKeyFor subs
-                 `Seq` precacheSkey state
+                 `Seq` precacheArray wholeArray state
                  `Seq` br_aes_small_encryptFor subs
                  `Seq` output
 
@@ -806,14 +806,14 @@ br_aes_small_cbcenc_main_ct = br_aes_small_cbcenc_mainFor subs_ct
 br_aes_small_cbcenc_main_ct_precache =
                               br_aes_small_cbcenc_mainFor subs_ct_precache
 
-type PrecacheSkey = Array -> For
-precacheSkey_ct_precache :: PrecacheSkey
-precacheSkey_ct_precache skey = 
-                       Ass tmp (ArrayRead skey (Val   0))
-                 `Seq` Ass tmp (ArrayRead skey (Val  64))
-                 `Seq` Ass tmp (ArrayRead skey (Val 128))
-                 `Seq` Ass tmp (ArrayRead skey (Val 192))
+type PrecacheArray = [Val] -> Array -> For
+
+precacheArray_ct_precache :: PrecacheArray
+precacheArray_ct_precache is skey = foldr Seq Skip [Ass tmp (ArrayRead skey (Val   i)) | i <- is]
   where tmp = orderSkeyCacheTmp
+
+wholeArray :: [Val]
+wholeArray = [0, 64, 128, 192]
 
 type PrecacheVar = Var -> For
 

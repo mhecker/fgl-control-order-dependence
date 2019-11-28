@@ -733,6 +733,10 @@ expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheArray, precacheVar }) =
 
                  `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val  0)) {- then -} (
                            scheduleCoreFor subs t0 t1 t2 t3 n
+                     `Seq` precacheVar t0
+                     `Seq` precacheVar t1
+                     `Seq` precacheVar t2
+                     `Seq` precacheVar t3
                  `Seq`     Ass n (Var n `Plus` (Val 1))
                        ) {- else -} (
                            Skip
@@ -742,7 +746,10 @@ expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheArray, precacheVar }) =
                  `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val 16)) {- then -} (
                            sub_bytes_4 t0 t1 t2 t3
                        ) {- else -} (
-                           Skip
+                           precacheVar t0
+                     `Seq` precacheVar t1
+                     `Seq` precacheVar t2
+                     `Seq` precacheVar t3
                        ))
                  `Seq` precacheArray wholeArray sbox
                  `Seq` precacheArray wholeArray skey

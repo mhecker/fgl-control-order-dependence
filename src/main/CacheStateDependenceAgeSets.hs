@@ -613,7 +613,7 @@ defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState)
 defsFor = defsForFast
 
 defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
-     require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+     require ((∀) (cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ cache'_ ⊑ cache'))
    $ assert ((List.null choices) → (Set.null result))
    $ result 
   where result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cacheSize cache, co <- Set.toList $ differing cacheSelected ]
@@ -629,7 +629,7 @@ defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
 
 defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) MinAge
 defsForFast cacheSize nodeFor (n, e, cache, cache') =
-     require ([(e, cache')] == cacheOnlyStepFor cacheSize e cache)
+     require ((∀) (cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ cache'_ ⊑ cache'))
    $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
    $ let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in assert (Map.keysSet result ⊇ result')
    $ result

@@ -643,6 +643,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
      require ((∀) (cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ cache'_ ⊑ cache'))
    $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
    $ let result' = defsForSlowDef cacheSize nodeFor (n, e, cache, cache') in assert (Map.keysSet result ⊇ result')
+   $ (if (∃) (Map.elems result) (\(MinAge min, MaxAge max) -> max <= min) then error $ "defsForFast: " ++ (show (n,e,cache, result)) else id)
    $ result
   where
                 second (_,aU,_  ) = aU
@@ -661,7 +662,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                                                       let (Age (Just minAge)) = List.minimum as,
                                                       let maxAge = case List.maximum as of
                                                             Age Nothing       -> cacheSize
-                                                            Age (Just maxAge) -> maxAge
+                                                            Age (Just maxAge) -> maxAge + 1
                             ]
                        ⊔ Map.fromList [ ((nodeFor (n, cache), coChoice), (MinAge 0, MaxAge maxAge)) |
                                                       choices <- Set.toList $ makesUses e,
@@ -670,7 +671,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                                                       let max = mmaximum $ Map.findWithDefault inf coChoice cache,
                                                       let maxAge = case max of
                                                             Age Nothing       -> cacheSize
-                                                            Age (Just maxAge) -> maxAge
+                                                            Age (Just maxAge) -> maxAge + 1 -- TODO: precision, by considering cachet status of other choices
                          ]
 
 

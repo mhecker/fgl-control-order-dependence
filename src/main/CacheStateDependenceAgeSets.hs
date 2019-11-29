@@ -591,8 +591,9 @@ newMinAge cacheSize cache cache' minUses maxUses (_, co) (minAge, maxAge) =
                                                                     maxCo = mmaximum agesCo
                                                                     minCo = mminimum agesCo
 
-                                                                    minAge' = if (∃) minUses (\minUse ->
-                                                                                   minUse == infTime  ∨  maxCo < minUse
+                                                                    minAge' = if (∃) minUses (\minUse -> case minUse of
+                                                                                   Age Nothing       -> True
+                                                                                   Age (Just minUse) -> (MaxAge minUse) > maxAge
                                                                                  ) then minAge + 1 else minAge
 
                                                                     maxAge'

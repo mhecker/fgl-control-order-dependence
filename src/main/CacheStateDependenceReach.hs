@@ -211,7 +211,7 @@ mergeFromFor cacheSize graph n0 m = (mergeFrom graph' csGraph' idom roots, csGra
           y's  = nodesToCsNodes ! m
           
           csGraph' = let { toY's = subgraph (rdfs y's csGraph) csGraph } in foldr (flip delSuccessorEdges) toY's y's
-          idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
+          idom = IntMap.fromAscList [ (n,m) | (n, ms) <- Map.toAscList $ isinkdomOfTwoFinger8 csGraph', not $ Set.null ms, let [m] = Set.toList ms]
           roots = Set.fromList y's
 
 
@@ -232,7 +232,7 @@ csdMergeOf cacheSize graph n0 =  let { result = invert'' $
       let nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraphM, n == n' ] ) | n <- nodes graph'],
       let y's  = nodesToCsNodes ! m,
       let csGraphM' = let { toY's = subgraph (rdfs y's csGraphM) csGraphM } in foldr (flip delSuccessorEdges) toY's y's,
-      let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraphM',
+      let idom' = IntMap.fromList [ (n,m) | (n, Just m) <- iPDomForSinks [[y'] | y' <- y's] csGraphM'],
       let roots' = Set.fromList y's,
       let equivs = mergeFrom graph' csGraphM' idom' roots',
       let csGraphM'' = mergedI csGraphM' equivs,

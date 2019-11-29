@@ -43,7 +43,7 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
-import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
+import Util (moreSeeds, restrict, invert'', maxFromTreeM, maxFromTreeI, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
@@ -87,7 +87,7 @@ data MicroArchitecturalAbstraction a a' e = MicroArchitecturalAbstraction {
     muIsDependent :: forall gr. DynGraph gr =>
          gr CFGNode CFGEdge
       -> Set AbstractMicroArchitecturalGraphNode
-      -> Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode)
+      -> IntMap AbstractMicroArchitecturalGraphNode
       -> AbstractMicroArchitecturalGraphNode
       -> Node
       -> MergedMicroState a a'
@@ -342,7 +342,7 @@ mergedI csGraph' equivs =  mkGraph nodes' edges
 mergeFromSlow :: forall id e s gr. (Ord id, DynGraph gr, Show e, Ord e) =>
   Map id (Set AbstractMicroArchitecturalGraphNode) ->
   gr (id, s) e ->
-  Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
+  IntMap AbstractMicroArchitecturalGraphNode ->
   Set AbstractMicroArchitecturalGraphNode ->
   Map id (Map AbstractMicroArchitecturalGraphNode (Set AbstractMicroArchitecturalGraphNode))
 mergeFromSlow nodesToCsNodes csGraph idom roots  =  (𝝂) init f 
@@ -377,7 +377,7 @@ mergeFromSlow nodesToCsNodes csGraph idom roots  =  (𝝂) init f
               ]
            )
         init = Map.fromList [ (n, Map.fromList [ (y, ys) | y <- Set.toList ys] ) | (n,ys) <- Map.assocs $ nodesToCsNodes]
-        rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
+        rootOf = Map.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeI idom y, r ∈ roots ]
 
 
 
@@ -386,7 +386,7 @@ mergeFromSlow nodesToCsNodes csGraph idom roots  =  (𝝂) init f
 mergeFrom ::  (DynGraph gr) =>
   gr CFGNode CFGEdge ->
   gr (Node, s) CFGEdge ->
-  Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
+  IntMap AbstractMicroArchitecturalGraphNode ->
   Set AbstractMicroArchitecturalGraphNode ->
   IntMap (IntMap IntSet)
 mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  idom roots
@@ -396,7 +396,7 @@ mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  
 mergeFromForEdgeToSuccessor ::  (DynGraph gr, Show e, Ord e) =>
   gr CFGNode CFGEdge ->
   gr (Node, s) e ->
-  Map AbstractMicroArchitecturalGraphNode (Maybe AbstractMicroArchitecturalGraphNode) ->
+  IntMap AbstractMicroArchitecturalGraphNode ->
   Set AbstractMicroArchitecturalGraphNode ->
   IntMap (IntMap IntSet)
 mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.fromAscList [ (n, IntMap.fromAscList [ (y, IntSet.fromAscList $ Set.toAscList ys) | (y, ys) <- Map.assocs yys ])  | (n, yys) <- Map.assocs $  mergeFromSlow  (Map.fromAscList [ (n, Set.fromAscList $ IntSet.toAscList $ ys) | (n, ys) <- IntMap.toAscList nodesToCsNodes]) csGraph idom roots]) result
@@ -444,7 +444,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.
                 influenced = IntMap.fromList [ (nodesToOrder !! m, m) | m <- pre graph n]
 
         init = IntMap.mapWithKey (\n ys -> IntMap.fromSet (const ys) ys) nodesToCsNodes
-        rootOf = IntMap.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeM idom y, r ∈ roots ]
+        rootOf = IntMap.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeI idom y, r ∈ roots ]
 
         nodesToCsNodes = IntMap.fromList [ (n, IntSet.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
 
@@ -476,7 +476,7 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muG
       csGraph' <- (muGraph'For graph csGraph m ::  [gr (Node, MergedMicroState a a') e]),
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
       let y's  = [ y | (y, (n', csy)) <- labNodes csGraph', m == n' ],
-      let idom' = Map.fromList $ iPDomForSinks [[y'] | y' <- y's] csGraph',
+      let idom' = IntMap.fromList [ (n,m) | (n, Just m) <- iPDomForSinks [[y'] | y' <- y's] csGraph'],
       let roots' = Set.fromList y's,
       let ns = if muMerge then
             let equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots'
@@ -519,6 +519,6 @@ mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialSt
           nodesToCsNodes = Map.fromList [ (n, [ y | (y, (n', csy)) <- labNodes csGraph', n == n' ] ) | n <- nodes graph']
           y's  = nodesToCsNodes ! m
           
-          idom = fmap fromSet $ isinkdomOfTwoFinger8 csGraph'
+          idom = IntMap.fromAscList [ (n,m) | (n, ms) <- Map.toAscList $ isinkdomOfTwoFinger8 csGraph', not $ Set.null ms, let [m] = Set.toList ms]
           roots = Set.fromList y's
 

@@ -11,6 +11,9 @@ import qualified Data.Map as Map
 import Data.Map (Map, (!))
 import qualified Data.Set as Set
 import Data.Set (Set)
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as IntMap
+
 
 import qualified Data.Foldable as Foldable
 import Data.Foldable (Foldable)
@@ -208,6 +211,13 @@ maxFromTreeM m x = reachFrom x
   where reachFrom x = assert (x `Map.member` m) $ case m ! x of
           Nothing -> x
           Just x' -> reachFrom x'
+
+maxFromTreeI :: IntMap Int -> Int -> Int
+maxFromTreeI m x = reachFrom x
+  where reachFrom x = case IntMap.lookup x m of
+          Nothing -> x
+          Just x' -> reachFrom x'
+
 
 
 reachableFromTree :: Ord α => Map α (Set α) -> α -> Set α

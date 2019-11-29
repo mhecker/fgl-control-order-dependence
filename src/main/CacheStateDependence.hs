@@ -436,7 +436,7 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
     }
   where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = cachedObjectsFor e, not $ Set.null vars] ]
         muIsDependent graph roots idom y n (Merged _) = undefined
-        muIsDependent graph roots idom y n (Unmerged _) = idom ! y == Nothing
+        muIsDependent graph roots idom y n (Unmerged _) = IntMap.lookup y idom == Nothing
         muToCFGEdge (e,_) = e
 
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)

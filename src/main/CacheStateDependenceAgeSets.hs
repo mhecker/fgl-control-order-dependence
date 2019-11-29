@@ -45,7 +45,7 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
-import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
+import Util (moreSeeds, restrict, invert'', maxFromTreeM, maxFromTreeI, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
@@ -546,7 +546,7 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
   where muGraph'For graph csGraph m = [ cacheStateGraph'ForVarsAtMForGraph2 vars csGraph m |  vars <- List.nub [ vars | (_,e) <- lsuc graph m, let vars = CSD.cachedObjectsFor e, not $ Set.null vars] ]
         muIsDependent graph roots idom y n (Merged _) = undefined
         muIsDependent graph roots idom y n (Unmerged cache) = (isChoice ∨ isImprecise) ∧ (not isRootDominated)
-          where isRootDominated = maxFromTreeM idom y ∈ roots
+          where isRootDominated = maxFromTreeI idom y ∈ roots
                 isChoice    = (length $ suc graph n) > 1
                 isImprecise = (∃) (lsuc graph n) (\(_,e) -> not $ List.null $ isDataDependent e)
 
@@ -794,7 +794,7 @@ concrCacheTransDecisionGraphsForCo cacheSize cache assumed e co = {- traceShow t
             --     idom'' = isinkdomOfTwoFinger8 csGraph''
             -- in Set.fromList [ n | (y, (n,_))   <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y] -- TODO: can we make this wotk with muIsDependent, too?
           where nodesToCsNodes = (∐) [ Map.fromList [ (tag, Set.fromList [ y ]) ] | (y, (tag, _)) <- labNodes reached]
-                idom   = fmap fromSet $ isinkdomOfTwoFinger8 reached
+                idom   = IntMap.fromAscList [ (n,m) | (n, ms) <- Map.toAscList $ isinkdomOfTwoFinger8 reached, not $ Set.null ms, let [m] = Set.toList ms]
                 roots  = Set.fromList [ y | (y, (Result _, Result _)) <- labNodes reached]
                 equivs = mergeFromSlow nodesToCsNodes reached idom roots
         reached = subgraph (rdfs [ m | (m, (Result _, Result _) ) <- labNodes coEquived] coEquived) coEquived

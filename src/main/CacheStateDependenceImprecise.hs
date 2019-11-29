@@ -37,7 +37,7 @@ import Data.Graph.Inductive.Query.DFS (dfs, rdfs, topsort)
 import Data.Graph.Inductive.Query.TransClos (trc)
 
 import Unicode
-import Util (moreSeeds, restrict, invert'', maxFromTreeM, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
+import Util (moreSeeds, restrict, invert'', maxFromTreeM, maxFromTreeI, fromSet, updateAt, focus, removeFirstOrButLastMaxSize)
 import IRLSOD (CFGNode, CFGEdge(..), GlobalState(..), globalEmpty, ThreadLocalState, Var(..), isGlobal, Array(..), arrayIndex, isArrayIndex, arrayMaxIndex, arrayEmpty, ArrayVal, Val, BoolFunction(..), VarFunction(..), Name(..), useE, defE, useEFor, useBFor, useB, useV, use, def, SimpleShow (..), stepFor)
 import qualified IRLSOD as IRLSOD (Input)
 
@@ -322,9 +322,9 @@ cacheAbstraction cacheSize = MicroArchitecturalAbstraction {
             -- (if n == 11 then traceShow (y, n) $ traceShow roots $ traceShow idom else id) $
             isChoice ∨ isImprecise
           where isChoice    = (length $ suc graph n) > 1
-                            ∧ (idom ! y == Nothing)
+                            ∧ (IntMap.lookup y idom == Nothing)
                 isImprecise = (∃) (lsuc graph n) (\(_,e) -> length (CSD.cacheOnlyStepFor cacheSize e cache) > 1)
-                            ∧ (not $ maxFromTreeM idom y ∈ roots)
+                            ∧ (not $ maxFromTreeI idom y ∈ roots)
 
 
 csdMergeDirectOf :: forall gr a a'. (DynGraph gr) => CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)

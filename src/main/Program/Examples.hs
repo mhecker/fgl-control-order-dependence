@@ -3670,6 +3670,14 @@ exampleInteresingAgeSets29 = compileAllToProgram a b'
         generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (Seq (ForC 2 (Seq (ForC 2 (If (Leq (Val 127) (Neg (Var (Global "x")))) (AssArr (Array "arrC") (Plus (Var (Global "b")) (ArrayRead (Array "arrA") (Times (Var (Global "b")) (Var (Global "x"))))) (Neg (ArrayRead (Array "arrB") (Plus (ArrayRead (Array "arrA") (Val 128)) (Var (Global "c")))))) (AssArr (Array "arrA") (Neg (Var (Global "h"))) (Plus (ArrayRead (Array "arrB") (Neg (Var (Global "b")))) (Var (Global "d")))))) (If (Leq (Val 127) (Times (Var (Global "x")) (ArrayRead (Array "arrC") (Neg (ArrayRead (Array "arrA") (Plus (ArrayRead (Array "arrC") (Val 128)) (Var (Global "c")))))))) (AssArr (Array "arrC") (Plus (Var (Global "b")) (Var (Global "z"))) (Val 127)) (Ass (Global "e") (Plus (ArrayRead (Array "arrA") (Times (Var (Global "x")) (Var (Global "z")))) (Var (Global "x"))))))) (Seq (Seq (Ass (Global "z") (Times (Var (Global "c")) (Var (Global "b")))) (Ass (Global "x") (Val 136))) (ForV (Global "c") (Seq Skip (Ass (Global "z") (Neg (Var (Global "c"))))))))) undefined undefined undefined)])
 
 
+exampleInteresingAgeSets30 :: Program Gr
+exampleInteresingAgeSets30 = compileAllToProgram a b'
+  where (a,b) = toCodeSimpleWithArrays generated
+        b' = fmap twoAddressCode b
+        generated = SimpleWithArraysProgram (Map.fromList [(1,"main")]) (Map.fromList [("main",Generated (Seq Skip (Seq (If (Leq (Val 127) (Times (ArrayRead (Array "arrB") (Neg (ArrayRead (Array "arrB") (Times (Var (Global "d")) (Var (Global "e")))))) (Var (Global "c")))) (If (Leq (Val 127) (Plus (ArrayRead (Array "arrC") (Val 128)) (ArrayRead (Array "arrC") (Neg (ArrayRead (Array "arrC") (Plus (ArrayRead (Array "arrB") (Times (Var (Global "x")) (ArrayRead (Array "arrA") (Times (Var (Global "x")) (Var (Global "h")))))) (ArrayRead (Array "arrB") (Plus (Var (Global "b")) (Var (Global "y")))))))))) (Ass (Global "y") (Times (Var (Global "y")) (Var (Global "e")))) (AssArr (Array "arrA") (Neg (Var (Global "d"))) (Plus (Var (Global "z")) (Var (Global "d"))))) (If (Leq (Val 127) (Times (Var (Global "e")) (Var (Global "y")))) (AssArr (Array "arrB") (Times (ArrayRead (Array "arrC") (Times (ArrayRead (Array "arrB") (Plus (Var (Global "b")) (Var (Global "y")))) (Var (Global "e")))) (Var (Global "h"))) (Neg (Var (Global "c")))) (Ass (Global "y") (Times (Var (Global "d")) (Var (Global "c")))))) (Seq (ForV (Global "e") (ForV (Global "z") (Ass (Global "x") (Plus (Var (Global "h")) (Var (Global "c")))))) (Seq (AssArr (Array "arrB") (Val 126) (Plus (ArrayRead (Array "arrB") (Neg (Var (Global "e")))) (ArrayRead (Array "arrA") (Times (ArrayRead (Array "arrC") (Times (ArrayRead (Array "arrC") (Neg (Var (Global "y")))) (Var (Global "b")))) (Var (Global "c")))))) (AssArr (Array "arrA") (Times (Var (Global "z")) (ArrayRead (Array "arrB") (Plus (ArrayRead (Array "arrB") (Plus (Var (Global "h")) (Var (Global "b")))) (Var (Global "d"))))) (Plus (Var (Global "e")) (Var (Global "x")))))))) undefined undefined undefined)])
+
+
+
 exampleDomPaths :: Program Gr
 exampleDomPaths = toProgramIntra $ IntraGeneratedProgram
     (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])
@@ -4645,7 +4653,8 @@ interestingAgeSets = [
               $(withName 'exampleInteresingAgeSets26),
               $(withName 'exampleInteresingAgeSets27),
               $(withName 'exampleInteresingAgeSets28),
-              $(withName 'exampleInteresingAgeSets29)
+              $(withName 'exampleInteresingAgeSets29),
+              $(withName 'exampleInteresingAgeSets30)
               ]
 
 jcsPaperExamples = [

@@ -315,7 +315,7 @@ cacheTests = testGroup "(concerning cache timing)" $
     aesCase True  $ aes_main_ct          12,
 
     aesCase False $ aes_main_ct_precache  4,
-    aesCase False $ aes_main_ct_precache  8,
+    aesCase True  $ aes_main_ct_precache  8,
     aesCase True  $ aes_main_ct_precache 12
   ] ++
   [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDep for " ++ prName) $

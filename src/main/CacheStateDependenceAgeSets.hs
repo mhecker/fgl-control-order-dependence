@@ -599,7 +599,7 @@ newMinAge cacheSize cache cache' minUses maxUses (_, co) (minAge, maxAge) =
                                                                      | maxAge >= (MaxAge cacheSize) = maxAge
                                                                      | otherwise =
                                                                               if (∃) maxUses (\maxUse ->
-                                                                                   maxUse == infTime  ∨  maxUse > minCo
+                                                                                   maxUse == infTime  ∨  maxUse > maxCo
                                                                                  ) then maxAge + 1 else maxAge
 {-
                                                                     minAge'Slow = if (∃) (makesUses e) (\uses -> (∀) uses (\coUse ->
@@ -1111,7 +1111,9 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
 
           where reached = Map.fromList [ ((yM, co), minAge) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM, ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache, cache') ]
 
-                ins (yM, co) reaches = Map.alter f (yM, co) reaches
+                ins ((yM, co), (MinAge minAge, MaxAge maxAge)) reaches
+                    | maxAge >= cacheSize = Map.alter f (yM, co) reaches
+                    | otherwise           =                      reaches
                   where f  Nothing   = Just $ IntSet.singleton yN
                         f (Just set) = Just $ IntSet.insert    yN set
 

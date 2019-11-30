@@ -1077,7 +1077,7 @@ cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromLi
 
 
 cacheDataDepGWork :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge -> Map (Node, CachedObject) IntSet
-cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), IntSet.fromList [ yN ]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Map.keys deps ]
+cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), IntSet.fromList [ yN ]) ] | (yM, deps) <- Map.assocs seesDef, ((yN, co), (MinAge minAge, MaxAge maxAge)) <- Map.assocs deps, maxAge >= cacheSize ]
   where seesDef = go (Map.fromList $ zip [0..] orderedNodes) (Map.fromList [ (y, Map.empty) | y <- nodes csGraphG ])
 
         go workset sees

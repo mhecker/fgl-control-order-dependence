@@ -1128,17 +1128,17 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
                         Just (n,cache) = lab csGraphG yN
                         succs = succsM ! yN
 
-                        flow  = [ ((yM, co ), minMax') | (e, yM, cache', minUses, maxUses, _        ) <- succs,
+                        flow  = [ ((yM, co ), minMax'Joined) | (e, yM, cache', minUses, maxUses, _        ) <- succs,
                                                                                Just minMax' <- [newMinAge cacheSize cache cache' minUses maxUses (undefined, co) minMax],
-                                                                               isNew yM co minMax'
+                                                                               Just minMax'Joined <- isNew yM co minMax'
                               ]
-                        trans = [ ((yM, co'), minMax') | (e, yM, cache', minUses, maxUses, cacheDeps) <- succs,
+                        trans = [ ((yM, co'), minMax'Joined) | (e, yM, cache', minUses, maxUses, cacheDeps) <- succs,
                                                                                Just cos <- [Map.lookup co cacheDeps ],
                                                                                (co', min, max) <- Set.toList cos,
                                                                                not $ (MinAge max) < minAge,
                                                                                not $ (MaxAge min) > maxAge,
                                                                                Just minMax' <- [newMinAge cacheSize cache cache' minUses maxUses (undefined, co') (MinAge min, MaxAge max)],
-                                                                               isNew yM co' minMax'
+                                                                               Just minMax'Joined <- isNew yM co' minMax'
                               ]
                         reached'  = fold ins flow $ fold ins trans $ reached
                         workset0' = fold ins flow $ fold ins trans $ workset0
@@ -1147,9 +1147,9 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
 
                         ins (k, v) = Map.insertWith (⊔) k v
 
-                        isNew yM co (minAge', maxAge') = case Map.lookup (yM, co) reached of
-                          Nothing       -> True
-                          Just (minAge'0, maxAge'0) -> minAge' < minAge'0 ∨ maxAge' > maxAge'0
+                        isNew yM co minMax'@(minAge', maxAge') = case Map.lookup (yM, co) reached of
+                          Nothing       -> [Just minMax']
+                          Just minMax'0@(minAge'0, maxAge'0) -> if minAge' < minAge'0 ∨ maxAge' > maxAge'0 then [Just $ minMax' ⊔ minMax'0 ] else []
 
 
 cacheStateGraph'ForVarsAtMForGraph3 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge ->  Node -> gr (Node, AbstractCacheState) CFGEdge

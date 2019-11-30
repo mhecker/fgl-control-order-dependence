@@ -334,6 +334,15 @@ cacheTests = testGroup "(concerning cache timing)" $
                     in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
+  [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined violations for " ++ prName) $
+                    let g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   = Precise.csdMergeDirectOf       propsCacheSize g n0
+                        csdMAS = AgeSets.csdFromDataDepJoined   propsCacheSize g n0
+                        missing = [ (n,m) | (n, ms) <- Map.assocs csdM, let ms' = Map.findWithDefault Set.empty n csdMAS, m <- Set.toList $ Set.difference ms ms' ]
+                    in  traceShow missing $  List.null missing @? ""
+  | (prName, pr) <- interestingAgeSets
+  ] ++
   [ testCase ("cacheDataDepGWork2 == cacheDataDepGWork for " ++ prName) $
                     let g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr

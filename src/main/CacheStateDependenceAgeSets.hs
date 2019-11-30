@@ -1109,20 +1109,25 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
         succsM = Map.fromList [ (yN, [(e, yM, cache', minUsesOf e cache, maxUsesOf e cache, cacheDepsFast cacheSize e cache) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]) | (yN, (n, cache)) <- labNodes csGraphG ]
 
         reachesFor :: (Node, (Node, AbstractCacheState)) -> Map (Node, CachedObject) IntSet -> Map (Node, CachedObject) IntSet
-        reachesFor (yN, (n, cache)) reaches = foldr ins reaches (Map.assocs $ go2 reached reached)
+        reachesFor (yN, (n, cache)) reaches = foldr ins reaches (Map.assocs $ go2 trace reached reached)
 
           where reached = Map.fromList [ ((yM, co), minAge) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM, ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache, cache') ]
 
                 ins ((yM, co), (MinAge minAge, MaxAge maxAge)) reaches
+                    -- | True                = Map.alter f (yM, co) reaches
                     | maxAge >= cacheSize = Map.alter f (yM, co) reaches
                     | otherwise           =                      reaches
                   where f  Nothing   = Just $ IntSet.singleton yN
                         f (Just set) = Just $ IntSet.insert    yN set
 
-                go2 :: Map (Node, CachedObject) (MinAge, MaxAge) -> Map (Node, CachedObject) (MinAge, MaxAge) -> Map (Node, CachedObject) (MinAge, MaxAge)
-                go2 workset reached
+                trace = False ∧ yN == 32
+
+                go2 :: Bool -> Map (Node, CachedObject) (MinAge, MaxAge) -> Map (Node, CachedObject) (MinAge, MaxAge) -> Map (Node, CachedObject) (MinAge, MaxAge)
+                go2 trace workset reached
                     | Map.null workset =                 reached
-                    | otherwise        =  go2  workset0' reached'
+                    -- | otherwise        = (if trace  ∧  (case co of { CachedArrayRange (Array "arrB") 0 -> True ; _ -> False })  {- ∧ (co == CachedVar (Global "w0")) -} ∧ (yN `elem` [187,112,188,215,44,54,63,74,83,91,98,113,121,129,136,143,149]) then traceShow "{-------" $ traceShow (yN, co, minMax) $ traceShow "--------}" else id) $
+                    | otherwise        = (if trace  ∧  (case co of { CachedArrayRange (Array "arrB") 0 -> True ; _ -> False })  {- ∧ (co == CachedVar (Global "w0")) -} ∧ (yN `elem` [33,12,34,45,4,5,6,7,8,9,10,12,13,14,15,16,17]) then traceShow "{-------" $ traceShow (yN, co, minMax) $ traceShow "--------}" else id) $
+                                          go2  trace workset0' reached'
                   where (((yN, co), minMax), workset0) = Map.deleteFindMin workset
                         (minAge, maxAge) = minMax
                         Just (n,cache) = lab csGraphG yN
@@ -1136,6 +1141,8 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
                                                                                Just cos <- [Map.lookup co cacheDeps ],
                                                                                (co', min, max) <- Set.toList cos,
                                                                                not $ (MinAge max) < minAge,
+                                                                               -- if (MaxAge min) > maxAge then error $ "Work2: " ++ (show (co, co', (min, max), (minAge, maxAge))) else True,
+                                                                               
                                                                                not $ (MaxAge min) > maxAge,
                                                                                Just minMax' <- [newMinAge cacheSize cache cache' minUses maxUses (undefined, co') (MinAge min, MaxAge max)],
                                                                                Just minMax'Joined <- isNew yM co' minMax'

@@ -33,11 +33,11 @@ import Program.Examples (interestingAgeSets)
 import Program.ExamplesCrypto (br_aes_small_cbcenc_main, br_aes_small_cbcenc_main_ct, br_aes_small_cbcenc_main_ct_precache, mainInput, for2Program)
 
 import IRLSOD(CFGNode, CFGEdge(..), Var(..), Name(..), isGlobalName, globalEmpty, use, def)
-import MicroArchitecturalDependence (stateSets, csGraphSize, edgeCostsFor, muMergeDirectOf, cacheCostDecisionGraphFor)
+import MicroArchitecturalDependence (MergeMode(..), stateSets, csGraphSize, edgeCostsFor, muMergeDirectOf, cacheCostDecisionGraphFor)
 import CacheExecution(initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import qualified CacheStateDependence          as Precise (initialAbstractCacheState, csdMergeDirectOf, cacheStateGraph, cacheOnlyStepFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
-import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep, csdFromDataDepJoined, cacheAbstraction, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep, csdFromDataDepJoined, cacheAbstraction, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2,ageSetsJoin,ageSetsLeq)
 
 
 import qualified CacheStateDependenceReach     as Reach (csd''''Of3, csd''''Of4, csdMergeOf)
@@ -339,6 +339,18 @@ cacheTests = testGroup "(concerning cache timing)" $
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         mu = AgeSets.cacheAbstraction propsCacheSize 
                         csGraph = stateSets (muStepFor mu) (muLeq mu) g (muInitialState mu) n0
+                        csGraphG = stateGraphForSets csGraph :: Gr (Node, AgeSets.AbstractCacheState) (CFGEdge)
+
+                        cddep  = AgeSets.cacheDataDepGWork  propsCacheSize csGraphG
+                        cddep2 = AgeSets.cacheDataDepGWork2 propsCacheSize csGraphG
+                    in  cddep == cddep2 @? ""
+  | (prName, pr) <- interestingAgeSets
+  ] ++
+  [ testCase ("cacheDataDepGWork2 == cacheDataDepGWork Joined for " ++ prName) $
+                    let g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        mu = AgeSets.cacheAbstraction propsCacheSize 
+                        csGraph = stateSets (muStepFor mu) (Just $ JoinNode AgeSets.ageSetsJoin AgeSets.ageSetsLeq) g (muInitialState mu) n0
                         csGraphG = stateGraphForSets csGraph :: Gr (Node, AgeSets.AbstractCacheState) (CFGEdge)
 
                         cddep  = AgeSets.cacheDataDepGWork  propsCacheSize csGraphG

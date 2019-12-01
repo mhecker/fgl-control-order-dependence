@@ -61,6 +61,8 @@ import CacheExecution
 import qualified CacheStateDependence as Precise
 import qualified CacheStateDependenceImprecise as Imprecise
 import qualified CacheStateDependenceAgeSets as AgeSets
+import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD
+
 import CacheSlice
 import Execution
 import ExecutionTree
@@ -145,7 +147,7 @@ main = let {
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSets.allFromDataDepJoined cacheSize) graph n0 ;
+         results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSetsDD.allFromDataDepJoined cacheSize) graph n0 ;
        } in
   do
     putStrLn  $ show $ length $ nodes $ graph

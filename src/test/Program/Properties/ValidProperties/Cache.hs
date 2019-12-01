@@ -37,7 +37,9 @@ import MicroArchitecturalDependence (MergeMode(..), stateSets, csGraphSize, edge
 import CacheExecution(initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
 import qualified CacheStateDependence          as Precise (initialAbstractCacheState, csdMergeDirectOf, cacheStateGraph, cacheOnlyStepFor, cacheAbstraction, AbstractCacheState, csLeq)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
-import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep, csdFromDataDepJoined, cacheAbstraction, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2,ageSetsJoin,ageSetsLeq)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, cacheAbstraction, AbstractCacheState)
+import qualified CacheStateDependenceAgeSetsDataDep
+                                               as AgeSetsDD (csdFromDataDep, csdFromDataDepJoined, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2, ageSetsJoin,ageSetsLeq)
 
 
 import qualified CacheStateDependenceReach     as Reach (csd''''Of3, csd''''Of4, csdMergeOf)
@@ -129,8 +131,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   = Precise.csdMergeDirectOf propsCacheSize g n0
-                        csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
+                        csdM   =   Precise.csdMergeDirectOf propsCacheSize g n0
+                        csdMAS = AgeSetsDD.csdFromDataDep   propsCacheSize g n0
                     in  csdM ⊑ csdMAS,
     testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined"
                 $ \generated ->
@@ -140,8 +142,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   = Precise.csdMergeDirectOf     propsCacheSize g n0
-                        csdMAS = AgeSets.csdFromDataDepJoined propsCacheSize g n0
+                        csdM   = Precise.csdMergeDirectOf       propsCacheSize g n0
+                        csdMAS = AgeSetsDD.csdFromDataDepJoined propsCacheSize g n0
                     in  csdM ⊑ csdMAS,
     testPropertySized 25 "cacheDataDepGWork2 == cacheDataDepGWork"
                 $ \generated ->
@@ -155,8 +157,8 @@ cacheProps = testGroup "(concerning cache timing)" [
                         csGraph = stateSets (muStepFor mu) (muLeq mu) g (muInitialState mu) n0
                         csGraphG = stateGraphForSets csGraph :: Gr (Node, AgeSets.AbstractCacheState) (CFGEdge)
 
-                        cddep  = AgeSets.cacheDataDepGWork  propsCacheSize csGraphG
-                        cddep2 = AgeSets.cacheDataDepGWork2 propsCacheSize csGraphG
+                        cddep  = AgeSetsDD.cacheDataDepGWork  propsCacheSize csGraphG
+                        cddep2 = AgeSetsDD.cacheDataDepGWork2 propsCacheSize csGraphG
                     in  cddep == cddep2,
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
@@ -321,16 +323,16 @@ cacheTests = testGroup "(concerning cache timing)" $
   [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDep for " ++ prName) $
                     let g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   = Precise.csdMergeDirectOf propsCacheSize g n0
-                        csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
+                        csdM   =   Precise.csdMergeDirectOf propsCacheSize g n0
+                        csdMAS = AgeSetsDD.csdFromDataDep   propsCacheSize g n0
                     in  csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
   [ testCase ("csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined for " ++ prName) $
                     let g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   = Precise.csdMergeDirectOf       propsCacheSize g n0
-                        csdMAS = AgeSets.csdFromDataDepJoined   propsCacheSize g n0
+                        csdM   =   Precise.csdMergeDirectOf     propsCacheSize g n0
+                        csdMAS = AgeSetsDD.csdFromDataDepJoined propsCacheSize g n0
                     in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
@@ -341,8 +343,8 @@ cacheTests = testGroup "(concerning cache timing)" $
                         csGraph = stateSets (muStepFor mu) (muLeq mu) g (muInitialState mu) n0
                         csGraphG = stateGraphForSets csGraph :: Gr (Node, AgeSets.AbstractCacheState) (CFGEdge)
 
-                        cddep  = AgeSets.cacheDataDepGWork  propsCacheSize csGraphG
-                        cddep2 = AgeSets.cacheDataDepGWork2 propsCacheSize csGraphG
+                        cddep  = AgeSetsDD.cacheDataDepGWork  propsCacheSize csGraphG
+                        cddep2 = AgeSetsDD.cacheDataDepGWork2 propsCacheSize csGraphG
                     in  cddep == cddep2 @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
@@ -350,11 +352,11 @@ cacheTests = testGroup "(concerning cache timing)" $
                     let g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         mu = AgeSets.cacheAbstraction propsCacheSize 
-                        csGraph = stateSets (muStepFor mu) (Just $ JoinNode AgeSets.ageSetsJoin AgeSets.ageSetsLeq) g (muInitialState mu) n0
+                        csGraph = stateSets (muStepFor mu) (Just $ JoinNode AgeSetsDD.ageSetsJoin AgeSetsDD.ageSetsLeq) g (muInitialState mu) n0
                         csGraphG = stateGraphForSets csGraph :: Gr (Node, AgeSets.AbstractCacheState) (CFGEdge)
 
-                        cddep  = AgeSets.cacheDataDepGWork  propsCacheSize csGraphG
-                        cddep2 = AgeSets.cacheDataDepGWork2 propsCacheSize csGraphG
+                        cddep  = AgeSetsDD.cacheDataDepGWork  propsCacheSize csGraphG
+                        cddep2 = AgeSetsDD.cacheDataDepGWork2 propsCacheSize csGraphG
                     in  cddep == cddep2 @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++

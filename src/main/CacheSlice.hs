@@ -50,7 +50,10 @@ import MicroArchitecturalDependence (CsGraph, muMergeDirectOf, cacheCostDecision
 import CacheExecution (CacheSize)
 import qualified CacheStateDependence          as Precise   (cacheAbstraction)
 import qualified CacheStateDependenceImprecise as Imprecise (cacheAbstraction)
-import qualified CacheStateDependenceAgeSets   as AgeSets   (cacheAbstraction, allFromDataDep, allFromDataDepJoined)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (cacheAbstraction)
+import qualified CacheStateDependenceAgeSetsDataDep
+                                               as AgeSetsDD (allFromDataDep, allFromDataDepJoined)
+
 import qualified CacheStateDependenceReach     as Reach     (csdMergeOf)
 
 import Data.Graph.Inductive.Query.DataDependence (dataDependence)
@@ -139,8 +142,8 @@ fromAll all g n0 = (csGraph, csd, (ccg, costs))
 cacheTimingSlice               cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromMu  (  Precise.cacheAbstraction     cacheSize) g n0) g [] n0
 cacheTimingSliceImprecise      cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromMu  (Imprecise.cacheAbstraction     cacheSize) g n0) g [] n0
 cacheTimingSliceAgeSets        cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromMu  (  AgeSets.cacheAbstraction     cacheSize) g n0) g [] n0
-cacheTimingSliceAgeDDeps       cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromAll (  AgeSets.allFromDataDep       cacheSize) g n0) g [] n0
-cacheTimingSliceAgeDDepsJoined cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromAll (  AgeSets.allFromDataDepJoined cacheSize) g n0) g [] n0
+cacheTimingSliceAgeDDeps       cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromAll (AgeSetsDD.allFromDataDep       cacheSize) g n0) g [] n0
+cacheTimingSliceAgeDDepsJoined cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromAll (AgeSetsDD.allFromDataDepJoined cacheSize) g n0) g [] n0
 cacheTimingSliceViaReach       cacheSize g n0 = cacheTimingSliceFor cacheSize  (fromAll (    Reach.csdMergeOf           cacheSize) g n0) g [] n0
 
 

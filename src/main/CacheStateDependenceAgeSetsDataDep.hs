@@ -61,24 +61,6 @@ import MicroArchitecturalDependence (
     edgeCostsFor,
   )
 
-{-
-import MicroArchitecturalDependence (
-    Costs,
-    CsGraph, csGraphSize,
-    AbstractMicroArchitecturalGraphNode,
-    AbstractSemantic,
-    TimeState,
-    MergeMode(..),
-    MergedMicroState(..),
-    MicroArchitecturalAbstraction(..),
-    stateGraphForSets, stateGraph, stateSets,
-    muMergeDirectOf,
-    merged, mergeFromSlow,
-    edgeCostsFor, isDataDependent,
-    muGraphFromMergeDirectFor
-  )
--}
-
 import CacheExecution (
     CacheSize,
     CachedObject(..), isCachable
@@ -88,31 +70,12 @@ import CacheExecution (
     toAlignedIndex, alignedIndicesFor, alignedIndices
   )
 
-{-
-import CacheExecution (
-    AccessTime, registerAccessTime, cacheHitTime, cacheMissTime, cacheWriteTime, guardTime, initTime, noOpTime,
-    CacheSize,
-    toAlignedIndex, alignedIndicesFor, alignedIndices, nrOfDifferentCacheLinesPerArray,
-    CachedObject(..), isCachable,
-    Index
-  )
-
--}
-
 import qualified CacheStateDependence as CSD (sameArrayAs, cachedObjectsFor, writtenCachedObjectsFor)
 
 
 import CacheStateDependenceAgeSets(Age(..), Ages, infTime, inf, fresh, toAge)
 import qualified CacheStateDependenceAgeSets as AgeSets
 
-{-
-import Program (Program(..))
-import Program.Generator (toCodeSimple)
-import Program.For (compileAllToProgram, For(..), subCommands)
-
-
-import Data.Graph.Inductive.Util (mergeTwoGraphs, isTransitive, fromSuccMap, delSuccessorEdges)
--}
 import Data.Graph.Inductive.Query.PostDominance (mdomOfLfp, sinkdomOfGfp, sinkdomsOf, isinkdomOfTwoFinger8)
 import Data.Graph.Inductive.Query.PostDominance.Numbered (iPDomForSinks)
 import Data.Graph.Inductive.Query.PostDominanceFrontiers (isinkDFTwoFinger)

@@ -709,22 +709,8 @@ cacheStateGraph'ForVarsAtMForGraph3 vars (css, es) mm = nmap strip result
         strip (n, Merged   cache) = (n, cache)
 
 
-allFromDataDepFor :: forall gr. DynGraph gr => (Maybe (MergeMode AbstractCacheState)) -> ModsFor gr -> CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState CFGEdge)
-allFromDataDepFor leq modsFor cacheSize graph n0 = traceShow (csGraphSize csGraph) $
-    let result = invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice modsFor cacheSize csGraph csGraphG ddeps m]
-    in (result, costs, csGraph)
-  where  mu = AgeSets.cacheAbstraction cacheSize
-         csGraph@(cs, es) = stateSets (muStepFor mu) leq graph (muInitialState mu) n0
-         csGraphG = stateGraphForSets csGraph :: gr (Node, AbstractCacheState) CFGEdge
-
-         costs = (edgeCostsFor mu) csGraph
-         mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (costs ! (m,n,l)) > 1)
-
-         ddeps = cacheDataDepGWork2 cacheSize csGraphG
-
-
-allFromDataDepFor2 :: forall gr. DynGraph gr => MicroArchitecturalAbstraction AbstractCacheState AbstractCacheState CFGEdge -> ModsFor gr ->  CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState CFGEdge)
-allFromDataDepFor2 mu modsFor cacheSize graph n0 = result
+allFromDataDepFor :: forall gr. DynGraph gr => MicroArchitecturalAbstraction AbstractCacheState AbstractCacheState CFGEdge -> ModsFor gr ->  CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState CFGEdge)
+allFromDataDepFor mu modsFor cacheSize graph n0 = result
   where result = (
           invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice = Set.delete m $ cacheDataDepSlice modsFor cacheSize csGraph csGraphG ddeps m],
           edgeCosts,
@@ -740,20 +726,16 @@ allFromDataDepFor2 mu modsFor cacheSize graph n0 = result
 
 
 allFromDataDep :: forall gr. DynGraph gr =>  CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState CFGEdge)
-allFromDataDep cacheSize graph n0 =
-      (if result /= allFromDataDepFor (muLeq $ AgeSets.cacheAbstraction cacheSize) none cacheSize graph n0 then error "allFromDataDep" else id)
-    $ result
+allFromDataDep       cacheSize graph n0 = result
   where none _ _ _ = Set.empty
         mu = cacheAbstraction       cacheSize
-        result = allFromDataDepFor2 mu none        cacheSize graph n0
+        result = allFromDataDepFor mu none        cacheSize graph n0
 
 allFromDataDepJoined :: forall gr. DynGraph gr =>  CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState CFGEdge)
-allFromDataDepJoined cacheSize graph n0 =
-      (if result /= allFromDataDepFor (Just $ JoinNode ageSetsJoin ageSetsLeq) modsForFast cacheSize graph n0 then error "allFromDataDepJoined" else id)
-    $ result
+allFromDataDepJoined cacheSize graph n0 = result
   where
         mu = cacheAbstractionJoined cacheSize
-        result = allFromDataDepFor2 mu modsForFast cacheSize graph n0
+        result = allFromDataDepFor mu modsForFast cacheSize graph n0
 
 csdFromDataDep :: DynGraph gr =>  CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdFromDataDep        cacheSize g n0 = first $ allFromDataDep       cacheSize g n0

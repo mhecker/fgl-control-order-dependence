@@ -591,12 +591,12 @@ newMinAge cacheSize cache cache' minUses maxUses (_, co) (minAge, maxAge) =
                                                                     maxCo = mmaximum agesCo
                                                                     minCo = mminimum agesCo
 
-                                                                    minAge' = if (∃) minUses (\minUse -> case minUse of
+                                                                    minAge'0 = if (∃) minUses (\minUse -> case minUse of
                                                                                    Age Nothing       -> True
                                                                                    Age (Just minUse) -> (MaxAge minUse) > maxAge
                                                                                  ) then minAge + 1 else minAge
 
-                                                                    maxAge'
+                                                                    maxAge'0
                                                                      | maxAge >= (MaxAge cacheSize) = maxAge
                                                                      | otherwise =
                                                                               if (∃) maxUses (\maxUse -> case maxUse of
@@ -611,6 +611,17 @@ newMinAge cacheSize cache cache' minUses maxUses (_, co) (minAge, maxAge) =
                                                                                    ))
                                                                                   )) then minAge + 1 else minAge
 -}
+
+                                                                    agesCo' = (Map.findWithDefault inf co    cache')
+                                                                    maxCo' = mmaximum agesCo'
+                                                                    minCo' = mminimum agesCo'
+                                                                    minAge' = case minCo' of
+                                                                      Age Nothing       -> minAge'0
+                                                                      Age (Just minCo') -> minAge'0 ⊓ (MinAge minCo')
+                                                                    maxAge' = case maxCo' of
+                                                                      Age Nothing       -> maxAge'0
+                                                                      Age (Just maxCo') -> maxAge'0 ⊓ (MaxAge maxCo')
+
                                                                     stillValid = minAge' < MinAge cacheSize
 
                                                                     singular = case Map.lookup co cache' of

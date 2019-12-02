@@ -701,7 +701,7 @@ cacheStateGraph'ForVarsAtMForGraph33 vars (css, es) mm = result
         α :: (Node, AbstractCacheState) -> [ (Node,  MergedMicroState AbstractCacheState AbstractCacheState) ]
         α cs@(n, cache)
             | n == mm ∧ (∀) vars (isConst cache) = [ (n, Merged   $ fmap (Set.map (       const 0 )) $ restrict cache vars) ]
-            | n == mm                            = [ (n, Merged   $                                             cache     ) ]
+            | n == mm                            = [ (n, Unmerged $                                             cache     ) ]
             | otherwise = [ (n, Unmerged cache) ]
 
 cacheStateGraph'ForVarsAtMForGraph3 :: forall gr. (DynGraph gr) => Set CachedObject -> CsGraph AbstractCacheState CFGEdge ->  Node -> gr (Node, AbstractCacheState) CFGEdge

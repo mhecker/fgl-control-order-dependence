@@ -333,7 +333,7 @@ cacheTests = testGroup "(concerning cache timing)" $
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
                         csdM   =   Precise.csdMergeDirectOf     propsCacheSize g n0
                         csdMAS = AgeSetsDD.csdFromDataDepJoined propsCacheSize g n0
-                    in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
+                    in  traceShow ("Size: ", Map.foldr (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
   [ testCase ("cacheDataDepGWork2 == cacheDataDepGWork for " ++ prName) $

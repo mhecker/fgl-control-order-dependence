@@ -465,7 +465,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.
 
 
 csGraphSize :: CsGraph s e -> Int
-csGraphSize (cs, es) = IntMap.fold (\σs k -> Set.size σs + k) 0 cs
+csGraphSize (cs, es) = IntMap.foldr (\σs k -> Set.size σs + k) 0 cs
 
 muMergeDirectOf :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Show e, Ord e) => MicroArchitecturalAbstraction a a' e -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph a e)
 muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muGraph'For, muInitialState, muLeq, muStepFor }) graph n0 =

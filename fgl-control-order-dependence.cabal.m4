@@ -221,6 +221,7 @@ executable $1.valid.bin
   ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.ValidProperties.capitalize($1).$1
   build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
   other-extensions:    COMMON_EXTENSIONS
+  other-modules:       Program.Properties.Util
   default-language:    Haskell2010
 
 executable $1.valid.xml.bin
@@ -229,6 +230,7 @@ executable $1.valid.xml.bin
   ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.ValidProperties.capitalize($1).$1X
   build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
   other-extensions:    COMMON_EXTENSIONS
+  other-modules:       Program.Properties.Util
   default-language:    Haskell2010
 ')dnl
 

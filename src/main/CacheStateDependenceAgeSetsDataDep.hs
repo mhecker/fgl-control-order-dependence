@@ -431,7 +431,7 @@ transDefsMegaSlowPseudoDef :: forall n. (Show n, Ord n) => CacheSize -> Node -> 
 transDefsMegaSlowPseudoDef cacheSize n e cache cache' seesN = (if cacheCombNr > 20 then traceShow (n, List.length $ assumeds, Map.size cache, Set.size cos, cacheCombNr) else id) $ 
      require ([(e, cache')] == AgeSets.cacheOnlyStepFor cacheSize e cache)
    $ result 
-          where cacheCombNr = Map.fold (\s k -> Set.size s * k) 1 cache
+          where cacheCombNr = Map.foldr (\s k -> Set.size s * k) 1 cache
                 result   = seesN ∪ fromSeen
                 assumeds :: [[CachedObject]]
                 assumeds = fmap second $ AgeSets.cacheOnlyStepsFor cacheSize e cache

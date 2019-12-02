@@ -39,7 +39,7 @@ import qualified CacheStateDependence          as Precise (initialAbstractCacheS
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf,cacheAbstraction)
 import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, cacheAbstraction, AbstractCacheState)
 import qualified CacheStateDependenceAgeSetsDataDep
-                                               as AgeSetsDD (csdFromDataDep, csdFromDataDepJoined, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2, ageSetsJoin,ageSetsLeq,csdFromDataDepOld, csdFromDataDepOldJoined) 
+                                               as AgeSetsDD (csdFromDataDep, csdFromDataDepJoined, AbstractCacheState, cacheDataDepGWork, cacheDataDepGWork2, ageSetsJoin,ageSetsLeq)
 
 
 import qualified CacheStateDependenceReach     as Reach (csd''''Of3, csd''''Of4, csdMergeOf)
@@ -50,8 +50,6 @@ cache     = defaultMain                               $ testGroup "cache"    [ m
 cacheX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"    [ mkTest [cacheTests], mkProp [cacheProps]]
 
 propsCacheSize = 4
-
-count = Map.fold (\set n -> Set.size set + n) 0
 
 cacheProps = testGroup "(concerning cache timing)" [
     testPropertySized 25 "csd only for choice nodes"
@@ -162,28 +160,6 @@ cacheProps = testGroup "(concerning cache timing)" [
                         cddep  = AgeSetsDD.cacheDataDepGWork  propsCacheSize csGraphG
                         cddep2 = AgeSetsDD.cacheDataDepGWork2 propsCacheSize csGraphG
                     in  cddep == cddep2,
-    testPropertySized 25 "x: AgeSets.csdFromDataDep ⊑ AgeSets.csdFromDataDepOld"
-                $ \generated ->
-                    let pr :: Program Gr
-                        pr = compileAllToProgram a b'
-                          where (a,b) = toCodeSimpleWithArrays generated
-                                b' = fmap twoAddressCode b
-                        g = tcfg pr
-                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdMAS    = AgeSetsDD.csdFromDataDep          propsCacheSize g n0
-                        csdMASOld = AgeSetsDD.csdFromDataDepOld       propsCacheSize g n0
-                    in  csdMAS ⊑ csdMASOld,
-    testPropertySized 25 "x: AgeSets.csdFromDataDepJoined == AgeSets.csdFromDataDepOldJoined"
-                $ \generated ->
-                    let pr :: Program Gr
-                        pr = compileAllToProgram a b'
-                          where (a,b) = toCodeSimpleWithArrays generated
-                                b' = fmap twoAddressCode b
-                        g = tcfg pr
-                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdMAS    = AgeSetsDD.csdFromDataDepJoined          propsCacheSize g n0
-                        csdMASOld = AgeSetsDD.csdFromDataDepOldJoined       propsCacheSize g n0
-                    in  csdMAS == csdMASOld,
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr
@@ -358,22 +334,6 @@ cacheTests = testGroup "(concerning cache timing)" $
                         csdM   =   Precise.csdMergeDirectOf     propsCacheSize g n0
                         csdMAS = AgeSetsDD.csdFromDataDepJoined propsCacheSize g n0
                     in  traceShow ("Size: ", Map.fold (\set n -> Set.size set + n) 0 csdMAS) $ csdM ⊑ csdMAS @? ""
-  | (prName, pr) <- interestingAgeSets
-  ] ++
-  [ testCase ("x: AgeSets.csdFromDataDep ⊑ AgeSets.csdFromDataDepOld for " ++ prName) $
-                    let g = tcfg pr
-                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdMAS    = AgeSetsDD.csdFromDataDep          propsCacheSize g n0
-                        csdMASOld = AgeSetsDD.csdFromDataDepOld       propsCacheSize g n0
-                    in  traceShow ("Size: ", (count csdMAS, count csdMASOld)) $ csdMAS ⊑ csdMASOld @? ""
-  | (prName, pr) <- interestingAgeSets
-  ] ++
-  [ testCase ("x: AgeSets.csdFromDataDepJoined == AgeSets.csdFromDataDepOldJoined for " ++ prName) $
-                    let g = tcfg pr
-                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdMAS    = AgeSetsDD.csdFromDataDepJoined    propsCacheSize g n0
-                        csdMASOld = AgeSetsDD.csdFromDataDepOldJoined propsCacheSize g n0
-                    in  traceShow ("Size: ", (count csdMAS, count csdMASOld)) $ csdMAS == csdMASOld @? ""
   | (prName, pr) <- interestingAgeSets
   ] ++
   [ testCase ("cacheDataDepGWork2 == cacheDataDepGWork for " ++ prName) $

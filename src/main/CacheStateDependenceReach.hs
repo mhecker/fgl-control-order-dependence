@@ -197,7 +197,7 @@ accessReachableFrom graph = (㎲⊒) init f
 csGraphFromMergeFor cacheSize graph n0 m = mergedI csGraph' equivs
     where (equivs, csGraph') = mergeFromFor cacheSize graph n0 m
 
-mergeFromFor cacheSize graph n0 m = (mergeFrom graph' csGraph' idom roots m, csGraph')
+mergeFromFor cacheSize graph n0 m = (mergeFrom graph' csGraph' idom roots, csGraph')
     where (cs, es0)  = stateSets (cacheOnlyStepFor cacheSize) csLeq graph initialAbstractCacheState n0
           es = fmap (Set.map f) es0
             where f (s, (e,_), (n, s')) = (s, e, (n, s'))
@@ -234,7 +234,7 @@ csdMergeOf cacheSize graph n0 =  let { result = invert'' $
       let csGraphM' = let { toY's = subgraph (rdfs y's csGraphM) csGraphM } in foldr (flip delSuccessorEdges) toY's y's,
       let idom' = IntMap.fromList [ (n,m) | (n, Just m) <- iPDomForSinks [[y'] | y' <- y's] csGraphM'],
       let roots' = Set.fromList y's,
-      let equivs = mergeFrom graph' csGraphM' idom' roots' m,
+      let equivs = mergeFrom graph' csGraphM' idom' roots',
       let csGraphM'' = mergedI csGraphM' equivs,
       let idom'' = fmap fromSet $ isinkdomOfTwoFinger8 csGraphM'',
       let ys = Set.fromList [ y | y <- nodes csGraphM'', idom'' ! y == Nothing]

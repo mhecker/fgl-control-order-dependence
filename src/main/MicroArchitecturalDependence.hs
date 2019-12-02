@@ -388,9 +388,8 @@ mergeFrom ::  (DynGraph gr) =>
   gr (Node, s) CFGEdge ->
   IntMap AbstractMicroArchitecturalGraphNode ->
   Set AbstractMicroArchitecturalGraphNode ->
-  Node ->
   IntMap (IntMap IntSet)
-mergeFrom graph csGraph idom roots m = mergeFromForEdgeToSuccessor graph csGraph  idom roots m
+mergeFrom graph csGraph idom roots = mergeFromForEdgeToSuccessor graph csGraph  idom roots
 
 
 
@@ -399,9 +398,8 @@ mergeFromForEdgeToSuccessor ::  (DynGraph gr, Show e, Ord e) =>
   gr (Node, s) e ->
   IntMap AbstractMicroArchitecturalGraphNode ->
   Set AbstractMicroArchitecturalGraphNode ->
-  Node ->
   IntMap (IntMap IntSet)
-mergeFromForEdgeToSuccessor graph csGraph idom roots m = assert (result == IntMap.fromAscList [ (n, IntMap.fromAscList [ (y, IntSet.fromAscList $ Set.toAscList ys) | (y, ys) <- Map.assocs yys ])  | (n, yys) <- Map.assocs $  mergeFromSlow  (Map.fromAscList [ (n, Set.fromAscList $ IntSet.toAscList $ ys) | (n, ys) <- IntMap.toAscList nodesToCsNodes]) csGraph idom roots]) result
+mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.fromAscList [ (n, IntMap.fromAscList [ (y, IntSet.fromAscList $ Set.toAscList ys) | (y, ys) <- Map.assocs yys ])  | (n, yys) <- Map.assocs $  mergeFromSlow  (Map.fromAscList [ (n, Set.fromAscList $ IntSet.toAscList $ ys) | (n, ys) <- IntMap.toAscList nodesToCsNodes]) csGraph idom roots]) result
   where result = (go orderToNodes init) ⊔ equivsNBase
           where (⊔) :: IntMap (IntMap IntSet) -> IntMap (IntMap IntSet) -> IntMap (IntMap IntSet)
                 (⊔) left right = IntMap.unionWithKey f left right
@@ -415,7 +413,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots m = assert (result == IntMa
         go workset fromSuccessors
            | IntMap.null workset  = fromSuccessors
            | otherwise         =
-               if n /= m ∧ changed then
+               if changed then
                  go (workset' `IntMap.union` influenced) (IntMap.insert n (fromSuccessorsN' ⊔ fromRootsN) fromSuccessors)
                else
                  go  workset'                                                                             fromSuccessors
@@ -445,11 +443,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots m = assert (result == IntMa
                                  ∨ (∃) (zip (IntMap.toAscList fromSuccessorsN) (IntMap.toAscList fromSuccessorsN')) (\((y,ys), (y', y's)) -> assert (y == y') $ IntSet.size ys /= IntSet.size y's)
                 influenced = IntMap.fromList [ (nodesToOrder !! m, m) | m <- pre graph n]
 
-        init = IntMap.alter f m $ IntMap.mapWithKey (\n ys -> IntMap.fromSet (const ys) ys) nodesToCsNodes
-          where f (Just ysMap) = Just $ IntMap.mapWithKey g ysMap
-                g y ys
-                 -- | y ∈ roots = ys
-                 | otherwise = IntSet.singleton y
+        init = IntMap.mapWithKey (\n ys -> IntMap.fromSet (const ys) ys) nodesToCsNodes
         rootOf = IntMap.fromList [ (y, r) | y <- nodes csGraph, let r = maxFromTreeI idom y, r ∈ roots ]
 
         nodesToCsNodes = IntMap.fromList [ (n, IntSet.fromList [ y | (y, (n', csy)) <- labNodes csGraph, n == n' ] ) | n <- nodes graph]
@@ -481,11 +475,11 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muG
 #endif
       csGraph' <- (muGraph'For graph csGraph m ::  [gr (Node, MergedMicroState a a') e]),
       let graph' = let { toM = subgraph (rdfs [m] graph) graph } in delSuccessorEdges toM m,
-      let y's  = [ (y', (n', csy)) | (y', (n', csy)) <- labNodes csGraph', m == n' ],
-      let idom' = IntMap.fromList [ (n,m) | (n, Just m) <- iPDomForSinks [[y'] | (y', (n', csy)) <- y's] csGraph'],
-      let roots' = Set.fromList [ y' | (y', (n', Merged _)) <- y's ],
+      let y's  = [ y | (y, (n', csy)) <- labNodes csGraph', m == n' ],
+      let idom' = IntMap.fromList [ (n,m) | (n, Just m) <- iPDomForSinks [[y'] | y' <- y's] csGraph'],
+      let roots' = Set.fromList y's,
       let ns = if muMerge then
-            let equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots' m
+            let equivs = mergeFromForEdgeToSuccessor graph' csGraph'  idom' roots'
                 csGraph'' = mergedI csGraph' equivs
                 idom'' = isinkdomOfTwoFinger8 csGraph''
             in Set.fromList [ n | (y, (n,_))   <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y] -- TODO: can we make this wotk with muIsDependent, too?
@@ -517,7 +511,7 @@ mergeDirectFromFor :: forall gr a a' e. (DynGraph gr, Ord a, Show a, Ord e, Show
   (IntMap (IntMap IntSet),
    gr (Node, MergedMicroState a a') e
   )
-mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muLeq, muStepFor }) graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots m, csGraph')
+mergeDirectFromFor mu@( MicroArchitecturalAbstraction { muGraph'For, muInitialState, muLeq, muStepFor }) graph n0 m = (mergeFromForEdgeToSuccessor graph' csGraph'  idom roots, csGraph')
   where   csGraph@(cs, es) = stateSets muStepFor muLeq graph muInitialState n0
           
           csGraph' = head $ muGraph'For graph csGraph m 

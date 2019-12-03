@@ -87,6 +87,7 @@ import Data.Graph.Inductive.Query.PostDominance
 import Data.Graph.Inductive.Query.PostDominance.Numbered
 import Data.Graph.Inductive.Query.NTICD
 import Data.Graph.Inductive.Query.OrderDependence
+import Data.Graph.Inductive.Query.Slices.OrderDependence
 import Data.Graph.Inductive.Query.NTIODSlice
 import Data.Graph.Inductive.Query.InfiniteDelay
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD

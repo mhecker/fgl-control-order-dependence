@@ -43,6 +43,8 @@ import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP
     wccSliceViaNticdNTIODPDomSimpleHeuristic, nticdNTIODPDomSimpleHeuristic,
   )
 
+import qualified Data.Graph.Inductive.Query.NextObservable as Next (retainsNextObservableOutside)
+
 delay     = defaultMain                               $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
 delayX    = defaultMainWithIngredients [antXMLRunner] $ testGroup "delay"    [ mkTest [delayTests], mkProp [delayProps]]
 
@@ -148,6 +150,22 @@ delayProps = testGroup "(concerning inifinte delay)" [
                             -- (if length continuations == 1 then id else traceShow (InfiniteDelay.observable s $ InfiniteDelay.runInput g input, continuations)) $
                             (if differentobservation then id else traceShow (m1, m2, n, differentobservation)) $
                             differentobservation
+                       ),
+    testProperty "nticdNTIODFastSlice is sound wrt next Observations"
+                $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                    let g = generatedGraph
+                        n = toInteger $ length $ nodes g
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                        s = SLICE.ODEP.nticdNTIODFastSlice g ms
+                    in Next.retainsNextObservableOutside g s,
+    testProperty "nticdNTIODFastSlice is minimal wrt next Observations"
+                $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                    let g = generatedGraph
+                        n = toInteger $ length $ nodes g
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                        s = SLICE.ODEP.nticdNTIODFastSlice g ms
+                    in (∀) s (\n -> n ∈ ms ∨
+                         let s' = Set.delete n s in not $ Next.retainsNextObservableOutside g s'
                        ),
     testPropertySized 25 "inifiniteDelays  is unique w.r.t nticdNTIODFastSlice"
                 $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->

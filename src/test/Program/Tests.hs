@@ -100,6 +100,7 @@ import Data.Graph.Inductive.Query.BalancedSCC
 import Data.Graph.Inductive.Arbitrary
 import Data.Graph.Inductive.Query.TSCD
 import Data.Graph.Inductive.Query.PureTimingDependence
+import Data.Graph.Inductive.Query.NextObservable
 import Data.Graph.Inductive.Query.Util.GraphTransformations (sinkShrinkedGraph)
 
 import Data.Tree

@@ -102,6 +102,7 @@ library
     Util
     Data.Graph.Inductive.Arbitrary.Reducible
     Data.Graph.Inductive.FA
+    Data.Graph.Inductive.Query.NextObservable
     Data.Graph.Inductive.Query.DataDependence
     Data.Graph.Inductive.Query.InterThreadDependence
     Data.Graph.Inductive.Query.TSCD

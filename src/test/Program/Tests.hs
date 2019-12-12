@@ -135,7 +135,7 @@ aes_main_ct = Aes {
   }
 
 aes_main_ct_precache = Aes {
-    cacheSize = 16,
+    cacheSize = 10,
     forMain = br_aes_small_cbcenc_main_ct_precache mainInput Skip,
     encryptStateInputNode0 = 274,
     keyInputNode = 291

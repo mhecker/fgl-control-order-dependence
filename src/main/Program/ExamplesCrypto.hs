@@ -138,20 +138,18 @@ rconConst = [
 {-
 subBytesIteratorIndex   = Global "subBytesIteratorIndex"
 addRoundIteratorIndex   = Global "addRoundIteratorIndex"
-cbcEncRunIndex          = Global "cbcEncRunIndex"
 encryptIndex            = Global "encryptIndex"
 encryptIndexU           = Global "encryptIndexU"
 -}
 subBytesIteratorIndex   = Register 1
-addRoundIteratorIndex   = Register 2
-cbcEncRunIndex          = Register 3
+addRoundIteratorIndex   = Register 1
 encryptIndex            = Register 4
 encryptIndexU           = Register 5
-addRoundTmp             = Register 6
-subBytesTmp             = Register 7
-subBytesTmp2            = Register 8
-addRoundTmp2            = Register 9
-addRoundTmp3            = Register 10
+addRoundTmp             = Register 2
+subBytesTmp             = Register 2
+subBytesTmp2            = Register 3
+addRoundTmp2            = Register 3
+addRoundTmp3            = Register 4
 ioTmp                   = Register 11
 subBytesPreTmp          = Register 12
 orderSkeyCacheTmp       = Register 13
@@ -193,7 +191,7 @@ rotateTmp             = Global "rotateTmp"
 
 allNames = assert (length vars == (Set.size $ Set.fromList vars))
          $ assert (length arrs == (Set.size $ Set.fromList arrs))
-  where vars =   [subBytesIteratorIndex, addRoundIteratorIndex, shiftRowsTmp, cbcEncRunIndex, encryptIndex, encryptIndexU, expandKeyN] ++ mixColumnsS ++ mixColumnsR ++ mixColumnsB ++ expandKeyT
+  where vars =   [subBytesIteratorIndex, addRoundIteratorIndex, shiftRowsTmp, encryptIndex, encryptIndexU, expandKeyN] ++ mixColumnsS ++ mixColumnsR ++ mixColumnsB ++ expandKeyT
              ++  [aesKeySchedI, aesKeySchedJ, aesKeySchedK, aesKeySchedNK, aesKeySchedNKF]
         arrs = [skey, key]
 

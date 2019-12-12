@@ -724,7 +724,6 @@ expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheArray, precacheVar }) =
   where body =
                        precacheArray wholeArray skey
                  `Seq` precacheArray wholeArray sbox
-                 `Seq` precacheArray wholeArray state
                  `Seq` precacheArray [0] rcon
                  `Seq` Ass t0 (ArrayRead skey (Var size `Minus` (Val 4)))
                  `Seq` Ass t1 (ArrayRead skey (Var size `Minus` (Val 3)))

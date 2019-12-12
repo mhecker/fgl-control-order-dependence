@@ -722,7 +722,7 @@ expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheArray, precacheVar }) =
                        )
                  `Seq` forFromToStepUsing (from $ keySize `div` 8) (from $ scheduleSize256 - 4) 4 size body
   where body =
-                       precacheArray wholeArray skey
+                       Skip
                  `Seq` Ass t0 (ArrayRead skey (Var size `Minus` (Val 4)))
                  `Seq` Ass t1 (ArrayRead skey (Var size `Minus` (Val 3)))
                  `Seq` Ass t2 (ArrayRead skey (Var size `Minus` (Val 2)))

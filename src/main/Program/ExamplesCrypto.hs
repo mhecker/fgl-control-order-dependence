@@ -796,6 +796,12 @@ subs_            = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_
 subs_ct          = SubPrograms { initConstants =                simpleRcon, sub_bytes = sub_bytes_ct,          sub_bytes_4 = sub_bytes_4_ct,          precacheArray = const $ const Skip, precacheVar = const Skip}
 subs_ct_precache = SubPrograms { initConstants = br_aes_S `Seq` simpleRcon, sub_bytes = sub_bytes_ct_precache, sub_bytes_4 = sub_bytes_4_ct_precache, precacheArray = precacheArray_ct_precache, precacheVar = pprecacheVar }
 
+subs_procs = SubPrograms { initConstants = CallProcedure "initConstants", sub_bytes = CallProcedure "sub_bytes", sub_bytes_4 = const4 $ CallProcedure "sub_bytes_4", precacheArray = precacheArray, precacheVar = precacheVar }
+  where const4 c _ _ _ _ = c
+        precacheArray is a   = CallProcedure $ "precache " ++ (show is) ++ " in " ++ (simpleShow a)
+        precacheVar x        = CallProcedure $ "precache "                        ++ (simpleShow x)
+
+
 type Main = For -> For -> For
 br_aes_small_cbcenc_mainFor :: SubPrograms -> Main
 br_aes_small_cbcenc_mainFor subs@(SubPrograms { initConstants, precacheArray }) = \input output ->
@@ -811,6 +817,8 @@ br_aes_small_cbcenc_main    = br_aes_small_cbcenc_mainFor subs_
 br_aes_small_cbcenc_main_ct = br_aes_small_cbcenc_mainFor subs_ct
 br_aes_small_cbcenc_main_ct_precache =
                               br_aes_small_cbcenc_mainFor subs_ct_precache
+br_aes_small_cbcenc_main_procs =
+                              br_aes_small_cbcenc_mainFor subs_procs
 
 type PrecacheArray = [Val] -> Array -> For
 

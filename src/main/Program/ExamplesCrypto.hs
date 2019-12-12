@@ -713,10 +713,7 @@ scheduleCoreFor (SubPrograms { sub_bytes_4 }) t0 t1 t2 t3 n =
 
 expandKeyFor :: SubPrograms -> For
 expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheArray, precacheVar }) =
-                       precacheArray wholeArray skey
-                 `Seq` precacheArray wholeArray state
-                 `Seq` precacheArray [0] rcon
-                 `Seq` Ass n (Val 1)
+                       Ass n (Val 1)
                  `Seq` forFromToStepUsing 0 31 1 i (
                                  AssArr skey (AssertRange 0 31 $ Var i) (ArrayRead key (AssertRange 0 31 $ Var i))
                        )

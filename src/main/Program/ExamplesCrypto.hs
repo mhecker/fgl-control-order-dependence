@@ -741,7 +741,6 @@ expandKeyFor subs@(SubPrograms { sub_bytes_4, precacheArray, precacheVar }) =
                            Skip
                        ))
                  `Seq` precacheArray wholeArray sbox
-                 `Seq` precacheArray wholeArray skey
                  `Seq` (If ((Var size `Mod` (Val $ from $ keySize `div` 8)) `Eeq` (Val 16)) {- then -} (
                            sub_bytes_4 t0 t1 t2 t3
                        ) {- else -} (

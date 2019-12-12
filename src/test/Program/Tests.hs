@@ -142,16 +142,19 @@ aes_main_ct_precache = Aes {
   }
 
 
-main = let {
-         aes@(Aes { cacheSize, forMain, encryptStateInputNode0, keyInputNode }) = aes_main_ct_precache ;
+main = forM_ [2,4,6,8,10,12,14,16] (\cacheSize ->
+       let {
+         aes@(Aes { forMain, encryptStateInputNode0, keyInputNode }) = aes_main ;
          debugNs = [encryptStateInputNode0, keyInputNode] ;
          pr = for2Program $ twoAddressCode $ forMain :: Program Gr ;
          graph = tcfg pr ;
          n0 = entryOf pr $ procedureOf pr $ mainThread pr ;
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
-         results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSetsDD.allFromDataDepJoined cacheSize) graph n0 ;
+         --- results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSetsDD.allFromDataDepJoined cacheSize) graph n0 ;
+         results@(csGraph, csd, (ccg, costs)) = fromMu (Precise.cacheAbstraction cacheSize) graph n0 ;
        } in
   do
+    putStrLn  $ "cacheSize: " ++ (show cacheSize)
     putStrLn  $ show $ length $ nodes $ graph
     putStrLn  $ show $ (n0,nx)
     showGraphWith simpleShow simpleShow $ withNodes $ graph
@@ -159,8 +162,11 @@ main = let {
     putStrLn  $ show $ length $ nodes $ ccg
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
-    putStrLn  $ show $ cacheTimingSliceFor cacheSize results graph debugNs n0 (Set.fromList [nx])
+    showGraph $ withNodes $ (fromSuccMap $ csd :: Gr () ())
+    putStrLn  $ show csd
 
+    putStrLn  $ show $ cacheTimingSliceFor cacheSize results graph debugNs n0 (Set.fromList [nx])
+   )
     
     -- putStrLn  $ show $ length $ nodes $ csGraph
     -- showGraphWith simpleShow simpleShow $ withNodes $ csGraph

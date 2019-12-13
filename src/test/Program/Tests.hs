@@ -3,6 +3,7 @@
 module Program.Tests where
 
 import System.Process
+import System.Environment
 
 import Data.Graph.Inductive.Dot
 
@@ -142,8 +143,11 @@ aes_main_ct_precache = Aes {
   }
 
 
-main = forM_ [2,4,6,8,10,12,14,16] (\cacheSize ->
-       let {
+main = do
+  [cacheSizeS] <- getArgs
+  let {
+         cacheSize = read cacheSizeS ;
+         count = Map.fold (\s n -> n + Set.size s) 0 ;
          aes@(Aes { forMain, encryptStateInputNode0, keyInputNode }) = aes_main ;
          debugNs = [encryptStateInputNode0, keyInputNode] ;
          pr = for2Program $ twoAddressCode $ forMain :: Program Gr ;
@@ -152,8 +156,8 @@ main = forM_ [2,4,6,8,10,12,14,16] (\cacheSize ->
          nx = exitOf  pr $ procedureOf pr $ mainThread pr ;
          --- results@(csGraph, csd, (ccg, costs)) = fromAll (AgeSetsDD.allFromDataDepJoined cacheSize) graph n0 ;
          results@(csGraph, csd, (ccg, costs)) = fromMu (Precise.cacheAbstraction cacheSize) graph n0 ;
-       } in
-  do
+         s = cacheTimingSliceFor cacheSize results graph debugNs n0 (Set.fromList [nx]) ;
+       } in do
     putStrLn  $ "cacheSize: " ++ (show cacheSize)
     putStrLn  $ show $ length $ nodes $ graph
     putStrLn  $ show $ (n0,nx)
@@ -163,11 +167,10 @@ main = forM_ [2,4,6,8,10,12,14,16] (\cacheSize ->
     showGraphWith simpleShow simpleShow $ withNodes $ ccg
 
     showGraph $ withNodes $ (fromSuccMap $ csd :: Gr () ())
-    putStrLn  $ show csd
+    putStrLn  $ show (count csd, csd)
 
-    putStrLn  $ show $ cacheTimingSliceFor cacheSize results graph debugNs n0 (Set.fromList [nx])
-   )
-    
+    putStrLn  $ show (Set.size s, s)
+    putStrLn  $ (show cacheSize) ++ " & " ++ (show $ csGraphSize csGraph) ++ " & " ++ (show $ count csd) ++ " & " ++ (show $ Set.size s) ++ " &   &  \\\\"
     -- putStrLn  $ show $ length $ nodes $ csGraph
     -- showGraphWith simpleShow simpleShow $ withNodes $ csGraph
 

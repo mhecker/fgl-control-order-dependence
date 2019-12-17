@@ -188,12 +188,9 @@ incAll cacheSize cobj cache = cache'
         cache' = fmap inc cache
 
         inc ages = ages'
-          where ages' = filter $ plus1 ages
-                filter :: Ages -> Ages
-                filter = Set.map f
-                  where f a = if a >= cacheSizeA then infTime else a
+          where ages' = plus1 ages
                 plus1 ages = if infTime ∈ ages then Set.insert infTime plussed' else plussed'
-                  where plussed = Set.fromList [ a' | a@(Age (Just _)) <- Set.toList ages, a' <- as a ]
+                  where plussed = Set.fromList [ if a' >= cacheSizeA then infTime else a' | a@(Age (Just _)) <- Set.toList ages, a' <- as a ]
                         as a 
                           | (∀) cobjAges' (       >= a ) = [     a + 1]
                           | (∀) cobjAges' (not . (>= a)) = [ a        ]
@@ -201,7 +198,7 @@ incAll cacheSize cobj cache = cache'
                          where cobjAges' = Set.delete a cobjAges
 
                         plussed' = assert (result == plussed) $ result
-                          where result =  Set.fromAscList [ a' | a@(Age (Just _)) <- Set.toAscList ages, a' <- as' a ]
+                          where result =  Set.fromAscList [ if a' >= cacheSizeA then infTime else a' | a@(Age (Just _)) <- Set.toAscList ages, a' <- as' a ]
                         max = Set.findMax cobjAges
                         min = Set.findMin cobjAges
                         as' a 

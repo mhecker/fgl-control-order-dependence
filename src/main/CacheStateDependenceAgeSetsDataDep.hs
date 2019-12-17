@@ -237,7 +237,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
    $ let result' = defsForSlowDef        cacheSize nodeFor (n, e, cache, cache') in assert (Map.keysSet result ⊇ result')
    -- $ (let result'= defsForSlowPsuedoDef  cacheSize nodeFor (n, e, cache, cache') in if not (Map.keysSet result == result') then error $ show $ ("Def ", e, cache, Map.keysSet result, result') else id)
    -- $ (let result'= defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') in if not (Map.keysSet result == result') then error $ show $ ("Def2", e, cache, Map.keysSet result, result') else id)
-   $ (if (∃) (Map.elems result) (\(MinAge min, MaxAge max) -> max <= min) then error $ "defsForFast: " ++ (show (n,e,cache, result)) else id)
+   $ assert ((∀) (Map.elems result) (\(MinAge min, MaxAge max) -> max <= min))
    $ result
   where
                 second (_,aU,_  ) = aU
@@ -277,7 +277,7 @@ type ModsFor gr =
 modsForFast :: DynGraph gr => ModsFor gr
 modsForFast cacheSize csGraphG' co =
       id
-    $ let result' = modsForSlowDef cacheSize csGraphG' co in if result /= result' then error $ show (result, result') else id
+    $ let result' = modsForSlowDef cacheSize csGraphG' co in assert (result == result')
     $ result
   where
                 second (_,aU,_  ) = aU
@@ -605,7 +605,7 @@ cacheDepsFast cacheSize e cache =
                                                                ∧ (not $ List.null $ as),
                                                       let right = not $ List.null $ [ a | a <- Set.toList ages, aUmin < a  ∧  a < aUmax ],
 
-                                                      if left /= right then error "leftright" else True,
+                                                      assert (left == right) True,
 
                                                       left,
                                                       let mmin = foldl1 min as,
@@ -853,7 +853,7 @@ allFromDataDepSimpleFor mu modsFor cacheSize graph n0 = result
   where result = (
           invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice  = Set.delete m $ cacheDataDepSliceSimple modsFor cacheSize graph csGraph csGraphG ddeps m,
                                                                                        let slice' = Set.delete m $ cacheDataDepSlice       modsFor cacheSize       csGraph csGraphG ddeps m,
-                                                                                       if slice /= slice' then error $ show $ (slice, slice') else True
+                                                                                       assert (slice == slice) True
                                   ],
           edgeCosts,
           csGraph
@@ -897,11 +897,10 @@ ageSetsLeq  a b = (∀) (Map.intersectionWith (⊆) a b) (== True)
 
 cacheDataDepSliceSimple :: forall gr. DynGraph gr => ModsFor gr -> CacheSize -> gr CFGNode CFGEdge -> CsGraph AbstractCacheState CFGEdge ->  gr (Node, AbstractCacheState) CFGEdge ->  Map (Node, CachedObject) (IntSet) -> Node -> Set Node
 cacheDataDepSliceSimple modsFor cacheSize graph0 csGraph csGraphG ddeps m =
-     (if not ((List.sort nnodes) == (Set.toList $ Set.fromList $ nnodes)) then error $ show $ ("nnodes: ", nnodes)               else id)
-   $ (if not ((List.sort nnodes) == (List.sort $ nodes $ graph0))         then error $ show $ ("graph0: ", nnodes, nodes graph0) else id)
+     assert ((List.sort nnodes) == (Set.toList $ Set.fromList $ nnodes))
+   $ assert ((List.sort nnodes) == (List.sort $ nodes $ graph0))
    $ result
   where
-        rrequire b x = if b then x else error "rrequire"
         result = slice
         nnodes = [ n | (y, (n, _)) <- labNodes csGraphG ]
 

@@ -262,16 +262,16 @@ stateSets step (Just (JoinNode (⊔) (⊑))) g σ0 n0 = (
            fmap Set.singleton cs,
            IntMap.fromAscList [ (n, Set.fromList [ (cs !! n, e, (n', cs !! n')) | (e, n') <- Set.toList esN ]) | (n, esN) <- IntMap.toAscList es ]
          )
-  where (cs, es) = go (IntSet.singleton n0)
+  where (cs, es) = go (IntMap.singleton (nodesToOrder !! n0) n0)
                       (IntMap.insert n0 σ0 $ IntMap.empty)
                       (IntMap.empty)
-        go :: IntSet -> IntMap s -> IntMap (Set (e, Node)) -> (IntMap s, IntMap (Set (e, Node)))
+        go :: IntMap Node -> IntMap s -> IntMap (Set (e, Node)) -> (IntMap s, IntMap (Set (e, Node)))
         go workset cs es
-         | IntSet.null workset = (cs, es)
+         | IntMap.null workset = (cs, es)
          | otherwise         =
                                -- traceShow "{=======" $  traceShow (n, workset) $ traceShow cs $ traceShow new $ traceShow "====}"
                                go workset0' cs' es'
-             where (n, workset0) = IntSet.deleteFindMin workset
+             where ((_,n), workset0) = IntMap.deleteFindMin workset
                    σ = cs !! n
 
                    all = [ (e', n', σ') | (n',e) <- lsuc g n, (e',σ') <- step e σ] 
@@ -284,9 +284,11 @@ stateSets step (Just (JoinNode (⊔) (⊑))) g σ0 n0 = (
                      where insert (e', n', σ')    = IntMap.insertWith (∪) n (Set.singleton $ (e', n'))
 
                    workset0' = foldr insert workset0 new
-                     where insert (e', n', σ')    = IntSet.insert n'
+                     where insert (e', n', σ')    = IntMap.insert (nodesToOrder !! n') n'
 
         (!!) = (IntMap.!)
+        order = topsort g
+        nodesToOrder = IntMap.fromList $ zip order [0..]
 
 
 stateGraphForSets :: (Ord s, Graph gr, Ord e) => CsGraph s e -> gr (Node, s) e

@@ -848,6 +848,26 @@ allFromDataDepFor mu modsFor cacheSize graph n0 = result
         ddeps = cacheDataDepGWork2 cacheSize csGraphG
 
 
+allFromDataDepSimpleFor :: forall gr. DynGraph gr => MicroArchitecturalAbstraction AbstractCacheState AbstractCacheState CFGEdge -> ModsFor gr ->  CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState CFGEdge)
+allFromDataDepSimpleFor mu modsFor cacheSize graph n0 = result
+  where result = (
+          invert'' $ Map.fromList [ (m, slice) | m <- nodes graph, mayBeCSDependent m, let slice  = Set.delete m $ cacheDataDepSliceSimple modsFor cacheSize graph csGraph csGraphG ddeps m,
+                                                                                       let slice' = Set.delete m $ cacheDataDepSlice       modsFor cacheSize       csGraph csGraphG ddeps m,
+                                                                                       if slice /= slice' then error $ show $ (slice, slice') else True
+                                  ],
+          edgeCosts,
+          csGraph
+         )
+          
+        (csd, edgeCosts, csGraph) = muMergeDirectOf mu graph n0 
+        csGraphG = stateGraphForSets csGraph :: gr (Node, AbstractCacheState) CFGEdge
+        
+        mayBeCSDependent m = (∃) (lsuc graph m) (\(n,l) -> Set.size (edgeCosts ! (m,n,l)) > 1)
+
+        ddeps = cacheDataDepGWork2 cacheSize csGraphG
+
+
+
 allFromDataDep :: forall gr. DynGraph gr =>  CacheSize -> gr CFGNode CFGEdge -> Node -> (Map Node (Set Node), Costs, CsGraph AbstractCacheState CFGEdge)
 allFromDataDep       cacheSize graph n0 = result
   where none _ _ _ = Set.empty
@@ -858,7 +878,7 @@ allFromDataDepJoined :: forall gr. DynGraph gr =>  CacheSize -> gr CFGNode CFGEd
 allFromDataDepJoined cacheSize graph n0 = result
   where
         mu = cacheAbstractionJoined cacheSize
-        result = allFromDataDepFor mu modsForFast cacheSize graph n0
+        result = allFromDataDepSimpleFor mu modsForFast cacheSize graph n0
 
 csdFromDataDep :: DynGraph gr =>  CacheSize -> gr CFGNode CFGEdge -> Node -> Map Node (Set Node)
 csdFromDataDep        cacheSize g n0 = first $ allFromDataDep       cacheSize g n0

@@ -187,8 +187,20 @@ incAll cacheSize cobj cache = cache'
           Just ages -> ages
         cache' = fmap inc cache
 
+        max = Set.findMax cobjAges
+        min = Set.findMin cobjAges
+
+        plus1Widening a = let a' = a + 1 in if a' >= cacheSizeA then infTime else a'
+
         inc ages = ages'
-          where ages' = plus1 ages
+          where ages'
+                  | max     < minAges  = ages
+                  | maxAges < min      = Set.mapMonotonic plus1Widening ages
+                  | otherwise          = plus1 ages
+
+                maxAges = Set.findMax ages
+                minAges = Set.findMin ages
+
                 plus1 ages = if infTime ∈ ages then Set.insert infTime plussed' else plussed'
                   where plussed = Set.fromList [ if a' >= cacheSizeA then infTime else a' | a@(Age (Just _)) <- Set.toList ages, a' <- as a ]
                         as a 
@@ -199,8 +211,6 @@ incAll cacheSize cobj cache = cache'
 
                         plussed' = assert (result == plussed) $ result
                           where result =  Set.fromAscList [ if a' >= cacheSizeA then infTime else a' | a@(Age (Just _)) <- Set.toAscList ages, a' <- as' a ]
-                        max = Set.findMax cobjAges
-                        min = Set.findMin cobjAges
                         as' a 
                           | min >= a  = [     a + 1]
                           | max <= a  = [ a        ]

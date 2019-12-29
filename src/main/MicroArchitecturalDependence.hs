@@ -269,7 +269,7 @@ stateSets step (Just (JoinNode (⊔) (⊑))) g σ0 n0 = (
         go workset cs es
          | IntSet.null workset = (cs, es)
          | otherwise         =
-                               -- traceShow "{=======" $  traceShow (n, workset) $ traceShow cs $ traceShow new $ traceShow "====}"
+                               -- (if n `elem` [11,13] then traceShow "{=======" $  traceShow (n, σ) $ {- traceShow new $ -} traceShow "====}" else id) $ 
                                go workset0' cs' es'
              where (n, workset0) = IntSet.deleteFindMin workset
                    σ = cs !! n

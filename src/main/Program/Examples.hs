@@ -3477,6 +3477,27 @@ exampleArrayNested = toProgramIntra $ IntraGeneratedProgram
 
 
 
+exampleSimpleLoop :: Program Gr
+exampleSimpleLoop = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main")])
+    (Map.fromList [("main", Generated (
+                      Skip
+               `Seq`  Ass (Global "l") (Val 0)
+               `Seq`  Ass (Global "h") (Val 255)
+               `Seq`      Skip
+               -- `Seq`  AssArr (Array "a") (Var $ Global "l") (Var $ Global "h")
+               `Seq`  ForC 32 (
+                          Skip
+               `Seq`      Ass (Register 1) (Var $ Global "x")
+               -- `Seq`      Ass (Register 2) (Var $ Global "y")
+               -- `Seq`      Ass (Register 2) (Var $ Global "a")
+               `Seq`      Skip
+                      )
+                     ) undefined undefined undefined)])
+
+
+
+
 exampleInteresingAgeSets1 :: Program Gr
 exampleInteresingAgeSets1 = compileAllToProgram a b'
   where (a,b) = toCodeSimpleWithArrays generated

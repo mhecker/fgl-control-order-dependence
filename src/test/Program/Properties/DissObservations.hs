@@ -21,7 +21,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds)
+import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -52,10 +52,12 @@ import Data.Maybe(fromJust)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges)
-import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable)
+import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable, newNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 -- import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
+import Data.Graph.Inductive.Query.Util.GraphTransformations (sinkShrinkedGraph)
+import qualified Data.Graph.Inductive.Query.PostDominance.GraphTransformations as PDOM.TRANS (isinkdomOfSinkContraction)
 import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, mdomOfLfp,  mdomsOf, sinkdomsOf, onedomOf, isinkdomOfTwoFinger8, imdomOfTwoFinger6)
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
     sinkDF,    mDFFromUpLocalDefViaMdoms,       mDFLocalDef,     mDFLocalViaMdoms,       mDFUpGivenXViaMdoms,        mDFUpDef,     mDFTwoFinger,
@@ -123,8 +125,12 @@ properties :: TestTree
 properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps]
 
 
-mdomProps = testGroup "(concerning nontermination   sensitive postdominance)" (lemma_5_2_1 ++ observation_5_2_1 ++ observation_5_2_2 ++ lemma_5_2_2       ++ lemma_5_2_3                            ++ observation_5_2_3)
-sdomProps = testGroup "(concerning nontermination insensitive postdominance)" (lemma_5_3_1 ++ observation_5_3_1 ++ observation_5_3_2 ++ observation_5_3_3 ++ observation_5_3_4 ++ observation_5_3_6 ++ observation_5_3_7)
+mdomProps = testGroup "(concerning nontermination   sensitive postdominance)" (
+    lemma_5_2_1 ++ observation_5_2_1 ++ observation_5_2_2 ++ lemma_5_2_2       ++ lemma_5_2_3                                                 ++ observation_5_2_3
+  )
+sdomProps = testGroup "(concerning nontermination insensitive postdominance)" (
+    lemma_5_3_1 ++ observation_5_3_1 ++ observation_5_3_2 ++ observation_5_3_3 ++ observation_5_3_4 ++ observation_5_3_5 ++ observation_5_3_6 ++ observation_5_3_7 ++ observation_5_4_1 ++ observation_5_4_2
+  )
 
 
 lemma_5_2_1 = [
@@ -247,6 +253,22 @@ observation_5_3_4 = [
                     in PDF.stepsCL g sinkdom
   ]
 
+
+observation_5_3_5 = [
+    testProperty   "sinks vs roots"
+    $ \(ARBITRARY(generatedGraph)) ->
+        let g = generatedGraph
+            isinkdom = PDOM.isinkdomOfTwoFinger8 g
+            isinkdomRoots = Set.fromList $ fmap Set.fromList $ roots isinkdom
+
+            sinks         = Set.fromList $ fmap Set.fromList $ controlSinks g
+
+            -- sinkNodes = Set.fromList [ s | sink <- sinks, s <- sink]
+        in   Set.filter (\s -> Set.size s >  1) sinks == Set.filter (\r -> Set.size r  > 1) isinkdomRoots
+           ∧ Set.filter (\s -> Set.size s == 1) sinks ⊆  Set.filter (\r -> Set.size r == 1) isinkdomRoots
+  ]
+
+
 observation_5_3_6 = [
     testProperty   "sink boundedness is retained  by isinkdom step"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -270,6 +292,36 @@ observation_5_3_7 = [
   ]
 
 
+
+
+observation_5_4_1 = [
+    testProperty "reduction to postdominance trees"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g  = generatedGraph
+                        [endNode] = newNodes 1 g
+                        
+                        gs = sinkShrinkedGraph g endNode
+
+                        sinks     = controlSinks g
+                        sinkNodes = Set.fromList [ s | sink <- sinks, s <- sink]
+    
+                        sinkdom   = PDOM.sinkdomOfGfp g
+                        sinkdomGs = PDOM.sinkdomOfGfp gs
+
+                        n = Set.fromList $ nodes g
+                        siNodes = Set.fromList (nodes gs) ∖ (Set.insert endNode $ Set.fromList $ nodes g)
+                        
+                    in (∀) (n ∖ sinkNodes) (\x -> (∀) (n ∖ sinkNodes)    (\m -> (m ∈ sinkdom ! x)  ==  (m ∈ sinkdomGs ! x)))
+                     ∧ (∀) (n ∖ sinkNodes) (\x -> (∀) sinks (\s -> (∀) s (\m -> (m ∈ sinkdom ! x)  ==  (x `elem` s   ∨  (head s) ∈ sinkdomGs ! x))))
+  ]
+
+
+observation_5_4_2 = [
+    testProperty "reduction to postdominance trees: algorithm"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in (toSuccMap $ trc $ (fromSuccMap $ PDOM.TRANS.isinkdomOfSinkContraction g :: Gr () ())) == PDOM.sinkdomOfGfp g
+  ]
 
 
 

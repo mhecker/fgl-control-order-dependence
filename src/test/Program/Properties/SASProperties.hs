@@ -429,12 +429,12 @@ observation10 = [
                     ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
                     nticd = PDF.isinkDFTwoFinger g
                     ntiod =  ODEP.ntiodFastPDomSimpleHeuristic g
-                    slicer = combinedBackwardSlice g (ddep ⊔ nticd) ntiod
+                    slicer = combinedBackwardSlice (ddep ⊔ nticd) ntiod
 
                     g' = foldr (flip delSuccessorEdges) g ms
                     nticd' = PDF.isinkDFTwoFinger g'
                     empty = Map.empty
-                    slicer' = combinedBackwardSlice g (ddep ⊔ nticd') empty
+                    slicer' = combinedBackwardSlice (ddep ⊔ nticd') empty
                 in slicer ms == slicer' ms
   ]
 observationANON = [
@@ -477,6 +477,6 @@ observation9 =  [
                        wodslicer         = SLICE.ODEP.wodTEILSlice g
                        wccslicer         = FCACD.wccSlice g
                    in (not $ (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms ->
-                        let s = combinedBackwardSlice g cd Map.empty ms in s == wodslicer ms ∨ s == nticdntiodslicer ms ∨ s == wccslicer ms
+                        let s = combinedBackwardSlice cd Map.empty ms in s == wodslicer ms ∨ s == nticdntiodslicer ms ∨ s == wccslicer ms
                       ))) @? ""
   ]

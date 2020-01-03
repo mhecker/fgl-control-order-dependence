@@ -52,15 +52,15 @@ import Data.Maybe(fromJust)
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges)
-import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, Node, labNodes, subgraph, reachable)
+import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 -- import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
-import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, mdomOfLfp,  mdomsOf, sinkdomsOf, isinkdomOfTwoFinger8, imdomOfTwoFinger6)
+import qualified Data.Graph.Inductive.Query.PostDominance as PDOM (sinkdomOfGfp, mdomOfLfp,  mdomsOf, sinkdomsOf, onedomOf, isinkdomOfTwoFinger8, imdomOfTwoFinger6)
 import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
     sinkDF,    mDFFromUpLocalDefViaMdoms,       mDFLocalDef,     mDFLocalViaMdoms,       mDFUpGivenXViaMdoms,        mDFUpDef,     mDFTwoFinger,
     mDF,    sinkDFFromUpLocalDefViaSinkdoms, sinkDFLocalDef,  sinkDFLocalViaSinkdoms, sinkDFUpGivenXViaSinkdoms,  sinkDFUpDef, isinkDFTwoFinger,
-    --  noJoins, stepsCL,
+    noJoins, stepsCL,
  )
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
@@ -94,8 +94,12 @@ main      = props
 props      = defaultMain                               $ properties
 propsX     = defaultMainWithIngredients [antXMLRunner] $ properties
 
-pdom       = defaultMain                               $ testGroup "pdom"      [ mkProp [pdomProps]]
-pdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdom"      [ mkProp [pdomProps]]
+mdom       = defaultMain                               $ testGroup "pdom"      [ mkProp [mdomProps]]
+mdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdom"      [ mkProp [mdomProps]]
+
+sdom       = defaultMain                               $ testGroup "pdom"      [ mkProp [sdomProps]]
+sdomX      = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdom"      [ mkProp [sdomProps]]
+
 
 pdf        = defaultMain                               $ testGroup "pdf"       [ mkProp [pdfProps]]
 pdfX       = defaultMainWithIngredients [antXMLRunner] $ testGroup "pdf"       [ mkProp [pdfProps]]
@@ -116,38 +120,91 @@ unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [                                  ntiodTests]
 
 properties :: TestTree
-properties = testGroup "Properties" [ pdomProps, pdfProps, ntsodProps, ntiodProps]
+properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps]
 
 
-pdomProps = testGroup "(concerning generalized postdominance)" (theorem1 ++ observation1 ++ observation2)
-theorem1 = [
+mdomProps = testGroup "(concerning nontermination   sensitive postdominance)" (lemma_5_2_1 ++ observation_5_2_1 ++ observation_5_2_2 ++ lemma_5_2_2       ++ lemma_5_2_3                            ++ observation_5_2_3)
+sdomProps = testGroup "(concerning nontermination insensitive postdominance)" (lemma_5_3_1 ++ observation_5_3_1 ++ observation_5_3_2 ++ observation_5_3_3 ++ observation_5_3_4 ++ observation_5_3_6 ++ observation_5_3_7)
+
+
+lemma_5_2_1 = [
     testProperty "mdom    is reflexive"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
             mdom = PDOM.mdomOfLfp g
         in (∀) (nodes g) (\n -> n ∈ mdom ! n),
-    testProperty "sinkdom is reflexive"
-    $ \(ARBITRARY(generatedGraph)) ->
-        let g = generatedGraph
-            sinkdom = PDOM.sinkdomOfGfp g
-        in (∀) (nodes g) (\n -> n ∈ sinkdom ! n),
     testProperty "mdom    is transitive"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
             mdom = PDOM.mdomOfLfp g
-        in (∀) (Map.assocs $ mdom)    (\(x, ys) -> (∀) ys (\y -> (∀) (mdom ! y)     (\z -> z ∈ mdom ! x  ))),
-    testProperty "sinkdom    is transitive"
-    $ \(ARBITRARY(generatedGraph)) ->
-        let g = generatedGraph
-            sinkdom = PDOM.sinkdomOfGfp g
-        in (∀) (Map.assocs $ sinkdom) (\(x, ys) -> (∀) ys (\y -> (∀) (sinkdom ! y) (\z -> z ∈ sinkdom ! x))),
+        in (∀) (Map.assocs $ mdom)    (\(x, ys) -> (∀) ys (\y -> (∀) (mdom ! y)     (\z -> z ∈ mdom ! x  )))
+  ]
+observation_5_2_1 = [
     testProperty "mdom    has transitive reduction that forms a pseudo forest"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
             mdom = PDOM.mdomOfLfp g
             redu = (trr $ fromSuccMap $ mdom :: Gr () ())
             clos = toSuccMap $ trc redu
-        in (mdom    == clos) ∧ (∀) (Map.assocs $ toSuccMap $ redu) (\(n, ms) -> Set.size ms <= 1),
+        in (mdom    == clos) ∧ (∀) (Map.assocs $ toSuccMap $ redu) (\(n, ms) -> Set.size ms <= 1)
+  ]
+
+observation_5_2_2 = [
+    testProperty "ipdom_max transitive closure is mdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+        let g = generatedGraph
+            mdom = PDOM.mdomOfLfp g
+            onedomOf = PDOM.onedomOf mdom
+            redu = (trr $ fromSuccMap $ mdom :: Gr () ())
+            clos = toSuccMap $ trc redu
+            
+            mdoms = PDOM.mdomsOf g
+            closMdoms = toSuccMap $ trc $ (fromSuccMap $ mdoms :: Gr () ())
+        in   True
+           ∧ ( (∀) (nodes g) (\x -> onedomOf x == Set.fromList [ z | z <- dfs (suc redu x) redu ]) )
+           ∧ ( mdoms == Map.fromList [ (z, Set.fromList [ x | x' <- suc redu z, x <- Set.toList $ mdom ! x', x' ∈ mdom ! x ])  | z <- nodes g] )
+           ∧ ( closMdoms == mdom )
+  ]
+  
+lemma_5_2_2 = [  
+    testPropertySized 40 "noJoins mdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        mdom = PDOM.mdomOfLfp g
+                    in PDF.noJoins g mdom
+  ]
+
+lemma_5_2_3 = [ 
+    testPropertySized 40 "stepsCL mdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        mdom = PDOM.mdomOfLfp g
+                    in PDF.stepsCL g mdom
+  ]
+
+observation_5_2_3 = [
+    testProperty "imdomOfTwoFinger6^* == mdomOfLfp"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in (toSuccMap $ trc $ (fromSuccMap $ PDOM.imdomOfTwoFinger6 g :: Gr () ())) == PDOM.mdomOfLfp g
+   
+  ]
+
+
+lemma_5_3_1 = [
+    testProperty "sinkdom is reflexive"
+    $ \(ARBITRARY(generatedGraph)) ->
+        let g = generatedGraph
+            sinkdom = PDOM.sinkdomOfGfp g
+        in (∀) (nodes g) (\n -> n ∈ sinkdom ! n),
+    testProperty "sinkdom    is transitive"
+    $ \(ARBITRARY(generatedGraph)) ->
+        let g = generatedGraph
+            sinkdom = PDOM.sinkdomOfGfp g
+        in (∀) (Map.assocs $ sinkdom) (\(x, ys) -> (∀) ys (\y -> (∀) (sinkdom ! y) (\z -> z ∈ sinkdom ! x)))
+  ]
+
+observation_5_3_1 = [
     testProperty "sinkdom has transitive reduction that forms a pseudo forest"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
@@ -156,6 +213,66 @@ theorem1 = [
             clos = toSuccMap $ trc redu
         in (sinkdom == clos) ∧ (∀) (Map.assocs $ toSuccMap $ redu) (\(n, ms) -> Set.size ms <= 1)
   ]
+
+observation_5_3_2 = [
+    testProperty "ipdom_sink transitive closure is sinkdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+        let g = generatedGraph
+            sinkdom = PDOM.sinkdomOfGfp g
+            onedomOf = PDOM.onedomOf sinkdom
+            redu = (trr $ fromSuccMap $ sinkdom :: Gr () ())
+            
+            sinkdoms = PDOM.sinkdomsOf g
+            closSinkdoms = toSuccMap $ trc $ (fromSuccMap $ sinkdoms :: Gr () ())
+        in   True
+           ∧ ( (∀) (nodes g) (\x -> onedomOf x == Set.fromList [ z | z <- dfs (suc redu x) redu ]) )
+           ∧ ( sinkdoms == Map.fromList [ (z, Set.fromList [ x | x' <- suc redu z, x <- Set.toList $ sinkdom ! x', x' ∈ sinkdom ! x ])  | z <- nodes g] )
+           ∧ ( closSinkdoms == sinkdom )
+  ]
+
+
+observation_5_3_3 = [  
+    testPropertySized 40 "noJoins sinkdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinkdom = PDOM.sinkdomOfGfp g
+                    in PDF.noJoins g sinkdom
+  ]
+
+observation_5_3_4 = [ 
+    testPropertySized 40 "stepsCL sinkdom"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        sinkdom = PDOM.sinkdomOfGfp g
+                    in PDF.stepsCL g sinkdom
+  ]
+
+observation_5_3_6 = [
+    testProperty   "sink boundedness is retained  by isinkdom step"
+    $ \(ARBITRARY(generatedGraph)) ->
+        let g = generatedGraph
+            sinkdom = PDOM.sinkdomOfGfp g
+            redu = toSuccMap (trr $ fromSuccMap $ sinkdom :: Gr () ())
+            sinks = controlSinks g
+            sinkNodes = Set.fromList [ s | sink <- sinks, s <- sink]
+        in (∀) (Map.assocs redu) (\(x, ys) -> (∀) ys (\y ->
+             (not $ Set.null $ (sinkdom ! x ∩ sinkNodes)) → (∃) sinks (\sink -> (∀) sink (\s -> s ∈ sinkdom ! x ∧ s ∈ sinkdom ! y))
+           ))
+  ]
+
+
+observation_5_3_7 = [
+    testProperty "isinkdomOfTwoFinger8^* == sinkdomOfGfp"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in (toSuccMap $ trc $ (fromSuccMap $ PDOM.isinkdomOfTwoFinger8 g :: Gr () ())) == PDOM.sinkdomOfGfp g
+   
+  ]
+
+
+
+
+
 observation1 = [
     testProperty   "rdfs sinkdom approximation"
     $ \(ARBITRARY(generatedGraph)) ->
@@ -195,18 +312,6 @@ observation1topsort = [
                      ⊔ (∐) [ Map.fromList [ (m, Set.fromList [n]) ]  | (n,m) <- forestEdges forest, not $ m ∈ sinkNodes]
             sinkdom = PDOM.sinkdomOfGfp g
         in    (∀) (Map.assocs isinkdom) (\(n, ms) -> Set.size ms <= 1)  ∧  (toSuccMap $ trc $ (fromSuccMap $ isinkdom :: Gr () ())) ⊒ sinkdom
-  ]
-observation2 = [
-    testProperty   "sink boundedness is retained  by isinkdom step"
-    $ \(ARBITRARY(generatedGraph)) ->
-        let g = generatedGraph
-            sinkdom = PDOM.sinkdomOfGfp g
-            redu = toSuccMap (trr $ fromSuccMap $ sinkdom :: Gr () ())
-            sinks = controlSinks g
-            sinkNodes = Set.fromList [ s | sink <- sinks, s <- sink]
-        in (∀) (Map.assocs redu) (\(x, ys) -> (∀) ys (\y ->
-             (not $ Set.null $ (sinkdom ! x ∩ sinkNodes)) → (∃) sinks (\sink -> (∀) sink (\s -> s ∈ sinkdom ! x ∧ s ∈ sinkdom ! y))
-           ))
   ]
 pdomTests = testGroup "(concerning generalized postdominance)" $
   []

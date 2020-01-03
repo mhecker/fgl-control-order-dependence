@@ -177,6 +177,24 @@ executable sas-tests.bin
   build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
   other-extensions:    COMMON_EXTENSIONS
   default-language:    Haskell2010
+
+
+executable diss-props.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Properties/DissObservations.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.DissObservations.props
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+  
+executable diss-tests.bin
+  hs-source-dirs: src/test/
+  main-is:             Program/Properties/DissObservations.hs
+  ghc-options:         COMMON_GHC_FLAGS -main-is Program.Properties.DissObservations.tests
+  build-depends:       COMMON_DEPENDENCIES, TEST_DEPENDENCIES
+  other-extensions:    COMMON_EXTENSIONS
+  default-language:    Haskell2010
+
   
 
 

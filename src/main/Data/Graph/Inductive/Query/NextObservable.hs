@@ -43,3 +43,15 @@ retainsNextObservable g s n = retainsNextObservableFor g' s n (suc g n)
 retainsNextObservableOutside :: DynGraph gr => gr a b -> Set Node -> Bool
 retainsNextObservableOutside g s = (∀) (Set.fromList (nodes g) ∖ s) (\n -> retainsNextObservableFor g' s n (suc g n))
   where g' = Set.fold (flip delSuccessorEdges) g s
+
+
+
+
+weaklyControlClosedFor :: Graph gr => gr a b -> Set Node -> Node -> Bool
+weaklyControlClosedFor g' s n =
+    require (not $ n ∈ s) $ Set.size obsN <= 1
+  where obsN = nextObservableFor g' s n 
+
+weaklyControlClosed :: DynGraph gr => gr a b -> Set Node -> Bool
+weaklyControlClosed g s = (∀) (Set.fromList (nodes g) ∖ s) (\n -> weaklyControlClosedFor g' s n)
+  where g' = Set.fold (flip delSuccessorEdges) g s

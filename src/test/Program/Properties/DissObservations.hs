@@ -21,7 +21,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots)
+import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots, restrict)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -51,7 +51,7 @@ import Data.Maybe(fromJust)
 
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges)
+import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges, removeDuplicateEdges)
 import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable, newNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
@@ -70,7 +70,7 @@ import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (
     wodTEILSliceViaISinkDom, wccSliceViaISinkDom, nticdNTIODSliceViaISinkDom,
   )
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
-    wodTEILSliceViaNticd,    wccSliceViaNticd,    nticdNTIODSlice
+    wodTEILSliceViaNticd,    wccSliceViaNticd,    nticdNTIODSlice, nticdSlice
   )
 import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
     nticdNTIODSlice, wodTEILSlice,
@@ -80,9 +80,20 @@ import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod, dodDef,
+    mustOfLfp, mustOfGfp,
+    wodTEIL', wodTEIL'PDom,
+    dodColoredDagFixed, dodColoredDagFixedFast,
     ntsod, ntsodFastPDom,
     ntiod, ntiodFastPDom, ntiodFastPDomSimpleHeuristic, 
   )
+
+import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
+    ntscdNTSODFastPDomSlice, 
+  )
+
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay ( Input(..), allChoices, runInput, observable)
+
+import qualified Data.Graph.Inductive.Query.NextObservable as Next (retainsNextObservableOutside, weaklyControlClosed)
 
 import Data.Graph.Inductive.Arbitrary
 
@@ -119,7 +130,7 @@ mkTest = testGroup "Unit tests"
 mkProp = testGroup "Properties"
 
 unitTests :: TestTree
-unitTests  = testGroup "Unit tests" [                                  ntiodTests]
+unitTests  = testGroup "Unit tests" [                                 ntsodTests, ntiodTests]
 
 properties :: TestTree
 properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps]
@@ -433,15 +444,22 @@ pdfTests = testGroup "(concerning generalized postdominance frontiers)" $
   []
 
 
-ntsodProps = testGroup "(concerning nontermination   sensititve order dependence)" (dodIsDodDef ++ lemma4 ++ observation3 ++ observation4)
+ntsodProps = testGroup "(concerning nontermination   sensititve order dependence)" (dodIsDodDef ++ lemma_6_1_2 ++ observation_6_1_1 ++ observation_6_2_1 ++ observation_6_2_2 ++ observation_6_2_3 ++ observation_6_2_4 ++ observation_6_2_5 ++ observation_6_3_1 ++ observation_6_3_2)
+
 dodIsDodDef = [
     testPropertySized 40  "dod  == dodDef"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                     in ODEP.dod           g ==
-                       ODEP.dodDef        g
+                       ODEP.dodDef        g,
+    testPropertySized 40  "dod  == dodColoredDagFixedFast"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in ODEP.dod           g ==
+                       ODEP.dodColoredDagFixedFast        g
   ]
-lemma4 = [
+
+lemma_6_1_2 = [
       testProperty  "dod is contained in imdom cycles, and only possible for immediate entries into cycles"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -455,7 +473,54 @@ lemma4 = [
                           )))
                         )
   ]
-observation3 = [
+
+observation_6_1_1 = [
+    testProperty  "dodColoredDagFixedFast  == dodColoredDagFixed"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                    in ODEP.dodColoredDagFixedFast g ==
+                       ODEP.dodColoredDagFixed     g
+  ]
+
+observation_6_2_1 = [
+    testProperty  "dod implies ntsod"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        dod = ODEP.dod g
+                        ntsod = ODEP.ntsod g
+                    in  (∀) (Map.assocs dod) (\((m1,m2), ns) ->
+                          (∀) ns (\n -> n ∈ ntsod ! (m1,m2) ∧
+                                        n ∈ ntsod ! (m2,m1)
+                          )
+                        ),
+    testProperty  "ntsod implies dod"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        dod = ODEP.dod g
+                        ntsod = ODEP.ntsod g
+                    in  (∀) (Map.keys ntsod) (\(m1,m2) ->
+                          (∀) (ntsod ! (m1,m2)  ⊓  ntsod ! (m2,m1)) (\n -> n ∈ dod ! (m1,m2)
+                          )
+                        )
+  ]
+
+
+observation_6_2_2 = [
+    testProperty  "ntscdDodSlice == ntscdNTSODSlice property"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        ntsod = ODEP.ntsod g
+                        ntscd = NTICD.ntscdViaMDom g
+                        ntscdTrc = trc $ (fromSuccMap ntscd :: Gr () ())
+                    in  (∀) (Map.assocs ntsod) (\((m1,m2), ns) ->
+                          (∀) ns (\n -> n ∈ ntsod ! (m2,m1) ∨
+                                        (∃) (ns ∩ (ntsod ! (m2, m1))) (\n' -> n' ∊ (suc ntscdTrc n))
+                          )
+                        )
+  ]
+
+  
+observation_6_2_3 = [
       testProperty  "ntsod is contained in imdom cycles, and only possible for immediate entries into cycles"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -469,7 +534,24 @@ observation3 = [
                           )))
                         )
   ]
-observation4 = [
+
+
+observation_6_2_4 = [
+      testProperty  "mdomOfLfp m2  == mustOfLfp"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = ODEP.mustOfLfp g
+                    in  (∀) (nodes g) (\m2 ->
+                           let g2    = delSuccessorEdges g m2
+                               mdom2 = PDOM.mdomOfLfp g2
+                           in (∀) (nodes g) (\n -> (∀) (nodes g) (\m1 ->  if m1 == m2  then True else
+                                ((m1,m2) ∈ must ! n) ↔ (m1 ∈ mdom2 ! n)
+                           ))
+                       )
+  ]
+
+
+observation_6_2_5 = [
       testPropertySized 60  "ntsod reduction to ntscd"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -500,12 +582,129 @@ observation4 = [
                     in ODEP.ntsodFastPDom   g ≡
                        ODEP.ntsod           g
   ]
-ntsodTests = testGroup "(concerning nontermination   sensititve order dependence)" $
-  []
 
 
-ntiodProps = testGroup "(concerning nontermination insensititve order dependence)" (observation5 ++ observation6 ++ observation8 ++ theorem5 ++ observation10 ++  observationANON)
-observation5 = [
+observation_6_3_1 = [
+    testPropertySized 25 "ntscdNTSODFastPDomSlice is sound"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = removeDuplicateEdges generatedGraph
+                        n = length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+
+                        ms
+                         | n == 0 = Set.empty
+                         | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        
+                        s = SLICE.ODEP.ntscdNTSODFastPDomSlice g ms
+                        runInput   = InfiniteDelay.runInput g
+                        observable   = InfiniteDelay.observable s
+                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   obs   = observable trace
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        obs'   = observable trace'
+                                        different = not $ obs == obs'
+                                     in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                    in not differentobservation
+  ]
+
+
+observation_6_3_2 = [
+    testPropertySized 25 "ntscdNTSODFastPDomSlice is minimal"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = removeDuplicateEdges generatedGraph
+                        n = length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+
+                        ms
+                         | n == 0 = Set.empty
+                         | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        
+                        s = SLICE.ODEP.ntscdNTSODFastPDomSlice g ms
+                        runInput   = InfiniteDelay.runInput g
+
+                    in (∀) s (\n -> n ∈ ms ∨
+                         let s' = Set.delete n s
+                             observable       = InfiniteDelay.observable         s'
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode ->
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   obs   = observable trace
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        obs'   = observable trace'
+                                        different = not $ obs == obs'
+                                    in different
+                                  )
+                               ))
+                         in differentobservation
+                       )
+  ]
+
+
+
+ntsodTests = testGroup "(concerning nontermination   sensititve order dependence)" (observation_6_3_3)
+
+observation_6_3_3 = [
+        testCase ("nontermination sensitive slices cannot in general be computed by binary control dependence") $
+                   let g = mkGraph [(0,()),(1,()),(2,())] [(0,1,()),(0,2,()),(2,1,()),(1,2,())] :: Gr () ()
+                       edges = [(n,m,()) | n <- nodes g, m <- nodes g ]
+                       cds = [ cd | es <- sublists edges, let cdG = mkGraph (labNodes g) es :: Gr () (), let cd = toSuccMap cdG]
+                       slicer  = SLICE.ODEP.ntscdNTSODFastPDomSlice g
+                   in (not $ (∃) cds (\cd -> (∀) (fmap Set.fromList $ sublists $ nodes g) (\ms ->
+                        let s = combinedBackwardSlice cd Map.empty ms in s == slicer ms
+                      ))) @? ""
+  ]
+
+
+ntiodProps = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_5_1 ++ observation_6_7_2 ++ observation_6_7_3 ++ observation_6_7_4 ++ observation_6_7_5 ++ observation6 ++ observation8 ++ theorem5 ++ observation10 ++  observationANON)
+
+observation_6_5_1 = [
+    testProperty "retainedOutside implies wcc"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2 ->
+                    let g = removeDuplicateEdges generatedGraph
+                        n = length $ nodes g
+                        s
+                         | n == 0 = Set.empty
+                         | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    in Next.retainsNextObservableOutside g s ==> Next.weaklyControlClosed g s
+
+  ]
+
+observation_6_7_2 = [
+    testPropertySized 60 "ntiod ⊑ wodTEIL'"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        ntiod = ODEP.ntiod g
+                        wodTEIL' = ODEP.wodTEIL'PDom g
+                    in  (∀) (Map.assocs ntiod) (\((m1,m2), ns) ->
+                          ns ⊑ (wodTEIL' ! (m1,m2))
+                        )
+  ]
+
+observation_6_7_3 = [
+    testProperty "wodTEIL ⊑ ntiod ∪ nticd*"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    wodTEIL'    = ODEP.wodTEIL'PDom g
+                    ntiod       = ODEP.ntiodFastPDomSimpleHeuristic g
+                    nticdslicer = SLICE.NTICD.nticdSlice g
+                in (∀) (Map.assocs wodTEIL') (\((m1,m2), ns) ->  (∀) ns (\n ->
+                       n ∈ ntiod ! (m1,m2)                 ∨  n ∈ ntiod ! (m2,m1)
+                    ∨  n ∈ nticdslicer (Set.fromList [m1]) ∨  n ∈ nticdslicer (Set.fromList [m2])
+                   ))
+  ]
+
+observation_6_7_4 = [
       testPropertySized 60  "ntiod is contained in isinkdom cycles"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -518,6 +717,22 @@ observation5 = [
                           )))
                         )
   ]
+
+observation_6_7_5 = [
+      testProperty  "sinkdomOfLfp m2 == mustOfGfp"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = ODEP.mustOfGfp g
+                    in  (∀) (nodes g) (\m2 ->
+                           let g2    = delSuccessorEdges g m2
+                               sinkdom2 = PDOM.sinkdomOfGfp g2
+                           in (∀) (nodes g) (\n -> (∀) (nodes g) (\m1 ->  if m1 == m2  then True else
+                                ((m1,m2) ∈ must ! n) ↔ (m1 ∈ sinkdom2 ! n)
+                           ))
+                       )
+  ]
+
+  
 observation6 = [
       testPropertySized 60  "ntiod reduction to nticd"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -623,8 +838,8 @@ observationANON = [
 
 
 
-ntiodTests = testGroup "(concerning nontermination insensititve order dependence)" (observation9)
-observation9 =  [
+ntiodTests = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_7_1)
+observation_6_7_1 =  [
       testCase ("nontermination insensitive slices cannot in general be computed by binary control dependence") $
                    let g0 = mkGraph [(1,()),(2,()),(3,()),(4,()),(5,()),(6,()),(7,()),(8,()),(9,()),(10,()),(11,()),(12,()),(13,()),(14,())] [(1,2,()),(1,10,()),(2,3,()),(2,6,()),(3,4,()),(3,9,()),(4,12,()),(4,14,()),(5,3,()),(6,7,()),(7,8,()),(7,11,()),(8,6,()),(9,10,()),(11,8,()),(11,13,()),(12,5,()),(13,8,()),(14,5,())] :: Gr () ()
                        g = subgraph [6,7,8,11,13] g0

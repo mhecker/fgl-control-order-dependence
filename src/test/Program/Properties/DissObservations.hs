@@ -21,7 +21,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots, restrict)
+import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots, restrict, sampleFrom)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -49,10 +49,10 @@ import Data.List (sortOn)
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
-import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff)
+import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff, condensation)
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges, removeDuplicateEdges)
-import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable, newNodes)
+import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable, newNodes, efilter)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 -- import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
@@ -67,16 +67,20 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
 import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (
+    ntscdNTSODSliceViaIMDom,
     wodTEILSliceViaISinkDom, wccSliceViaISinkDom, nticdNTIODSliceViaISinkDom,
   )
 import qualified Data.Graph.Inductive.Query.Slices.NTICD as SLICE.NTICD (
-    wodTEILSliceViaNticd,    wccSliceViaNticd,    nticdNTIODSlice, nticdSlice
+    ntscdNTSODSliceViaNtscd,
+    wodTEILSliceViaNticd,    wccSliceViaNticd,    nticdNTIODSlice, nticdSlice, ntscdSlice
   )
 import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
+    ntscdNTSODSlice, 
     nticdNTIODSlice, wodTEILSlice,
   )
 import qualified Data.Graph.Inductive.Query.NTICD as NTICD (
     nticdViaSinkDom, ntscdViaMDom,
+    ntindDef, ntsndDef,
   )
 import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     dod, dodDef,
@@ -84,14 +88,14 @@ import qualified Data.Graph.Inductive.Query.OrderDependence as ODEP (
     wodTEIL', wodTEIL'PDom,
     dodColoredDagFixed, dodColoredDagFixedFast,
     ntsod, ntsodFastPDom,
-    ntiod, ntiodFastPDom, ntiodFastPDomSimpleHeuristic, 
+    ntiod, ntiodFastPDom, ntiodFastPDomSimpleHeuristic, ntiodFast,
   )
 
 import qualified Data.Graph.Inductive.Query.Slices.OrderDependence as SLICE.ODEP (
     ntscdNTSODFastPDomSlice, 
   )
 
-import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay ( Input(..), allChoices, runInput, observable)
+import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay ( Input(..), allChoices, runInput, observable, infinitelyDelays, isLowEquivalentFor)
 
 import qualified Data.Graph.Inductive.Query.NextObservable as Next (retainsNextObservableOutside, weaklyControlClosed)
 
@@ -444,7 +448,7 @@ pdfTests = testGroup "(concerning generalized postdominance frontiers)" $
   []
 
 
-ntsodProps = testGroup "(concerning nontermination   sensititve order dependence)" (dodIsDodDef ++ lemma_6_1_2 ++ observation_6_1_1 ++ observation_6_2_1 ++ observation_6_2_2 ++ observation_6_2_3 ++ observation_6_2_4 ++ observation_6_2_5 ++ observation_6_3_1 ++ observation_6_3_2)
+ntsodProps = testGroup "(concerning nontermination   sensititve order dependence)" (dodIsDodDef ++ lemma_6_1_2 ++ observation_6_1_1 ++ observation_6_2_1 ++ observation_6_2_2 ++ observation_6_2_3 ++ observation_6_2_4 ++ observation_6_2_5 ++ observation_6_3_1 ++ observation_6_3_2 ++ observation_7_2_1 ++ observation_7_2_2 ++ observation_7_2_3 ++ lemma_7_2_1 ++ observation_7_2_4)
 
 dodIsDodDef = [
     testPropertySized 40  "dod  == dodDef"
@@ -666,7 +670,7 @@ observation_6_3_3 = [
   ]
 
 
-ntiodProps = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_5_1 ++ observation_6_7_2 ++ observation_6_7_3 ++ observation_6_7_4 ++ observation_6_7_5 ++ observation6 ++ observation8 ++ theorem5 ++ observation10 ++  observationANON)
+ntiodProps = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_5_1 ++ observation_6_7_2 ++ observation_6_7_3 ++ observation_6_7_4 ++ observation_6_7_5 ++ observation_6_7_6 ++ observation_6_7_7 ++ observation_6_7_8 ++ observation_6_8_1 ++ observation_6_8_2 ++ observation_6_8_3 ++ observation_6_8_4 ++ observation_6_8_5 ++ observation_7_1_1 ++ observation_7_1_2 ++ observation_7_1_3 ++ observation_7_1_4 ++ observation_7_1_5 ++ observation_7_1_6 ++ observation_7_1_7 ++ observation_7_1_8 ++ observation8 ++ theorem_7_1_1 ++ theorem_7_1_2 ++ observation_7_1_9 ++  observationANON)
 
 observation_6_5_1 = [
     testProperty "retainedOutside implies wcc"
@@ -733,7 +737,7 @@ observation_6_7_5 = [
   ]
 
   
-observation6 = [
+observation_6_7_6 = [
       testPropertySized 60  "ntiod reduction to nticd"
                 $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
@@ -765,6 +769,277 @@ observation6 = [
                     in ODEP.ntiodFastPDom   g ≡
                        ODEP.ntiod           g
   ]
+
+{- The actual observation is implicit in the assertions of function rotatePDomAroundNeighbours in module Data.Graph.Inductive.Query.OrderDependence -}
+observation_6_7_7 = [
+      testProperty  "ntiodFastPDom* == ntiodFast"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        ntiodFastPDomSimpleHeuristic = ODEP.ntiodFastPDomSimpleHeuristic  g
+                        ntiodFastPDom                = ODEP.ntiodFastPDom                 g
+                        ntiodFast                    = ODEP.ntiodFast                     g
+                    in   True
+                       ∧ ntiodFastPDomSimpleHeuristic == ntiodFast
+                       ∧ ntiodFastPDom                == ntiodFast
+  ]
+
+{- The actual observation is implicit in the assertions of function rotatePDomAroundArbitrary  in module Data.Graph.Inductive.Query.OrderDependence -}
+observation_6_7_8 = observation_6_7_7
+
+
+observation_6_8_1 = [
+    testProperty "nticdNTIODFastSlice is sound wrt next Observations"
+                $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                    let g = generatedGraph
+                        n = toInteger $ length $ nodes g
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                        s = SLICE.ODEP.nticdNTIODSlice g ms
+                    in Next.retainsNextObservableOutside g s
+  ]
+
+observation_6_8_2 = [
+    testProperty "nticdNTIODFastSlice is minimal wrt next Observations"
+                $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                    let g = generatedGraph
+                        n = toInteger $ length $ nodes g
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                        s = SLICE.ODEP.nticdNTIODSlice g ms
+                    in (∀) s (\n -> n ∈ ms ∨
+                         let s' = Set.delete n s in not $ Next.retainsNextObservableOutside g s'
+                       )
+  ]
+
+
+observation_6_8_3 = [
+    testPropertySized 25 "nticdNTIODSlice is sound wrt infinite delay"
+                $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                    let g = removeDuplicateEdges generatedGraph
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                        
+                        s = SLICE.ODEP.nticdNTIODSlice g ms
+                        infinitelyDelays = InfiniteDelay.infinitelyDelays g s
+                        runInput         = InfiniteDelay.runInput         g
+                        observable       = InfiniteDelay.observable         s
+                        differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   isLowEquivalent = InfiniteDelay.isLowEquivalentFor infinitelyDelays runInput observable input
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        different = not $ isLowEquivalent input'
+                                     in different
+                                  )
+                               ))
+                    in not differentobservation
+  ]
+
+observation_6_8_4 = [
+    testPropertySized 25 "nticdNTIODSlice is minimal wrt infinite delay"
+                $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                    let g = removeDuplicateEdges generatedGraph
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+
+                        s = SLICE.ODEP.nticdNTIODSlice g ms
+                        runInput         = InfiniteDelay.runInput g
+                    in -- traceShow (length $ nodes g, Set.size s, Set.size $ condNodes) $
+                       (∀) s (\n -> n ∈ ms ∨
+                         let s' = Set.delete n s
+                             infinitelyDelays = InfiniteDelay.infinitelyDelays g s'
+                             observable       = InfiniteDelay.observable         s'
+                             differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s') (condNodes ∖ s') in (∃) (nodes g) (\startNode ->
+                               let input = InfiniteDelay.Input startNode choice
+                                   isLowEquivalent = InfiniteDelay.isLowEquivalentFor infinitelyDelays runInput observable input
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        different = not $ isLowEquivalent input'
+                                    in different
+                                  )
+                               ))
+                         in differentobservation
+                       )
+  ]
+
+observation_6_8_5 = [
+    testPropertySized 25 "nticdNTIODSlice is termination sensitively sound for always-terminating graphs"
+    $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                let     g   = removeDuplicateEdges $ efilter (\(n,m,_) -> n /= m) $ condensation generatedGraph
+                        n = toInteger $ length $ nodes g
+                        condNodes  = Set.fromList [ c | c <- nodes g, let succs = suc g c, length succs  > 1]
+                        choices    = InfiniteDelay.allChoices g Map.empty condNodes
+                        slicer     = SLICE.ODEP.nticdNTIODSlice g
+                        -- slicer     = NTICD.wodTEILPDomSlice g
+
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+
+                        s = slicer ms
+                        runInput   = InfiniteDelay.runInput         g
+                    in let observable   = InfiniteDelay.observable s
+                           differentobservation = (∃) choices (\choice -> let choices' = InfiniteDelay.allChoices g (restrict choice s) (condNodes ∖ s) in (∃) (nodes g) (\startNode -> 
+                               let input = InfiniteDelay.Input startNode choice
+                                   trace = runInput input
+                                   obs   = observable trace
+                               in (∃) choices' (\choice' ->
+                                    let input' = InfiniteDelay.Input startNode choice'
+                                        trace' = runInput input'
+                                        obs'   = observable trace'
+                                        different = not $ obs == obs'
+                                     in (if not $ different then id else traceShow (s, startNode, choice, choice', g)) $
+                                        different
+                                  )
+                               ))
+                       in not differentobservation
+  ]
+
+observation_7_1_1 = [
+      testProperty "nticdSlice == ntindDef"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    nticdslicer = SLICE.NTICD.nticdSlice g
+                    ntind = NTICD.ntindDef g
+                in (∀) (nodes g) (\m ->
+                     let ms = Set.fromList [m]
+                         s  = (nticdslicer ms) ∖ ms
+                         s' = Set.fromList [ n | n <- nodes g, m ∈ ntind ! n ]
+                     in s == s'
+                   )
+  ]
+
+observation_7_1_2 = [
+      testPropertySized 40  "sinkdomOfLfp ms  == (∀) mustOfLfp  property"
+                $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                    let g = generatedGraph
+                        must = ODEP.mustOfGfp g
+                        n = toInteger $ length $ nodes g
+
+                        ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                        msL = Set.toList ms
+
+                        toMs = rdfs msL g
+                        g' = foldr (flip delSuccessorEdges) g msL
+                        sinkdom' = PDOM.sinkdomOfGfp g'
+                    in (∀) (nodes g) (\n -> (∀) ms (\m0 -> (∀) (nodes g) (\m ->
+                                (m == m0)  ∨  ((m ∈ sinkdom' ! n) → ((m,m0) ∈ must ! n))
+                       )))
+  ]
+
+observation_7_1_3 = [
+    testPropertySized 40 "sinkdom g' => sinkdom g"
+    $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                let g    = generatedGraph
+                    n = toInteger $ length $ nodes g
+                    ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                    msL = Set.toList ms
+
+                    toMs = rdfs msL g
+                    g' = foldr (flip delSuccessorEdges) g msL
+                    
+                    sinkdom  = PDOM.sinkdomOfGfp g
+                    sinkdom' = PDOM.sinkdomOfGfp g'
+                in sinkdom' ⊑ sinkdom
+  ]
+
+
+observation_7_1_4 = [
+        testProperty "sinkdom path order"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = ODEP.mustOfGfp g
+                        sinkdom = PDOM.sinkdomOfGfp g
+                    in (∀) (Map.assocs sinkdom) (\(n,ms) -> (∀) ms (\m1 ->  (∀) (ms) (\m2 ->
+                           ((m1,m2) ∈ must ! n)
+                         ∨ ((m2,m1) ∈ must ! n)
+                         ∨ (m1 ∈ sinkdom ! m2 ∧  m2 ∈ sinkdom ! m1)
+                       )))
+  ]
+
+observation_7_1_5 = [
+      testProperty  "isinkdoms path order"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        must = ODEP.mustOfGfp g
+                        sinkdom = PDOM.sinkdomOfGfp g
+                        isinkdoms = PDOM.sinkdomsOf g
+                    in (∀) (Map.assocs sinkdom) (\(n,ms) -> (∀) (isinkdoms ! n) (\m1 ->  (∀) (ms) (\m2 ->
+                           ((m1,m2) ∈ must ! n)
+                         ∨ (m1 ∈ sinkdom ! m2 ∧  m2 ∈ sinkdom ! m1  ∧  m2 ∈ isinkdoms ! n)
+                         ∨ (n == m2)
+                       )))
+  ]
+
+observation_7_1_6 = [
+    testPropertySized 40 "technical 1"
+    $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                let g    = generatedGraph
+                    n = toInteger $ length $ nodes g
+                    
+                    ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                    msL = Set.toList ms
+
+                    g' = foldr (flip delSuccessorEdges) g msL
+                    
+                    sinkdom  = PDOM.sinkdomOfGfp g
+                    sinkdom' = PDOM.sinkdomOfGfp g'
+                in (∀) (Map.assocs sinkdom) (\(n, ms) -> (∀) ms (\m -> let { g'' = delSuccessorEdges g' m ; reachN = reachable n g'' } in 
+                         let ok = (m ∈ sinkdom' ! n) ∨ ((∃) ms (\m0 ->  m0 /= m  ∧  m0 `elem` reachN))
+                            in (if ok then id else traceShow (g, ms, n, m)) ok
+                   ))
+  ]
+
+
+
+observation_7_1_7 = [
+    testPropertySized 40 "technical 2"
+    $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                let g    = generatedGraph
+                    n = toInteger $ length $ nodes g
+                    
+                    ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                    msL = Set.toList ms
+
+                    
+                    g' = foldr (flip delSuccessorEdges) g msL
+                    
+                    must = ODEP.mustOfGfp g
+                    
+                    sinkdom  = PDOM.sinkdomOfGfp g
+                    sinkdom' = PDOM.sinkdomOfGfp g'
+
+                    trcG  = trc g
+                    trcG' = trc g'
+                in (∀) (Map.assocs sinkdom) (\(n, ms) -> (∀) ms (\m ->
+                         let ok = (m ∈ sinkdom' ! n) ∨ ((∃) ms (\m0 ->  m0 /= m  ∧  m ∈ sinkdom ! m0  ∧  n `elem` (pre trcG' m0)  ∧  m0 `elem` (pre trcG m)  ∧  (not $ (m, m0) ∈ must ! n )))
+                         in (if ok then id else traceShow (g, ms, n, m)) ok
+                   ))
+  ]
+
+observation_7_1_8 = [
+    testPropertySized 40 "technical 3"
+    $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                let g    = generatedGraph
+                    n = toInteger $ length $ nodes g
+                    
+                    ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                    msL = Set.toList ms
+
+                    
+                    g' = foldr (flip delSuccessorEdges) g msL
+
+                    nticdslicer' = SLICE.NTICD.nticdSlice g'
+                    
+                    sinkdom' = PDOM.sinkdomOfGfp g'
+
+                in (∀) ms (\m -> (∀) (nticdslicer' (Set.fromList [ m ])) (\n -> (∀) (nodes g) (\n' -> n == n' ∨ (not $ n' ∈ sinkdom' ! n))))
+  ]
+
+
+
+
 observation8 = [
       testPropertySized 60  "ntiodFastPDom               ≡ ntiod"
                 $ \(ARBITRARY(generatedGraph)) ->
@@ -772,7 +1047,8 @@ observation8 = [
                     in ODEP.ntiodFastPDomSimpleHeuristic   g ≡
                        ODEP.ntiod                          g
   ]
-theorem5 = [
+
+theorem_7_1_1 = [
     testPropertySized 60 "nticdNTIODSlice == nticdNTIODSliceViaNticd == nticdNTIODSliceViaISinkDom ==  for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
                 let g    = generatedGraph
@@ -786,7 +1062,11 @@ theorem5 = [
                 in   slicer0 ms == slicer1 ms
                    ∧ slicer1 ms == slicer2 ms
   ]
-observation10 = [
+
+theorem_7_1_2 = theorem_7_1_1
+
+
+observation_7_1_9 = [
     testPropertySized 60  "nticdNTIODSlice == nticdNTIODSliceViaNticd even when using data dependencies"
     $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) seed1 seed2 ->
                 let g = generatedGraph
@@ -809,6 +1089,85 @@ observation10 = [
                     slicer' = combinedBackwardSlice (ddep ⊔ nticd') empty
                 in slicer ms == slicer' ms
   ]
+
+lemma_7_1_1 = theorem_7_1_1
+
+
+observation_7_2_1 = [
+    testPropertySized 30 "ntscdNTSODSlice == ntscdNTSODSliceViaNticd == ntscdNTSODSliceViaIMDom for random slice-criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                let g    = generatedGraph
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                    slicer1  = SLICE.ODEP.ntscdNTSODSlice               g
+                    slicer2  = SLICE.NTICD.ntscdNTSODSliceViaNtscd      g
+                    slicer3  = SLICE.PDOM.ntscdNTSODSliceViaIMDom       g
+
+                in   slicer1 ms == slicer2 ms
+                   ∧ slicer1 ms == slicer3 ms
+  ]
+
+observation_7_2_2 = [
+    testPropertySized 40 "ntscdSlice == ntsndDef"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    nticdslicer = SLICE.NTICD.ntscdSlice g
+                    ntind = NTICD.ntsndDef g
+                in (∀) (nodes g) (\m ->
+                     let ms = Set.fromList [m]
+                         s  = (nticdslicer ms) ∖ ms
+                         s' = Set.fromList [ n | n <- nodes g, m ∈ ntind ! n ]
+                     in s == s'
+                   )
+  ]
+
+observation_7_2_3 = [
+    testPropertySized 40 "technical 4"
+    $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                let g    = generatedGraph
+                    n = toInteger $ length $ nodes g
+                    
+                    ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                    msL = Set.toList ms
+
+                    
+                    g' = foldr (flip delSuccessorEdges) g msL
+
+                    ntscdslicer' = SLICE.NTICD.ntscdSlice g'
+                    
+                    mdom' = PDOM.mdomOfLfp g'
+
+                in (∀) ms (\m -> (∀) (ntscdslicer' (Set.fromList [ m ])) (\n -> (∀) (nodes g) (\n' -> n == n' ∨ (not $ n' ∈ mdom' ! n))))
+  ]
+
+lemma_7_2_1 = observation_7_2_1
+
+
+observation_7_2_4 = [
+      testPropertySized 25  "ntscdNTSODSlice == ntscdNTSODSliceViaNtscd even when using data dependencies"
+                $ \(ARBITRARY(generatedGraph)) (UNCONNECTED(ddep0)) seed1 seed2 ->
+                   let g = generatedGraph
+                       n    = length $ nodes g
+                       ms
+                        | n == 0 = Set.empty
+                        | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                       ddepG = mkGraph (labNodes g) [ (n',m',()) | (n,m) <- edges ddep0, let n' = toG ! n, let m' = toG ! m, n' `elem` reachable m' g ] :: Gr ()()
+                         where toG = Map.fromList $ zip (nodes ddep0) (cycle $ nodes g)
+                       ddep = Map.fromList [ (n, Set.fromList $ suc ddepG n) | n <- nodes ddepG ]
+                       ntscd = PDF.mDFTwoFinger g
+                       ntsod =  ODEP.ntsodFastPDom g
+                       slicer = combinedBackwardSlice (ddep ⊔ ntscd) ntsod
+
+                       g' = foldr (flip delSuccessorEdges) g ms
+                       ntscd' = PDF.mDFTwoFinger g'
+                       empty = Map.empty
+                       slicer' = combinedBackwardSlice (ddep ⊔ ntscd') empty
+                   in slicer ms == slicer' ms
+  ]
+
 observationANON = [
     testPropertySized 60 "wccSliceViaISInkDom == wccSlice for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->

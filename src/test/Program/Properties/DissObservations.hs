@@ -105,6 +105,7 @@ import qualified Data.Graph.Inductive.Query.NextObservable as Next (retainsNextO
 
 import qualified Data.Graph.Inductive.Query.TSCD  as TSCD (
     tscdSliceFast, timdomOfLfp, timDFFromUpLocalDefViaTimdoms, timDF, timDFLocalViaTimdoms, timDFLocalDef, timDFUpGivenXViaTimdoms, timDFUpGivenXViaTimdomsDef,
+    timdomsFromItimdomMultipleOf, timdomsOf, validTimdomLfp, timDFFromFromItimdomMultipleOfFast,
     timdomMultipleOfNaiveLfp, itimdomMultipleOfTwoFinger, validTimdomFor, cost1F,
   )
 
@@ -1224,7 +1225,7 @@ observationANON = [
   ]
 
 
-timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3)
+timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3 ++ observation_9_3_4 ++ observation_9_4_1 ++ algorithm_10 ++ algorithm_11 ++ observation_9_6_1)
 
 observation_9_1_2 = [
     testProperty   "ntscdNTSODSlice ⊆ tscdSlice for random slice-criteria of random size"
@@ -1346,6 +1347,56 @@ observation_9_3_3 = [
                    ))
   ]
 
+observation_9_3_4 = [
+      testProperty   "timdomsFromItimdomMultipleOf == timdomsOf"
+                $ \(ARBITRARY(g)) ->
+                       TSCD.timdomsFromItimdomMultipleOf  g ==
+                       TSCD.timdomsOf                     g
+  ]
+
+observation_9_4_1 = [
+      testProperty "validTimdomDef == validTimdomLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    validlfp = TSCD.validTimdomLfp g
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
+                    timdom              = TSCD.timdomOfLfp              g
+                in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
+                         let fuel = head $ [ fuel | fuel <- [0..n], 
+                               (∀) ys (\(y, steps) -> 
+                                 ((y, steps)  ∈ timdom ! x)    ↔  (steps <= fuel)
+                               )
+                              ]
+                         in fuel == validlfp ! x
+                   )
+  ]
+
+algorithm_10 = [
+    testProperty "validTimdomFor == validTimdomLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    itimmultiple = TSCD.itimdomMultipleOfTwoFinger g
+                    valid    = TSCD.validTimdomFor g (TSCD.cost1F g) itimmultiple (Set.fromList $ nodes g)
+                    validlfp = TSCD.validTimdomLfp g 
+                in valid == validlfp
+  ]
+
+algorithm_11 = [
+    testProperty "timDFFromFromItimdomMultipleOfFast == timDF"
+                $ \(ARBITRARY(g)) ->
+                       TSCD.timDFFromFromItimdomMultipleOfFast  g ==
+                       TSCD.timDF                               g
+  ]
+
+observation_9_6_1 = [
+    testProperty "timdomMultipleOfNaiveLfp == timdom in unique exit node cfg"
+                $ \(ARBITRARY(generatedGraph)) ->
+                    let (_, g) = withUniqueEndNode () () generatedGraph
+                        timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp              g
+                        timdomMult = fmap (Set.map fst) $ TSCD.timdomMultipleOfNaiveLfp g
+                    in timdom == timdomMult
+  ]
 
 ntiodTests = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_7_1)
 observation_6_7_1 =  [

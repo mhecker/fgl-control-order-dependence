@@ -79,12 +79,12 @@ sensitiveDomProps = testGroup "(concerning nontermination-sensitive control depe
                     let g = generatedGraph
                     in NTICD.ntscdViaMDom g ==
                        SNM.ntscdF3        g,
-    testPropertySized 40 "stepsCL sinkdom"
+    testPropertySized 40 "stepsCL mdom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         mdom = PDOM.mdomOfLfp g
                     in PDF.stepsCL g mdom,
-    testPropertySized 40 "noJoins sinkdom"
+    testPropertySized 40 "noJoins mdom"
     $ \(ARBITRARY(generatedGraph)) ->
                     let g = generatedGraph
                         mdom = PDOM.mdomOfLfp g

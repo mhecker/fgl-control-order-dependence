@@ -9,6 +9,7 @@
 #endif
 
 #define UNCONNECTED(g) (g) :: (Gr () ())
+#define REDUCIBLE(g) (RedG g) :: (Reducible Gr () ())
 
 module Program.Properties.DissObservations where
 
@@ -49,10 +50,12 @@ import Data.List (sortOn)
 import Data.Map ( Map, (!) )
 import Data.Maybe(fromJust)
 
+import Data.Graph.Inductive.Arbitrary.Reducible
+
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff, condensation)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges, removeDuplicateEdges)
-import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable, newNodes, efilter)
+import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges, removeDuplicateEdges, withUniqueEndNode)
+import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable, newNodes, efilter, noNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
 -- import qualified Data.Graph.Inductive.Query.LCA as LCA (lca)
@@ -64,7 +67,8 @@ import qualified Data.Graph.Inductive.Query.PostDominanceFrontiers as PDF (
     mDF,    sinkDFFromUpLocalDefViaSinkdoms, sinkDFLocalDef,  sinkDFLocalViaSinkdoms, sinkDFUpGivenXViaSinkdoms,  sinkDFUpDef, isinkDFTwoFinger,
     noJoins, stepsCL,
  )
-import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
+
+import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice, wdSlice, nticdNTIODViaWDSlice)
 import Data.Graph.Inductive.Query.NTICD.Util (combinedBackwardSlice)
 import qualified Data.Graph.Inductive.Query.Slices.PostDominance as SLICE.PDOM (
     ntscdNTSODSliceViaIMDom,
@@ -99,6 +103,12 @@ import qualified Data.Graph.Inductive.Query.InfiniteDelay as InfiniteDelay ( Inp
 
 import qualified Data.Graph.Inductive.Query.NextObservable as Next (retainsNextObservableOutside, weaklyControlClosed)
 
+import qualified Data.Graph.Inductive.Query.TSCD  as TSCD (
+    tscdSliceFast, timdomOfLfp, timDFFromUpLocalDefViaTimdoms, timDF, timDFLocalViaTimdoms, timDFLocalDef, timDFUpGivenXViaTimdoms, timDFUpGivenXViaTimdomsDef,
+    timdomMultipleOfNaiveLfp, itimdomMultipleOfTwoFinger, validTimdomFor, cost1F,
+  )
+
+
 import Data.Graph.Inductive.Arbitrary
 
 
@@ -128,6 +138,12 @@ ntsodX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntsod"     [
 ntiod      = defaultMain                               $ testGroup "ntiod"     [ mkProp [ntiodProps]]
 ntiodX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "ntiod"     [ mkProp [ntiodProps]]
 
+
+timing      = defaultMain                               $ testGroup "timing"     [ mkProp [timingProps]]
+timingX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"     [ mkProp [timingProps]]
+
+
+
 tests      = defaultMain                               $ unitTests
 
 mkTest = testGroup "Unit tests"
@@ -137,7 +153,7 @@ unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [                                 ntsodTests, ntiodTests]
 
 properties :: TestTree
-properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps]
+properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps, timingProps]
 
 
 mdomProps = testGroup "(concerning nontermination   sensitive postdominance)" (
@@ -670,7 +686,7 @@ observation_6_3_3 = [
   ]
 
 
-ntiodProps = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_5_1 ++ observation_6_7_2 ++ observation_6_7_3 ++ observation_6_7_4 ++ observation_6_7_5 ++ observation_6_7_6 ++ observation_6_7_7 ++ observation_6_7_8 ++ observation_6_8_1 ++ observation_6_8_2 ++ observation_6_8_3 ++ observation_6_8_4 ++ observation_6_8_5 ++ observation_7_1_1 ++ observation_7_1_2 ++ observation_7_1_3 ++ observation_7_1_4 ++ observation_7_1_5 ++ observation_7_1_6 ++ observation_7_1_7 ++ observation_7_1_8 ++ observation8 ++ theorem_7_1_1 ++ theorem_7_1_2 ++ observation_7_1_9 ++  observationANON)
+ntiodProps = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_5_1 ++ observation_6_7_2 ++ observation_6_7_3 ++ observation_6_7_4 ++ observation_6_7_5 ++ observation_6_7_6 ++ observation_6_7_7 ++ observation_6_7_8 ++ observation_6_8_1 ++ observation_6_8_2 ++ observation_6_8_3 ++ observation_6_8_4 ++ observation_6_8_5 ++ observation_7_1_1 ++ observation_7_1_2 ++ observation_7_1_3 ++ observation_7_1_4 ++ observation_7_1_5 ++ observation_7_1_6 ++ observation_7_1_7 ++ observation_7_1_8 ++ observation8 ++ theorem_7_1_1 ++ theorem_7_1_2 ++ observation_7_1_9 ++  observation_7_4_1 ++ observationANON)
 
 observation_6_5_1 = [
     testProperty "retainedOutside implies wcc"
@@ -1168,6 +1184,18 @@ observation_7_2_4 = [
                    in slicer ms == slicer' ms
   ]
 
+
+observation_7_4_1 = [
+    testPropertySized 40 "wodTEILSlice == wdSlice"
+    $ \(ARBITRARY(generatedGraph)) seed seed2 ->
+                let g    = generatedGraph
+                    n = toInteger $ length $ nodes g
+                    ms = if n == 0 then Set.empty else Set.fromList $ sampleFrom seed (seed2 `mod` n) (nodes g)
+                    wodteilslicer    = SLICE.ODEP.wodTEILSlice g
+                    wdslicer         = FCACD.wdSlice      g
+                in wodteilslicer ms == wdslicer ms
+  ]
+
 observationANON = [
     testPropertySized 60 "wccSliceViaISInkDom == wccSlice for random slice-criteria of random size"
     $ \(ARBITRARY(generatedGraph)) seed1 seed2->
@@ -1195,6 +1223,128 @@ observationANON = [
                    ∧ slicer1 ms == slicer2 ms
   ]
 
+
+timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3)
+
+observation_9_1_2 = [
+    testProperty   "ntscdNTSODSlice ⊆ tscdSlice for random slice-criteria of random size"
+                $ \(ARBITRARY(generatedGraph)) seed1 seed2->
+                    let g = generatedGraph
+                        n    = length $ nodes g
+                        ms
+                          | n == 0 = Set.empty
+                          | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+                        ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd   g
+                        tscdslicer        = TSCD.tscdSliceFast g
+                    in ntscdntsodslicer ms ⊆ tscdslicer ms
+  ]
+
+observation_9_2_1 = [
+    testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive in reducible CFG"
+    $ \(REDUCIBLE(generatedGraph)) ->
+                let g = generatedGraph
+                    timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x )))
+  ]
+  
+observation_9_2_2 = [
+    testProperty "fmap (Set.map fst) $ timdomOfLfp is transitive in unique exit node cfg"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let (_, g) = withUniqueEndNode () () generatedGraph
+                    timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                in (∀) (Map.assocs $  timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x )))
+ ]
+
+observation_9_2_3 = [
+    testProperty   "timDFFromUpLocalDefViaTimdoms == timDF"
+                $ \(ARBITRARY(g)) ->
+                       TSCD.timDFFromUpLocalDefViaTimdoms g ==
+                       TSCD.timDF                         g
+  ]
+
+
+observation_9_2_4 = [
+    testPropertySized 40 "stepsCL timdomOfLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                    in PDF.stepsCL g timdom,
+    testProperty   "timDFLocalViaTimdoms    == timDFLocalDef"
+                $ \(ARBITRARY(g)) ->
+                       TSCD.timDFLocalViaTimdoms  g ==
+                       TSCD.timDFLocalDef         g
+
+ ]
+
+observation_9_2_5 = [
+    testPropertySized 40 "noJoins timdomOfLfp"
+    $ \(ARBITRARY(generatedGraph)) ->
+                    let g = generatedGraph
+                        timdom = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                    in PDF.noJoins g timdom,
+    testProperty   "timDFUpGivenXViaTimdoms == timDFUpGivenXViaTimdomsDef"
+                $ \(ARBITRARY(g)) ->
+                       TSCD.timDFUpGivenXViaTimdoms    g ==
+                       TSCD.timDFUpGivenXViaTimdomsDef g
+  ]
+
+observation_9_3_1 = [
+    testProperty "timdomMultiple is transitive"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    nr = toInteger $ 2 * noNodes g
+                    timdomMultiple = TSCD.timdomMultipleOfNaiveLfp g
+                in (∀) (Map.assocs $ timdomMultiple) (\(x, ys) -> (∀) ys (\(y,k) -> (∀) (timdomMultiple ! y) (\(z,k') -> k + k' > nr ∨ (z, k+k') ∈ timdomMultiple ! x )))
+  ]
+
+observation_9_3_2 = [
+    testProperty "timdomMultipleOfNaiveLfp vs timdomOfLfp one step"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    nr = toInteger $ 2 * (length $ nodes g)
+                    timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
+                    timdom              = TSCD.timdomOfLfp              g
+                in (∀) (Map.assocs timdomMultipleNaive) (\(x, ys) ->
+                         (∃) [0..n] (\fuel ->
+                           (∀) ys (\(y, steps) -> 
+                             ((y, steps)  ∈ timdom ! x)    ↔  (steps <= fuel)
+                           )
+                         )
+                   )
+  ]
+
+observation_9_3_3 = [
+    testProperty "timdomMultipleOfNaiveLfp step vs fuel"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g = generatedGraph
+                    n  = toInteger $     (length $ nodes g)
+                    nr = toInteger $ 2 * (length $ nodes g)
+                    -- timdomMultipleNaive = TSCD.timdomMultipleOfNaiveLfp g
+                    timdom              = TSCD.timdomOfLfp              g
+
+                    itimdom    = TSCD.itimdomMultipleOfTwoFinger g
+                    valid = TSCD.validTimdomFor g (TSCD.cost1F g) itimdom (Set.fromList $ nodes g)
+
+                    entries = Set.fromList [ n | n <- nodes g, not $ n ∈ cycleNodes, (∃) (itimdom ! n) (\(m,_) -> m ∈ cycleNodes) ]
+                    (cycleOf, cycles) = findCyclesM $ fmap fromSet $ fmap (Set.map fst) $ itimdom
+                    cycleNodes = (∐) cycles
+                in (∀) (Map.assocs itimdom) (\(n, ms) -> (∀) (ms) (\(m, steps) ->
+                          False
+                        ∨ (n == m)
+                        ∨ (n ∈ entries ∧ m ∈ cycleNodes)
+                        ∨ ((not $ n ∈ cycleNodes) ∧ (not $ m ∈ cycleNodes) ∧ (valid ! n == valid ! m + steps))
+                        ∨ (   (m ∈ (Set.map fst $ timdom ! n))
+                            ∧ (n ∈ (Set.map fst $ timdom ! m))
+                            ∧ (∀) (Set.filter ((==m) . fst) $ timdom ! n) (\(_,k)  ->
+                              (∀) (Set.filter ((==n) . fst) $ timdom ! m) (\(_,k') ->
+                                  True
+                                ∧ (k == steps)
+                                ∧ (k + k' == (valid ! m) + k)
+                              ))
+                          )
+                   ))
+  ]
 
 
 ntiodTests = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_7_1)

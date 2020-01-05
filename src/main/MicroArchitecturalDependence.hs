@@ -484,8 +484,7 @@ muMergeDirectOf mu@( MicroArchitecturalAbstraction { muIsDependent, muMerge, muG
                 idom'' = isinkdomOfTwoFinger8 csGraph''
             in Set.fromList [ n | (y, (n,_))   <- labNodes csGraph'', n /= m, Set.null $ idom'' ! y] -- TODO: can we make this wotk with muIsDependent, too?
           else Set.fromList [ n | (y, (n,mms)) <- labNodes csGraph' , n /= m, muIsDependent graph roots' idom' y n mms]
-   ] } in traceShow (csGraphSize csGraph) $
-          (invert'' result, edgeCosts, csGraph)
+   ] } in (invert'' result, edgeCosts, csGraph)
   where 
         csGraph@(cs, es)  = stateSets muStepFor muLeq graph muInitialState n0
 #ifdef SKIP_INDEPENDENT_NODES_M

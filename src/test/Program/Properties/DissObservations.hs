@@ -19,6 +19,18 @@ import System.IO.Unsafe(unsafePerformIO)
 import Control.Monad.Random(evalRandIO)
 import Control.Exception.Base (assert)
 
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Map (Map, (!))
+import qualified Data.Map as Map
+
+import IRLSOD (CFGNode, CFGEdge, Name(..), use, def, isGlobalName, globalEmpty )
+import Program (Program(..))
+import Program.For (compileAllToProgram, For(..), twoAddressCode)
+-- import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
+import Program.Generator (toCodeSimpleWithArrays)
+
+
 import Algebra.Lattice
 import Unicode
 
@@ -54,7 +66,7 @@ import Data.Graph.Inductive.Arbitrary.Reducible
 
 import Data.Graph.Inductive.Query.DFS (dfs, rdfs, rdff, condensation)
 import Data.Graph.Inductive.Query.TransClos (trc)
-import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges, removeDuplicateEdges, withUniqueEndNode)
+import Data.Graph.Inductive.Util (trr, fromSuccMap, toSuccMap, controlSinks, delSuccessorEdges, removeDuplicateEdges, withUniqueEndNode, costFor)
 import Data.Graph.Inductive (mkGraph, nodes, edges,  suc, pre, Node, labNodes, subgraph, reachable, newNodes, efilter, noNodes)
 import Data.Graph.Inductive.PatriciaTree (Gr)
 
@@ -105,12 +117,22 @@ import qualified Data.Graph.Inductive.Query.NextObservable as Next (retainsNextO
 
 import qualified Data.Graph.Inductive.Query.TSCD  as TSCD (
     tscdSliceFast, timdomOfLfp, timDFFromUpLocalDefViaTimdoms, timDF, timDFLocalViaTimdoms, timDFLocalDef, timDFUpGivenXViaTimdoms, timDFUpGivenXViaTimdomsDef,
-    timdomsFromItimdomMultipleOf, timdomsOf, validTimdomLfp, timDFFromFromItimdomMultipleOfFast,
+    timdomsFromItimdomMultipleOf, timdomsOf, validTimdomLfp, timDFFromFromItimdomMultipleOfFast, tscdSlice,
     timdomMultipleOfNaiveLfp, itimdomMultipleOfTwoFinger, validTimdomFor, cost1F,
+    timingCorrection, tscdCostSlice, timingLeaksTransformation,
   )
 
+import qualified Data.Graph.Inductive.Query.PureTimingDependence as PTDEP (ntscdTimingSlice, nticdTimingSlice, timingDependenceFromITimdom, timingDependenceFromTimdom)
 
 import Data.Graph.Inductive.Arbitrary
+import Program.Examples (interestingTimingDep)
+
+import CacheSlice (cacheTimingSlice)
+import CacheExecution(initialCacheState, CacheSize, prependFakeInitialization, prependInitialization, cacheExecutionLimit)
+
+import qualified CacheStateDependence               as Precise   (csdMergeDirectOf)
+import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD (csdFromDataDepJoined)
+
 
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
@@ -144,6 +166,10 @@ timing      = defaultMain                               $ testGroup "timing"    
 timingX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"     [ mkProp [timingProps]]
 
 
+cache      = defaultMain                               $ testGroup "cache"     [ mkProp [cacheProps]]
+cacheX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"     [ mkProp [cacheProps]]
+
+
 
 tests      = defaultMain                               $ unitTests
 
@@ -154,7 +180,7 @@ unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [                                 ntsodTests, ntiodTests]
 
 properties :: TestTree
-properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps, timingProps]
+properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps, timingProps, cacheProps]
 
 
 mdomProps = testGroup "(concerning nontermination   sensitive postdominance)" (
@@ -1225,7 +1251,7 @@ observationANON = [
   ]
 
 
-timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3 ++ observation_9_3_4 ++ observation_9_4_1 ++ algorithm_10 ++ algorithm_11 ++ observation_9_6_1)
+timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3 ++ observation_9_3_4 ++ observation_9_4_1 ++ algorithm_10 ++ algorithm_11 ++ observation_9_6_1 ++ observation_10_1_1 ++ observation_10_2_1 ++ observation_11_3_1 ++ observation_12_1_1 ++ observation_12_2_1)
 
 observation_9_1_2 = [
     testProperty   "ntscdNTSODSlice ⊆ tscdSlice for random slice-criteria of random size"
@@ -1397,6 +1423,214 @@ observation_9_6_1 = [
                         timdomMult = fmap (Set.map fst) $ TSCD.timdomMultipleOfNaiveLfp g
                     in timdom == timdomMult
   ]
+
+
+observation_10_1_1 = [
+    testProperty "nticdTimingSlice == ntscdTimingSlice == tscdSlice == tscdSliceFast"
+    $ \(ARBITRARY(generatedGraph)) ->
+                let g    = generatedGraph
+                    ntscdtimingslicer  = PTDEP.ntscdTimingSlice g
+                    nticdtimingslicer  = PTDEP.nticdTimingSlice g
+                    tscdslicer         = TSCD.tscdSlice        g
+                    tscdslicerfast     = TSCD.tscdSliceFast    g
+                in (∀) (nodes g) (\m ->
+                     let ms = Set.fromList [m]
+                         s1 = nticdtimingslicer ms
+                         s2 = ntscdtimingslicer ms
+                         s3 = tscdslicer        ms
+                         s4 = tscdslicerfast    ms
+                     in s1 == s2  ∧  s2 == s3  ∧  s3 == s4
+                   )
+  ]
+
+{- The first equation is implicit in the assertions of the function timingDependenceFromTimdom from module Data.Graph.Inductive.Query.PureTimingDependence --}
+observation_10_2_1 = [
+      testProperty  "timingDependenceFromTimdom  == timingDependenceFromITimdom for n /= m"
+                $ \(ARBITRARY(g)) ->
+                       let tdepfromTwoFinger = Map.mapWithKey Set.delete $ PTDEP.timingDependenceFromITimdom g
+                           tdepfromTimdom    = Map.mapWithKey Set.delete $ PTDEP.timingDependenceFromTimdom g
+                       in  tdepfromTimdom == tdepfromTwoFinger
+  ]
+
+
+observation_11_3_1 = [
+    testProperty "timingCorrection tscdCostSlice == ntscdNTSODSlice for random slice criteria of random size in CFG with empty ntsod"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
+                let g = generatedGraph
+                    ntsod = ODEP.ntsodFastPDom   g
+
+                    cost0 = costFor g seed3
+                    (cost, _) = TSCD.timingCorrection g cost0
+                      
+                    costF n m = cost ! (n,m)
+                    tscdcostslicer    = TSCD.tscdCostSlice           g costF
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
+
+                    n    = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    s  = tscdcostslicer   ms
+                    s' = ntscdntsodslicer ms
+                    ntsodIsEmpty = (∀) (Map.assocs ntsod) (\(_,ns) -> Set.null ns)
+                in ntsodIsEmpty   ==>   (s == s') ∧ ((∀) (Map.assocs cost0) (\(nm,c0) -> c0 <= cost ! nm) ∧ (∀) (Map.assocs cost) (\(nm,c) -> c >= cost0 ! nm))
+  ]
+
+
+
+observation_12_1_1 = [
+    testProperty "timingCorrection tscdCostSlice  g[ms -/> ] ms == ntscdNTSODSlice g ms for random slice criteria of random size"
+    -- $ \seed1 seed2 seed3 -> (∀) interestingTimingDep (\(exampleName, generatedGraph) ->
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
+                let g = generatedGraph
+                    n = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    cost0 = costFor g seed3
+                    
+                    g' = foldr (flip delSuccessorEdges) g ms
+                    (cost, _) = TSCD.timingCorrection          g' cost0
+                    costF n m = cost ! (n,m)
+
+                    tscdcostslicer    = TSCD.tscdCostSlice                  g   costF  
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
+
+    
+                    s    = tscdcostslicer    ms
+                    s'   = ntscdntsodslicer  ms
+                in (s == s') ∧ ((∀) (Map.assocs cost0) (\(nm,c0) -> c0 <= cost ! nm) ∧ (∀) (Map.assocs cost) (\(nm,c) -> c >= cost0 ! nm))
+  ]
+
+
+observation_12_2_1 = [
+    testProperty "timingLeaksTransformation tscdCostSlice g ms == ntscdNTSODSlice ms for random slice criteria of random size"
+    $ \(ARBITRARY(generatedGraph)) seed1 seed2 seed3 ->
+                let g = generatedGraph
+                    n = length $ nodes g
+                    ms
+                      | n == 0 = Set.empty
+                      | n /= 0 = Set.fromList [ nodes g !! (s `mod` n) | s <- moreSeeds seed2 (seed1 `mod` n)]
+
+                    cost0 = costFor g seed3
+                    
+                    (cost,   _) = TSCD.timingLeaksTransformation g   cost0 ms
+                    costF n m = cost ! (n,m)
+                    
+                    tscdcostslicer    = TSCD.tscdCostSlice                  g   costF  
+                    ntscdntsodslicer  = SLICE.NTICD.ntscdNTSODSliceViaNtscd g
+
+    
+                    s    = tscdcostslicer    ms
+                    s'   = ntscdntsodslicer  ms
+                in (s == s') ∧ ((∀) (Map.assocs cost0) (\(nm,c0) -> c0 <= cost ! nm) ∧ (∀) (Map.assocs cost) (\(nm,c) -> c >= cost0 ! nm))
+  ]
+
+
+cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_1_1)
+
+
+observation_13_5_1 = [
+    testPropertySized 25 "cacheTimingSlice is sound"
+                $ \generated seed1 seed2 seed3 seed4 ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                    in isSound cacheTimingSlice pr seed1 seed2 seed3 seed4
+  ]
+
+observation_15_1_1 = [
+    testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined"
+                $ \generated ->
+                    let pr :: Program Gr
+                        pr = compileAllToProgram a b'
+                          where (a,b) = toCodeSimpleWithArrays generated
+                                b' = fmap twoAddressCode b
+                        g = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        csdM   = Precise.csdMergeDirectOf       propsCacheSize g n0
+                        csdMAS = AgeSetsDD.csdFromDataDepJoined propsCacheSize g n0
+                    in  csdM ⊑ csdMAS
+  ]
+  
+
+type Slicer =
+     CacheSize
+  -> Gr CFGNode CFGEdge
+  -> Node
+  -> Set Node
+  -> Set Node
+
+propsCacheSize = 4
+
+isSound :: Slicer -> Program Gr -> Int -> Int -> Int -> Int -> Bool
+isSound slicerFor pr seed1 seed2 seed3 seed4 =
+                    let
+                        g0 = tcfg pr
+                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
+                        
+                        vars  = Set.fromList [ var | n <- nodes g0, name@(VarName   var) <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName name]
+                        varsA = Set.fromList [ arr | n <- nodes g0, name@(ArrayName arr) <- Set.toList $ use g0 n ∪ def g0 n, isGlobalName name]
+                        (newN0:new) = (newNodes ((Set.size vars) + (Set.size varsA) + 1) g0)
+                        varToNode = Map.fromList $ zip ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA)) new
+                        nodeToVar = Map.fromList $ zip new ((fmap VarName $ Set.toList vars) ++ (fmap ArrayName $ Set.toList varsA))
+
+                        g = prependFakeInitialization g0 n0 newN0 varToNode
+                        slicer = slicerFor propsCacheSize g newN0
+
+
+                        initialFullState   = ((globalEmpty, Map.empty, ()), initialCacheState, 0)
+                        prependActualInitialization = prependInitialization g0 n0 newN0 varToNode
+
+                        initialGlobalState1  = Map.fromList $ zip (Set.toList vars ) (            fmap (`rem` 32)   $ moreSeeds seed1 (Set.size vars))
+                        initialGlobalState1A = Map.fromList $ zip (Set.toList varsA) (      fmap (fmap (`rem` 32))  $ vals                           )
+                          where aSeeds = moreSeeds seed4 (Set.size varsA)
+                                vals = fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds
+                        g1 = prependActualInitialization initialGlobalState1 initialGlobalState1A
+
+
+                        limit = 9000
+                        (execution1, limited1) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
+                          where es = cacheExecutionLimit propsCacheSize limit g1 initialFullState newN0
+
+                        ms = [ nodes g0 !! (m `mod` (length $ nodes g0)) | m <- moreSeeds seed2 100]
+                    in (∀) ms (\m ->
+                         let s = slicer (Set.fromList [m])
+                             notInS  = (Set.map ((varToNode !) . VarName  ) vars ) ∖ s
+                             notInSA = (Set.map ((varToNode !) . ArrayName) varsA) ∖ s
+                             initialGlobalState2  = (Map.fromList $ zip [ var | n <- Set.toList notInS,  let VarName   var = nodeToVar ! n] newValues) `Map.union` initialGlobalState1
+                               where newValues =       fmap (`rem` 32)  $ moreSeeds (seed3 + m) (Set.size notInS)
+                             initialGlobalState2A = (Map.fromList $ zip [ arr | n <- Set.toList notInSA, let ArrayName arr = nodeToVar ! n] newValues) `Map.union` initialGlobalState1A
+                               where aSeeds = moreSeeds (seed4 + m) (Set.size notInSA)
+                                     newValues = fmap (fmap (`rem` 32)) $ fmap (Map.fromList . zip [0..]) $ fmap (`moreSeeds` 256) aSeeds
+                             g2 = prependActualInitialization initialGlobalState2 initialGlobalState2A
+
+                             (execution2, limited2) = assert (length es == 1) $ (head es, (length $ head es) >= limit)
+                               where es = cacheExecutionLimit propsCacheSize limit g2 initialFullState newN0
+
+                             exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
+                             exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
+
+                             ok = limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
+                          in if ok then ok else
+                               traceShow ("M:: ", m, "  S::", s) $
+                               traceShow ("G0 =====", g0) $
+                               traceShow ("G  =====", g ) $
+                               traceShow ("G1 =====", g1) $
+                               traceShow ("G2 =====", g2) $
+                               traceShow (execution1, "=========", execution2) $
+                               traceShow (exec1Obs,   "=========", exec2Obs) $
+                               traceShow (List.span (\(a,b) -> a == b) (zip exec1Obs exec2Obs)) $
+                               ok
+                        )
+
+
+
+
+
 
 ntiodTests = testGroup "(concerning nontermination insensititve order dependence)" (observation_6_7_1)
 observation_6_7_1 =  [

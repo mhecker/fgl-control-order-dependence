@@ -678,6 +678,17 @@ timingDependenceFromTimdom = xDFcd f
           ]
 
 
+
+timingDependenceFromITimdom :: DynGraph gr => gr a b ->  Map Node (Set Node)
+timingDependenceFromITimdom g =
+      invert'' $
+      Map.fromList [ (m, Set.fromList [ n | (n, Nothing) <- Map.assocs itimdom ])         | m <- nodes g,
+                                                                                            let toM  = rdfs [m] g,
+                                                                                            let g' = (flip delSuccessorEdges m) $ subgraph toM $ g,
+                                                                                            let itimdom = fmap fromSet $ itimdomMultipleOfTwoFinger g'
+      ]
+
+
 timingDependenceViaTwoFinger g =
       invert'' $
       Map.fromList [ (m, Set.fromList [ n | (n, Nothing) <- Map.assocs itimdom ])         | m <- nodes g,

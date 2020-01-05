@@ -134,6 +134,9 @@ import qualified CacheStateDependence               as Precise   (csdMergeDirect
 import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD (csdFromDataDepJoined)
 
 
+import Program.Properties.Analysis (allSoundIntraMulti)
+import Program.Analysis (isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification)
+
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
 testPropertySized n name prop = singleTest name $ QC $ (MkProperty $ scale (min n) gen)
@@ -166,6 +169,10 @@ timing      = defaultMain                               $ testGroup "timing"    
 timingX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "timing"     [ mkProp [timingProps]]
 
 
+probni      = defaultMain                               $ testGroup "probni"     [ mkProp [probniProps]]
+probniX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "probni"     [ mkProp [probniProps]]
+
+
 cache      = defaultMain                               $ testGroup "cache"     [ mkProp [cacheProps]]
 cacheX     = defaultMainWithIngredients [antXMLRunner] $ testGroup "cache"     [ mkProp [cacheProps]]
 
@@ -180,7 +187,7 @@ unitTests :: TestTree
 unitTests  = testGroup "Unit tests" [                                 ntsodTests, ntiodTests]
 
 properties :: TestTree
-properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps, timingProps, cacheProps]
+properties = testGroup "Properties" [ mdomProps, sdomProps, pdfProps, ntsodProps, ntiodProps, timingProps, cacheProps, probniProps]
 
 
 mdomProps = testGroup "(concerning nontermination   sensitive postdominance)" (
@@ -1530,8 +1537,6 @@ observation_12_2_1 = [
 
 
 cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_1_1)
-
-
 observation_13_5_1 = [
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
@@ -1618,6 +1623,17 @@ isSound slicerFor pr seed1 seed2 seed3 seed4 =
                         )
 
 
+
+probniProps = testGroup "(concerning criteria for probabilistic non-interference)" (observation_16_4_1)
+
+observation_16_4_1 = [
+    testPropertySized 15
+         ("allSoundIntraMulti [isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification]")
+         ( allSoundIntraMulti [isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification])
+  ]
+
+observation_16_6_1 = observation_16_4_1
+ 
 
 
 

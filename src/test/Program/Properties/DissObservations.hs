@@ -1614,17 +1614,7 @@ isSound slicerFor pr seed1 seed2 seed3 seed4 =
                              exec1Obs = filter (\(n,_) -> n ∈ s) $ execution1
                              exec2Obs = filter (\(n,_) -> n ∈ s) $ execution2
 
-                             ok = limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
-                          in if ok then ok else
-                               traceShow ("M:: ", m, "  S::", s) $
-                               traceShow ("G0 =====", g0) $
-                               traceShow ("G  =====", g ) $
-                               traceShow ("G1 =====", g1) $
-                               traceShow ("G2 =====", g2) $
-                               traceShow (execution1, "=========", execution2) $
-                               traceShow (exec1Obs,   "=========", exec2Obs) $
-                               traceShow (List.span (\(a,b) -> a == b) (zip exec1Obs exec2Obs)) $
-                               ok
+                          in limited1 ∨ limited2 ∨ (exec1Obs == exec2Obs)
                         )
 
 

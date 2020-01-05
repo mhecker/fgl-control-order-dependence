@@ -27,8 +27,8 @@ import qualified Data.Map as Map
 import IRLSOD (CFGNode, CFGEdge, Name(..), use, def, isGlobalName, globalEmpty )
 import Program (Program(..))
 import Program.For (compileAllToProgram, For(..), twoAddressCode)
--- import Program.Generator (toProgram, toProgramIntra, toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
-import Program.Generator (toCodeSimpleWithArrays)
+-- import Program.Generator (toProgram, , toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
+import Program.Generator (toCodeSimpleWithArrays, toProgramIntra)
 
 
 import Algebra.Lattice
@@ -135,7 +135,12 @@ import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD (csdFromDataDep
 
 
 import Program.Properties.Analysis (allSoundIntraMulti)
-import Program.Analysis (isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification)
+import Program.Analysis (
+  isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification,
+  precomputedUsing, idomDefaultFor,
+  minimalClassificationFor,   timingClassificationAtUses,
+  minimalClassificationNodes, timingClassificationAtUsesNodes,
+ )
 
 
 testPropertySized :: Testable a => Int -> TestName -> a -> TestTree
@@ -1624,7 +1629,7 @@ isSound slicerFor pr seed1 seed2 seed3 seed4 =
 
 
 
-probniProps = testGroup "(concerning criteria for probabilistic non-interference)" (observation_16_4_1)
+probniProps = testGroup "(concerning criteria for probabilistic non-interference)" (observation_16_4_1 ++ observation_16_6_2)
 
 observation_16_4_1 = [
     testPropertySized 15
@@ -1633,7 +1638,23 @@ observation_16_4_1 = [
   ]
 
 observation_16_6_1 = observation_16_4_1
- 
+
+observation_16_6_2 = [
+    testPropertySized 30  "cl timing ⊑ cl minimal"
+                $ \generated -> let p :: Program Gr = toProgramIntra generated
+                                    pc = precomputedUsing idomDefaultFor p
+                                    clMinimal            = minimalClassificationFor   pc p
+                                    (clTiming,clTiming2) = timingClassificationAtUses pc p
+                                in   (clTiming ⊑ clMinimal)
+                                   ∧ (∀) (Map.assocs clTiming2) (\((m1,m2), clTiming2) -> (clTiming2 ⊑ (clMinimal ! m1))  ∨  (clTiming2 ⊑ (clMinimal ! m2))),
+    testPropertySized 20  "cl timing ⊑ cl minimal w.r.t. node sets"
+                $ \generated -> let p :: Program Gr = toProgramIntra generated
+                                    pc = precomputedUsing idomDefaultFor p
+                                    clMinimal            = minimalClassificationNodes   pc p
+                                    (clTiming,clTiming2) = timingClassificationAtUsesNodes pc p
+                                in   (clTiming ⊑ clMinimal)
+                                   ∧ (∀) (Map.assocs clTiming2) (\((m1,m2), clTiming2) ->  clTiming2  ⊆  clMinimal ! m1 ∪ clMinimal ! m2)
+  ]
 
 
 

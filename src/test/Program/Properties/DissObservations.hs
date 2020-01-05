@@ -226,7 +226,7 @@ observation_5_2_1 = [
   ]
 
 observation_5_2_2 = [
-    testProperty "ipdom_max transitive closure is mdom"
+    testPropertySized 40 "ipdom_max transitive closure is mdom"
     $ \(ARBITRARY(generatedGraph)) ->
         let g = generatedGraph
             mdom = PDOM.mdomOfLfp g

@@ -1607,26 +1607,16 @@ observation_15_2_1 = [
       let
           cache = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
           CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
-          -- x = (cache0 == cache) ∧ (seed == (5 :: Int))
-          -- cache = Map.fromList [(CachedArrayRange (Array "a0")   0, Set.fromList [Age Nothing]),
-          --                       (CachedArrayRange (Array "a0") 128, Set.fromList [Age (Just 0),Age (Just 3),Age Nothing]),
-          --                       (CachedArrayRange (Array "a0") 192, Set.fromList [Age (Just 3),Age Nothing]),
-          --                       (CachedArrayRange (Array "b")    0, Set.fromList [Age (Just 1)]),
-          --                       (CachedArrayRange (Array "b")   64, Set.fromList [Age (Just 2)])
-          --          ] :: AgeSets.AbstractCacheState
-          -- a = (Array "a0")
           e1 = Assign (Register 0) (ArrayRead a (Var $ Register 1))
           e2 = Assign (Register 0) (ArrayRead a (Val $ 0))
-          ok1 = (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e1 cache) == AgeSetsDD.cacheDepsSlowDef propsCacheSize e1 cache
-          ok2 = (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e2 cache) == AgeSetsDD.cacheDepsSlowDef propsCacheSize e2 cache
-      in (not $ Map.null cache0) {- ∧ (∀) [0.. propsCacheSize -1] (\a -> (∃) (Map.elems cache) (\ages -> (Age $ Just a) ∈ ages)) -}
-         ==>
-           (if ok1 then ok1 else traceShow (e1, cache) $ traceShow (AgeSetsDD.cacheDepsSlowDef propsCacheSize e1 cache) $ traceShow (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e1 cache) $ ok1)
-         ∧ (if ok2 then ok2 else traceShow (e2, cache) $ traceShow (AgeSetsDD.cacheDepsSlowDef propsCacheSize e2 cache) $ traceShow (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e2 cache) $ ok2)
+      in (not $ Map.null cache0)
+         ==> (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e1 cache) == AgeSetsDD.cacheDepsSlowDef propsCacheSize e1 cache
+           ∧ (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e2 cache) == AgeSetsDD.cacheDepsSlowDef propsCacheSize e2 cache
  ]
   where isValid (AgeSets.Age Nothing)  = True
         isValid (AgeSets.Age (Just x)) = x < propsCacheSize
 
+        {- cacheDepsFast also computes bounds (min, max) of ranges on which the dependency applies. Delete those bounds. -}
         noMinMax = Map.filter (not . Set.null) . Map.mapWithKey (\coUse cos -> Set.delete coUse $ Set.map first $ cos)
           where first (co,_,_) = co
 

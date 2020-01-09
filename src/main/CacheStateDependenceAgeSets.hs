@@ -172,9 +172,13 @@ defaultCache' cacheSize cobj cache = Map.insert cobj fresh $ cache'
 -}
 
 clean :: AbstractCacheState -> AbstractCacheState
-clean  cache = Map.mapMaybe (c . m) cache
+clean  cache = Map.mapMaybe c cache
   where c ages = if Set.null ages ∨ ages == inf then Nothing else Just ages
-        m ages = Set.filter (\a -> a == infTime ∨ a <= nrEntries) ages
+
+{- "consecutive" as in: no cache slots in which none of the cached object may be reside -}
+cleanConsecutiveCache :: AbstractCacheState -> AbstractCacheState
+cleanConsecutiveCache  cache = Map.map m cache
+  where m ages = Set.filter (\a -> a == infTime ∨ a <= nrEntries) ages
         nrEntries = Age $ Just $ Map.foldr (\ages n -> if Set.null ages ∨ ages == inf then n else n + 1) 0 cache
 
 defaultCache' :: CacheSize -> CachedObject -> AbstractCacheState -> AbstractCacheState

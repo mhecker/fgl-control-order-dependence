@@ -888,7 +888,7 @@ csdFromDataDepJoined :: DynGraph gr => CacheSize -> gr CFGNode CFGEdge -> Node -
 csdFromDataDepJoined  cacheSize g n0 = first $ allFromDataDepJoined cacheSize g n0
   where first (x, _, _) = x
 
-ageSetsJoin a b = (Map.intersectionWith (∪) a b) `Map.union` (fmap (Set.insert infTime) a `Map.union` fmap (Set.insert infTime) b)
+ageSetsJoin a b = AgeSets.cleanConsecutiveCache $ (Map.intersectionWith (∪) a b) `Map.union` (fmap (Set.insert infTime) a `Map.union` fmap (Set.insert infTime) b)
 ageSetsLeq  a b = (∀) (Map.intersectionWith (⊆) a b) (== True)
                 ∧ (∀) (Map.difference b a) (infTime ∈)
                 ∧ (∀) (Map.difference a b) (== inf)

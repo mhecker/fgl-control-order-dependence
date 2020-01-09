@@ -1,4 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 {-# LANGUAGE CPP #-}
 
 -- #define USECONNECTED
@@ -16,6 +19,7 @@ module Program.Properties.DissObservations where
 import Prelude hiding (all)
 
 import System.IO.Unsafe(unsafePerformIO)
+import Control.Monad (filterM)
 import Control.Monad.Random(evalRandIO)
 import Control.Exception.Base (assert)
 
@@ -24,7 +28,7 @@ import qualified Data.Set as Set
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 
-import IRLSOD (CFGNode, CFGEdge, Name(..), use, def, isGlobalName, globalEmpty )
+import IRLSOD (Array(..), CFGNode, CFGEdge(..), Name(..), use, def, isGlobalName, globalEmpty, Val(..), Var(..), VarFunction(..) )
 import Program (Program(..))
 import Program.For (compileAllToProgram, For(..), twoAddressCode)
 -- import Program.Generator (toProgram, , toCodeSimple, toCodeSimpleWithArrays, GeneratedProgram, SimpleCFG(..))
@@ -33,6 +37,8 @@ import Program.Generator (toCodeSimpleWithArrays, toProgramIntra)
 
 import Algebra.Lattice
 import Unicode
+
+import qualified Test.QuickCheck as QC (Arbitrary (..), Gen, resize, elements)
 
 import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots, restrict, sampleFrom)
 import Test.Tasty
@@ -128,11 +134,12 @@ import Data.Graph.Inductive.Arbitrary
 import Program.Examples (interestingTimingDep)
 
 import CacheSlice (cacheTimingSlice)
-import CacheExecution(initialCacheState, CacheSize, prependFakeInitialization, prependInitialization, cacheExecutionLimit)
+import CacheExecution(initialCacheState, CacheSize, prependFakeInitialization, prependInitialization, cacheExecutionLimit, CachedObject(..), alignedIndices)
 
 import qualified CacheStateDependence               as Precise   (csdMergeDirectOf)
-import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD (csdFromDataDepJoined)
-
+import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD (AbstractCacheState, csdFromDataDepJoined, cacheDepsSlowDef, cacheDepsFast)
+import qualified CacheStateDependenceAgeSets        as AgeSets (AbstractCacheState, Age(..), Ages(..))
+import CacheStateDependenceAgeSets (Age(..))
 
 import Program.Properties.Analysis (allSoundIntraMulti)
 import Program.Analysis (
@@ -1541,7 +1548,7 @@ observation_12_2_1 = [
   ]
 
 
-cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_1_1)
+cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_1_1 ++ observation_15_2_1)
 observation_13_5_1 = [
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
@@ -1565,7 +1572,63 @@ observation_15_1_1 = [
                         csdMAS = AgeSetsDD.csdFromDataDepJoined propsCacheSize g n0
                     in  csdM ⊑ csdMAS
   ]
-  
+
+-- Map CachedObject Ages
+newtype ArrayAbstractCacheState = ArrayAbstractCacheState AgeSets.AbstractCacheState
+
+arrayCacheStateGenerator ::  Int -> QC.Gen AgeSets.AbstractCacheState
+arrayCacheStateGenerator 0 = return $ Map.empty
+arrayCacheStateGenerator n = do
+    nrArrs <- elements [0 .. min 3 n ]
+    cos <- sublistOf  [ CachedArrayRange (Array ("a" ++ show a)) i | a <- [0.. nrArrs - 1 ], i <- alignedIndices :: [Val] ]
+    assocs <- mapM f cos
+    return $ Map.fromList assocs
+  where f :: CachedObject -> Gen (CachedObject, AgeSets.Ages)
+        f co = do
+                as <- QC.resize n arbitrary
+                return (co, as)
+
+        sublistOf xs = filterM (\_ -> choose (False, True)) xs
+
+instance QC.Arbitrary AgeSets.Ages where
+  arbitrary = do
+    is <- (listOf arbitrary :: Gen [Int])
+    hasNothing <- elements [True, False]
+    let mis = if hasNothing then Nothing : (fmap Just is) else fmap Just is
+    return $ (Set.fromList $ fmap (AgeSets.Age . (fmap abs)) $ mis)
+
+instance QC.Arbitrary  AgeSets.AbstractCacheState where
+  arbitrary = sized arrayCacheStateGenerator
+
+
+observation_15_2_1 = [
+  testPropertySized 25 "cacheDepsFast == cacheDepsSlowDef" $
+    \cache0 seed ->
+      let
+          cache = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
+          CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
+          -- x = (cache0 == cache) ∧ (seed == (5 :: Int))
+          -- cache = Map.fromList [(CachedArrayRange (Array "a0")   0, Set.fromList [Age Nothing]),
+          --                       (CachedArrayRange (Array "a0") 128, Set.fromList [Age (Just 0),Age (Just 3),Age Nothing]),
+          --                       (CachedArrayRange (Array "a0") 192, Set.fromList [Age (Just 3),Age Nothing]),
+          --                       (CachedArrayRange (Array "b")    0, Set.fromList [Age (Just 1)]),
+          --                       (CachedArrayRange (Array "b")   64, Set.fromList [Age (Just 2)])
+          --          ] :: AgeSets.AbstractCacheState
+          -- a = (Array "a0")
+          e1 = Assign (Register 0) (ArrayRead a (Var $ Register 1))
+          e2 = Assign (Register 0) (ArrayRead a (Val $ 0))
+          ok1 = (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e1 cache) == AgeSetsDD.cacheDepsSlowDef propsCacheSize e1 cache
+          ok2 = (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e2 cache) == AgeSetsDD.cacheDepsSlowDef propsCacheSize e2 cache
+      in (not $ Map.null cache0) {- ∧ (∀) [0.. propsCacheSize -1] (\a -> (∃) (Map.elems cache) (\ages -> (Age $ Just a) ∈ ages)) -}
+         ==>
+           (if ok1 then ok1 else traceShow (e1, cache) $ traceShow (AgeSetsDD.cacheDepsSlowDef propsCacheSize e1 cache) $ traceShow (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e1 cache) $ ok1)
+         ∧ (if ok2 then ok2 else traceShow (e2, cache) $ traceShow (AgeSetsDD.cacheDepsSlowDef propsCacheSize e2 cache) $ traceShow (noMinMax $ AgeSetsDD.cacheDepsFast propsCacheSize e2 cache) $ ok2)
+ ]
+  where isValid (AgeSets.Age Nothing)  = True
+        isValid (AgeSets.Age (Just x)) = x < propsCacheSize
+
+        noMinMax = Map.filter (not . Set.null) . Map.mapWithKey (\coUse cos -> Set.delete coUse $ Set.map first $ cos)
+          where first (co,_,_) = co
 
 type Slicer =
      CacheSize

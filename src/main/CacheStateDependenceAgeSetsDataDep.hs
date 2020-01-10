@@ -196,9 +196,18 @@ defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') =
    $ result 
   where result = Set.fromList [ (nodeFor (n, cache), co) |
                                       cacheA  <- pseudoConcrete cache,
-                                      (selected1, cacheA'1) <- AgeSets.cacheOnlyStepsFor cacheSize e cacheA,
-                                      (selected2, cacheA'2) <- AgeSets.cacheOnlyStepsFor cacheSize e cacheA,
+                                      ((_,[co'1]), cacheA'1) <- AgeSets.cacheOnlyStepsFor cacheSize e cacheA,
+                                      ((_,[co'2]), cacheA'2) <- AgeSets.cacheOnlyStepsFor cacheSize e cacheA,
                                       (co, ages1') <- Map.assocs cacheA'1,
+
+                                      (co'1 == co ∨ co'2 == co)
+                                    ∨ Map.lookup co'1 cacheA == Nothing
+                                    ∨ Map.lookup co'1 cacheA /= Map.lookup co cacheA,
+
+                                      (co'1 == co ∨ co'2 == co)
+                                    ∨ Map.lookup co'2 cacheA == Nothing
+                                    ∨ Map.lookup co'2 cacheA /= Map.lookup co cacheA,
+
                                       Map.lookup co cacheA'2 /= Just ages1'
                               ]
 
@@ -267,6 +276,39 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                                                             Age Nothing       -> cacheSize
                                                             Age (Just maxAge) -> maxAge + 1 -- TODO: precision, by considering cachet status of other choices
                          ]
+
+
+defsForFastSimple :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Set (n, CachedObject)
+defsForFastSimple cacheSize nodeFor (n, e, cache, cache') =
+     require ((∀) (AgeSets.cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ cache'_ ⊑ cache'))
+   $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
+   $ let result' = defsForSlowDef        cacheSize nodeFor (n, e, cache, cache') in assert (result ⊇ result')
+   -- $ (let result'= defsForSlowPsuedoDef  cacheSize nodeFor (n, e, cache, cache') in if not (result == result') then error $ show $ ("Def ", e, cache, result, result') else id)
+   -- $ (let result'= defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') in if not (result == result') then error $ show $ ("Def2", e, cache, result, result') else id)
+   $ result
+  where
+                second (_,aU,_  ) = aU
+                third  (_,_ ,aU') = aU'
+
+                result = (∐) [ Set.fromList [ (nodeFor (n, cache), co) ] | uses  <- Set.toList $ makesUses e,
+                                                      coUse  <- uses,
+                                                      coUse' <- uses,
+                                                      coUse' /= coUse,
+                                                      let agesUse  = Map.findWithDefault inf coUse  cache,
+                                                      let agesUse' = Map.findWithDefault inf coUse' cache,
+                                                      let aU  = mminimum agesUse ,
+                                                      let aU' = mmaximum agesUse',
+
+                                                      (co, ages) <- Map.assocs cache,
+                                                      let as = [ a  | a  <- Set.toList ages, aU < a ∧ a < aU' ],
+                                                      not $ List.null as
+                            ]
+                       ⊔ Set.fromList [ (nodeFor (n, cache), coChoice) |
+                                                      choices <- Set.toList $ makesUses e,
+                                                      not $ List.length choices == 1,
+                                                      coChoice <- choices
+                         ]
+
 
 
 type ModsFor gr =

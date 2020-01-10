@@ -137,8 +137,8 @@ import CacheSlice (cacheTimingSlice)
 import CacheExecution(initialCacheState, CacheSize, prependFakeInitialization, prependInitialization, cacheExecutionLimit, CachedObject(..), alignedIndices)
 
 import qualified CacheStateDependence               as Precise   (csdMergeDirectOf)
-import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD (AbstractCacheState, csdFromDataDepJoined, cacheDepsSlowDef, cacheDepsFast)
-import qualified CacheStateDependenceAgeSets        as AgeSets (AbstractCacheState, Age(..), Ages(..))
+import qualified CacheStateDependenceAgeSetsDataDep as AgeSetsDD (AbstractCacheState, csdFromDataDepJoined, cacheDepsSlowDef, cacheDepsFast,defsForSlowPsuedoDef2, defsForFast, defsForFastSimple)
+import qualified CacheStateDependenceAgeSets        as AgeSets (AbstractCacheState, Age(..), Ages(..),cacheOnlyStepFor)
 import CacheStateDependenceAgeSets (Age(..))
 
 import Program.Properties.Analysis (allSoundIntraMulti)
@@ -1548,7 +1548,7 @@ observation_12_2_1 = [
   ]
 
 
-cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_1_1 ++ observation_15_2_1)
+cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_1_1 ++ observation_15_2_1 ++ observation_15_3_1)
 observation_13_5_1 = [
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
@@ -1619,6 +1619,75 @@ observation_15_2_1 = [
         {- cacheDepsFast also computes bounds (min, max) of ranges on which the dependency applies. Delete those bounds. -}
         noMinMax = Map.filter (not . Set.null) . Map.mapWithKey (\coUse cos -> Set.delete coUse $ Set.map first $ cos)
           where first (co,_,_) = co
+
+
+
+observation_15_3_1 = [
+  testPropertySized 25 "defsForFast == defsForSlowPseudoDef2" $
+    \cache0 seed ->
+      let
+          cache  = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
+          CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
+
+          cache' = (∐) [ cache' | (_, cache') <- AgeSets.cacheOnlyStepFor propsCacheSize e cache ]
+
+          -- x = (cache0 == cache) ∧ (seed == (5 :: Int))
+          -- fromList = Set.fromList
+          -- cache = Map.fromList [
+          --           (CachedArrayRange (Array "a0")   0,fromList [             Age (Just 1),                           Age Nothing]),
+          --           (CachedArrayRange (Array "a0") 128,fromList [                                        Age (Just 3),Age Nothing]),
+
+          --           (CachedArrayRange (Array "a1") 128,fromList [             Age (Just 1),              Age (Just 3),Age Nothing]),
+          --           (CachedArrayRange (Array "a1") 192,fromList [             Age (Just 1)]),
+
+          --           (CachedArrayRange (Array "a2")   0,fromList [                          Age (Just 2), Age (Just 3)]),
+          --           (CachedArrayRange (Array "a2")  64,fromList [                          Age (Just 2)]),
+          --           (CachedArrayRange (Array "a2") 128,fromList [Age (Just 0),Age (Just 1),Age (Just 2)]),
+          --           (CachedArrayRange (Array "a2") 192,fromList [                          Age (Just 2)])
+          --          ]
+          -- a = Array "a2"
+
+
+          -- x = (cache0 == cache) ∧ (seed == (5 :: Int))
+          -- fromList = Set.fromList
+          -- cache = Map.fromList [
+          --           (CachedArrayRange (Array "a0")   0,fromList [                          Age (Just 2)]),
+          --           (CachedArrayRange (Array "a0")  64,fromList [Age (Just 0),             Age (Just 2)]),
+          --           (CachedArrayRange (Array "a0") 128,fromList [Age (Just 0),             Age (Just 2)]),
+          --           (CachedArrayRange (Array "a0") 192,fromList [                          Age (Just 2)]),
+
+          --           (CachedArrayRange (Array "a1")   0,fromList [              Age (Just 1),                          Age Nothing]),
+          --           (CachedArrayRange (Array "a1")  64,fromList [                                        Age (Just 3),Age Nothing]),
+          --           (CachedArrayRange (Array "a1") 192,fromList [                           Age (Just 2),Age (Just 3),Age Nothing]),
+
+          --           (CachedArrayRange (Array "a2") 0,fromList [Age Nothing])
+          --          ]
+          -- a = Array "a0"
+
+
+          e = Assign (Register 0) (ArrayRead a (Var $ Register 1))
+
+          ok = (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache, cache')) == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')
+      in (not $ Map.null cache0)
+         ==> if ok then ok else traceShow (e, cache) $ traceShow (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache, cache')) $ traceShow (AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')) $ ok,
+  testPropertySized 25 "defsForFastSimple == defsForSlowPseudoDef2" $
+    \cache0 seed ->
+      let
+          cache  = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
+          CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
+
+          cache' = (∐) [ cache' | (_, cache') <- AgeSets.cacheOnlyStepFor propsCacheSize e cache ]
+
+          e = Assign (Register 0) (ArrayRead a (Var $ Register 1))
+
+          ok = AgeSetsDD.defsForFastSimple propsCacheSize fst (0, e, cache, cache') == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')
+      in (not $ Map.null cache0)
+         ==> if ok then ok else traceShow (e, cache) $ traceShow (AgeSetsDD.defsForFastSimple propsCacheSize fst (0, e, cache, cache')) $ traceShow (AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')) $ ok
+
+ ]
+  where isValid (AgeSets.Age Nothing)  = True
+        isValid (AgeSets.Age (Just x)) = x < propsCacheSize
+
 
 type Slicer =
      CacheSize

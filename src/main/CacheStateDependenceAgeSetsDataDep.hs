@@ -212,32 +212,6 @@ defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') =
                               ]
 
 
--- cacheDepsSlowDef :: CacheSize -> CFGEdge -> AbstractCacheState -> Map CachedObject (Set CachedObject)
--- cacheDepsSlowDef cacheSize e cache =
---      id
---    $ result 
---           where result = (∐) [ Map.fromList [ (co', Set.fromList [ co ]) ] |
---                                    uses <- Set.toList $ makesUses e,
---                                    co' <- uses,
-
---                                    cacheA  <- pseudoConcrete cache,
---                                    let cacheA's = Map.fromList $ AgeSets.cacheOnlyStepsFor cacheSize e cacheA,
---                                    cacheC  <- pseudoConcrete cache,
---                                    let cacheC's = Map.fromList $ AgeSets.cacheOnlyStepsFor cacheSize e cacheC,
-
---                                    Map.lookup co' cacheA /= Map.lookup co' cacheC,
---                                    (∀) (Map.keys cache) (\co -> (co == co') ∨ (Map.lookup co cacheA  == Map.lookup co cacheC)),
-
---                                    (assumed, cacheA') <- Map.assocs          cacheA's,
---                                    let Just  cacheC'  =  Map.lookup assumed  cacheC's,
---                                    co <- Set.toList $ Map.keysSet cache ∪ Map.keysSet cacheA' ∪ Map.keysSet cacheC',
-
---                                    Map.lookup co cacheA /= Map.lookup co' cacheA,
---                                    Map.lookup co cacheC /= Map.lookup co' cacheC,
-
---                                    Map.lookup co cacheA' /= Map.lookup co cacheC'
---                                ]
-
 
 defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) (MinAge, MaxAge)
 defsForFast cacheSize nodeFor (n, e, cache, cache') =

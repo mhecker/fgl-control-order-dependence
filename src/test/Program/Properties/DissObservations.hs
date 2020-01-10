@@ -1631,45 +1631,11 @@ observation_15_3_1 = [
 
           cache' = (∐) [ cache' | (_, cache') <- AgeSets.cacheOnlyStepFor propsCacheSize e cache ]
 
-          -- x = (cache0 == cache) ∧ (seed == (5 :: Int))
-          -- fromList = Set.fromList
-          -- cache = Map.fromList [
-          --           (CachedArrayRange (Array "a0")   0,fromList [             Age (Just 1),                           Age Nothing]),
-          --           (CachedArrayRange (Array "a0") 128,fromList [                                        Age (Just 3),Age Nothing]),
-
-          --           (CachedArrayRange (Array "a1") 128,fromList [             Age (Just 1),              Age (Just 3),Age Nothing]),
-          --           (CachedArrayRange (Array "a1") 192,fromList [             Age (Just 1)]),
-
-          --           (CachedArrayRange (Array "a2")   0,fromList [                          Age (Just 2), Age (Just 3)]),
-          --           (CachedArrayRange (Array "a2")  64,fromList [                          Age (Just 2)]),
-          --           (CachedArrayRange (Array "a2") 128,fromList [Age (Just 0),Age (Just 1),Age (Just 2)]),
-          --           (CachedArrayRange (Array "a2") 192,fromList [                          Age (Just 2)])
-          --          ]
-          -- a = Array "a2"
-
-
-          -- x = (cache0 == cache) ∧ (seed == (5 :: Int))
-          -- fromList = Set.fromList
-          -- cache = Map.fromList [
-          --           (CachedArrayRange (Array "a0")   0,fromList [                          Age (Just 2)]),
-          --           (CachedArrayRange (Array "a0")  64,fromList [Age (Just 0),             Age (Just 2)]),
-          --           (CachedArrayRange (Array "a0") 128,fromList [Age (Just 0),             Age (Just 2)]),
-          --           (CachedArrayRange (Array "a0") 192,fromList [                          Age (Just 2)]),
-
-          --           (CachedArrayRange (Array "a1")   0,fromList [              Age (Just 1),                          Age Nothing]),
-          --           (CachedArrayRange (Array "a1")  64,fromList [                                        Age (Just 3),Age Nothing]),
-          --           (CachedArrayRange (Array "a1") 192,fromList [                           Age (Just 2),Age (Just 3),Age Nothing]),
-
-          --           (CachedArrayRange (Array "a2") 0,fromList [Age Nothing])
-          --          ]
-          -- a = Array "a0"
-
-
           e = Assign (Register 0) (ArrayRead a (Var $ Register 1))
 
-          ok = (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache, cache')) == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')
       in (not $ Map.null cache0)
-         ==> if ok then ok else traceShow (e, cache) $ traceShow (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache, cache')) $ traceShow (AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')) $ ok,
+         ==> (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache, cache')) == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache'),
+
   testPropertySized 25 "defsForFastSimple == defsForSlowPseudoDef2" $
     \cache0 seed ->
       let
@@ -1680,9 +1646,8 @@ observation_15_3_1 = [
 
           e = Assign (Register 0) (ArrayRead a (Var $ Register 1))
 
-          ok = AgeSetsDD.defsForFastSimple propsCacheSize fst (0, e, cache, cache') == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')
       in (not $ Map.null cache0)
-         ==> if ok then ok else traceShow (e, cache) $ traceShow (AgeSetsDD.defsForFastSimple propsCacheSize fst (0, e, cache, cache')) $ traceShow (AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')) $ ok
+         ==> AgeSetsDD.defsForFastSimple propsCacheSize fst (0, e, cache, cache') == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')
 
  ]
   where isValid (AgeSets.Age Nothing)  = True

@@ -1270,7 +1270,7 @@ observationANON = [
   ]
 
 
-timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3 ++ observation_9_3_4 ++ observation_9_4_1 ++ algorithm_10 ++ algorithm_11 ++ observation_9_6_1 ++ observation_10_1_1 ++ observation_10_2_1 ++ observation_11_3_1 ++ observation_12_1_1 ++ observation_12_2_1)
+timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3 ++ observation_9_3_4 ++ observation_9_4_1 ++ algorithm_10 ++ algorithm_11 ++ observation_9_6_1 ++ observation_9_6_2 ++ observation_10_1_1 ++ observation_10_2_1 ++ observation_11_3_1 ++ observation_12_1_1 ++ observation_12_2_1)
 
 observation_9_1_2 = [
     testProperty   "ntscdNTSODSlice ⊆ tscdSlice for random slice-criteria of random size"
@@ -1443,6 +1443,16 @@ observation_9_6_1 = [
                     in timdom == timdomMult
   ]
 
+observation_9_6_2 = [
+    testProperty "timdomMultipleOfNaiveLfp == timdom in reducible cfg"
+                $ \(REDUCIBLE(generatedGraph)) ->
+                    let (_, g) = withUniqueEndNode () () generatedGraph
+                        timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp              g
+                        timdomMult = fmap (Set.map fst) $ TSCD.timdomMultipleOfNaiveLfp g
+                    in timdom == timdomMult
+  ]
+
+
 
 observation_10_1_1 = [
     testProperty "nticdTimingSlice == ntscdTimingSlice == tscdSlice == tscdSliceFast"
@@ -1548,7 +1558,7 @@ observation_12_2_1 = [
   ]
 
 
-cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_1_1 ++ observation_15_2_1 ++ observation_15_3_1)
+cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_2_1 ++ observation_15_3_1 ++ observation_15_5_1)
 observation_13_5_1 = [
     testPropertySized 25 "cacheTimingSlice is sound"
                 $ \generated seed1 seed2 seed3 seed4 ->
@@ -1559,7 +1569,7 @@ observation_13_5_1 = [
                     in isSound cacheTimingSlice pr seed1 seed2 seed3 seed4
   ]
 
-observation_15_1_1 = [
+observation_15_5_1 = [
     testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined"
                 $ \generated ->
                     let pr :: Program Gr

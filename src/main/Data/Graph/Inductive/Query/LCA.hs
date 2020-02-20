@@ -6,7 +6,7 @@ module Data.Graph.Inductive.Query.LCA where
 
 -- import Data.Ord (comparing)
 -- import Data.Maybe(fromJust)
--- import Control.Monad (liftM, foldM, forM, forM_)
+import Control.Monad (liftM)
 
 -- import Control.Monad.ST
 -- import Data.STRef
@@ -200,6 +200,27 @@ lcaTimdomOfTwoFingerFast idom (n, sn, ns) (m, sm, ms) =
                                                if n' ∈ Map.keysSet ns ∧ (Set.size (ms ! m) > 1) ∧ (not $ n' ∈ Map.keysSet ms) then Nothing else
                                                       lca' (n', sn + sn', Map.insertWith (∪) n' (Set.fromList [sn+sn']) ns) (m, sm, ms)
 
+
+lcaTimdomOfTwoFingerNoTimingSinks idom (n, sn, ns) (m, sm, ms) =
+              require ((∀) (Map.elems $ Map.filter (/= Nothing) $ idom) (\(Just (_,k)) -> k > 0))
+            $ assert (ns == Map.fromList [(n, sn)])
+            $ assert (ms == Map.fromList [(m, sm)])
+            $ result
+          where trace x = id
+                result = lca' (n, sn, ns) (m, sm, ms)
+                lca' :: (Node, Integer, Map Node Integer) -> (Node, Integer, Map Node Integer) -> Maybe (Node, Integer, Map Node Integer)
+                lca' pin@(n, sn, ns) pim@(m, sm, ms)
+                    | sn > sm = lca' (m, sm, ms) (n, sn, ns)
+                    | n ∈ Map.keysSet ms ∧ (      sn == (ms ! n)) = trace ("A", (n,sn,ns), (m,sm,ms)) $
+                                                           Just (n, sn, Map.fromList [(n, sn)])
+                    | n ∈ Map.keysSet ms ∧ (not $ sn == (ms ! n)) = trace ("B", (n,sn,ns), (m,sm,ms)) $
+                                  Nothing
+                    | otherwise = trace ("C", (n,sn,ns), (m,sm,ms)) $
+                                  case idom ! n of
+                                     Nothing       -> Nothing
+                                     Just (n',sn') ->
+                                               if n' ∈ Map.keysSet ns then Nothing else
+                                                      lca' (n', sn + sn', Map.insert n' (sn+sn') ns) (m, sm, ms)
 
 
 lcaTimdomOfTwoFingerFastCost' idom (n, sn, ns, ns0, cost) (m, sm, ms, ms0, _) = 

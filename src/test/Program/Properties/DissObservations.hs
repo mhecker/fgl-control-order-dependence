@@ -40,7 +40,7 @@ import Unicode
 
 import qualified Test.QuickCheck as QC (Arbitrary (..), Gen, resize, elements)
 
-import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots, restrict, sampleFrom)
+import Util(invert'', (≡), findCyclesM, fromSet, sublists, moreSeeds, roots, restrict, sampleFrom, pathsUpToLength)
 import Test.Tasty
 import Test.Tasty.Providers (singleTest)
 import Test.Tasty.QuickCheck
@@ -125,6 +125,7 @@ import qualified Data.Graph.Inductive.Query.TSCD  as TSCD (
     tscdSliceFast, timdomOfLfp, timDFFromUpLocalDefViaTimdoms, timDF, timDFLocalViaTimdoms, timDFLocalDef, timDFUpGivenXViaTimdoms, timDFUpGivenXViaTimdomsDef,
     timdomsFromItimdomMultipleOf, timdomsOf, validTimdomLfp, timDFFromFromItimdomMultipleOfFast, tscdSlice,
     timdomMultipleOfNaiveLfp, itimdomMultipleOfTwoFinger, validTimdomFor, cost1F,
+    itimdomOfTwoFingerTransitive, itimdomMultipleOfTwoFingerCost,
     timingCorrection, tscdCostSlice, timingLeaksTransformation,
   )
 
@@ -1270,7 +1271,7 @@ observationANON = [
   ]
 
 
-timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3 ++ observation_9_3_4 ++ observation_9_4_1 ++ algorithm_10 ++ algorithm_11 ++ observation_9_6_1 ++ observation_9_6_2 ++ observation_10_1_1 ++ observation_10_2_1 ++ observation_11_3_1 ++ observation_12_1_1 ++ observation_12_2_1)
+timingProps = testGroup "(concerning timing sensitive dependency notions)" (observation_9_1_2 ++  observation_9_2_1 ++ observation_9_2_2 ++ observation_9_2_3 ++ observation_9_2_4 ++ observation_9_2_5 ++ observation_9_3_1 ++ observation_9_3_2 ++ observation_9_3_3 ++ observation_9_3_4 ++ observation_9_4_1 ++ algorithm_10 ++ algorithm_11 ++ algorithm_itimdomOfTwoFingerTransitive ++ observation_9_6_1 ++ observation_9_6_2 ++ observation_10_1_1 ++ observation_10_2_1 ++ observation_11_3_1 ++ observation_12_1_1 ++ observation_12_2_1)
 
 observation_9_1_2 = [
     testProperty   "ntscdNTSODSlice ⊆ tscdSlice for random slice-criteria of random size"
@@ -1434,6 +1435,67 @@ algorithm_11 = [
                        TSCD.timDF                               g
   ]
 
+isTransitive timdom = (∀) (Map.assocs $ timdom) (\(x, ys) -> (∀) ys (\y -> (∀) (timdom ! y) (\z -> z ∈ timdom ! x )))
+
+
+algorithm_itimdomOfTwoFingerTransitive =  [
+    -- testProperty "itimdomOfTwoFingerTransitive == itimdomMultipleOfTwoFingerCost"
+    --             $ \(ARBITRARY(g)) ->
+    --                 -- let costF n m = cost ! (n,m)
+    --                 --       where cost = costFor g seed
+    --                 let costF = TSCD.cost1F g
+    --                     noself n ms = Set.filter (\(m, cost) -> m /= n) ms
+    --                 in TSCD.itimdomOfTwoFingerTransitive    g costF ==
+    --                    (Map.mapWithKey noself $
+    --                    TSCD.itimdomMultipleOfTwoFingerCost  g costF),
+    -- testProperty "itimdomOfTwoFingerTransitive^* == itimdomOfLfp"
+    --             $ \(REDUCIBLE(g)) ->
+    --                 -- -- let costF n m = cost ! (n,m)
+    --                 -- --       where cost = costFor g seed
+    --                 -- let costF = TSCD.cost1F g
+    --                 --     timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp g
+
+    --                 -- in TSCD.itimdomOfTwoFingerTransitive    g costF ==
+    --                 --    (Map.mapWithKey noself $
+    --                 --    TSCD.itimdomMultipleOfTwoFingerCost  g costF)                       timdom = TSCD.timdomOfLfp g
+    --             let  nr = toInteger $ 2 * (length $ nodes g)
+
+    --                  itimdom = TSCD.itimdomOfTwoFingerTransitive g costF
+    --                    where costF = TSCD.cost1F g
+    --                  timdom     = TSCD.timdomOfLfp g
+
+    --                  timdom' = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- pathsUpToLength itimdom nr n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
+    --             in timdom == timdom'
+    testProperty "itimdomOfTwoFingerTransitive^* == itimdomOfLfp in reducible cfg"
+                $ \(REDUCIBLE(g)) ->
+                let
+                     costF = TSCD.cost1F g
+                     timdom  =                                  fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                     timdom' = toSuccMap $ trc $ (fromSuccMap $ fmap (Set.map fst) $ TSCD.itimdomOfTwoFingerTransitive g costF :: Gr () ())
+                in (isTransitive timdom) ∧ (timdom == timdom'),
+    testProperty "itimdomOfTwoFingerTransitive^* == itimdomOfLfp in unique exit node cfg"
+                $ \(ARBITRARY(generatedGraph)) ->
+                let  (_, g) = withUniqueEndNode () () generatedGraph
+                     costF = TSCD.cost1F g
+                     timdom  =                                  fmap (Set.map fst) $ TSCD.timdomOfLfp g
+                     timdom' = toSuccMap $ trc $ (fromSuccMap $ fmap (Set.map fst) $ TSCD.itimdomOfTwoFingerTransitive g costF :: Gr () ())
+                in (isTransitive timdom) ∧ (timdom == timdom')
+    -- testProperty "itimdomOfTwoFingerTransitive^* == itimdomOfLfp in cfg with transitive timdom"
+    --             $ \(ARBITRARY(g)) ->
+    --             let  costF = TSCD.cost1F g
+    --                  timdom  =                                  fmap (Set.map fst) $ TSCD.timdomOfLfp g
+    --                  timdom' = toSuccMap $ trc $ (fromSuccMap $ fmap (Set.map fst) $ TSCD.itimdomOfTwoFingerTransitive g costF :: Gr () ())
+    --             in (isTransitive timdom) ==> (timdom == timdom')
+    -- testProperty "timdomOfLfp is transitive up to cycles for reducible cfg"
+    -- $ \(REDUCIBLE(generatedGraph)) ->
+    --             let g = generatedGraph
+    --                 timdom = TSCD.timdomOfLfp g
+    --             in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
+    --                                                                   (z, (steps + steps'          )          ) ∈ timdom ! x
+    --                  ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
+    --             )))
+  ]
+  
 observation_9_6_1 = [
     testProperty "timdomMultipleOfNaiveLfp == timdom in unique exit node cfg"
                 $ \(ARBITRARY(generatedGraph)) ->

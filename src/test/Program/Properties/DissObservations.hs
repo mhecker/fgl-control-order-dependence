@@ -1613,34 +1613,36 @@ observation_15_5_1 = [
 -- Map CachedObject Ages
 newtype ArrayAbstractCacheState = ArrayAbstractCacheState AgeSets.AbstractCacheState
 
-arrayCacheStateGenerator ::  Int -> QC.Gen AgeSets.AbstractCacheState
-arrayCacheStateGenerator 0 = return $ Map.empty
+arrayCacheStateGenerator ::  Int -> QC.Gen AbstractCacheState
+arrayCacheStateGenerator 0 = return $ AbstractCacheState $ Map.empty
 arrayCacheStateGenerator n = do
     nrArrs <- elements [0 .. min 3 n ]
     cos <- sublistOf  [ CachedArrayRange (Array ("a" ++ show a)) i | a <- [0.. nrArrs - 1 ], i <- alignedIndices :: [Val] ]
     assocs <- mapM f cos
-    return $ Map.fromList assocs
+    return $ AbstractCacheState $ Map.fromList assocs
   where f :: CachedObject -> Gen (CachedObject, AgeSets.Ages)
         f co = do
-                as <- QC.resize n arbitrary
+                Ages as <- QC.resize n arbitrary
                 return (co, as)
 
         sublistOf xs = filterM (\_ -> choose (False, True)) xs
 
-instance QC.Arbitrary AgeSets.Ages where
+newtype Ages = Ages AgeSets.Ages deriving Show
+instance QC.Arbitrary Ages where
   arbitrary = do
     is <- (listOf arbitrary :: Gen [Int])
     hasNothing <- elements [True, False]
     let mis = if hasNothing then Nothing : (fmap Just is) else fmap Just is
-    return $ (Set.fromList $ fmap (AgeSets.Age . (fmap abs)) $ mis)
+    return $ Ages $ (Set.fromList $ fmap (AgeSets.Age . (fmap abs)) $ mis)
 
-instance QC.Arbitrary  AgeSets.AbstractCacheState where
+newtype AbstractCacheState = AbstractCacheState AgeSets.AbstractCacheState deriving Show
+instance QC.Arbitrary  AbstractCacheState where
   arbitrary = sized arrayCacheStateGenerator
 
 
 observation_15_2_1 = [
   testPropertySized 25 "cacheDepsFast == cacheDepsSlowDef" $
-    \cache0 seed ->
+    \(AbstractCacheState cache0) seed ->
       let
           cache = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
           CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
@@ -1661,7 +1663,7 @@ observation_15_2_1 = [
 
 observation_15_3_1 = [
   testPropertySized 25 "defsForFast == defsForSlowPseudoDef2" $
-    \cache0 seed ->
+    \(AbstractCacheState cache0) seed ->
       let
           cache  = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
           CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
@@ -1674,7 +1676,7 @@ observation_15_3_1 = [
          ==> (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache, cache')) == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache'),
 
   testPropertySized 25 "defsForFastSimple == defsForSlowPseudoDef2" $
-    \cache0 seed ->
+    \(AbstractCacheState cache0) seed ->
       let
           cache  = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
           CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)

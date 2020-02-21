@@ -1587,7 +1587,7 @@ observation_12_2_1 = [
 
 cacheProps = testGroup "(concerning micro-architectural dependencies)" (observation_13_5_1 ++ observation_15_2_1 ++ observation_15_3_1 ++ observation_15_5_1)
 observation_13_5_1 = [
-    testPropertySized 25 "cacheTimingSlice is sound"
+    testPropertySized 25 "cacheTimingSlice is sound [slow]"
                 $ \generated seed1 seed2 seed3 seed4 ->
                     let pr :: Program Gr
                         pr = compileAllToProgram a b'

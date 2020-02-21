@@ -408,6 +408,7 @@ mergeFromForEdgeToSuccessor graph csGraph idom roots = assert (result == IntMap.
         (!!) = (IntMap.!)
         (∈∈) = (IntSet.member)
         (∖∖) = (IntSet.difference)
+        assert b x = x -- assertions here are too expensive for day-to-day tests. kill this line if you want to enable them.
         fromIntSet f s = IntMap.fromAscList [ (y, f y) | y <- IntSet.toAscList s]
         rootsI = IntSet.fromAscList $ Set.toAscList $ roots
         go workset fromSuccessors

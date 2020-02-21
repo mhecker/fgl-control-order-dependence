@@ -1597,7 +1597,7 @@ observation_13_5_1 = [
   ]
 
 observation_15_5_1 = [
-    testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined"
+    testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDepJoined [slow]"
                 $ \generated ->
                     let pr :: Program Gr
                         pr = compileAllToProgram a b'

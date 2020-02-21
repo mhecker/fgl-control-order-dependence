@@ -220,7 +220,7 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
    $ let result' = defsForSlowDef        cacheSize nodeFor (n, e, cache, cache') in assert (Map.keysSet result ⊇ result')
    -- $ (let result'= defsForSlowPsuedoDef  cacheSize nodeFor (n, e, cache, cache') in if not (Map.keysSet result == result') then error $ show $ ("Def ", e, cache, Map.keysSet result, result') else id)
    -- $ (let result'= defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') in if not (Map.keysSet result == result') then error $ show $ ("Def2", e, cache, Map.keysSet result, result') else id)
-   $ assert ((∀) (Map.elems result) (\(MinAge min, MaxAge max) -> max <= min))
+   $ assert ((∀) (Map.elems result) (\(MinAge min, MaxAge max) -> min <= max))
    $ result
   where
                 second (_,aU,_  ) = aU

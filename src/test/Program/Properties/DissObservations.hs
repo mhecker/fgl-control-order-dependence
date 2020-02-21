@@ -1759,7 +1759,7 @@ probniProps = testGroup "(concerning criteria for probabilistic non-interference
 
 observation_16_4_1 = [
     testPropertySized 15
-         ("allSoundIntraMulti [isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification]")
+         ("allSoundIntraMulti [isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification] [slow]")
          ( allSoundIntraMulti [isSecureTimingClassificationAtUses, isSecureMinimalClassification, isSecureSimonClassification])
   ]
 

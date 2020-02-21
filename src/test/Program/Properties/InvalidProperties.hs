@@ -126,10 +126,12 @@ import qualified Data.Graph.Inductive.Query.FCACD as FCACD (wccSlice)
 import Program (entryOf, procedureOf, mainThread)
 import MicroArchitecturalDependence (MicroArchitecturalAbstraction(..), stateSets, csGraphSize, stateGraphForSets)
 import CacheExecution(CachedObject, initialCacheState, CacheSize, prependInitialization, prependFakeInitialization, cacheExecution, cacheExecutionLimit)
-import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, csdMergeDirectOf, cacheCostDecisionGraph, cacheCostDecisionGraphFor, cacheStateGraph, cacheOnlyStepFor, costsFor, cacheAbstraction)
+import CacheStateDependence(AbstractCacheState, initialAbstractCacheState, csdMergeDirectOf, cacheStateGraph, cacheOnlyStepFor, cacheAbstraction)
 import qualified CacheStateDependenceReach     as Reach     (csdMergeOf)
 import qualified CacheStateDependenceImprecise as Imprecise (csdMergeDirectOf, cacheAbstraction)
-import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf, csdFromDataDep)
+import qualified CacheStateDependenceAgeSets   as AgeSets   (csdMergeDirectOf)
+import qualified CacheStateDependenceAgeSetsDataDep
+                                               as AgeSetsDD (csdFromDataDep)
 import CacheSlice (cacheTimingSliceImprecise)
 
 
@@ -974,8 +976,8 @@ cacheProps = localOption (QuickCheckTests 1200) $ testGroup "(concerning cache t
                                 b' = fmap twoAddressCode b
                         g = tcfg pr
                         n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   =         csdMergeDirectOf propsCacheSize g n0
-                        csdMAS = AgeSets.csdFromDataDep   propsCacheSize g n0
+                        csdM   =           csdMergeDirectOf propsCacheSize g n0
+                        csdMAS = AgeSetsDD.csdFromDataDep   propsCacheSize g n0
                     in  csdM ⊑ csdMAS
   ] ++
   [       testPropertySized 25 "imprecise csGraphs are smaller than precise"
@@ -1007,7 +1009,7 @@ cacheTests = testGroup "(concerning cache timing)" $
   [ testCase ("csdMergeOf ⊆ csdImprecise for " ++ exampleName ) $
       let n0 = entryOf p $ procedureOf p $ mainThread p
           g = tcfg p
-          csdM          =     Reach.csdMergeOf       propsCacheSize g n0
+          (csdM,_,_)    =     Reach.csdMergeOf       propsCacheSize g n0
           csdMImprecise = Imprecise.csdMergeDirectOf propsCacheSize g n0
       in  csdM ⊑ csdMImprecise @? ""
   | (exampleName, p) <- [("exampleTooCoarseAbstractionIsUnsound", exampleTooCoarseAbstractionIsUnsound)]

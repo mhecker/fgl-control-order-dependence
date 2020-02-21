@@ -1439,33 +1439,6 @@ isTransitive timdom = (∀) (Map.assocs $ timdom) (\(x, ys) -> (∀) ys (\y -> (
 
 
 algorithm_itimdomOfTwoFingerTransitive =  [
-    -- testProperty "itimdomOfTwoFingerTransitive == itimdomMultipleOfTwoFingerCost"
-    --             $ \(ARBITRARY(g)) ->
-    --                 -- let costF n m = cost ! (n,m)
-    --                 --       where cost = costFor g seed
-    --                 let costF = TSCD.cost1F g
-    --                     noself n ms = Set.filter (\(m, cost) -> m /= n) ms
-    --                 in TSCD.itimdomOfTwoFingerTransitive    g costF ==
-    --                    (Map.mapWithKey noself $
-    --                    TSCD.itimdomMultipleOfTwoFingerCost  g costF),
-    -- testProperty "itimdomOfTwoFingerTransitive^* == itimdomOfLfp"
-    --             $ \(REDUCIBLE(g)) ->
-    --                 -- -- let costF n m = cost ! (n,m)
-    --                 -- --       where cost = costFor g seed
-    --                 -- let costF = TSCD.cost1F g
-    --                 --     timdom     = fmap (Set.map fst) $ TSCD.timdomOfLfp g
-
-    --                 -- in TSCD.itimdomOfTwoFingerTransitive    g costF ==
-    --                 --    (Map.mapWithKey noself $
-    --                 --    TSCD.itimdomMultipleOfTwoFingerCost  g costF)                       timdom = TSCD.timdomOfLfp g
-    --             let  nr = toInteger $ 2 * (length $ nodes g)
-
-    --                  itimdom = TSCD.itimdomOfTwoFingerTransitive g costF
-    --                    where costF = TSCD.cost1F g
-    --                  timdom     = TSCD.timdomOfLfp g
-
-    --                  timdom' = Map.fromList [ (n, Set.fromList [ (m, steps) | m <- nodes g, path <- pathsUpToLength itimdom nr n m, let steps = sum $ fmap snd path ]) | n <- nodes g]
-    --             in timdom == timdom'
     testProperty "itimdomOfTwoFingerTransitive^* == itimdomOfLfp in reducible cfg"
                 $ \(REDUCIBLE(g)) ->
                 let
@@ -1486,14 +1459,6 @@ algorithm_itimdomOfTwoFingerTransitive =  [
     --                  timdom  =                                  fmap (Set.map fst) $ TSCD.timdomOfLfp g
     --                  timdom' = toSuccMap $ trc $ (fromSuccMap $ fmap (Set.map fst) $ TSCD.itimdomOfTwoFingerTransitive g costF :: Gr () ())
     --             in (isTransitive timdom) ==> (timdom == timdom')
-    -- testProperty "timdomOfLfp is transitive up to cycles for reducible cfg"
-    -- $ \(REDUCIBLE(generatedGraph)) ->
-    --             let g = generatedGraph
-    --                 timdom = TSCD.timdomOfLfp g
-    --             in (∀) (Map.assocs timdom) (\(x, ys) -> (∀) ys (\(y, steps) -> (∀) (timdom ! y) (\(z, steps') ->
-    --                                                                   (z, (steps + steps'          )          ) ∈ timdom ! x
-    --                  ∨ (∃) (timdom ! z) (\(y',steps'') -> y' == y  ∧  (z, (steps          - steps'')          ) ∈ timdom ! x)
-    --             )))
   ]
   
 observation_9_6_1 = [

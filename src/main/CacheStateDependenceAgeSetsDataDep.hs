@@ -94,7 +94,7 @@ cacheDataDep :: CacheSize -> CsGraph AbstractCacheState CFGEdge -> Map (Node, Ab
 cacheDataDep cacheSize (cs, es)  =  (∐) [ Map.fromList [ ((m, cache, co), Set.fromList [ (n, cache') ]) ] | ((m, cache), deps) <- Map.assocs seesDef, ((n, cache'), co) <- Map.keys deps ]
   where seesDef :: Map (Node, AbstractCacheState) (Map ((Node, AbstractCacheState), CachedObject) (MinAge, MaxAge))
         seesDef = (㎲⊒) (Map.fromList [ ((m,cache), Map.empty) | (m, caches) <- IntMap.toList cs, cache <- Set.toList caches ]) f
-          where f sees =  (∐) [ Map.fromList [ ((m, cache'), (killedFor cacheSize e cache cache' $ transDefs cacheSize n e cache cache' (sees ! (n, cache))) ⊔ (defs (n, e, cache, cache')) ) ]
+          where f sees =  (∐) [ Map.fromList [ ((m, cache'), (killedFor cacheSize e cache cache' $ transDefs cacheSize n e cache cache' (sees ! (n, cache))) ⊔ (defs (n, e, cache)) ) ]
                                       | (n, caches) <- IntMap.toList cs, cache <- Set.toList caches, (cache_, e, (m, cache' )) <- Set.toList $ es !! n, cache == cache_ ]
 
         defs = defsFor cacheSize id
@@ -156,11 +156,11 @@ minUsesOf e cache = [ minUse  | uses <- Set.toList $ makesUses e, let mins = [ m
 maxUsesOf e cache = [ maxUse  | uses <- Set.toList $ makesUses e, let maxs = [ mmaximum $ Map.findWithDefault inf coUse cache | coUse <- uses ], let maxUse = List.maximum maxs ]
 
 
-defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) (MinAge, MaxAge)
+defsFor :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState) -> Map (n, CachedObject) (MinAge, MaxAge)
 defsFor = defsForFast
 
-defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
-     require ((∀) (AgeSets.cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ AgeSets.cleanConsecutiveCache cache'_ ⊑ cache'))
+defsForSlowDef cacheSize nodeFor (n, e, cache) =
+     id
    $ assert ((List.null choices) → (Set.null result))
    $ result 
   where result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- concrete cacheSize cache, co <- Set.toList $ differing cacheSelected ]
@@ -175,8 +175,8 @@ defsForSlowDef cacheSize nodeFor (n, e, cache, cache') =
 
 
 
-defsForSlowPsuedoDef cacheSize nodeFor (n, e, cache, cache') =
-     require ((∀) (AgeSets.cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ cache'_ ⊑ cache'))
+defsForSlowPsuedoDef cacheSize nodeFor (n, e, cache) =
+     id
    $ assert ((List.null choices) → (Set.null result))
    $ result 
   where result = Set.fromList [ (nodeFor (n, cache), co) | cacheSelected  <- pseudoConcrete cache, co <- Set.toList $ differing cacheSelected ]
@@ -190,8 +190,8 @@ defsForSlowPsuedoDef cacheSize nodeFor (n, e, cache, cache') =
         trace = False ∧ n == 52
 
 
-defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') =
-     require ((∀) (AgeSets.cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ cache'_ ⊑ cache'))
+defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache) =
+     id
    $ assert ((List.null $ makesChoice e) → (Set.null result))
    $ result 
   where result = Set.fromList [ (nodeFor (n, cache), co) |
@@ -213,13 +213,13 @@ defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') =
 
 
 
-defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Map (n, CachedObject) (MinAge, MaxAge)
-defsForFast cacheSize nodeFor (n, e, cache, cache') =
-     require ((∀) (AgeSets.cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ AgeSets.cleanConsecutiveCache cache'_ ⊑ cache'))
+defsForFast :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState) -> Map (n, CachedObject) (MinAge, MaxAge)
+defsForFast cacheSize nodeFor (n, e, cache) =
+     id
    $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
-   $ let result' = defsForSlowDef        cacheSize nodeFor (n, e, cache, cache') in assert (Map.keysSet result ⊇ result')
-   -- $ (let result'= defsForSlowPsuedoDef  cacheSize nodeFor (n, e, cache, cache') in if not (Map.keysSet result == result') then error $ show $ ("Def ", e, cache, Map.keysSet result, result') else id)
-   -- $ (let result'= defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') in if not (Map.keysSet result == result') then error $ show $ ("Def2", e, cache, Map.keysSet result, result') else id)
+   $ let result' = defsForSlowDef        cacheSize nodeFor (n, e, cache) in assert (Map.keysSet result ⊇ result')
+   -- $ (let result'= defsForSlowPsuedoDef  cacheSize nodeFor (n, e, cache) in if not (Map.keysSet result == result') then error $ show $ ("Def ", e, cache, Map.keysSet result, result') else id)
+   -- $ (let result'= defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache) in if not (Map.keysSet result == result') then error $ show $ ("Def2", e, cache, Map.keysSet result, result') else id)
    $ assert ((∀) (Map.elems result) (\(MinAge min, MaxAge max) -> min <= max))
    $ result
   where
@@ -252,13 +252,13 @@ defsForFast cacheSize nodeFor (n, e, cache, cache') =
                          ]
 
 
-defsForFastSimple :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState, AbstractCacheState) -> Set (n, CachedObject)
-defsForFastSimple cacheSize nodeFor (n, e, cache, cache') =
-     require ((∀) (AgeSets.cacheOnlyStepFor cacheSize e cache) (\(e_, cache'_) -> e_ == e ∧ cache'_ ⊑ cache'))
+defsForFastSimple :: forall n. (Show n, Ord n) => CacheSize -> ((Node, AbstractCacheState) -> n) -> (Node, CFGEdge, AbstractCacheState) -> Set (n, CachedObject)
+defsForFastSimple cacheSize nodeFor (n, e, cache) =
+     id
    $ require (Set.size (makesUses e) <= 1) -- up to one indetermined (e.g.: array) access
-   $ let result' = defsForSlowDef        cacheSize nodeFor (n, e, cache, cache') in assert (result ⊇ result')
-   -- $ (let result'= defsForSlowPsuedoDef  cacheSize nodeFor (n, e, cache, cache') in if not (result == result') then error $ show $ ("Def ", e, cache, result, result') else id)
-   -- $ (let result'= defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache, cache') in if not (result == result') then error $ show $ ("Def2", e, cache, result, result') else id)
+   $ let result' = defsForSlowDef        cacheSize nodeFor (n, e, cache) in assert (result ⊇ result')
+   -- $ (let result'= defsForSlowPsuedoDef  cacheSize nodeFor (n, e, cache) in if not (result == result') then error $ show $ ("Def ", e, cache, result, result') else id)
+   -- $ (let result'= defsForSlowPsuedoDef2 cacheSize nodeFor (n, e, cache) in if not (result == result') then error $ show $ ("Def2", e, cache, result, result') else id)
    $ result
   where
                 second (_,aU,_  ) = aU
@@ -742,7 +742,7 @@ cacheDataDepG :: Graph gr => CacheSize -> gr (Node, AbstractCacheState) CFGEdge 
 cacheDataDepG cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), Set.fromList [ yN ]) ] | (yM, deps) <- Map.assocs seesDef, (yN, co) <- Map.keys deps ]
   where seesDef :: Map Node (Map (Node, CachedObject) (MinAge, MaxAge))
         seesDef = (㎲⊒) (Map.fromList [ (y, Map.empty) | y <- nodes csGraphG ]) f
-          where f sees =  (∐) [ Map.fromList [ (yM, (killedFor cacheSize e cache cache' $ transDefs cacheSize yN e cache cache' (sees ! yN)) ⊔ (defs yN (n, e, cache, cache'))) ]
+          where f sees =  (∐) [ Map.fromList [ (yM, (killedFor cacheSize e cache cache' $ transDefs cacheSize yN e cache cache' (sees ! yN)) ⊔ (defs yN (n, e, cache))) ]
                                       | (yN, (n, cache)) <- labNodes csGraphG, (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM]
 
         defs yN = defsFor cacheSize (const yN)
@@ -760,7 +760,7 @@ cacheDataDepGWork cacheSize csGraphG  = (∐) [ Map.fromList [ ((yM, co), IntSet
                 seesM  = sees ! yM
                 Just (m, cache') = lab csGraphG yM
 
-                seesM' = (∐) [(killedFor cacheSize e cache cache' $ transDefs cacheSize yN e cache cache' (sees ! yN)) ⊔ (defs yN (n, e, cache, cache'))  | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
+                seesM' = (∐) [(killedFor cacheSize e cache cache' $ transDefs cacheSize yN e cache cache' (sees ! yN)) ⊔ (defs yN (n, e, cache))  | (yN,e) <- lpre csGraphG yM,  let Just (n, cache)  = lab csGraphG yN ]
                 changed = seesM /= seesM'
 
                 workset0' = foldl (\ws (i, n) -> Map.insert i n ws) workset0 [(node2number ! m, m) | m <- suc csGraphG yM]
@@ -783,7 +783,7 @@ cacheDataDepGWork2 cacheSize csGraphG = reaches
         reachesFor :: (Node, (Node, AbstractCacheState)) -> Map (Node, CachedObject) IntSet -> Map (Node, CachedObject) IntSet
         reachesFor (yN, (n, cache)) reaches = foldr ins reaches (Map.assocs $ go2 reached reached)
 
-          where reached = Map.fromList [ ((yM, co), minAge) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM, ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache, cache') ]
+          where reached = Map.fromList [ ((yM, co), minAge) | (yM, e) <- lsuc csGraphG yN, let Just (m, cache') = lab csGraphG yM, ((_, co), minAge) <- Map.assocs $ defs yN (n, e, cache) ]
 
                 ins ((yM, co), (MinAge minAge, MaxAge maxAge)) reaches
                     | maxAge >= cacheSize = Map.alter f (yM, co) reaches

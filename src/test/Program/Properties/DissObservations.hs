@@ -1668,12 +1668,10 @@ observation_15_3_1 = [
           cache  = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
           CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
 
-          cache' = (∐) [ cache' | (_, cache') <- AgeSets.cacheOnlyStepFor propsCacheSize e cache ]
-
           e = Assign (Register 0) (ArrayRead a (Var $ Register 1))
 
       in (not $ Map.null cache0)
-         ==> (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache, cache')) == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache'),
+         ==> (Map.keysSet $ AgeSetsDD.defsForFast propsCacheSize fst (0, e, cache)) == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache),
 
   testPropertySized 25 "defsForFastSimple == defsForSlowPseudoDef2" $
     \(AbstractCacheState cache0) seed ->
@@ -1681,12 +1679,10 @@ observation_15_3_1 = [
           cache  = Map.filter (not . Set.null) $ fmap (Set.filter isValid) cache0 :: AgeSets.AbstractCacheState
           CachedArrayRange a i = (cycle $ Map.keys cache0) !! (abs seed)
 
-          cache' = (∐) [ cache' | (_, cache') <- AgeSets.cacheOnlyStepFor propsCacheSize e cache ]
-
           e = Assign (Register 0) (ArrayRead a (Var $ Register 1))
 
       in (not $ Map.null cache0)
-         ==> AgeSetsDD.defsForFastSimple propsCacheSize fst (0, e, cache, cache') == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache, cache')
+         ==> AgeSetsDD.defsForFastSimple propsCacheSize fst (0, e, cache) == AgeSetsDD.defsForSlowPsuedoDef2 propsCacheSize fst (0, e, cache)
 
  ]
   where isValid (AgeSets.Age Nothing)  = True

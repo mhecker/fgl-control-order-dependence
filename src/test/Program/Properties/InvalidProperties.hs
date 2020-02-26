@@ -1003,17 +1003,6 @@ cacheProps = localOption (QuickCheckTests 1200) $ testGroup "(concerning cache t
 
 
 cacheTests = testGroup "(concerning cache timing)" $
-  [ testCase ("csdImprecise is sound for " ++ exampleName ) $ isSound 42 17 43 18 p @? ""
-  | (exampleName, p) <- [("exampleTooCoarseAbstractionIsUnsound", exampleTooCoarseAbstractionIsUnsound)]
-  ] ++
-  [ testCase ("csdMergeOf ⊆ csdImprecise for " ++ exampleName ) $
-      let n0 = entryOf p $ procedureOf p $ mainThread p
-          g = tcfg p
-          (csdM,_,_)    =     Reach.csdMergeOf       propsCacheSize g n0
-          csdMImprecise = Imprecise.csdMergeDirectOf propsCacheSize g n0
-      in  csdM ⊑ csdMImprecise @? ""
-  | (exampleName, p) <- [("exampleTooCoarseAbstractionIsUnsound", exampleTooCoarseAbstractionIsUnsound)]
-  ] ++
   []
  where isSound :: Int -> Int -> Int -> Int -> Program Gr -> Bool
        isSound seed1 seed2 seed3 seed4 pr = 

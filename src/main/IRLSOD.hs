@@ -93,7 +93,7 @@ instance SimpleShow Name where
 type Val = Word8
 
 centralValue :: Val
-centralValue = 127
+centralValue = 15
 
 
 type ArrayVal = Map Val Val

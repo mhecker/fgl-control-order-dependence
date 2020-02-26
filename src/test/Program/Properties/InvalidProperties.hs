@@ -967,7 +967,7 @@ wodTests = testGroup "(concerning weak order dependence)" $
 
 propsCacheSize = 4
 
-cacheProps = localOption (QuickCheckTests 1200) $ testGroup "(concerning cache timing)" $
+cacheProps = localOption (QuickCheckTests 12000) $ testGroup "(concerning cache timing)" $
   [       testPropertySized 25 "imprecise csGraphs are smaller than precise"
                 $ \generated ->
                     let pr :: Program Gr

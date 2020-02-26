@@ -8,7 +8,7 @@ import Control.Exception.Base (assert)
 import Algebra.Lattice
 import Unicode
 
-import IRLSOD(SecurityLattice(..), CFGEdge(..), stdIn, stdOut)
+import IRLSOD(SecurityLattice(..), CFGEdge(..), stdIn, stdOut, Input)
 
 import Program
 import Program.MHP
@@ -21,7 +21,7 @@ import Program.Defaults (defaultChannelObservability)
 
 import Program.CDom
 
-import Program.DynamicAnalysis (isSecureEmpirically)
+import Program.DynamicAnalysis (isSecureEmpirically, isSecureEmpiricallyFor)
 
 import Data.Graph.Inductive.Query.TransClos (trc)
 import Data.Graph.Inductive.Graph
@@ -105,6 +105,11 @@ allSoundIntraMultiRelativeTo  isSecure as generated = ((Set.size $ staticThreads
 
 allSoundP ::  [(Program Gr -> Bool)] -> Program Gr -> Bool
 allSoundP as p        = any ($ p) as  → isSecureEmpirically p
+
+allSoundPFor ::  Input -> Input -> [(Program Gr -> Bool)] -> Program Gr ->  Bool
+allSoundPFor input input' as p  = any ($ p) as  → isSecureEmpiricallyFor p input input'
+
+
 
 
 timingDDomPathsIsTimingG :: IntraGeneratedProgram -> Bool

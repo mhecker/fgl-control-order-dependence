@@ -214,11 +214,11 @@ soundnessProps =  testGroup "(concerning soundness)" [
 
 soundnessTests =  testGroup "(concerning soundness)" $
   [ testCase      ("allSoundP [ timingClassification using idomChef ] for " ++ exampleName)
-                  ( allSoundP [ isSecureTimingClassificationIdomChef ] example @? "")
+                  ( allSoundPFor defaultInputOld defaultInputOld' [ isSecureTimingClassificationIdomChef ] example @? "")
   | (exampleName, example) <- [ ("cdomIsBroken'", cdomIsBroken') ]
   ] ++
   [ testCase      ("allSoundP [ unsoundIRLSODAttempt ] for " ++ exampleName)
-                  ( allSoundP [ unsoundIRLSODAttempt ] example @? "")
+                  ( allSoundPFor defaultInputOld defaultInputOld' [ unsoundIRLSODAttempt ] example @? "")
   | (exampleName, example) <- [ ("figure5right", figure5right) ]
   ] ++
   []

@@ -33,7 +33,7 @@ import Data.Graph.Inductive.Graph
 import Statistics (wellektest, plunketttest)
 
 import Unicode
-import IRLSOD(Trace, ExecutionTrace, Input, eventStep, eventStepAt, toTrace, SecurityLattice (..), observable)
+import IRLSOD(Trace, ExecutionTrace, Input, eventStep, eventStepAt, toTrace, SecurityLattice (..), observable, Input)
 import Execution (someFinishedReversedAnnotatedExecutionTraces, sample, initialConfiguration, someFinishedReversedObservations)
 import PNI (counterExamplesWithRegardToEquivAnnotatedIf)
 
@@ -41,9 +41,9 @@ import Program.Defaults
 import Program
 
 
-isSecureEmpiricallyMyOwnSuckyOldTest program@(Program { tcfg, observability }) = unsafePerformIO $ do
-  θ  <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces n program defaultInput
-  θ' <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces n program defaultInput'
+isSecureEmpiricallyMyOwnSuckyOldTest program@(Program { tcfg, observability }) input input' = unsafePerformIO $ do
+  θ  <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces n program input
+  θ' <- evalRandIO $ someFinishedReversedAnnotatedExecutionTraces n program input'
   let counterExamples =  fmap (\(p,p',trace) -> (p,p',reverse trace)) $ counterExamplesWithRegardToEquivAnnotatedIf areDifferent tcfg observability θ θ'
   return $ length counterExamples == 0
  where areDifferent p p' =   abs(p-p') > 2/100
@@ -62,8 +62,8 @@ isLSODEmpirically program@(Program { tcfg, observability }) = unsafePerformIO $ 
 type ID = Int
 type Count = Integer
 
-isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Bool
-isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsafePerformIO $ evalRandIO $ test (0, 0, Map.empty, Map.empty, Map.empty)
+isSecureEmpiricallyCombinedTest :: Graph gr => Program gr -> Input -> Input -> Bool
+isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) input input' = unsafePerformIO $ evalRandIO $ test (0, 0, Map.empty, Map.empty, Map.empty)
   where α = 0.0000001
         ε = 0.009
         nMin = 4096
@@ -89,8 +89,8 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
         newSamplePairs :: MonadRandom m => Integer -> (Integer, ID, Map Trace ID, Map ID Count , Map ID Count) -> m (Integer, ID, Map Trace ID, Map ID Count , Map ID Count)
         newSamplePairs 0 state = return state
         newSamplePairs k (n, nextId, toId, θs, θ's) = do
-            e  <- newExecutionTrace defaultInput
-            e' <- newExecutionTrace defaultInput'
+            e  <- newExecutionTrace input
+            e' <- newExecutionTrace input'
             let t  = observable tcfg observability Low $ toTrace e
             let t' = observable tcfg observability Low $ toTrace e'
           
@@ -141,4 +141,8 @@ isSecureEmpiricallyCombinedTest program@(Program { tcfg, observability }) = unsa
               $ error ("Tests are contradictory, wtf:" ++ show (n, θs, θ's))
 
 isSecureEmpirically :: Graph gr => Program gr -> Bool
-isSecureEmpirically = isSecureEmpiricallyCombinedTest
+isSecureEmpirically p = isSecureEmpiricallyCombinedTest p defaultInput defaultInput'
+
+isSecureEmpiricallyFor  :: Graph gr => Program gr -> Input -> Input -> Bool
+isSecureEmpiricallyFor = isSecureEmpiricallyCombinedTest
+

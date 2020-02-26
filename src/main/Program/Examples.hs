@@ -1364,7 +1364,7 @@ cdomIsBroken' = p { observability = defaultObservabilityMap (tcfg p) }
            Skip                                                             `Seq`
            ReadFromChannel (Global "h") stdIn                                        `Seq`
            SpawnThread 2                                                    `Seq`
-           If (Leq (Var (Global "h")) (Val 0))
+           If (Leq (Var (Global "h")) (Val centralValue))
               (Skip `Seq` Skip `Seq` Skip `Seq` Skip `Seq` Skip)
               (Skip)                                                        `Seq`
            SpawnThread 2
@@ -1763,7 +1763,7 @@ figure5rightCode = code where
            Skip                                                             `Seq`
            ReadFromChannel (Global "h") stdIn                                        `Seq`
            Ass (Global "tmp") (Val 0)                                                `Seq`
-           If (Leq (Var (Global "h")) (Val 0))
+           If (Leq (Var (Global "h")) (Val centralValue))
               (Ass (Global "tmp") (Val 8))
               (Skip)                                                        `Seq`
            SpawnThread 2                                                    `Seq`

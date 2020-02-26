@@ -968,18 +968,6 @@ wodTests = testGroup "(concerning weak order dependence)" $
 propsCacheSize = 4
 
 cacheProps = localOption (QuickCheckTests 1200) $ testGroup "(concerning cache timing)" $
-  [       testPropertySized 25 "csdMergeDirectOf ⊑ AgeSets.csdFromDataDep"
-                $ \generated ->
-                    let pr :: Program Gr
-                        pr = compileAllToProgram a b'
-                          where (a,b) = toCodeSimpleWithArrays generated
-                                b' = fmap twoAddressCode b
-                        g = tcfg pr
-                        n0 = entryOf pr $ procedureOf pr $ mainThread pr
-                        csdM   =           csdMergeDirectOf propsCacheSize g n0
-                        csdMAS = AgeSetsDD.csdFromDataDep   propsCacheSize g n0
-                    in  csdM ⊑ csdMAS
-  ] ++
   [       testPropertySized 25 "imprecise csGraphs are smaller than precise"
                 $ \generated ->
                     let pr :: Program Gr

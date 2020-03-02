@@ -874,7 +874,7 @@ observation_6_8_2 = [
 
 
 observation_6_8_3 = [
-    testPropertySized 25 "nticdNTIODSlice is sound wrt infinite delay"
+    testPropertySized 25 "nticdNTIODSlice is sound wrt infinite delay [slow]"
                 $ \(ARBITRARY(generatedGraph)) seed seed2 ->
                     let g = removeDuplicateEdges generatedGraph
                         n = toInteger $ length $ nodes g
@@ -899,7 +899,7 @@ observation_6_8_3 = [
   ]
 
 observation_6_8_4 = [
-    testPropertySized 25 "nticdNTIODSlice is minimal wrt infinite delay"
+    testPropertySized 25 "nticdNTIODSlice is minimal wrt infinite delay [slow]"
                 $ \(ARBITRARY(generatedGraph)) seed seed2 ->
                     let g = removeDuplicateEdges generatedGraph
                         n = toInteger $ length $ nodes g

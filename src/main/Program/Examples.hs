@@ -3258,6 +3258,22 @@ notReallyUnsound43 = toProgramIntra $ IntraGeneratedProgram
 
 
 
+notReallyUnsound44 :: Program Gr
+notReallyUnsound44 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2")])
+    (Map.fromList [("main",Generated (Seq (Seq (ForC 2 (SpawnThread 2)) (If CFalse (ReadFromChannel (Global "c") "lowIn1") (ReadFromChannel (Global "x") "lowIn1"))) (ForC 1 (Seq (PrintToChannel (Val 5) "stdOut") Skip))) undefined undefined undefined),("thread2",Generated (Seq (ForC 1 (If CFalse (PrintToChannel (Val 5) "stdOut") (PrintToChannel (Val 5) "stdOut"))) (Seq (Seq (ReadFromChannel (Global "a") "lowIn1") (PrintToChannel (Val 4) "stdOut")) (Seq (ReadFromChannel (Global "z") "stdIn") Skip))) undefined undefined undefined)])
+
+
+notReallyUnsound45 :: Program Gr
+notReallyUnsound45 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(3,"thread3")])
+    (Map.fromList [("main",Generated (Seq (Seq (Seq (PrintToChannel (Val 5) "stdOut") (PrintToChannel (Val 13) "stdOut")) (Seq (Ass (Global "y") (Val 8)) (SpawnThread 3))) (Seq (ForC 2 (ReadFromChannel (Global "a") "stdIn")) (ForV (Global "y") (PrintToChannel (Neg (Var (Global "y"))) "stdOut")))) undefined undefined undefined),("thread3",Generated (Seq (Seq (Seq (PrintToChannel (Val 8) "stdOut") (PrintToChannel (Val 3) "stdOut")) (If (Leq (Val 4) (Val 3)) (Ass (Global "x") (Val 8)) (PrintToChannel (Times (Var (Global "y")) (Var (Global "y"))) "stdOut"))) (Seq (Seq (PrintToChannel (Plus (Var (Global "y")) (Var (Global "y"))) "stdOut") Skip) (ForC 2 (ReadFromChannel (Global "x") "lowIn1")))) undefined undefined undefined)])
+
+notReallyUnsound46 :: Program Gr
+notReallyUnsound46 = toProgramIntra $ IntraGeneratedProgram
+    (Map.fromList [(1,"main"),(2,"thread2")])
+    (Map.fromList [("main",Generated (ForC 1 (ForC 2 (Seq (If CFalse (ReadFromChannel (Global "z") "lowIn1") (SpawnThread 2)) (Seq Skip (PrintToChannel (Val 4) "stdOut"))))) undefined undefined undefined),("thread2",Generated (Seq (Seq (PrintToChannel (Val 13) "stdOut") (ReadFromChannel (Global "b") "lowIn1")) (ForC 1 (Seq (ReadFromChannel (Global "c") "stdIn") Skip))) undefined undefined undefined)])
+
 exampleMhp :: Program Gr
 exampleMhp = toProgram $ GeneratedProgram
     (Map.fromList [(1,"main"),(2,"thread2"),(3,"thread3")])

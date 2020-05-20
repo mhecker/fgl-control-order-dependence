@@ -1,8 +1,24 @@
-# be on ubuntu 16.04
-sudo aptitude install libghc-fgl-dev libghc-quickcheck2-dev libghc-tasty-dev libghc-tasty-hunit-dev libghc-tasty-quickcheck-dev libghc-base-unicode-symbols-dev
-cabal install  lattices-1.5.0 fgl-arbitrary-0.2.0.3 containers-unicode-symbols-0.3.1.1  MonadRandom-0.5.1 monad-gen-0.3.0.1 fgl-visualize-0.1.0.1 tasty-ant-xml-1.0.5 tasty-expected-failure-0.11.0.4 logict-0.6.0.2 bitwise-0.1.1.1  pqueue-1.3.2.2  --constraint='tasty installed'
+This project implements new Algorithms for
+
+* Nontermination   Sensitive Control Dependdnce (NTICD)
+* Nontermination Insensitive Control Dependence (NTSCD)
+* Decisive Order Dependence                     (DOD)
+* Weak Order Dependence                         (WOD)
 
 
-# or: be on debian 9.3
-sudo aptitude install libghc-fgl-dev libghc-quickcheck2-dev libghc-tasty-dev libghc-tasty-hunit-dev libghc-tasty-quickcheck-dev libghc-base-unicode-symbols-dev libghc-data-default-instances-containers-dev libghc-logict-dev
-cabal install MonadRandom-0.5.1 monad-gen containers-unicode-symbols lattices-1.5.0 fgl-arbitrary fgl-visualize tasty-ant-xml tasty-expected-failure bitwise-0.1.1.1 dequeue-0.1.12 pqueue-1.4.1.1  --constraint='tasty installed'
+as well as new Algorithms for the following new Dependence notions
+* Timing Sensitive Control Dependence           (TSCD)
+* Timing Dependence                             (TDEP)
+* Nontermination   Sensitive Order Dependdnce   (NTICD)
+* Nontermination Insensitive Order Dependence   (NTSCD)
+
+It implements various static Information Flow Control analyses based on these notions,
+including
+
+* Various improvements on Low Security Observatinal Determinism (LSOD) analyses for concurrent Programs
+* An timing sensitive analysis for *micro*-architectural state; specifically: simple data caches.
+
+This project was started at the Programming Paradigms group at the KIT, by Martin Hecker.
+
+https://pp.ipd.kit.edu
+
